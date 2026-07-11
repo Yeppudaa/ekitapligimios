@@ -95,6 +95,14 @@ Creates an immutable deployment directory containing the latest verified MobileA
 
 The Team ID must be ten uppercase letters or digits. Existing output directories are never overwritten.
 
+## `mobileapi-release-audit.ps1`
+
+Inspects the newest XenForo release ZIP before deployment. It verifies the public reader routes, revocable mobile sessions, iOS entitlement checks, reader-purpose enforcement, and account-deletion session revocation without extracting or modifying the package:
+
+```powershell
+.\Scripts\mobileapi-release-audit.ps1
+```
+
 For local development only:
 
 ```powershell

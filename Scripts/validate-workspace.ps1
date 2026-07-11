@@ -46,6 +46,7 @@ Write-Step "Checking required files"
     "SECRETS_AND_ENVIRONMENT.md",
     "Scripts/api-smoke-test.ps1",
     "Scripts/api-route-contract-audit.ps1",
+    "Scripts/mobileapi-release-audit.ps1",
     "Scripts/public-release-audit.ps1",
     "Scripts/prepare-public-deployment.ps1",
     "Scripts/session-rotation-smoke-test.ps1",
