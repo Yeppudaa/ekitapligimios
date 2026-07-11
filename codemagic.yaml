@@ -41,7 +41,6 @@ workflows:
             -scheme "$XCODE_SCHEME" \
             -configuration Development \
             -destination "platform=iOS Simulator,name=iPhone 17,OS=latest" \
-            -only-testing:EkitapligimTests \
             -resultBundlePath "$CM_BUILD_DIR/build/EkitapligimTests.xcresult" \
             CODE_SIGNING_ALLOWED=NO \
             SWIFT_COMPILATION_MODE=singlefile \
