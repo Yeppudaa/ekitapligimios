@@ -113,6 +113,10 @@ private final class EPUBReaderModel: NSObject, ObservableObject, EPUBNavigatorDe
         position = max(1, locator.locations.position ?? 1)
     }
 
+    func navigator(_ navigator: Navigator, presentError error: NavigatorError) {
+        fail(with: L10n.readerEPUBOpenFailed)
+    }
+
     private func downloadAndValidate(_ sourceURL: URL) async throws -> URL {
         if sourceURL.isFileURL {
             let handle = try FileHandle(forReadingFrom: sourceURL)
