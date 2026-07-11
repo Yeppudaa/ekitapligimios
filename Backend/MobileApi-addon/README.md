@@ -1,6 +1,6 @@
 # MobileApi iOS Backend Extension
 
-These files extend the existing XenForo `Ekitapligim/MobileApi` add-on for the native iOS app. The extension is installed and runtime-tested against the local XenForo environment through version `1.0.82`; production installation is still required. Use `Scripts/apply-mobileapi-ios-patch.ps1` to merge it into a full add-on checkout and create the XenForo upload ZIP.
+These files extend the existing XenForo `Ekitapligim/MobileApi` add-on for the native iOS app. The extension is installed and runtime-tested against the local XenForo environment through version `1.0.83`; production installation is still required. Use `Scripts/apply-mobileapi-ios-patch.ps1` to merge it into a full add-on checkout and create the XenForo upload ZIP.
 
 ## Endpoints Added
 - `POST /mobile-api/v1/auth/apple`
@@ -25,7 +25,7 @@ These files extend the existing XenForo `Ekitapligim/MobileApi` add-on for the n
 - Blocking uses XenForo's ignored users table pattern where available.
 - Reporting uses XenForo report service when available and falls back to moderator log/error log only as a development safety net.
 - Terms acceptance stores the accepted community-rules version in `xf_ekitapligim_mobile_terms_acceptance`; forum replies are rejected until the current terms version is accepted.
-- App Store Server Notifications verify the outer v2 `signedPayload` JWS and nested transaction JWS when provided, then record the verified notification hash and transaction identifiers.
+- App Store Server Notifications verify the outer v2 `signedPayload` JWS and nested transaction JWS, reject bundle/product/environment mismatches, record the verified notification hash, and update the matching existing entitlement for renewal/revocation state.
 
 ## Apple Server Configuration
 - Set `EKITAPLIGIM_IOS_BUNDLE_ID` to the app bundle ID.

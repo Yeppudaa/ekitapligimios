@@ -18,11 +18,7 @@ class AppStoreVerify extends AbstractMobileController
 			return $this->apiError('signed_transaction and product_id are required.', 'invalid_input');
 		}
 
-		$configuredProducts = trim((string) getenv('EKITAPLIGIM_IOS_PRODUCT_IDS'));
-		$allowedProducts = $configuredProducts !== ''
-			? array_values(array_filter(array_map('trim', explode(',', $configuredProducts))))
-			: ['ekitapligim.premium.monthly', 'ekitapligim.premium.yearly'];
-		if (!in_array($productId, $allowedProducts, true))
+		if (!$this->isAllowedProductId($productId))
 		{
 			return $this->apiError('Product is not configured for this app.', 'product_not_allowed');
 		}
@@ -222,6 +218,19 @@ class AppStoreVerify extends AbstractMobileController
 		}
 
 		return strcasecmp($environment, $allowed) === 0;
+	}
+
+	protected function allowedProductIds(): array
+	{
+		$configuredProducts = trim((string) getenv('EKITAPLIGIM_IOS_PRODUCT_IDS'));
+		return $configuredProducts !== ''
+			? array_values(array_filter(array_map('trim', explode(',', $configuredProducts))))
+			: ['ekitapligim.premium.monthly', 'ekitapligim.premium.yearly'];
+	}
+
+	protected function isAllowedProductId(string $productId): bool
+	{
+		return in_array($productId, $this->allowedProductIds(), true);
 	}
 
 	protected function recordEntitlement(\XF\Entity\User $user, array $transaction, string $signedTransaction, bool $active): void

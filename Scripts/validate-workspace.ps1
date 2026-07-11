@@ -414,10 +414,25 @@ $appStoreVerifySource = Get-Content -Raw -LiteralPath "Backend/MobileApi-addon/A
 foreach ($requiredProductAllowlistControl in @(
     "ekitapligim.premium.monthly",
     "ekitapligim.premium.yearly",
-    "if (!in_array(`$productId, `$allowedProducts, true))"
+    "if (!`$this->isAllowedProductId(`$productId))",
+    "return in_array(`$productId, `$this->allowedProductIds(), true);"
 )) {
     if ($appStoreVerifySource -notmatch [regex]::Escape($requiredProductAllowlistControl)) {
         throw "App Store verification must fail closed to the configured product allowlist: $requiredProductAllowlistControl"
+    }
+}
+$appStoreNotificationsSource = Get-Content -Raw -LiteralPath "Backend/MobileApi-addon/Api/Controller/AppStoreNotifications.php"
+foreach ($requiredNotificationEntitlementControl in @(
+    "validateNotificationPayload",
+    "updateEntitlementFromNotification",
+    "Notification transaction bundle mismatch",
+    "Notification product is not allowed",
+    "Notification transaction environment mismatch",
+    "WHERE transaction_id = ? OR original_transaction_id = ?",
+    "WHERE entitlement_id = ?"
+)) {
+    if ($appStoreNotificationsSource -notmatch [regex]::Escape($requiredNotificationEntitlementControl)) {
+        throw "App Store Server Notifications entitlement control missing: $requiredNotificationEntitlementControl"
     }
 }
 $appleAuthControllerSource = Get-Content -Raw -LiteralPath "Backend/MobileApi-addon/Api/Controller/AuthApple.php"

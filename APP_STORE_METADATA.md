@@ -62,7 +62,7 @@ Suggested review flow:
 
 Account deletion is initiated entirely in-app. Manual processing is expected within 30 days and completion is sent to the account email. Deletion operations must remove/anonymize associated user content as legally permitted and revoke Sign in with Apple tokens where applicable.
 
-Do not submit until every placeholder is replaced, MobileApi `1.0.82` or newer is on the public HTTPS environment, and the reviewer flow has been executed there.
+Do not submit until every placeholder is replaced, MobileApi `1.0.83` or newer is on the public HTTPS environment, and the reviewer flow has been executed there.
 
 ## In-App Purchase Review Notes
 Subscription group: `ekitapligim.premium`

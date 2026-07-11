@@ -29,7 +29,24 @@ class AppStoreNotifications extends AppStoreVerify
 				$transaction = $this->decodeAndVerifyJws((string) $data['signedTransactionInfo'])['payload'];
 			}
 
-			$this->recordNotification($notification, $transaction, $signedPayload);
+			$this->validateNotificationPayload($data, $transaction);
+
+			$db = \XF::db();
+			$db->beginTransaction();
+			try
+			{
+				$this->recordNotification($notification, $transaction, $signedPayload);
+				if ($transaction)
+				{
+					$this->updateEntitlementFromNotification($transaction, $signedPayload);
+				}
+				$db->commit();
+			}
+			catch (\Throwable $e)
+			{
+				$db->rollback();
+				throw $e;
+			}
 		}
 		catch (\Throwable $e)
 		{
@@ -41,6 +58,93 @@ class AppStoreNotifications extends AppStoreVerify
 			'success' => true,
 			'status' => 'verified_received'
 		]);
+	}
+
+	protected function validateNotificationPayload(array $data, array $transaction): void
+	{
+		$expectedBundleId = (string) (getenv('EKITAPLIGIM_IOS_BUNDLE_ID') ?: 'com.ekitapligim.app');
+		$dataBundleId = (string) ($data['bundleId'] ?? '');
+		$dataEnvironment = (string) ($data['environment'] ?? '');
+
+		if ($dataBundleId !== '' && $dataBundleId !== $expectedBundleId)
+		{
+			throw new \RuntimeException('Notification bundle does not match this app.');
+		}
+		if ($dataEnvironment !== '' && !$this->isAllowedEnvironment($dataEnvironment))
+		{
+			throw new \RuntimeException('Notification environment is not allowed.');
+		}
+		if (!$transaction)
+		{
+			return;
+		}
+
+		$transactionBundleId = (string) ($transaction['bundleId'] ?? '');
+		$productId = (string) ($transaction['productId'] ?? '');
+		$environment = (string) ($transaction['environment'] ?? '');
+		$transactionId = (string) ($transaction['transactionId'] ?? '');
+		$originalTransactionId = (string) ($transaction['originalTransactionId'] ?? '');
+
+		if ($transactionBundleId !== $expectedBundleId || ($dataBundleId !== '' && $transactionBundleId !== $dataBundleId))
+		{
+			throw new \RuntimeException('Notification transaction bundle mismatch.');
+		}
+		if (!$this->isAllowedProductId($productId))
+		{
+			throw new \RuntimeException('Notification product is not allowed.');
+		}
+		if (!$this->isAllowedEnvironment($environment) || ($dataEnvironment !== '' && $environment !== $dataEnvironment))
+		{
+			throw new \RuntimeException('Notification transaction environment mismatch.');
+		}
+		if ($transactionId === '' || $originalTransactionId === '')
+		{
+			throw new \RuntimeException('Notification transaction identifiers are missing.');
+		}
+	}
+
+	protected function updateEntitlementFromNotification(array $transaction, string $signedPayload): void
+	{
+		$this->ensureEntitlementTable();
+		$originalTransactionId = (string) $transaction['originalTransactionId'];
+		$transactionId = (string) $transaction['transactionId'];
+		$expiresDate = (int) ($transaction['expiresDate'] ?? 0);
+		$revocationDate = (int) ($transaction['revocationDate'] ?? 0);
+		$isActive = $revocationDate <= 0 && ($expiresDate <= 0 || $expiresDate > (\XF::$time * 1000));
+		$entitlementId = (int) \XF::db()->fetchOne(
+			"SELECT entitlement_id
+			FROM xf_ekitapligim_mobile_appstore_entitlement
+			WHERE transaction_id = ? OR original_transaction_id = ?
+			ORDER BY (transaction_id = ?) DESC, entitlement_id DESC
+			LIMIT 1",
+			[$transactionId, $originalTransactionId, $transactionId]
+		);
+		if (!$entitlementId)
+		{
+			return;
+		}
+
+		\XF::db()->query(
+			"UPDATE xf_ekitapligim_mobile_appstore_entitlement
+			SET product_id = ?,
+				transaction_id = ?,
+				environment = ?,
+				expires_date = ?,
+				active = ?,
+				signed_transaction_hash = ?,
+				last_verified = ?
+			WHERE entitlement_id = ?",
+			[
+				(string) $transaction['productId'],
+				$transactionId,
+				(string) $transaction['environment'],
+				(int) floor($expiresDate / 1000),
+				$isActive ? 1 : 0,
+				hash('sha256', $signedPayload),
+				\XF::$time,
+				$entitlementId
+			]
+		);
 	}
 
 	protected function recordNotification(array $notification, array $transaction, string $signedPayload): void
