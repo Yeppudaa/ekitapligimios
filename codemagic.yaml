@@ -28,13 +28,18 @@ workflows:
         script: |
           xcodebuild -resolvePackageDependencies -project "$XCODE_PROJECT" -scheme "$XCODE_SCHEME"
 
-      - name: Run unit tests
+      - name: Run Swift package tests
+        script: |
+          swift test
+
+      - name: Run app tests
         script: |
           xcodebuild test \
             -project "$XCODE_PROJECT" \
             -scheme "$XCODE_SCHEME" \
             -configuration Development \
-            -destination "platform=iOS Simulator,name=iPhone 16,OS=latest" \
+            -destination "platform=iOS Simulator,OS=latest,name=iPhone 15" \
+            -resultBundlePath "$CM_BUILD_DIR/build/EkitapligimTests.xcresult" \
             CODE_SIGNING_ALLOWED=NO
 
       - name: Archive production build
