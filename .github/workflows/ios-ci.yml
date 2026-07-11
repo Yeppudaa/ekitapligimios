@@ -1,0 +1,101 @@
+name: iOS Validation
+
+on:
+  workflow_dispatch:
+  pull_request:
+  push:
+    branches:
+      - main
+      - master
+      - "codex/**"
+
+jobs:
+  source-validation:
+    name: Source validation
+    runs-on: windows-latest
+    steps:
+      - uses: actions/checkout@v4
+      - name: Validate workspace files
+        shell: pwsh
+        run: ./Scripts/validate-workspace.ps1
+      - name: App Store preflight with development placeholders
+        shell: pwsh
+        run: ./Scripts/appstore-preflight.ps1 -AllowPlaceholders
+
+  ios-build:
+    name: iOS build and tests
+    runs-on: macos-15
+    timeout-minutes: 30
+    steps:
+      - uses: actions/checkout@v4
+      - name: Select and verify Xcode 16.4
+        run: |
+          sudo xcode-select -s /Applications/Xcode_16.4.app/Contents/Developer
+          xcodebuild -version
+          xcodebuild -version | grep -q 'Xcode 16.4'
+      - name: Install XcodeGen
+        run: brew install xcodegen
+      - name: Generate Xcode project
+        run: xcodegen generate
+      - name: Verify generated schemes and targets
+        run: xcodebuild -project Ekitapligim.xcodeproj -list
+      - name: Resolve pinned Swift packages
+        run: >-
+          xcodebuild -resolvePackageDependencies
+          -project Ekitapligim.xcodeproj
+          -scheme Ekitapligim
+          -clonedSourcePackagesDirPath .build/xcode-packages
+      - name: Verify Readium resolution
+        run: |
+          python3 - <<'PY'
+          import json
+          from pathlib import Path
+
+          path = Path("Ekitapligim.xcodeproj/project.xcworkspace/xcshareddata/swiftpm/Package.resolved")
+          data = json.loads(path.read_text())
+          pins = data.get("pins", data.get("object", {}).get("pins", []))
+          readium = next((pin for pin in pins if pin.get("identity") == "swift-toolkit" or pin.get("package") == "swift-toolkit"), None)
+          assert readium is not None, "Readium pin missing"
+          state = readium.get("state", readium.get("repositoryURL", {}))
+          assert state.get("version") == "3.9.0", f"Unexpected Readium version: {state}"
+          print("Readium 3.9.0 resolved from Package.resolved")
+          PY
+      - name: Swift package tests
+        run: swift test
+      - name: iOS simulator unit tests
+        run: >-
+          xcodebuild test
+          -project Ekitapligim.xcodeproj
+          -scheme Ekitapligim
+          -configuration Development
+          -destination 'platform=iOS Simulator,name=iPhone 16,OS=latest'
+          -resultBundlePath TestResults.xcresult
+          -clonedSourcePackagesDirPath .build/xcode-packages
+          -disableAutomaticPackageResolution
+          CODE_SIGNING_ALLOWED=NO
+      - name: Production unsigned build
+        run: >-
+          xcodebuild clean build
+          -project Ekitapligim.xcodeproj
+          -scheme Ekitapligim
+          -configuration Production
+          -destination generic/platform=iOS
+          -clonedSourcePackagesDirPath .build/xcode-packages
+          -disableAutomaticPackageResolution
+          CODE_SIGNING_ALLOWED=NO
+      - name: Upload XCTest result bundle
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: ios-test-results
+          path: TestResults.xcresult
+          if-no-files-found: warn
+          retention-days: 14
+      - name: Upload resolved package evidence
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: swift-package-resolution
+          path: Ekitapligim.xcodeproj/project.xcworkspace/xcshareddata/swiftpm/Package.resolved
+          if-no-files-found: error
+          retention-days: 14

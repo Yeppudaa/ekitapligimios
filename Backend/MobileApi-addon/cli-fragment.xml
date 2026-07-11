@@ -1,0 +1,4 @@
+<?xml version="1.0" encoding="utf-8"?>
+<cli_commands>
+  <command class="Ekitapligim\MobileApi\Cli\Command\CompleteAccountDeletion"/>
+</cli_commands>

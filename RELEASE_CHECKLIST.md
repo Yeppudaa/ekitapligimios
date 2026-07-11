@@ -1,0 +1,54 @@
+# Release Checklist
+
+- [ ] Bundle identifier selected.
+- [ ] Apple Developer Team ID configured.
+- [ ] App Store Connect app created.
+- [ ] Xcode project generated from `project.yml` and linked to `EkitapligimCore`.
+- [ ] Xcode 16.4 or newer selected; Readium resolves exactly to `3.9.0` and generated `Package.resolved` is retained with release evidence.
+- [ ] Public staging API online with HTTPS.
+- [ ] Production API online with HTTPS.
+- [ ] `Scripts/api-smoke-test.ps1` passed against public staging.
+- [ ] Reviewer account created.
+- [ ] StoreKit products created, if premium is enabled.
+- [ ] App Store Server Notification URL configured, if premium is enabled.
+- [ ] Sign in with Apple configured, if Google login remains.
+- [ ] Account-deletion completion CLI dry-run and disposable-account execution verified; XenForo cleanup jobs drained and completion email received.
+- [ ] Backend Apple auth installed and verified with Apple JWKS/RS256 validation on staging.
+- [ ] Backend App Store JWS verification installed and tested with real Apple sandbox transactions.
+- [ ] Backend user blocking/reporting installed and tested on staging.
+- [ ] Backend terms acceptance installed and tested before UGC posting is enabled.
+- [ ] App Store Server Notifications endpoint verifies JWS and is tested with real Apple sandbox notifications.
+- [ ] `Scripts/apply-mobileapi-ios-patch.ps1` used to prepare the MobileApi addon package.
+- [ ] Backend account deletion endpoint stores deletion requests and supports Apple/no-password accounts.
+- [ ] Profile and notification APIs verified against staging permissions.
+- [ ] Privacy settings behavior reconciled with App Store privacy labels before submission.
+- [ ] Production API config resolves to `https://ekitapligim.com/mobile-api/v1/` after Xcode `.xcconfig` expansion.
+- [ ] App Transport Security has no broad arbitrary-load exception.
+- [ ] Universal links configured.
+- [ ] `apple-app-site-association` deployed according to `UNIVERSAL_LINKS.md`.
+- [ ] Privacy policy URL available.
+- [ ] Terms URL available.
+- [ ] Support URL available.
+- [ ] App icon and screenshots prepared.
+- [ ] Branded AppIcon source/hash reviewed, rights-holder approval recorded, and icon inspected on small/large iPhone plus iPad.
+- [ ] `PrivacyInfo.xcprivacy` reviewed against final SDK/API usage.
+- [ ] StoreKit config/product IDs reconciled with App Store Connect.
+- [ ] Privacy labels completed.
+- [ ] Age rating completed.
+- [ ] Export compliance answered.
+- [ ] Clean Debug build passed.
+- [ ] Clean Release build passed.
+- [ ] `Scripts/validate-workspace.ps1` passed.
+- [ ] `Scripts/ui-accessibility-audit.ps1` passed.
+- [ ] `Scripts/appstore-preflight.ps1` passed with no placeholders.
+- [ ] `Scripts/ugc-safety-smoke-test.ps1` passed against public staging.
+- [ ] Unit/UI tests passed.
+- [ ] `EkitapligimUITests` primary offline navigation test passed in the simulator result bundle.
+- [ ] Secret scan passed.
+- [ ] Accessibility smoke test passed.
+- [ ] TestFlight review passed.
+- [ ] Offline downloads verified for file protection, backup exclusion, storage failure, and corrupted files.
+  Source controls and Xcode test coverage are present; execute `EkitapligimTests/DownloadManagerTests` on simulator/device before checking this item.
+- [ ] Forum/report/block flows verified against staging XenForo permissions.
+- [ ] `APP_STORE_METADATA.md` placeholders replaced before submission.
+- [ ] `REVIEWER_TEST_PLAN.md` executed with evidence captured.

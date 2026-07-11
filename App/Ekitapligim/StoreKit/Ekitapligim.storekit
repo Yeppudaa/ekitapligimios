@@ -1,0 +1,83 @@
+{
+  "identifier" : "Ekitapligim",
+  "nonRenewingSubscriptions" : [
+
+  ],
+  "products" : [
+
+  ],
+  "settings" : {
+    "_failTransactionsEnabled" : false,
+    "_locale" : "tr_TR",
+    "_storefront" : "TUR"
+  },
+  "subscriptionGroups" : [
+    {
+      "id" : "ekitapligim.premium",
+      "localizations" : [
+        {
+          "description" : "Premium okuma ve indirme hakları",
+          "displayName" : "Ekitaplığım Premium",
+          "locale" : "tr_TR"
+        }
+      ],
+      "name" : "Ekitaplığım Premium",
+      "subscriptions" : [
+        {
+          "adHocOffers" : [
+
+          ],
+          "codeOffers" : [
+
+          ],
+          "displayPrice" : "₺99,99",
+          "familyShareable" : false,
+          "groupNumber" : 1,
+          "internalID" : "ekitapligim.premium.monthly",
+          "introductoryOffer" : null,
+          "localizations" : [
+            {
+              "description" : "Aylık premium kitap okuma ve indirme erişimi",
+              "displayName" : "Aylık Premium",
+              "locale" : "tr_TR"
+            }
+          ],
+          "productID" : "ekitapligim.premium.monthly",
+          "recurringSubscriptionPeriod" : "P1M",
+          "referenceName" : "Monthly Premium",
+          "subscriptionGroupID" : "ekitapligim.premium",
+          "type" : "RecurringSubscription"
+        },
+        {
+          "adHocOffers" : [
+
+          ],
+          "codeOffers" : [
+
+          ],
+          "displayPrice" : "₺999,99",
+          "familyShareable" : false,
+          "groupNumber" : 2,
+          "internalID" : "ekitapligim.premium.yearly",
+          "introductoryOffer" : null,
+          "localizations" : [
+            {
+              "description" : "Yıllık premium kitap okuma ve indirme erişimi",
+              "displayName" : "Yıllık Premium",
+              "locale" : "tr_TR"
+            }
+          ],
+          "productID" : "ekitapligim.premium.yearly",
+          "recurringSubscriptionPeriod" : "P1Y",
+          "referenceName" : "Yearly Premium",
+          "subscriptionGroupID" : "ekitapligim.premium",
+          "type" : "RecurringSubscription"
+        }
+      ]
+    }
+  ],
+  "version" : {
+    "major" : 4,
+    "minor" : 0
+  }
+}

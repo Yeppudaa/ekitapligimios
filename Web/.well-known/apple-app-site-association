@@ -1,0 +1,22 @@
+{
+  "applinks": {
+    "apps": [],
+    "details": [
+      {
+        "appIDs": [
+          "TEAMID.com.ekitapligim.app"
+        ],
+        "components": [
+          { "/": "/books/*", "comment": "Book details" },
+          { "/": "/konular/*", "comment": "Turkish book/thread URLs" },
+          { "/": "/threads/*", "comment": "Forum threads" },
+          { "/": "/forum/*", "comment": "Forums" },
+          { "/": "/forums/*", "comment": "Forums" },
+          { "/": "/book-authors/*", "comment": "Authors" },
+          { "/": "/book-publishers/*", "comment": "Publishers" },
+          { "/": "/book-requests/*", "comment": "Book requests" }
+        ]
+      }
+    ]
+  }
+}

@@ -1,0 +1,21 @@
+# Known Limitations
+
+- This workspace is Windows and does not include Xcode or Swift, so native iOS build/test execution could not be performed here.
+- The local git repository has no configured remote and the project tree is currently uncommitted, so the prepared macOS GitHub Actions workflow cannot yet be dispatched. It supports manual dispatch plus `main`, `master`, `codex/**`, and pull-request triggers once the repository is committed and connected to a host.
+- `project.yml` is present for XcodeGen, but the `.xcodeproj` has not been generated or built in this workspace.
+- The public staging API URL, production API URL, bundle identifier, and Apple Team ID were not provided.
+- `Scripts/api-smoke-test.ps1` cannot pass for App Review until a public HTTPS staging or production Mobile API is available.
+- `Scripts/appstore-preflight.ps1` will fail until reviewer account, Team ID, and other placeholders are replaced.
+- Local XenForo homepage, unauthenticated `mobile-api/v1` book/forum/thread/post routes, and bearer-authenticated profile/library/subscription/terms/notification-count routes now respond after applying the local MobileApi iOS patch. Full reviewer validation still requires a dedicated non-admin test account and public HTTPS staging.
+- StoreKit backend endpoint now verifies Apple-signed JWS transactions, validates product/bundle/environment fields, records iOS entitlement rows locally, and the local premium checks read active iOS entitlements. It is not installed into staging/production yet, and must still be tested with real Apple sandbox/production signed transactions before App Review.
+- App Store Server Notifications now verify v2 JWS payloads and record verified notification hashes locally. They are not installed into staging/production yet, and notification-driven renewal/revocation must still be tested with real Apple server notifications.
+- User blocking endpoint scaffold now exists and is installed in local XenForo, but it is not installed into staging/production yet.
+- Terms acceptance is installed in local XenForo and enforced before forum replies, but it is not installed into staging/production yet.
+- Revocable access/refresh sessions are installed and runtime-tested locally, but are not deployed to public HTTPS staging/production yet.
+- Re-authenticated email/password changes are installed locally. Disposable accounts proved successful email and password mutation, IP auditing, old-token revocation, rotated-session use, old-password rejection, and new-password login. The local site has email confirmation disabled and no SMTP service, so confirmation-link completion plus real old/new-address delivery still require the public staging reviewer account with production-equivalent mail settings.
+- The guarded account-deletion completion CLI passed an irreversible disposable-account test locally, including PII scrubbing and cleanup-job draining. Local SMTP is unavailable, so receipt of the post-cleanup completion email still requires public staging verification.
+- Sign in with Apple backend verifies Apple JWKS/RS256 ID tokens, exchanges the authorization code, encrypts the refresh token at rest, and revokes Apple authorization during account deletion. Production still needs rotating client-secret/encryption-key configuration and real device/sandbox sign-in/deletion evidence from a signed iOS build.
+- Content rights for offline book storage/downloads are not verified.
+- Current visible SwiftUI app strings use String Catalog keys. A final human Turkish copy review is still required before App Store screenshot capture.
+- The placeholder icon was replaced with the Android app's branded round logo and all iOS sizes are opaque RGB. Final visual approval from the Ekitapligim rights holder and real-device icon inspection are still required.
+- PDF reading, live progress and persistent per-book bookmarks are implemented. EPUB reading is implemented with pinned Readium 3.9.0, but actual package resolution/build and representative reflowable/fixed-layout EPUB device tests require the macOS/Xcode gate.

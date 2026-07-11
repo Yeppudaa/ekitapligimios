@@ -1,0 +1,41 @@
+<?xml version="1.0" encoding="utf-8"?>
+<routes>
+  <route route_type="api" route_prefix="auth" sub_name="login" format="login" controller="Ekitapligim\MobileApi:AuthLogin"/>
+  <route route_type="api" route_prefix="auth" sub_name="apple" format="apple" controller="Ekitapligim\MobileApi:AuthApple"/>
+  <route route_type="api" route_prefix="billing" sub_name="app-store-verify" format="app-store/verify" controller="Ekitapligim\MobileApi:AppStoreVerify"/>
+  <route route_type="api" route_prefix="members" sub_name="block" format=":int&lt;user_id&gt;/block" controller="Ekitapligim\MobileApi:MemberBlock" action_prefix="block"/>
+  <route route_type="api" route_prefix="members" sub_name="unblock" format=":int&lt;user_id&gt;/unblock" controller="Ekitapligim\MobileApi:MemberBlock" action_prefix="unblock"/>
+  <route route_type="api" route_prefix="me" sub_name="mobile-profile" format="" controller="Ekitapligim\MobileApi:Me"/>
+  <route route_type="api" route_prefix="me" sub_name="mobile-email" format="email" controller="Ekitapligim\MobileApi:Me" action_prefix="email"/>
+  <route route_type="api" route_prefix="me" sub_name="mobile-password" format="password" controller="Ekitapligim\MobileApi:Me" action_prefix="password"/>
+  <route route_type="api" route_prefix="me" sub_name="blocked-members" format="blocked-members" controller="Ekitapligim\MobileApi:BlockedMembers"/>
+  <route route_type="api" route_prefix="me" sub_name="terms" format="terms" controller="Ekitapligim\MobileApi:Terms"/>
+  <route route_type="api" route_prefix="me" sub_name="terms-accept" format="terms/accept" controller="Ekitapligim\MobileApi:Terms" action_prefix="accept"/>
+  <route route_type="api" route_prefix="posts" sub_name="report" format=":int&lt;post_id&gt;/report" controller="Ekitapligim\MobileApi:PostReport"/>
+  <route route_type="public" route_prefix="mobile-api" sub_name="book-id" format="v1/books/:+int&lt;thread_id&gt;" controller="Ekitapligim\MobileApi:Book"/>
+  <route route_type="public" route_prefix="mobile-api" sub_name="book-detail" format="v1/book-detail/:int&lt;thread_id&gt;" controller="Ekitapligim\MobileApi:Book"/>
+  <route route_type="api" route_prefix="forums" sub_name="threads" format=":int&lt;node_id&gt;/threads" controller="Ekitapligim\MobileApi:ForumThreads"/>
+  <route route_type="api" route_prefix="threads" sub_name="posts" format=":int&lt;thread_id&gt;/posts" controller="Ekitapligim\MobileApi:ThreadPosts"/>
+  <route route_type="api" route_prefix="billing" sub_name="app-store-notifications" format="app-store/notifications" controller="Ekitapligim\MobileApi:AppStoreNotifications"/>
+
+  <route route_type="public" route_prefix="mobile-api" sub_name="auth-login" format="v1/auth/login" controller="Ekitapligim\MobileApi:AuthLogin"/>
+  <route route_type="public" route_prefix="mobile-api" sub_name="auth-apple" format="v1/auth/apple" controller="Ekitapligim\MobileApi:AuthApple"/>
+  <route route_type="public" route_prefix="mobile-api" sub_name="billing-app-store-verify" format="v1/billing/app-store/verify" controller="Ekitapligim\MobileApi:AppStoreVerify"/>
+  <route route_type="public" route_prefix="mobile-api" sub_name="member-block" format="v1/members/:int&lt;user_id&gt;/block" controller="Ekitapligim\MobileApi:MemberBlock" action_prefix="block"/>
+  <route route_type="public" route_prefix="mobile-api" sub_name="member-unblock" format="v1/members/:int&lt;user_id&gt;/unblock" controller="Ekitapligim\MobileApi:MemberBlock" action_prefix="unblock"/>
+  <route route_type="public" route_prefix="mobile-api" sub_name="me" format="v1/me" controller="Ekitapligim\MobileApi:Me"/>
+  <route route_type="public" route_prefix="mobile-api" sub_name="me-email" format="v1/me/email" controller="Ekitapligim\MobileApi:Me" action_prefix="email"/>
+  <route route_type="public" route_prefix="mobile-api" sub_name="me-password" format="v1/me/password" controller="Ekitapligim\MobileApi:Me" action_prefix="password"/>
+  <route route_type="public" route_prefix="mobile-api" sub_name="me-blocked-members" format="v1/me/blocked-members" controller="Ekitapligim\MobileApi:BlockedMembers"/>
+  <route route_type="public" route_prefix="mobile-api" sub_name="me-terms" format="v1/me/terms" controller="Ekitapligim\MobileApi:Terms"/>
+  <route route_type="public" route_prefix="mobile-api" sub_name="me-terms-accept" format="v1/me/terms/accept" controller="Ekitapligim\MobileApi:Terms" action_prefix="accept"/>
+  <route route_type="public" route_prefix="mobile-api" sub_name="post-report" format="v1/posts/:int&lt;post_id&gt;/report" controller="Ekitapligim\MobileApi:PostReport"/>
+  <route route_type="public" route_prefix="mobile-api" sub_name="forum-threads" format="v1/forums/:int&lt;node_id&gt;/threads" controller="Ekitapligim\MobileApi:ForumThreads"/>
+  <route route_type="public" route_prefix="mobile-api" sub_name="thread-posts" format="v1/threads/:int&lt;thread_id&gt;/posts" controller="Ekitapligim\MobileApi:ThreadPosts"/>
+  <route route_type="public" route_prefix="mobile-api" sub_name="conversation-detail-ios" format="v1/conversation-detail/:int&lt;conversation_id&gt;" controller="Ekitapligim\MobileApi:Conversations"/>
+  <route route_type="public" route_prefix="mobile-api" sub_name="conversation-reply-ios" format="v1/conversation-reply/:int&lt;conversation_id&gt;" controller="Ekitapligim\MobileApi:Conversations" action_prefix="reply"/>
+  <route route_type="public" route_prefix="mobile-api" sub_name="member-detail-ios" format="v1/member-detail/:int&lt;user_id&gt;" controller="Ekitapligim\MobileApi:Members"/>
+  <route route_type="public" route_prefix="mobile-api" sub_name="member-follow-ios" format="v1/member-follow/:int&lt;user_id&gt;" controller="Ekitapligim\MobileApi:Members" action_prefix="follow"/>
+  <route route_type="public" route_prefix="mobile-api" sub_name="member-unfollow-ios" format="v1/member-unfollow/:int&lt;user_id&gt;" controller="Ekitapligim\MobileApi:Members" action_prefix="unfollow"/>
+  <route route_type="public" route_prefix="mobile-api" sub_name="billing-app-store-notifications" format="v1/billing/app-store/notifications" controller="Ekitapligim\MobileApi:AppStoreNotifications"/>
+</routes>
