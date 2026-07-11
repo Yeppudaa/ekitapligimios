@@ -83,7 +83,7 @@ struct ReaderView: View {
 
     private var isCurrentPageBookmarked: Bool {
         guard readerFileType != "epub" else { return false }
-        bookmarks.contains { $0.page == progress.currentPage }
+        return bookmarks.contains { $0.page == progress.currentPage }
     }
 
     private var displayedProgressPercent: Double {
