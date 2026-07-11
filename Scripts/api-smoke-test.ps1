@@ -121,6 +121,23 @@ function Invoke-SmokePostJson($Path, $Body, [switch]$RequiresAuth) {
     }
 }
 
+function Assert-SmokeUnauthorizedPost($Path) {
+    $uri = [Uri]::new($script:baseUri, $Path)
+    try {
+        Invoke-WebRequest -Uri $uri -Method POST -UseBasicParsing -TimeoutSec $TimeoutSec | Out-Null
+        throw "FAIL POST $Path without authorization unexpectedly succeeded"
+    } catch {
+        if ($_.Exception.Message -eq "FAIL POST $Path without authorization unexpectedly succeeded") {
+            throw
+        }
+        $statusCode = $_.Exception.Response.StatusCode.value__
+        if ($statusCode -notin 401, 403) {
+            throw "FAIL POST $Path without authorization -> expected HTTP 401/403, got HTTP $statusCode"
+        }
+        Write-Host "PASS POST $Path without authorization -> HTTP $statusCode"
+    }
+}
+
 function Invoke-SmokePut($Path, $Body, [switch]$RequiresAuth) {
     $uri = [Uri]::new($script:baseUri, $Path)
     $headers = @{}
@@ -163,6 +180,14 @@ if ($booksResponse -and $booksResponse.books -and $booksResponse.books.Count -gt
         throw "FAIL book-detail/$($firstBook.id) -> response book id mismatch"
     }
     Invoke-SmokeJsonGet "books/$($firstBook.id)/comments?page=1" | Out-Null
+    $readerAccess = Invoke-SmokeJsonGet "books/$($firstBook.id)/reader/access"
+    if ($readerAccess.access.can_read_online -ne $false -or
+        $readerAccess.access.can_download -ne $false -or
+        $readerAccess.access.denial_code -ne "login_required") {
+        throw "FAIL books/$($firstBook.id)/reader/access -> guest access must fail closed"
+    }
+    Write-Host "PASS GET books/$($firstBook.id)/reader/access -> guest access fails closed"
+    Assert-SmokeUnauthorizedPost "books/$($firstBook.id)/reader/session"
 } else {
     Write-Host "SKIP book-detail/{id} smoke check (no visible books)"
 }
