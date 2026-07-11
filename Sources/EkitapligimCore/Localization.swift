@@ -466,13 +466,7 @@ public enum L10n {
     public static let profileEditSaving = localized("profile.edit.saving", defaultValue: "Kaydediliyor")
     public static let profileEditSaveFailed = localized("profile.edit.saveFailed", defaultValue: "Profil değişiklikleri kaydedilemedi.")
 
-    #if os(Windows)
     private static func localized(_ key: String, defaultValue: String) -> String {
         Bundle.module.localizedString(forKey: key, value: defaultValue, table: nil)
     }
-    #else
-    private static func localized(_ key: String.LocalizationValue, defaultValue: String.LocalizationValue) -> String {
-        String(localized: key, defaultValue: defaultValue, bundle: .module)
-    }
-    #endif
 }
