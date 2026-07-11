@@ -14,31 +14,39 @@ class AccountDeletionRequest extends AbstractMobileController
 
 		$currentPassword = (string) $this->filter('current_password', 'str');
 		$reason = trim((string) $this->filter('reason', 'str'));
+		$hasAppleAuthorization = AppleAuthorization::hasAuthorization((int) $visitor->user_id);
+		$authHandler = $visitor->Auth ? $visitor->Auth->getAuthenticationHandler() : null;
+		$hasPassword = $authHandler && $authHandler->hasPassword();
 
+		if (!$hasAppleAuthorization && $hasPassword && $currentPassword === '')
+		{
+			return $this->apiError('Current password is required.', 'current_password_required', null, 400);
+		}
 		if ($currentPassword !== '' && !$visitor->authenticate($currentPassword))
 		{
 			return $this->apiError('Current password is not valid.', 'current_password_invalid', null, 403);
-		}
-		if (AppleAuthorization::hasAuthorization((int) $visitor->user_id)
-			&& !AppleAuthorization::revokeForUser((int) $visitor->user_id))
-		{
-			return $this->apiError('Apple authorization could not be revoked. Please try again.', 'apple_revocation_unavailable', null, 503);
 		}
 		$this->ensureDeletionRequestTable();
 		$existingRequestId = $this->findPendingRequestId((int) $visitor->user_id);
 		if ($existingRequestId > 0)
 		{
-			return $this->deletionRequestResult($existingRequestId, true);
+			return $this->deletionRequestResult(
+				$existingRequestId,
+				true,
+				AppleAuthorization::hasAuthorization((int) $visitor->user_id)
+			);
 		}
 
 		$requestId = $this->recordDeletionRequest($visitor, $reason, $currentPassword !== '');
 		MobileSession::revokeUserSessions((int) $visitor->user_id);
+		$appleRevocationPending = $hasAppleAuthorization
+			&& !AppleAuthorization::revokeForUser((int) $visitor->user_id);
 		$this->sendDeletionRequestMail($visitor, $reason, $requestId);
 
-		return $this->deletionRequestResult($requestId, false);
+		return $this->deletionRequestResult($requestId, false, $appleRevocationPending);
 	}
 
-	protected function deletionRequestResult(int $requestId, bool $alreadyPending)
+	protected function deletionRequestResult(int $requestId, bool $alreadyPending, bool $appleRevocationPending)
 	{
 		return $this->apiResult([
 			'success' => true,
@@ -46,6 +54,8 @@ class AccountDeletionRequest extends AbstractMobileController
 			'requestId' => $requestId,
 			'already_pending' => $alreadyPending,
 			'alreadyPending' => $alreadyPending,
+			'apple_revocation_pending' => $appleRevocationPending,
+			'appleRevocationPending' => $appleRevocationPending,
 			'estimated_completion_days' => 30,
 			'estimatedCompletionDays' => 30,
 			'message' => 'Hesap silme talebiniz alındı ve genellikle 30 gün içinde tamamlanır.'

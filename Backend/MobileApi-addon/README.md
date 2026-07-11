@@ -1,6 +1,6 @@
 # MobileApi iOS Backend Extension
 
-These files extend the existing XenForo `Ekitapligim/MobileApi` add-on for the native iOS app. The extension is installed and runtime-tested against the local XenForo environment through version `1.0.83`; production installation is still required. Use `Scripts/apply-mobileapi-ios-patch.ps1` to merge it into a full add-on checkout and create the XenForo upload ZIP.
+These files extend the existing XenForo `Ekitapligim/MobileApi` add-on for the native iOS app. The extension is installed and runtime-tested against the local XenForo environment through version `1.0.84`; production installation is still required. Use `Scripts/apply-mobileapi-ios-patch.ps1` to merge it into a full add-on checkout and create the XenForo upload ZIP.
 
 ## Endpoints Added
 - `POST /mobile-api/v1/auth/apple`
@@ -18,7 +18,7 @@ These files extend the existing XenForo `Ekitapligim/MobileApi` add-on for the n
 - `GET /mobile-api/v1/book-detail/{thread_id}` provides a collision-free public mobile book-detail route for the iOS app. It avoids the public web book URL route family while returning the existing `Book` controller JSON payload.
 - `AuthApple.php` verifies Apple identity tokens with RS256 signature and SHA-256 nonce validation, exchanges the single-use authorization code before creating/linking a user, and confirms both Apple tokens carry the same subject.
 - `Service/AppleAuthorization.php` encrypts Apple refresh tokens at rest with AES-256-GCM and revokes them through Apple's server endpoint when account deletion is requested.
-- `AccountDeletionRequest.php` verifies a current password when one is supplied, revokes Apple authorization and mobile sessions, then stores an idempotent deletion request.
+- `AccountDeletionRequest.php` requires re-authentication for password-only accounts, accepts Apple/no-password accounts, durably stores an idempotent request, revokes mobile sessions, and reports retryable Apple revocation as pending without blocking deletion submission.
 - `ekitapligim-mobile:complete-account-deletion` inspects one request by default. With explicit `--execute --confirm=DELETE-{request-id}`, it uses XenForo's `DeleteService`, anonymizes retained content ownership, scrubs request PII, and sends a completion email.
 - `AppStoreVerify.php` verifies StoreKit signed transactions as ES256 JWS payloads, checks the Apple certificate chain against a configured Apple root certificate, validates bundle/product/environment fields, and records verified entitlement state.
 - `Service/IosEntitlement.php` exposes active iOS entitlement checks for XenForo premium decisions. The patch script wires this into subscription, reader access, reader permission, and role payload checks in the target addon.

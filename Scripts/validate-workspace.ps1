@@ -371,6 +371,23 @@ $accountDeletionMailSource = @(
 if ($accountDeletionMailSource -match '->setSubject\(|->setBodyText\(') {
     throw "Account deletion mail must use XenForo 2.3 Mail::setContent"
 }
+$accountDeletionRequestSource = Get-Content -Raw -LiteralPath "Backend/MobileApi-addon/Api/Controller/AccountDeletionRequest.php"
+foreach ($requiredDeletionAuthControl in @(
+    "current_password_required",
+    "!`$hasAppleAuthorization && `$hasPassword",
+    "`$requestId = `$this->recordDeletionRequest",
+    "apple_revocation_pending",
+    "MobileSession::revokeUserSessions"
+)) {
+    if ($accountDeletionRequestSource -notmatch [regex]::Escape($requiredDeletionAuthControl)) {
+        throw "Account deletion authentication/revocation control missing: $requiredDeletionAuthControl"
+    }
+}
+$recordPosition = $accountDeletionRequestSource.IndexOf('$requestId = $this->recordDeletionRequest')
+$revokePosition = $accountDeletionRequestSource.IndexOf('AppleAuthorization::revokeForUser')
+if ($recordPosition -lt 0 -or $revokePosition -lt 0 -or $recordPosition -gt $revokePosition) {
+    throw "Account deletion request must be durable before remote Apple revocation is attempted"
+}
 if (([regex]::Matches($accountDeletionMailSource, '->setContent\(')).Count -lt 2) {
     throw "Account deletion request and completion notices must both define mail content"
 }
@@ -455,6 +472,7 @@ foreach ($requiredDeletionControl in @("AppleAuthorization::revokeForUser", "Mob
 $deletionCompletionSource = Get-Content -Raw -LiteralPath "Backend/MobileApi-addon/Service/AccountDeletionCompletion.php"
 foreach ($requiredCompletionControl in @(
     "XF\Service\User\DeleteService",
+    "AppleAuthorization::revokeForUser",
     "renameTo('Deleted member '",
     "request_state' => 'completed'",
     "'username' => ''",
@@ -464,6 +482,11 @@ foreach ($requiredCompletionControl in @(
     if ($deletionCompletionSource -notmatch [regex]::Escape($requiredCompletionControl)) {
         throw "Account deletion completion missing control: $requiredCompletionControl"
     }
+}
+$completionRevokePosition = $deletionCompletionSource.IndexOf('AppleAuthorization::revokeForUser')
+$completionDeletePosition = $deletionCompletionSource.IndexOf('$deleteService->delete')
+if ($completionRevokePosition -lt 0 -or $completionDeletePosition -lt 0 -or $completionRevokePosition -gt $completionDeletePosition) {
+    throw "Account deletion completion must revoke Apple authorization before deleting the user"
 }
 $deletionCliSource = Get-Content -Raw -LiteralPath "Backend/MobileApi-addon/Cli/Command/CompleteAccountDeletion.php"
 foreach ($requiredCliControl in @("--confirm", "DELETE-", "InputOption::VALUE_NONE")) {

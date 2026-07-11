@@ -25,7 +25,7 @@ The script:
 - Runs PHP syntax checks when PHP is installed.
 - Optionally creates a XenForo upload zip.
 
-Local validation note: this script was applied to the local XenForo add-on, upgraded it through MobileApi `1.0.83`, audited all 49 public route templates, passed PHP syntax checks, and created a verified iOS patch ZIP without modifying the Android project source copy.
+Local validation note: this script was applied to the local XenForo add-on, upgraded it through MobileApi `1.0.84`, audited all 49 public route templates, passed PHP syntax checks, and created a verified iOS patch ZIP without modifying the Android project source copy.
 
 After applying:
 

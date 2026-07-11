@@ -217,7 +217,8 @@ Auth: login required.
 Body: optional `current_password`, optional `reason`.
 Response: idempotent accepted deletion request with request ID, `already_pending`, and `estimated_completion_days` (currently 30). An existing pending/processing request is returned instead of creating duplicates.
 Client behavior: requires an explicit `SIL` confirmation, explains the expected 30-day manual-processing window, and warns that Apple subscriptions are managed separately.
-Completion behavior: operations must delete/anonymize associated account/user content as legally permitted, notify the user, and revoke Sign in with Apple tokens when applicable.
+Security behavior: password accounts require `current_password`; Apple-authorized accounts may omit it. The request is durably stored and mobile sessions are revoked before remote Apple revocation is attempted. A temporary Apple outage returns a successful request with `apple_revocation_pending=true` so deletion remains accessible and operations can retry.
+Completion behavior: operations must delete/anonymize associated account/user content as legally permitted, notify the user, and successfully revoke Sign in with Apple authorization before deleting the user.
 
 ## Billing
 
@@ -234,6 +235,6 @@ Response: 200 after verification and entitlement update.
 Current backend behavior: verifies the outer and nested Apple JWS certificate chains, rejects bundle/product/environment mismatches, records the verified notification hash, and atomically updates the matching existing entitlement by transaction/original transaction ID. Public sandbox verification is still required.
 
 ## Required Deployment Work Before iOS Release
-- Deploy MobileApi `1.0.83` or newer to public HTTPS staging and production.
+- Deploy MobileApi `1.0.84` or newer to public HTTPS staging and production.
 - Configure the Apple root CA and verify StoreKit sandbox transactions and App Store Server Notifications.
 - Exercise Apple login, identity changes, blocking, reporting, terms acceptance, account deletion, reader access, and subscription state with the App Review account.

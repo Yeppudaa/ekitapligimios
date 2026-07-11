@@ -76,7 +76,7 @@ public enum L10n {
     public static let deleteAccountWarning = localized("account.delete.warning", defaultValue: "Bu işlem tüm hesabınızın silinmesi sürecini başlatır. Talep genellikle 30 gün içinde tamamlanır ve sonuç kayıtlı e-posta adresinize bildirilir. Profil, kitaplık ve kullanıcı içerikleri silinir veya yasal zorunluluk varsa anonimleştirilir. Apple aboneliğiniz varsa ayrıca App Store aboneliklerinizi yönetin.")
     public static let deleteAccountConfirmationPrompt = localized("account.delete.confirmationPrompt", defaultValue: "Devam etmek için SIL yazın.")
     public static let deleteAccountConfirmationPlaceholder = localized("account.delete.confirmationPlaceholder", defaultValue: "SIL")
-    public static let deleteAccountPasswordPlaceholder = localized("account.delete.passwordPlaceholder", defaultValue: "Mevcut şifre (varsa)")
+    public static let deleteAccountPasswordPlaceholder = localized("account.delete.passwordPlaceholder", defaultValue: "Mevcut şifre (Apple hesabında boş bırakın)")
     public static let deleteAccountReasonLabel = localized("account.delete.reasonLabel", defaultValue: "Silme nedeni")
     public static let deleteAccountSubmit = localized("account.delete.submit", defaultValue: "Silme talebi gönder")
     public static let deleteAccountSubmitted = localized("account.delete.submitted", defaultValue: "Hesap silme talebiniz alındı. İşlem genellikle 30 gün içinde tamamlanır ve e-postayla bildirilir.")
