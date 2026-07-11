@@ -85,6 +85,16 @@ Checks the public HTTPS legal/support pages, Mobile API JSON contract, and Apple
 
 The command is expected to fail until the MobileApi add-on and `Web/.well-known/apple-app-site-association` are deployed publicly.
 
+## `prepare-public-deployment.ps1`
+
+Creates an immutable deployment directory containing the latest verified MobileApi XenForo ZIP, SHA-256 manifest, deployment instructions, and an AASA file with the real Team ID:
+
+```powershell
+.\Scripts\prepare-public-deployment.ps1 -TeamId "YOUR_APPLE_TEAM_ID"
+```
+
+The Team ID must be ten uppercase letters or digits. Existing output directories are never overwritten.
+
 For local development only:
 
 ```powershell
@@ -101,13 +111,13 @@ Use `-ExerciseMutations` only with a disposable demo account. It writes a low-im
 
 ```powershell
 .\Scripts\api-smoke-test.ps1 -BaseUrl "http://localhost/ekitapligim/mobile-api/v1/" -BearerToken $env:EKITAPLIGIM_SMOKE_ACCESS_TOKEN -AllowInsecure -ExerciseMutations
+```
 
 ## `session-rotation-smoke-test.ps1`
 Uses `EKITAPLIGIM_SMOKE_LOGIN` and `EKITAPLIGIM_SMOKE_PASSWORD` for a disposable account. It verifies refresh rotation, old-token rejection, refreshed access, logout, and post-logout rejection without printing tokens.
 
 ```powershell
 .\Scripts\session-rotation-smoke-test.ps1 -BaseUrl "https://staging.ekitapligim.com/mobile-api/v1/"
-```
 ```
 
 ## `ugc-safety-smoke-test.ps1`

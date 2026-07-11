@@ -26,6 +26,7 @@ xcuserdata/
 # Generated backend release archives and staging directories
 Backend/packages/*.zip
 Backend/packages/_ios_mobileapi_package_*/
+Backend/deployment/
 
 # Local operating-system/editor files
 .DS_Store

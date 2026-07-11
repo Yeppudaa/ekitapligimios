@@ -1,6 +1,6 @@
-# MobileApi Backend Patch Stubs
+# MobileApi iOS Backend Extension
 
-These files are implementation stubs for the XenForo addon gaps found during the iOS audit. They are not installed automatically. Copy the controllers into the existing `Ekitapligim/MobileApi` addon and merge `routes-fragment.xml` into the addon route data, then run the normal XenForo addon build/install process.
+These files extend the existing XenForo `Ekitapligim/MobileApi` add-on for the native iOS app. The extension is installed and runtime-tested against the local XenForo environment through version `1.0.81`; production installation is still required. Use `Scripts/apply-mobileapi-ios-patch.ps1` to merge it into a full add-on checkout and create the XenForo upload ZIP.
 
 ## Endpoints Added
 - `POST /mobile-api/v1/auth/apple`
@@ -32,6 +32,16 @@ These files are implementation stubs for the XenForo addon gaps found during the
 - Set `EKITAPLIGIM_APPLE_CLIENT_SECRET` to a currently valid server-generated Apple client-secret JWT and rotate it before expiry.
 - Set `EKITAPLIGIM_APPLE_TOKEN_ENCRYPTION_KEY` to a base64-encoded 32-byte random key. Preserve this key across deployments or stored refresh tokens cannot be revoked.
 - Never commit these values. Sign in with Apple intentionally returns a service error when this configuration is incomplete.
+
+## Production Package
+
+After creating the MobileApi ZIP, generate a deployment directory with the real Apple Team ID:
+
+```powershell
+.\Scripts\prepare-public-deployment.ps1 -TeamId "ABCDEFGHIJ"
+```
+
+The directory contains the verified XenForo ZIP, its SHA-256 manifest, a Team-ID-specific AASA file, and deployment instructions. Run `Scripts/public-release-audit.ps1` after publishing it.
 
 ## Completing Account Deletion
 Inspect without modifying data:

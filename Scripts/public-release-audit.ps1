@@ -69,10 +69,11 @@ if ($aasaResponse) {
             $failures.Add("Apple App Site Association has no applinks details.")
         } elseif ($TeamId) {
             $expectedAppId = "$TeamId.$BundleId"
-            if ($details.appID -notcontains $expectedAppId) {
+            $deployedAppIds = @($details | ForEach-Object { @($_.appID) + @($_.appIDs) })
+            if ($deployedAppIds -notcontains $expectedAppId) {
                 $failures.Add("Apple App Site Association does not include appID '$expectedAppId'.")
             }
-        } elseif ($details.appID -match "TEAMID") {
+        } elseif ((@($details | ForEach-Object { @($_.appID) + @($_.appIDs) }) -join " ") -match "TEAMID") {
             $failures.Add("Apple App Site Association still contains the TEAMID placeholder.")
         }
     } catch {

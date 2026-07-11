@@ -25,11 +25,13 @@ The script:
 - Runs PHP syntax checks when PHP is installed.
 - Optionally creates a XenForo upload zip.
 
-Local validation note: this script was tested against a temporary copy of the Android `MobileApi-addon`; it added 18 routes and created an iOS patch zip without modifying the source Android project copy.
+Local validation note: this script was applied to the local XenForo add-on, upgraded it through MobileApi `1.0.81`, audited all 48 public route templates, passed PHP syntax checks, and created a verified iOS patch ZIP without modifying the Android project source copy.
 
 After applying:
 
 1. Install or upgrade the addon in XenForo.
 2. Clear/rebuild XenForo route caches if needed.
 3. Run `Scripts/api-smoke-test.ps1` against public HTTPS staging.
-4. Harden Apple auth and App Store JWS verification before production.
+4. Generate the public deployment directory with `Scripts/prepare-public-deployment.ps1 -TeamId "YOUR_TEAM_ID"`.
+5. Publish its AASA file and configure the Apple server secrets documented in `README.md` outside source control.
+6. Run `Scripts/public-release-audit.ps1`, authenticated smoke tests, and real Apple sandbox verification before production.
