@@ -1,5 +1,5 @@
 import Foundation
-import StoreKit
+@preconcurrency import StoreKit
 import EkitapligimCore
 
 @MainActor

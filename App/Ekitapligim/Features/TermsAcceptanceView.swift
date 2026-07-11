@@ -1,6 +1,7 @@
 import SwiftUI
 import EkitapligimCore
 
+@MainActor
 struct TermsAcceptanceView: View {
     @EnvironmentObject private var container: AppContainer
     @Environment(\.dismiss) private var dismiss
@@ -13,26 +14,9 @@ struct TermsAcceptanceView: View {
     var body: some View {
         NavigationStack {
             Form {
-                Section {
-                    Text(L10n.termsIntro)
-                    Link(L10n.termsOpen, destination: container.config.termsURL)
-                    Toggle(L10n.termsAcceptToggle, isOn: $accepted)
-                } footer: {
-                    Text(L10n.termsFooter)
-                }
-
-                if let statusMessage {
-                    Section {
-                        Text(statusMessage)
-                    }
-                }
-
-                Section {
-                    Button(L10n.termsAccept) {
-                        Task { await accept() }
-                    }
-                    .disabled(!accepted || isSubmitting)
-                }
+                termsSection
+                statusSection
+                submitSection
             }
             .navigationTitle(L10n.termsTitle)
             .toolbar {
@@ -41,6 +25,28 @@ struct TermsAcceptanceView: View {
                 }
             }
             .task { await loadStatus() }
+        }
+    }
+
+    private var termsSection: some View {
+        Section(footer: Text(L10n.termsFooter)) {
+            Text(L10n.termsIntro)
+            Link(L10n.termsOpen, destination: container.config.termsURL)
+            Toggle(L10n.termsAcceptToggle, isOn: $accepted)
+        }
+    }
+
+    @ViewBuilder
+    private var statusSection: some View {
+        if let statusMessage {
+            Section { Text(statusMessage) }
+        }
+    }
+
+    private var submitSection: some View {
+        Section {
+            Button(L10n.termsAccept) { Task { await accept() } }
+                .disabled(!accepted || isSubmitting)
         }
     }
 

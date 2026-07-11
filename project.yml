@@ -46,6 +46,7 @@ targets:
         SWIFT_VERSION: "5.10"
         SWIFT_STRICT_CONCURRENCY: minimal
         SWIFT_COMPILATION_MODE: singlefile
+        SWIFT_ENABLE_BATCH_MODE: NO
         ENABLE_USER_SCRIPT_SANDBOXING: YES
         SUPPORTS_MACCATALYST: NO
         TARGETED_DEVICE_FAMILY: "1,2"
@@ -77,6 +78,7 @@ targets:
         SWIFT_VERSION: "5.10"
         SWIFT_STRICT_CONCURRENCY: minimal
         SWIFT_COMPILATION_MODE: singlefile
+        SWIFT_ENABLE_BATCH_MODE: NO
         GENERATE_INFOPLIST_FILE: YES
   EkitapligimUITests:
     type: bundle.ui-testing
@@ -93,6 +95,7 @@ targets:
         SWIFT_VERSION: "5.10"
         SWIFT_STRICT_CONCURRENCY: minimal
         SWIFT_COMPILATION_MODE: singlefile
+        SWIFT_ENABLE_BATCH_MODE: NO
         GENERATE_INFOPLIST_FILE: YES
 schemes:
   Ekitapligim:

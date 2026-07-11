@@ -43,7 +43,8 @@ workflows:
             -only-testing:EkitapligimTests \
             -resultBundlePath "$CM_BUILD_DIR/build/EkitapligimTests.xcresult" \
             CODE_SIGNING_ALLOWED=NO \
-            SWIFT_COMPILATION_MODE=singlefile 2>&1 | tee "$CM_BUILD_DIR/build/run-app-tests.log"; then
+            SWIFT_COMPILATION_MODE=singlefile \
+            SWIFT_ENABLE_BATCH_MODE=NO 2>&1 | tee "$CM_BUILD_DIR/build/run-app-tests.log"; then
             echo "xcodebuild test failed"
             echo "---- run-app-tests.log: error summary ----"
             grep -nEi "error:|fatal error|testing failed|test failed|no such module|cannot find|could not|unable to|codesign|provision" "$CM_BUILD_DIR/build/run-app-tests.log" || true
