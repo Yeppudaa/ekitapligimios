@@ -30,13 +30,17 @@ workflows:
 
       - name: Run app tests
         script: |
+          set -o pipefail
+          xcodebuild -showBuildSettings \
+            -project "$XCODE_PROJECT" \
+            -scheme "$XCODE_SCHEME" | tee "$CM_BUILD_DIR/build/show-build-settings.log"
           xcodebuild test \
             -project "$XCODE_PROJECT" \
             -scheme "$XCODE_SCHEME" \
             -configuration Development \
             -destination "platform=iOS Simulator,name=iPhone 17,OS=latest" \
             -resultBundlePath "$CM_BUILD_DIR/build/EkitapligimTests.xcresult" \
-            CODE_SIGNING_ALLOWED=NO
+            CODE_SIGNING_ALLOWED=NO | tee "$CM_BUILD_DIR/build/run-app-tests.log"
 
       - name: Archive production build
         script: |
