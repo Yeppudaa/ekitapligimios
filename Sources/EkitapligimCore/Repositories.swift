@@ -266,6 +266,10 @@ public struct ProfileRepository: Sendable {
             as: ProfileDTO.self
         )
     }
+
+    public func comments(page: Int = 1) async throws -> MyCommentsPageDTO {
+        try await apiClient.request(.myComments(page: page), as: MyCommentsPageDTO.self)
+    }
 }
 
 public struct NotificationsRepository: Sendable {
@@ -417,6 +421,33 @@ public struct ForumPostsPageDTO: Decodable, Equatable, Sendable {
 
     private enum CodingKeys: String, CodingKey {
         case posts
+        case items
+        case currentPage
+        case lastPage
+        case total
+        case pagination
+    }
+}
+
+public struct MyCommentsPageDTO: Decodable, Equatable, Sendable {
+    public let comments: [ForumPostDTO]
+    public let currentPage: Int?
+    public let lastPage: Int?
+    public let total: Int?
+
+    public init(from decoder: Decoder) throws {
+        let container = try decoder.container(keyedBy: CodingKeys.self)
+        self.comments = try container.decodeIfPresent([ForumPostDTO].self, forKey: .comments)
+            ?? container.decodeIfPresent([ForumPostDTO].self, forKey: .items)
+            ?? []
+        let pagination = try container.decodeIfPresent(PaginationDTO.self, forKey: .pagination)
+        self.currentPage = try container.decodeIfPresent(Int.self, forKey: .currentPage) ?? pagination?.currentPage
+        self.lastPage = try container.decodeIfPresent(Int.self, forKey: .lastPage) ?? pagination?.pages
+        self.total = try container.decodeIfPresent(Int.self, forKey: .total) ?? pagination?.total
+    }
+
+    private enum CodingKeys: String, CodingKey {
+        case comments
         case items
         case currentPage
         case lastPage

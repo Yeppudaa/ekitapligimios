@@ -35,6 +35,7 @@ Write-Step "Checking required files"
     "App/Ekitapligim/Support/Info.plist",
     "App/Ekitapligim/Support/Ekitapligim.entitlements",
     "App/Ekitapligim/Support/PrivacyInfo.xcprivacy",
+    "App/Ekitapligim/Features/MyCommentsView.swift",
     "App/Ekitapligim/StoreKit/Ekitapligim.storekit",
     "Backend/MobileApi-addon/routes-fragment.xml",
     "Backend/MobileApi-addon/Service/IosEntitlement.php",

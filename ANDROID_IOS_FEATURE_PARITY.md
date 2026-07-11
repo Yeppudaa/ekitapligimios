@@ -11,9 +11,10 @@
 | Search/filter | API query support | Native search/filter | Catalog and directory search plus advanced catalog filters implemented |
 | Authors/publishers | `SiteDirectoryScreen.kt`, directory routes | Native directories and books | Native searchable/paginated directory and books flow implemented |
 | Book requests | `SocialScreen.kt`, `/book-requests` | Request/vote flow | Native list/create/vote flow and backend limits implemented |
-| Forum | Forum screens and XenForo routes | Forum list/topic/detail/reply | iOS UI scaffold added |
+| Forum | Forum screens and XenForo routes | Forum list/topic/detail/reply | Native forum list, thread list/detail, reply, terms gate and reporting implemented |
 | Members | `MembersScreen.kt`, member/follow routes | Directory/profile/follow/block | Native searchable directory, profile, follow and block implemented |
 | Messages | `MessagesScreen.kt`, conversation routes | Conversations | Native list/detail/new conversation/reply implemented |
+| My comments | `MyCommentsScreen.kt`, `/me/comments` | Authenticated comment history and thread navigation | Native paginated comment history with forum-thread navigation implemented |
 | Notifications | Notifications controllers | Native notification center | Native notification list/read actions implemented |
 | Profile/settings | Profile and identity screens | Profile edit/settings/privacy/account access | Native profile/settings/privacy, registration, password reset, re-authenticated email change, and re-authenticated password change with mobile-session rotation implemented |
 | Account deletion | MobileApi endpoint exists | Settings flow using endpoint | Re-auth confirmation UI added |

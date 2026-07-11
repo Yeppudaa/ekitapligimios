@@ -43,6 +43,13 @@ struct SettingsView: View {
                         Label(L10n.conversationsTitle, systemImage: "envelope")
                     }
                     .disabled(!isSignedIn)
+
+                    NavigationLink {
+                        MyCommentsView()
+                    } label: {
+                        Label(L10n.myCommentsTitle, systemImage: "text.bubble")
+                    }
+                    .disabled(!isSignedIn)
                 }
 
                 Section(L10n.settingsAccountSection) {

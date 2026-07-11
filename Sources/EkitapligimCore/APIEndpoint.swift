@@ -194,6 +194,14 @@ public extension APIEndpoint {
     }
 
     static let library = APIEndpoint(method: .get, path: "me/library", requiresAuthentication: true)
+    static func myComments(page: Int = 1) -> APIEndpoint {
+        APIEndpoint(
+            method: .get,
+            path: "me/comments",
+            queryItems: [URLQueryItem(name: "page", value: String(page))],
+            requiresAuthentication: true
+        )
+    }
     static let subscription = APIEndpoint(method: .get, path: "me/subscription", requiresAuthentication: true)
     static let profile = APIEndpoint(method: .get, path: "me", requiresAuthentication: true)
 

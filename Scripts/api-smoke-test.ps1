@@ -219,6 +219,7 @@ if ($forumsResponse -and $forumsResponse.forums -and $forumsResponse.forums.Coun
 Invoke-SmokeGet "book-stats"
 Invoke-SmokeGet "me" -RequiresAuth
 Invoke-SmokeGet "me/library" -RequiresAuth
+Invoke-SmokeGet "me/comments?page=1" -RequiresAuth
 Invoke-SmokeGet "me/subscription" -RequiresAuth
 Invoke-SmokeGet "me/terms" -RequiresAuth
 Invoke-SmokePost "me/terms/accept" @{ version = "2026-07" } -RequiresAuth

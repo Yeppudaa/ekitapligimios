@@ -193,6 +193,15 @@ final class APIEndpointTests: XCTestCase {
         XCTAssertTrue(APIEndpoint.notificationCounts.requiresAuthentication)
     }
 
+    func testMyCommentsEndpointRequiresAuthenticationAndBuildsPageQuery() {
+        let endpoint = APIEndpoint.myComments(page: 3)
+
+        XCTAssertEqual(endpoint.path, "me/comments")
+        XCTAssertEqual(endpoint.method, .get)
+        XCTAssertEqual(endpoint.queryItems.first?.value, "3")
+        XCTAssertTrue(endpoint.requiresAuthentication)
+    }
+
     func testProfileUpdateUsesAuthenticatedFormRequest() {
         let endpoint = APIEndpoint.updateProfile(
             about: "Okur",

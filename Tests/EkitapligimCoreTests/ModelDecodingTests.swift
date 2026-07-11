@@ -404,6 +404,40 @@ final class ModelDecodingTests: XCTestCase {
         XCTAssertEqual(envelope.post.message, "Cevap")
     }
 
+    func testMyCommentsDecodeCurrentBackendShape() throws {
+        let data = Data("""
+        {
+          "items": [
+            {
+              "id": "15607",
+              "thread_id": 15585,
+              "thread_title": "Yanlış Hedef",
+              "username": "Ekitapligim",
+              "message": "Cevap",
+              "post_date": 1782941300,
+              "can_edit": false,
+              "can_reply": true
+            }
+          ],
+          "pagination": {
+            "page": 2,
+            "per_page": 30,
+            "total": 31,
+            "pages": 2
+          }
+        }
+        """.utf8)
+
+        let page = try JSONDecoder.ekitapligim.decode(MyCommentsPageDTO.self, from: data)
+
+        XCTAssertEqual(page.comments.first?.id, "15607")
+        XCTAssertEqual(page.comments.first?.threadId, "15585")
+        XCTAssertEqual(page.comments.first?.threadTitle, "Yanlış Hedef")
+        XCTAssertEqual(page.currentPage, 2)
+        XCTAssertEqual(page.lastPage, 2)
+        XCTAssertEqual(page.total, 31)
+    }
+
     func testAuthResponseDecodesBackendShape() throws {
         let data = Data("""
         {

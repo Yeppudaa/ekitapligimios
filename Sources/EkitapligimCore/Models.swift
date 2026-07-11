@@ -635,6 +635,28 @@ public struct ForumThreadDTO: Decodable, Equatable, Identifiable, Sendable {
     public let canReply: Bool
     public let isSticky: Bool
     public let discussionType: String?
+
+    public init(
+        id: String,
+        title: String,
+        username: String,
+        replyCount: Int = 0,
+        viewCount: Int = 0,
+        postDate: Int = 0,
+        canReply: Bool = false,
+        isSticky: Bool = false,
+        discussionType: String? = nil
+    ) {
+        self.id = id
+        self.title = title
+        self.username = username
+        self.replyCount = replyCount
+        self.viewCount = viewCount
+        self.postDate = postDate
+        self.canReply = canReply
+        self.isSticky = isSticky
+        self.discussionType = discussionType
+    }
 }
 
 public struct ForumPostDTO: Decodable, Equatable, Identifiable, Sendable {
@@ -652,6 +674,42 @@ public struct ForumPostDTO: Decodable, Equatable, Identifiable, Sendable {
     public let isAdmin: Bool?
     public let isModerator: Bool?
     public let isPremium: Bool?
+
+    public init(from decoder: Decoder) throws {
+        let container = try decoder.container(keyedBy: CodingKeys.self)
+        self.id = try container.decodeFlexibleString(forKey: .id, fallbackKeys: [.postId])
+        self.threadId = try container.decodeFlexibleString(forKey: .threadId)
+        self.username = try container.decodeIfPresent(String.self, forKey: .username) ?? ""
+        self.message = try container.decodeIfPresent(String.self, forKey: .message) ?? ""
+        self.postDate = try container.decodeIfPresent(Int.self, forKey: .postDate) ?? 0
+        self.canEdit = try container.decodeIfPresent(Bool.self, forKey: .canEdit) ?? false
+        self.canReply = try container.decodeIfPresent(Bool.self, forKey: .canReply) ?? false
+        self.threadTitle = try container.decodeIfPresent(String.self, forKey: .threadTitle)
+        self.imageUrls = try container.decodeIfPresent([String].self, forKey: .imageUrls)
+        self.userId = try container.decodeIfPresent(Int.self, forKey: .userId)
+        self.avatarUrl = try container.decodeIfPresent(String.self, forKey: .avatarUrl)
+        self.isAdmin = try container.decodeIfPresent(Bool.self, forKey: .isAdmin)
+        self.isModerator = try container.decodeIfPresent(Bool.self, forKey: .isModerator)
+        self.isPremium = try container.decodeIfPresent(Bool.self, forKey: .isPremium)
+    }
+
+    private enum CodingKeys: String, CodingKey {
+        case id
+        case postId
+        case threadId
+        case username
+        case message
+        case postDate
+        case canEdit
+        case canReply
+        case threadTitle
+        case imageUrls
+        case userId
+        case avatarUrl
+        case isAdmin
+        case isModerator
+        case isPremium
+    }
 }
 
 public struct ProfileDTO: Decodable, Equatable, Sendable {

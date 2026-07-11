@@ -182,6 +182,13 @@ public enum L10n {
     public static let conversationsSendFailedTitle = localized("conversations.sendFailedTitle", defaultValue: "Mesaj gönderilemedi")
     public static let conversationsSendFailed = localized("conversations.sendFailed", defaultValue: "Mesaj gönderilemedi. Alıcıyı ve izinlerinizi kontrol edip yeniden deneyin.")
 
+    public static let myCommentsTitle = localized("myComments.title", defaultValue: "Yorumlarım")
+    public static let myCommentsLoading = localized("myComments.loading", defaultValue: "Yorumlar yükleniyor")
+    public static let myCommentsUnavailableTitle = localized("myComments.unavailableTitle", defaultValue: "Yorumlar alınamadı")
+    public static let myCommentsEmptyTitle = localized("myComments.emptyTitle", defaultValue: "Henüz yorum yok")
+    public static let myCommentsEmptyDescription = localized("myComments.emptyDescription", defaultValue: "Forumlarda yaptığınız yorumlar burada gösterilir.")
+    public static let myCommentsForumTitle = localized("myComments.forumTitle", defaultValue: "Forum konusu")
+
     public static func conversationsReplyCount(_ count: Int) -> String {
         String(format: localized("conversations.replyCount", defaultValue: "%d yanıt"), count)
     }

@@ -25,6 +25,7 @@ forums/:node_id/threads
 me
 me/account-deletion-request
 me/blocked-members
+me/comments
 me/email
 me/library
 me/library/:thread_id
