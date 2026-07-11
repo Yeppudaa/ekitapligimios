@@ -3,6 +3,8 @@ workflows:
     name: Ekitapligim iOS Production
     max_build_duration: 120
     instance_type: mac_mini_m2
+    integrations:
+      app_store_connect: "Ekitapligim Codemagic"
 
     environment:
       xcode: latest
@@ -65,22 +67,23 @@ workflows:
             exit 65
           fi
 
-      - name: Archive production build
+      - name: Build IPA for TestFlight
         script: |
           set -euo pipefail
-          xcodebuild archive \
-            -project "$XCODE_PROJECT" \
-            -scheme "$XCODE_SCHEME" \
-            -configuration "$XCODE_CONFIGURATION" \
-            -destination "generic/platform=iOS" \
-            -archivePath "$CM_BUILD_DIR/build/Ekitapligim.xcarchive" \
-            -allowProvisioningUpdates \
-            DEVELOPMENT_TEAM="$APPLE_TEAM_ID" 2>&1 | tee "$CM_BUILD_DIR/build/archive-production.log"
+          xcode-project build-ipa \
+            --project "$CM_BUILD_DIR/$XCODE_PROJECT" \
+            --scheme "$XCODE_SCHEME" 2>&1 | tee "$CM_BUILD_DIR/build/build-ipa.log"
 
     artifacts:
       - build/**/*
+      - build/ios/ipa/*.ipa
+      - /tmp/xcodebuild_logs/*.log
 
     publishing:
       email:
         recipients:
           - acarsamsung37@gmail.com
+      app_store_connect:
+        auth: integration
+        submit_to_testflight: false
+        submit_to_app_store: false
