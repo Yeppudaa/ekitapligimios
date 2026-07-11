@@ -311,6 +311,26 @@ Update-FileText $readerAccessPath {
     return $updated
 }
 
+Write-Step "Authorizing iOS entitlements for reader sessions"
+$readerSessionPath = Join-Path $targetApiDir "BookReaderSession.php"
+Update-FileText $readerSessionPath {
+    param($content)
+    $updated = $content
+    if ($updated -notmatch "use Ekitapligim\\MobileApi\\Service\\IosEntitlement;") {
+        $updated = $updated -replace "use Codex\\BookReader\\Helper\\ReaderToken;\r?\n", "use Codex\BookReader\Helper\ReaderToken;`r`nuse Ekitapligim\MobileApi\Service\IosEntitlement;`r`n"
+    }
+    if ($updated -notmatch 'IosEntitlement::hasActiveEntitlement\(\$visitor\)') {
+        $premiumCheck = @'
+		if (IosEntitlement::hasActiveEntitlement($visitor))
+		{
+			return true;
+		}
+'@
+        $updated = $updated -replace '(\t\tif \(method_exists\(\$visitor, ''isBookPremiumMember''\) && \$visitor->isBookPremiumMember\(\)\)\r?\n\t\t\{\r?\n\t\t\treturn true;\r?\n\t\t\})', "`$1`r`n$premiumCheck"
+    }
+    return $updated
+}
+
 $meSubscriptionPath = Join-Path $targetApiDir "MeSubscription.php"
 Update-FileText $meSubscriptionPath {
     param($content)

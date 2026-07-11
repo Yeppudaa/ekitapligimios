@@ -107,7 +107,7 @@ public protocol BookRepositoryProtocol: Sendable {
     func book(id: Int) async throws -> BookDTO
     func bookDetail(id: Int) async throws -> BookEnvelope
     func readerAccess(bookID: Int) async throws -> ReaderAccessDTO
-    func createReaderSession(bookID: Int) async throws -> ReaderSessionDTO
+    func createReaderSession(bookID: Int, purpose: ReaderSessionPurpose) async throws -> ReaderSessionDTO
     func updateProgress(bookID: Int, page: Int, percent: Double) async throws
     func library() async throws -> LibraryPageDTO
     func updateLibraryItem(bookID: Int, shelfState: String, progressPercent: Int, lastReadPage: Int) async throws
@@ -150,8 +150,8 @@ public struct BookRepository: BookRepositoryProtocol {
         try await apiClient.request(.readerAccess(bookID: bookID), as: ReaderAccessEnvelope.self).access
     }
 
-    public func createReaderSession(bookID: Int) async throws -> ReaderSessionDTO {
-        try await apiClient.request(.readerSession(bookID: bookID), as: ReaderSessionDTO.self)
+    public func createReaderSession(bookID: Int, purpose: ReaderSessionPurpose) async throws -> ReaderSessionDTO {
+        try await apiClient.request(.readerSession(bookID: bookID, purpose: purpose), as: ReaderSessionDTO.self)
     }
 
     public func updateProgress(bookID: Int, page: Int, percent: Double) async throws {

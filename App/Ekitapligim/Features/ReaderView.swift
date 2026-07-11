@@ -130,7 +130,7 @@ struct ReaderView: View {
         isLoading = true
         defer { isLoading = false }
         do {
-            let session = try await container.books.createReaderSession(bookID: bookID)
+            let session = try await container.books.createReaderSession(bookID: bookID, purpose: .read)
             guard let url = URL(string: session.sourceUrl), url.scheme == "https" else {
                 errorMessage = L10n.readerAtsLinkMissing
                 return

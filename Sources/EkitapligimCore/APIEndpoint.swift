@@ -42,6 +42,11 @@ public enum RequestBody: Equatable, Sendable {
     case form([String: String])
 }
 
+public enum ReaderSessionPurpose: String, Equatable, Sendable {
+    case read
+    case download
+}
+
 public extension APIEndpoint {
     static let siteStats = APIEndpoint(method: .get, path: "book-stats")
 
@@ -176,8 +181,13 @@ public extension APIEndpoint {
         APIEndpoint(method: .get, path: "books/\(bookID)/reader/access")
     }
 
-    static func readerSession(bookID: Int) -> APIEndpoint {
-        APIEndpoint(method: .post, path: "books/\(bookID)/reader/session", requiresAuthentication: true)
+    static func readerSession(bookID: Int, purpose: ReaderSessionPurpose) -> APIEndpoint {
+        APIEndpoint(
+            method: .post,
+            path: "books/\(bookID)/reader/session",
+            body: .form(["purpose": purpose.rawValue]),
+            requiresAuthentication: true
+        )
     }
 
     static func updateReaderProgress(bookID: Int, page: Int, percent: Double) -> APIEndpoint {

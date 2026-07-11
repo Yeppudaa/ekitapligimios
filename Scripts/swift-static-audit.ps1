@@ -97,6 +97,20 @@ $directBookPdfUsage = rg -n "book\.pdfUrl" App/Ekitapligim/Features App/Ekitapli
 if ($LASTEXITCODE -eq 0 -and $directBookPdfUsage) {
     Fail "Reader/download UI must use reader session source URLs instead of persistent book.pdfUrl:`n$directBookPdfUsage"
 }
+$bookDetail = Get-Content -Raw -LiteralPath "App/Ekitapligim/Features/BookDetailView.swift"
+foreach ($requiredDownloadAuthorization in @(
+    "container.books.readerAccess(bookID: bookID)",
+    "currentAccess.canDownload",
+    "purpose: .download"
+)) {
+    if ($bookDetail -notmatch [regex]::Escape($requiredDownloadAuthorization)) {
+        Fail "Book detail download flow must authorize a fresh canDownload result and request a download session: $requiredDownloadAuthorization"
+    }
+}
+$readerView = Get-Content -Raw -LiteralPath "App/Ekitapligim/Features/ReaderView.swift"
+if ($readerView -notmatch [regex]::Escape("purpose: .read")) {
+    Fail "Reader must create an explicit read-purpose session"
+}
 
 Write-Step "Checking Universal Link handling is connected"
 $rootView = Get-Content -Raw -LiteralPath "App/Ekitapligim/App/RootView.swift"

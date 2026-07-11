@@ -117,6 +117,17 @@ final class APIEndpointTests: XCTestCase {
         XCTAssertEqual(endpoint.queryItems.first(where: { $0.name == "progress_percent" })?.value, "25.0")
     }
 
+    func testReaderSessionsUseAnExplicitAuthorizedPurpose() {
+        let read = APIEndpoint.readerSession(bookID: 15582, purpose: .read)
+        let download = APIEndpoint.readerSession(bookID: 15582, purpose: .download)
+
+        XCTAssertEqual(read.method, .post)
+        XCTAssertEqual(read.path, "books/15582/reader/session")
+        XCTAssertTrue(read.requiresAuthentication)
+        XCTAssertEqual(read.body, .form(["purpose": "read"]))
+        XCTAssertEqual(download.body, .form(["purpose": "download"]))
+    }
+
     func testBookDetailUsesDedicatedMobileRoute() {
         let endpoint = APIEndpoint.book(id: 15585)
 

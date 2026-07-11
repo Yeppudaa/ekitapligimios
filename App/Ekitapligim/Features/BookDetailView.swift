@@ -210,7 +210,13 @@ struct BookDetailView: View {
             downloadStatusMessage = L10n.bookDetailInvalidId
             return
         }
-        guard let session = try? await container.books.createReaderSession(bookID: bookID),
+        guard let currentAccess = try? await container.books.readerAccess(bookID: bookID),
+              currentAccess.canDownload else {
+            downloadStatusMessage = L10n.bookDetailSecureDownloadMissing
+            return
+        }
+        access = currentAccess
+        guard let session = try? await container.books.createReaderSession(bookID: bookID, purpose: .download),
               let url = URL(string: session.sourceUrl) else {
             downloadStatusMessage = L10n.bookDetailSecureDownloadMissing
             return
