@@ -132,6 +132,7 @@ foreach ($requiredDownloadControl in @(
     "func restoreDownloads()",
     "func localFile(for bookID: String)",
     "func removeAllDownloads()",
+    "isValidLocalFile(at:",
     "isExcludedFromBackup = true",
     "FileProtectionType.completeUntilFirstUserAuthentication"
 )) {

@@ -124,6 +124,7 @@ public enum L10n {
     public static let reportFooter = localized("report.footer", defaultValue: "Raporlar moderasyon ekibine gönderilir. Kötüye kullanım bildirimleri güvenlik amacıyla incelenir.")
     public static let reportSubmit = localized("report.submit", defaultValue: "Raporu gönder")
     public static let commonClose = localized("common.close", defaultValue: "Kapat")
+    public static let commonRemove = localized("common.remove", defaultValue: "Sil")
     public static let commonCancel = localized("common.cancel", defaultValue: "İptal")
     public static let commonSubmit = localized("common.submit", defaultValue: "Gönder")
     public static let commonRetry = localized("common.retry", defaultValue: "Tekrar dene")

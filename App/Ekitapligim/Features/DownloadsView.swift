@@ -10,7 +10,23 @@ struct DownloadsView: View {
                 ContentUnavailableView(L10n.downloadsEmptyTitle, systemImage: "arrow.down.circle", description: Text(L10n.downloadsEmptyDescription))
             } else {
                 ForEach(container.downloadManager.states.keys.sorted(), id: \.self) { bookID in
-                    DownloadStateRow(bookID: bookID, state: container.downloadManager.states[bookID] ?? .notDownloaded)
+                    let state = container.downloadManager.states[bookID] ?? .notDownloaded
+                    DownloadStateRow(bookID: bookID, state: state)
+                        .swipeActions(edge: .trailing, allowsFullSwipe: true) {
+                            if case .downloaded(let fileName) = state {
+                                Button(role: .destructive) {
+                                    Task {
+                                        await container.downloadManager.remove(
+                                            bookID: bookID,
+                                            fileExtension: URL(fileURLWithPath: fileName).pathExtension
+                                        )
+                                    }
+                                } label: {
+                                    Image(systemName: "trash")
+                                }
+                                .accessibilityLabel(L10n.commonRemove)
+                            }
+                        }
                 }
             }
         }

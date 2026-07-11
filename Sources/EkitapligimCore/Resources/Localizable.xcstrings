@@ -279,6 +279,16 @@
         }
       }
     },
+    "common.remove" : {
+      "localizations" : {
+        "tr" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Sil"
+          }
+        }
+      }
+    },
     "common.percent" : {
       "localizations" : {
         "tr" : {

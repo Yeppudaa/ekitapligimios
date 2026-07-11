@@ -28,19 +28,26 @@ final class DownloadManager: ObservableObject {
 
     func restoreDownloads() {
         var restoredStates: [String: DownloadState] = [:]
+        guard let directory = try? downloadsDirectory(),
+              let contents = try? fileManager.contentsOfDirectory(
+                at: directory,
+                includingPropertiesForKeys: nil,
+                options: [.skipsHiddenFiles]
+              ) else {
+            states = restoredStates
+            return
+        }
         for fileExtension in ["pdf", "epub"] {
-            guard let directory = try? downloadsDirectory(),
-                  let contents = try? fileManager.contentsOfDirectory(
-                    at: directory,
-                    includingPropertiesForKeys: nil,
-                    options: [.skipsHiddenFiles]
-                  ) else { continue }
             for url in contents where url.pathExtension.lowercased() == fileExtension {
                 let prefix = "book-"
                 let fileName = url.deletingPathExtension().lastPathComponent
                 guard fileName.hasPrefix(prefix) else { continue }
                 let bookID = String(fileName.dropFirst(prefix.count))
                 guard (try? DownloadFilePolicy.fileName(bookID: bookID, fileExtension: fileExtension)) == url.lastPathComponent else {
+                    continue
+                }
+                guard isValidLocalFile(at: url, fileType: fileExtension) else {
+                    try? fileManager.removeItem(at: url)
                     continue
                 }
                 restoredStates[bookID] = .downloaded(localFileName: url.lastPathComponent)
@@ -53,7 +60,10 @@ final class DownloadManager: ObservableObject {
         for fileType in ["pdf", "epub"] {
             guard let url = try? localURL(for: bookID, fileExtension: fileType),
                   fileManager.fileExists(atPath: url.path) else { continue }
-            return (url, fileType)
+            if isValidLocalFile(at: url, fileType: fileType) {
+                return (url, fileType)
+            }
+            try? fileManager.removeItem(at: url)
         }
         return nil
     }
@@ -148,5 +158,9 @@ final class DownloadManager: ObservableObject {
         defer { try? handle.close() }
         let header = try handle.read(upToCount: 1_024) ?? Data()
         try DownloadFilePolicy.validateHeader(header, fileExtension: fileExtension)
+    }
+
+    private func isValidLocalFile(at url: URL, fileType: String) -> Bool {
+        (try? validateDownloadedFile(at: url, fileExtension: fileType)) != nil
     }
 }

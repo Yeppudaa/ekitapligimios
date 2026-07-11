@@ -63,4 +63,18 @@ final class DownloadManagerTests: XCTestCase {
         XCTAssertNil(manager.localFile(for: "42"))
         XCTAssertTrue(manager.states.isEmpty)
     }
+
+    func testRestoreRemovesCorruptDownloadedFile() throws {
+        let base = FileManager.default.temporaryDirectory
+            .appendingPathComponent(UUID().uuidString, isDirectory: true)
+        temporaryDirectory = base
+        let manager = DownloadManager(baseDirectory: base)
+        let localURL = try manager.localURL(for: "42", fileExtension: "pdf")
+        try Data("not a PDF".utf8).write(to: localURL)
+
+        manager.restoreDownloads()
+
+        XCTAssertTrue(manager.states.isEmpty)
+        XCTAssertFalse(FileManager.default.fileExists(atPath: localURL.path))
+    }
 }
