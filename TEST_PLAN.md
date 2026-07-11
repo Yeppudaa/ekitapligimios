@@ -83,9 +83,9 @@ xcodebuild test -scheme Ekitapligim -destination 'platform=iOS Simulator,name=iP
 
 ## Current Workspace Verification
 - `Localizable.xcstrings` JSON validation passed in this Windows workspace.
-- `swift` is not installed in this workspace, so `swift test` was not executed here.
+- Swift 6.3.3 and Visual Studio Build Tools are installed in this workspace. `Scripts/swift-test-windows.ps1` built the portable core package and passed all 72 tests on `x86_64-unknown-windows-msvc`.
 - `xcodebuild` is not installed in this workspace, so simulator, archive, and UI tests were not executed here.
-- Added unit test sources for endpoint construction, authenticated request headers, form body construction, redacted logging, reading progress, deep links, and release URL validation.
+- Executed unit tests cover endpoint construction, authenticated request headers, form body construction, redacted logging, reading progress, deep links, release URL validation, DTO decoding, download policy, bookmarks, and content safety.
 - Added catalog endpoint coverage for category, author, publisher, ISBN, rated ordering, and premium-only query construction. Native catalog pagination de-duplicates appended books.
 - Added unit test sources for Apple auth endpoint construction, UGC safety endpoint construction, and App Store verification endpoint construction.
 - Added unit test sources for forum endpoint construction and download state behavior.

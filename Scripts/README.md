@@ -27,6 +27,16 @@ Use `-Strict` in CI-like environments where PHP must be installed:
 .\Scripts\validate-workspace.ps1 -Strict
 ```
 
+## `swift-test-windows.ps1`
+
+Loads the installed Visual Studio C++ environment and official Swift for Windows SDK, then builds `EkitapligimCore` and runs its unit tests:
+
+```powershell
+.\Scripts\swift-test-windows.ps1
+```
+
+This validates the portable core package. Xcode is still required for the SwiftUI app target, Readium, StoreKit, PDFKit, Keychain, simulator, and UI tests.
+
 ## `swift-static-audit.ps1`
 
 Runs Swift/project checks that are useful before Xcode is available:

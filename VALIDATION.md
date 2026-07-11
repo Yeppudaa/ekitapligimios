@@ -10,9 +10,9 @@ Run:
 
 This validates source files that do not require Xcode. It does not prove the iOS app compiles.
 
-Latest local result in this workspace: passed. It includes the Swift static audit, SwiftUI accessibility audit, privacy manifest checks, release-configuration checks, and backend PHP syntax checks. `Scripts/validate-workspace.ps1` now falls back to `C:\xampp\php\php.exe` when `php` is not on `PATH`, and it linted all `Backend/MobileApi-addon/**/*.php` scaffold files successfully. Missing optional tools reported: `swift`, `xcodebuild`, `xcodegen`.
+Latest local result in this workspace: passed. It includes the Swift static audit, SwiftUI accessibility audit, privacy manifest checks, release-configuration checks, and backend PHP syntax checks. `Scripts/validate-workspace.ps1` falls back to `C:\xampp\php\php.exe` when `php` is not on `PATH`, and it linted all `Backend/MobileApi-addon/**/*.php` scaffold files successfully. Xcode and XcodeGen remain unavailable on Windows.
 
-Forum model decoding coverage has been added under `Tests/EkitapligimCoreTests/ModelDecodingTests.swift`, but it still requires `swift test` on macOS or another Swift toolchain host to execute.
+`Scripts/swift-test-windows.ps1` loaded Swift 6.3.3 with the Visual Studio x64 toolchain, built `EkitapligimCore`, and passed all 72 unit tests. This run exposed and fixed portable compilation issues plus legacy XenForo numeric `nodeId` decoding. It does not compile the SwiftUI app or Apple-only frameworks; those remain macOS/Xcode gates.
 
 Additional backend-response decoding coverage has been added for books pagination, direct profile responses, auth, terms status, success envelopes, billing verification, blocked members, and forum reply envelopes. Success-response decoding now tolerates `{}`, `{ "success": true }`, detailed success envelopes, and empty HTTP bodies for endpoints that may return 204-style responses. This reduces the risk of a successful HTTP response failing in the iOS data layer.
 

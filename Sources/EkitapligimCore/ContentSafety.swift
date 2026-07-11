@@ -3,8 +3,9 @@ import Foundation
 public struct ContentSafety: Sendable {
     private let blockedTerms: [String]
 
-    public init(blockedTerms: [String] = Self.defaultBlockedTerms) {
-        self.blockedTerms = blockedTerms.map { $0.lowercased(with: Locale(identifier: "tr_TR")) }
+    public init(blockedTerms: [String]? = nil) {
+        self.blockedTerms = (blockedTerms ?? Self.defaultBlockedTerms)
+            .map { $0.lowercased(with: Locale(identifier: "tr_TR")) }
     }
 
     public func validateUserGeneratedText(_ text: String) -> ContentSafetyResult {

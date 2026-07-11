@@ -38,6 +38,7 @@ Windows/source validation:
 
 ```powershell
 .\Scripts\validate-workspace.ps1
+.\Scripts\swift-test-windows.ps1
 .\Scripts\api-smoke-test.ps1 -BaseUrl "https://staging.ekitapligim.com/mobile-api/v1/"
 .\Scripts\appstore-preflight.ps1
 .\\Scripts\\apply-mobileapi-ios-patch.ps1 -AddonPath "C:\\path\\to\\MobileApi-addon" -CreateZip

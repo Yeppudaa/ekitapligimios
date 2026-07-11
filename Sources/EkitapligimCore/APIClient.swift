@@ -1,4 +1,7 @@
 import Foundation
+#if canImport(FoundationNetworking)
+import FoundationNetworking
+#endif
 
 public protocol AccessTokenProviding: Sendable {
     func accessToken() async throws -> String?

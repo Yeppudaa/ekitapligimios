@@ -36,7 +36,7 @@ public struct AppConfig: Sendable, Equatable {
         else {
             throw ConfigurationError.invalidDefaultURL
         }
-        AppConfig(
+        return AppConfig(
             environment: .production,
             apiBaseURL: apiURL,
             webBaseURL: webURL

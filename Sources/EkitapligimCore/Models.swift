@@ -692,10 +692,10 @@ public struct NotificationCountsDTO: Decodable, Equatable, Sendable {
 
 private extension KeyedDecodingContainer {
     func decodeFlexibleStringIfPresent(forKey key: Key) throws -> String? {
-        if let value = try decodeIfPresent(String.self, forKey: key) {
+        if let value = try? decodeIfPresent(String.self, forKey: key) {
             return value
         }
-        if let intValue = try decodeIfPresent(Int.self, forKey: key) {
+        if let intValue = try? decodeIfPresent(Int.self, forKey: key) {
             return String(intValue)
         }
         return nil
@@ -703,10 +703,10 @@ private extension KeyedDecodingContainer {
 
     func decodeFlexibleString(forKey key: Key, fallbackKeys: [Key] = []) throws -> String {
         for candidate in [key] + fallbackKeys {
-            if let value = try decodeIfPresent(String.self, forKey: candidate) {
+            if let value = try? decodeIfPresent(String.self, forKey: candidate) {
                 return value
             }
-            if let intValue = try decodeIfPresent(Int.self, forKey: candidate) {
+            if let intValue = try? decodeIfPresent(Int.self, forKey: candidate) {
                 return String(intValue)
             }
         }

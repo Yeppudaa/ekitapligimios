@@ -1,6 +1,6 @@
 # Known Limitations
 
-- This workspace is Windows and does not include Xcode or Swift, so native iOS build/test execution could not be performed here.
+- This Windows workspace has Swift 6.3.3 and Visual Studio Build Tools; the portable `EkitapligimCore` package builds and all 72 unit tests pass through `Scripts/swift-test-windows.ps1`. Xcode is unavailable, so the SwiftUI iOS target, Apple frameworks, simulator, UI tests, archive, and signing remain unverified here.
 - The source tree is committed locally, but the git repository has no configured remote, so the prepared macOS GitHub Actions workflow cannot yet be dispatched. It supports manual dispatch plus `main`, `master`, `codex/**`, and pull-request triggers once connected to a host.
 - `project.yml` is present for XcodeGen, but the `.xcodeproj` has not been generated or built in this workspace.
 - The public staging API URL, production API URL, bundle identifier, and Apple Team ID were not provided.

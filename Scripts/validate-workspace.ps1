@@ -51,6 +51,7 @@ Write-Step "Checking required files"
     "Scripts/apply-mobileapi-ios-patch.ps1",
     "Scripts/generate-placeholder-appicon.ps1",
     "Scripts/generate-branded-appicon.ps1",
+    "Scripts/swift-test-windows.ps1",
     "Scripts/swift-static-audit.ps1",
     "Scripts/ui-accessibility-audit.ps1",
     "Web/.well-known/apple-app-site-association",
@@ -433,6 +434,15 @@ if ($phpPath) {
 Write-Step "Checking optional tool availability"
 foreach ($tool in @("swift", "xcodebuild", "xcodegen")) {
     $cmd = Get-Command $tool -ErrorAction SilentlyContinue
+    if (-not $cmd -and $tool -eq "swift") {
+        $installedSwift = Get-ChildItem "$env:LOCALAPPDATA\Programs\Swift\Toolchains\*\usr\bin\swift.exe" -ErrorAction SilentlyContinue |
+            Sort-Object FullName -Descending |
+            Select-Object -First 1
+        if ($installedSwift) {
+            Write-Host "${tool}: $($installedSwift.FullName)"
+            continue
+        }
+    }
     if ($cmd) {
         Write-Host "${tool}: $($cmd.Source)"
     } else {
