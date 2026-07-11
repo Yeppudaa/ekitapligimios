@@ -383,6 +383,26 @@ foreach ($requiredDeletionAuthControl in @(
         throw "Account deletion authentication/revocation control missing: $requiredDeletionAuthControl"
     }
 }
+$deleteAccountViewSource = Get-Content -Raw -LiteralPath "App/Ekitapligim/Features/DeleteAccountView.swift"
+$appContainerSource = Get-Content -Raw -LiteralPath "App/Ekitapligim/App/AppContainer.swift"
+foreach ($requiredClientDeletionControl in @(
+    "container.requestAccountDeletion",
+    "isSubmitted = true"
+)) {
+    if ($deleteAccountViewSource -notmatch [regex]::Escape($requiredClientDeletionControl)) {
+        throw "DeleteAccountView missing post-submission lifecycle control: $requiredClientDeletionControl"
+    }
+}
+foreach ($requiredClientSessionCleanup in @(
+    "await clearLocalSession()",
+    "storeKit.stopObservingTransactions()",
+    "tokenStore.clear()",
+    "authState = .signedOut"
+)) {
+    if ($appContainerSource -notmatch [regex]::Escape($requiredClientSessionCleanup)) {
+        throw "AppContainer missing account-deletion local session cleanup: $requiredClientSessionCleanup"
+    }
+}
 $recordPosition = $accountDeletionRequestSource.IndexOf('$requestId = $this->recordDeletionRequest')
 $revokePosition = $accountDeletionRequestSource.IndexOf('AppleAuthorization::revokeForUser')
 if ($recordPosition -lt 0 -or $revokePosition -lt 0 -or $recordPosition -gt $revokePosition) {

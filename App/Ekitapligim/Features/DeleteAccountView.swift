@@ -3,13 +3,12 @@ import EkitapligimCore
 
 struct DeleteAccountView: View {
     @EnvironmentObject private var container: AppContainer
-    @Environment(\.dismiss) private var dismiss
-
     @State private var confirmationText = ""
     @State private var currentPassword = ""
     @State private var reason = ""
     @State private var statusMessage: String?
     @State private var isSubmitting = false
+    @State private var isSubmitted = false
 
     var body: some View {
         Form {
@@ -36,7 +35,7 @@ struct DeleteAccountView: View {
                 Button(L10n.deleteAccountSubmit, role: .destructive) {
                     Task { await submit() }
                 }
-                .disabled(confirmationText.uppercased() != "SIL" || isSubmitting)
+                .disabled(confirmationText.uppercased() != "SIL" || isSubmitting || isSubmitted)
             }
         }
         .navigationTitle(L10n.deleteAccountTitle)
@@ -46,10 +45,12 @@ struct DeleteAccountView: View {
         isSubmitting = true
         defer { isSubmitting = false }
         do {
-            try await container.account.requestAccountDeletion(
+            try await container.requestAccountDeletion(
                 currentPassword: currentPassword,
                 reason: reason.trimmingCharacters(in: .whitespacesAndNewlines).nilIfBlank
             )
+            currentPassword = ""
+            isSubmitted = true
             statusMessage = L10n.deleteAccountSubmitted
         } catch {
             statusMessage = L10n.deleteAccountSubmitFailed

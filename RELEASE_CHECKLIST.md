@@ -13,6 +13,7 @@
 - [ ] App Store Server Notification URL configured, if premium is enabled.
 - [ ] Sign in with Apple configured, if Google login remains.
 - [ ] Account-deletion completion CLI dry-run and disposable-account execution verified; XenForo cleanup jobs drained and completion email received.
+- [ ] Accepted account deletion immediately clears the local Keychain session, stops transaction observation, shows success once, and leaves the app signed out.
 - [ ] Backend Apple auth installed and verified with Apple JWKS/RS256 validation on staging.
 - [ ] Backend App Store JWS verification installed and tested with real Apple sandbox transactions.
 - [ ] Ask to Buy/pending approval and out-of-app completion were delivered through `Transaction.updates`, synchronized to the backend, and finished only after verification.

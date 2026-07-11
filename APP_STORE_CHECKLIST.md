@@ -13,6 +13,7 @@
 - Native screens only for core app.
 - WKWebView permitted only for legal/static rich pages.
 - Account deletion flow: Settings > Account > Delete Account. The request is stored server-side and supports Apple/no-password accounts.
+- After a deletion request is accepted, the app stops StoreKit observation, clears its Keychain session, transitions to signed out, and prevents duplicate submission from the success screen.
 - Manual account deletion is disclosed as generally completing within 30 days, duplicate pending requests are idempotent, and operations must provide completion notice plus Sign in with Apple token revocation evidence.
 - UGC: report content, block user, moderation process, terms, support contact.
 - UGC terms acceptance is enforced client-side and server-side before forum replies. Staging install/test is still required before enabling posting in review builds.

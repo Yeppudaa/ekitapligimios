@@ -113,6 +113,13 @@ final class AppContainer: ObservableObject {
         try await applyAuthResponse(response)
     }
 
+    func requestAccountDeletion(currentPassword: String?, reason: String?) async throws {
+        try await account.requestAccountDeletion(currentPassword: currentPassword, reason: reason)
+        await clearLocalSession()
+        presentedRoute = nil
+        selectedTab = .settings
+    }
+
     private func applyAuthResponse(_ response: AuthResponseDTO) async throws {
         let session = Session(
             accessToken: response.accessToken,
@@ -125,8 +132,12 @@ final class AppContainer: ObservableObject {
     }
 
     func logout() async {
-        storeKit.stopObservingTransactions()
         try? await auth.logout()
+        await clearLocalSession()
+    }
+
+    private func clearLocalSession() async {
+        storeKit.stopObservingTransactions()
         try? await tokenStore.clear()
         authState = .signedOut
     }
