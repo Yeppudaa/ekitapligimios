@@ -34,23 +34,20 @@ workflows:
           mkdir -p "$CM_BUILD_DIR/build"
           xcodebuild -showBuildSettings \
             -project "$XCODE_PROJECT" \
-            -scheme "$XCODE_SCHEME" | tee "$CM_BUILD_DIR/build/show-build-settings.log"
-          set +e
-          xcodebuild test \
+            -scheme "$XCODE_SCHEME" 2>&1 | tee "$CM_BUILD_DIR/build/show-build-settings.log"
+          if ! xcodebuild test \
             -project "$XCODE_PROJECT" \
             -scheme "$XCODE_SCHEME" \
             -configuration Development \
             -destination "platform=iOS Simulator,name=iPhone 17,OS=latest" \
             -resultBundlePath "$CM_BUILD_DIR/build/EkitapligimTests.xcresult" \
-            CODE_SIGNING_ALLOWED=NO | tee "$CM_BUILD_DIR/build/run-app-tests.log"
-          TEST_EXIT=${PIPESTATUS[0]}
-          if [ "$TEST_EXIT" -ne 0 ]; then
-            echo "xcodebuild test failed with exit code $TEST_EXIT"
+            CODE_SIGNING_ALLOWED=NO 2>&1 | tee "$CM_BUILD_DIR/build/run-app-tests.log"; then
+            echo "xcodebuild test failed"
             echo "---- run-app-tests.log: error summary ----"
             grep -nEi "error:|fatal error|testing failed|test failed|no such module|cannot find|could not|unable to|codesign|provision" "$CM_BUILD_DIR/build/run-app-tests.log" || true
             echo "---- run-app-tests.log: last 200 lines ----"
             tail -n 200 "$CM_BUILD_DIR/build/run-app-tests.log"
-            exit "$TEST_EXIT"
+            exit 65
           fi
 
       - name: Archive production build
