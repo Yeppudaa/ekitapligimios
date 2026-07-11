@@ -1,7 +1,7 @@
 # Known Limitations
 
 - This workspace is Windows and does not include Xcode or Swift, so native iOS build/test execution could not be performed here.
-- The local git repository has no configured remote and the project tree is currently uncommitted, so the prepared macOS GitHub Actions workflow cannot yet be dispatched. It supports manual dispatch plus `main`, `master`, `codex/**`, and pull-request triggers once the repository is committed and connected to a host.
+- The source tree is committed locally, but the git repository has no configured remote, so the prepared macOS GitHub Actions workflow cannot yet be dispatched. It supports manual dispatch plus `main`, `master`, `codex/**`, and pull-request triggers once connected to a host.
 - `project.yml` is present for XcodeGen, but the `.xcodeproj` has not been generated or built in this workspace.
 - The public staging API URL, production API URL, bundle identifier, and Apple Team ID were not provided.
 - `Scripts/api-smoke-test.ps1` cannot pass for App Review until a public HTTPS staging or production Mobile API is available.
