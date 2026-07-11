@@ -75,6 +75,16 @@ Checks that a staging or production Mobile API is reachable. The public checks i
 .\Scripts\api-smoke-test.ps1 -BaseUrl "https://staging.ekitapligim.com/mobile-api/v1/"
 ```
 
+## `public-release-audit.ps1`
+
+Checks the public HTTPS legal/support pages, Mobile API JSON contract, and Apple App Site Association file before TestFlight or App Review:
+
+```powershell
+.\Scripts\public-release-audit.ps1 -TeamId "YOUR_APPLE_TEAM_ID"
+```
+
+The command is expected to fail until the MobileApi add-on and `Web/.well-known/apple-app-site-association` are deployed publicly.
+
 For local development only:
 
 ```powershell

@@ -22,6 +22,7 @@
 - Review metadata draft exists at `APP_STORE_METADATA.md`.
 - Local validation script exists at `Scripts/validate-workspace.ps1`; it must pass before macOS archive work.
 - API smoke test script exists at `Scripts/api-smoke-test.ps1`; it must pass against public HTTPS staging before App Review.
+- Public release audit at `Scripts/public-release-audit.ps1` must pass with the real Apple Team ID; it verifies legal/support pages, production API JSON, and the deployed AASA app identifier.
 - UGC safety smoke test script exists at `Scripts/ugc-safety-smoke-test.ps1`; it must pass against public HTTPS staging before App Review.
 - App Store preflight script exists at `Scripts/appstore-preflight.ps1`; it must pass without placeholders before submission.
 - Opaque AppIcon files and source/hash evidence exist. Confirm brand approval and inspect the rendered icon on real devices before submission.

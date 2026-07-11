@@ -5,6 +5,7 @@
 - `project.yml` is present for XcodeGen, but the `.xcodeproj` has not been generated or built in this workspace.
 - The public staging API URL, production API URL, bundle identifier, and Apple Team ID were not provided.
 - `Scripts/api-smoke-test.ps1` cannot pass for App Review until a public HTTPS staging or production Mobile API is available.
+- The 2026-07-11 public release audit found that support, privacy, and terms pages return HTTPS 200, while the production Mobile API and `/.well-known/apple-app-site-association` both return HTTP 404. The backend add-on and AASA file must be deployed before TestFlight/App Review.
 - `Scripts/appstore-preflight.ps1` will fail until reviewer account, Team ID, and other placeholders are replaced.
 - Local XenForo homepage, unauthenticated `mobile-api/v1` book/forum/thread/post routes, and bearer-authenticated profile/library/subscription/terms/notification-count routes now respond after applying the local MobileApi iOS patch. Full reviewer validation still requires a dedicated non-admin test account and public HTTPS staging.
 - StoreKit backend endpoint now verifies Apple-signed JWS transactions, validates product/bundle/environment fields, records iOS entitlement rows locally, and the local premium checks read active iOS entitlements. It is not installed into staging/production yet, and must still be tested with real Apple sandbox/production signed transactions before App Review.
