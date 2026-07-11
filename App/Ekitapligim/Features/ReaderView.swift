@@ -1,6 +1,6 @@
 import SwiftUI
-import PDFKit
-import UIKit
+@preconcurrency import PDFKit
+@preconcurrency import UIKit
 import EkitapligimCore
 
 @MainActor
@@ -244,7 +244,6 @@ private struct ReaderBookmarksView: View {
     }
 }
 
-@MainActor
 private struct PDFReader: UIViewRepresentable {
     let url: URL
     @Binding var progress: ReadingProgress
@@ -281,7 +280,6 @@ private struct PDFReader: UIViewRepresentable {
         coordinator.stopObserving()
     }
 
-    @MainActor
     final class Coordinator: NSObject {
         private var progress: Binding<ReadingProgress>
         private var requestedPage: Binding<Int?>

@@ -36,6 +36,7 @@ workflows:
             -project "$XCODE_PROJECT" \
             -scheme "$XCODE_SCHEME" 2>&1 | tee "$CM_BUILD_DIR/build/show-build-settings.log"
           if ! xcodebuild test \
+            -quiet \
             -project "$XCODE_PROJECT" \
             -scheme "$XCODE_SCHEME" \
             -configuration Development \
