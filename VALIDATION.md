@@ -148,6 +148,8 @@ Latest local re-run note: `xf_user:3` now fails `books/{id}/reader/session` with
 
 The mutation smoke path also verifies `books/{id}/reader/session` returns a source URL. Against public HTTPS staging/production without `-AllowInsecure`, that source URL must also be HTTPS so the iOS reader/download flow remains App Transport Security compatible.
 
+MobileApi `1.0.85` was exercised end-to-end on the local XenForo installation with a newly registered disposable account. The account received an `ms_at_` session, completed every authenticated API smoke check, persisted reader progress and a library update, and received separately authorized `read` and `download` reader sessions. Refresh rotation rejected both old tokens with HTTP 401; logout rejected the refreshed tokens with HTTP 401. The account then submitted a password-verified deletion request, its mobile sessions were revoked, and XenForo's deletion command completed the request and scrubbed the request PII. The local completion email could not be delivered because the local SMTP service is unavailable; public email delivery remains a staging/reviewer gate. No credentials or token values were recorded.
+
 ## macOS Validation
 
 Run on a machine with current Xcode:
