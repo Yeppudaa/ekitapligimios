@@ -1,6 +1,7 @@
 import SwiftUI
 import EkitapligimCore
 
+@MainActor
 struct NotificationsView: View {
     @EnvironmentObject private var container: AppContainer
 
@@ -95,6 +96,7 @@ struct NotificationsView: View {
 
 }
 
+@MainActor
 private struct NotificationRow: View {
     let notification: NotificationDTO
     let markRead: () async -> Void

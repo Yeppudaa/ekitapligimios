@@ -2,4 +2,4 @@ PRODUCT_BUNDLE_IDENTIFIER = com.ekitapligim.app
 MARKETING_VERSION = 1.0.0
 CURRENT_PROJECT_VERSION = 1
 EKITAPLIGIM_ENVIRONMENT = production
-EKITAPLIGIM_API_BASE_URL = https:/$()/ekitapligim.com/mobile-api/v1/
+EKITAPLIGIM_API_BASE_URL = https://ekitapligim.com/mobile-api/v1/

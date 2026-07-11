@@ -1,6 +1,7 @@
 import SwiftUI
 import EkitapligimCore
 
+@MainActor
 struct PremiumView: View {
     @EnvironmentObject private var container: AppContainer
 
@@ -19,6 +20,7 @@ struct PremiumView: View {
     }
 }
 
+@MainActor
 private struct PremiumContentView: View {
     @ObservedObject var storeKit: StoreKitPurchaseService
     let isSignedIn: Bool

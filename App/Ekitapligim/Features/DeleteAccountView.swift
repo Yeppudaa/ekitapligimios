@@ -1,6 +1,7 @@
 import SwiftUI
 import EkitapligimCore
 
+@MainActor
 struct DeleteAccountView: View {
     @EnvironmentObject private var container: AppContainer
     @State private var confirmationText = ""

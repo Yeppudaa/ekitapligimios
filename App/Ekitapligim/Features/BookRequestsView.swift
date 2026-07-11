@@ -115,6 +115,7 @@ struct BookRequestsView: View {
     }
 }
 
+@MainActor
 private struct BookRequestRow: View {
     let request: BookRequestDTO
     let isSubmitting: Bool
@@ -153,6 +154,7 @@ private struct BookRequestRow: View {
     }
 }
 
+@MainActor
 private struct BookRequestCreateView: View {
     @Environment(\.dismiss) private var dismiss
     let isSubmitting: Bool

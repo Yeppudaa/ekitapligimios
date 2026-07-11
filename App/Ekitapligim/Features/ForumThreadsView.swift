@@ -1,6 +1,7 @@
 import SwiftUI
 import EkitapligimCore
 
+@MainActor
 struct ForumThreadsView: View {
     @EnvironmentObject private var container: AppContainer
     let forum: ForumDTO

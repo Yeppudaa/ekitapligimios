@@ -1,6 +1,7 @@
 import SwiftUI
 import EkitapligimCore
 
+@MainActor
 struct PrivacySettingsView: View {
     @EnvironmentObject private var container: AppContainer
 

@@ -1,6 +1,7 @@
 import SwiftUI
 import EkitapligimCore
 
+@MainActor
 struct ProfileView: View {
     @EnvironmentObject private var container: AppContainer
 
@@ -108,6 +109,7 @@ struct ProfileView: View {
     }
 }
 
+@MainActor
 private struct ProfileEditView: View {
     @EnvironmentObject private var container: AppContainer
     @Environment(\.dismiss) private var dismiss

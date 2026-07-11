@@ -168,6 +168,7 @@ private final class EPUBReaderModel: NSObject, ObservableObject, EPUBNavigatorDe
     }
 }
 
+@MainActor
 private struct EPUBNavigatorContainer: UIViewControllerRepresentable {
     let navigator: EPUBNavigatorViewController
 
@@ -178,6 +179,7 @@ private struct EPUBNavigatorContainer: UIViewControllerRepresentable {
     func updateUIViewController(_ uiViewController: EPUBHostViewController, context: Context) {}
 }
 
+@MainActor
 private final class EPUBHostViewController: UIViewController {
     private let navigator: EPUBNavigatorViewController
 

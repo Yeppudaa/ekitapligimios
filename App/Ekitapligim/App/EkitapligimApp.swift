@@ -2,6 +2,7 @@ import SwiftUI
 import EkitapligimCore
 
 @main
+@MainActor
 struct EkitapligimApp: App {
     @StateObject private var container = AppContainer()
 

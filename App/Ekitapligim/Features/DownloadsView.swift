@@ -1,6 +1,7 @@
 import SwiftUI
 import EkitapligimCore
 
+@MainActor
 struct DownloadsView: View {
     @EnvironmentObject private var container: AppContainer
 
@@ -34,6 +35,7 @@ struct DownloadsView: View {
     }
 }
 
+@MainActor
 private struct DownloadStateRow: View {
     let bookID: String
     let state: DownloadState

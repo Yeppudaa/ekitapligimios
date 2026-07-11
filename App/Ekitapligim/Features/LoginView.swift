@@ -4,6 +4,7 @@ import CryptoKit
 import Security
 import EkitapligimCore
 
+@MainActor
 struct LoginView: View {
     @EnvironmentObject private var container: AppContainer
     @Environment(\.dismiss) private var dismiss

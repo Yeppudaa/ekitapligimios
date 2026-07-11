@@ -1,6 +1,7 @@
 import SwiftUI
 import EkitapligimCore
 
+@MainActor
 struct CommunityView: View {
     @EnvironmentObject private var container: AppContainer
     @State private var showingBlockUser = false

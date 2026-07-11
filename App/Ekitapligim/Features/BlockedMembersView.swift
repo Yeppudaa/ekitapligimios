@@ -1,6 +1,7 @@
 import SwiftUI
 import EkitapligimCore
 
+@MainActor
 struct BlockedMembersView: View {
     @EnvironmentObject private var container: AppContainer
 

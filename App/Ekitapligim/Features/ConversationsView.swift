@@ -77,6 +77,7 @@ struct ConversationsView: View {
     }
 }
 
+@MainActor
 private struct ConversationRow: View {
     let conversation: ConversationDTO
 
@@ -203,6 +204,7 @@ private struct ConversationDetailView: View {
     }
 }
 
+@MainActor
 private struct MessageBubble: View {
     let message: ConversationMessageDTO
 
@@ -232,6 +234,7 @@ private struct MessageBubble: View {
     }
 }
 
+@MainActor
 private struct NewConversationView: View {
     @Environment(\.dismiss) private var dismiss
     let submit: (String, String, String) async -> Bool

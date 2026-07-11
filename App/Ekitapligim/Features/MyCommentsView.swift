@@ -1,6 +1,7 @@
 import SwiftUI
 import EkitapligimCore
 
+@MainActor
 struct MyCommentsView: View {
     @EnvironmentObject private var container: AppContainer
     @State private var comments: [ForumPostDTO] = []

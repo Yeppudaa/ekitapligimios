@@ -1,6 +1,7 @@
 import SwiftUI
 import EkitapligimCore
 
+@MainActor
 struct HomeView: View {
     @EnvironmentObject private var container: AppContainer
     @State private var stats: SiteStatsDTO?
@@ -97,6 +98,7 @@ struct HomeView: View {
     }
 }
 
+@MainActor
 private struct HomeStat: View {
     let value: Int
     let label: String

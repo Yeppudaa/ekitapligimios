@@ -1,6 +1,7 @@
 import SwiftUI
 import EkitapligimCore
 
+@MainActor
 struct LibraryView: View {
     @EnvironmentObject private var container: AppContainer
     @State private var items: [LibraryItemDTO] = []
@@ -98,6 +99,7 @@ private enum LibraryShelf: String, CaseIterable, Identifiable {
     }
 }
 
+@MainActor
 private struct LibraryItemRow: View {
     let item: LibraryItemDTO
 

@@ -76,6 +76,7 @@ struct MembersView: View {
     }
 }
 
+@MainActor
 private struct MemberRow: View {
     let member: MemberDTO
 

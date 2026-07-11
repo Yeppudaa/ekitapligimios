@@ -166,6 +166,7 @@ private struct CatalogFilters: Equatable {
     }
 }
 
+@MainActor
 private struct CatalogFiltersView: View {
     @State private var filters: CatalogFilters
     let categories: [ForumDTO]
@@ -217,6 +218,7 @@ private struct CatalogFiltersView: View {
     }
 }
 
+@MainActor
 private struct BookRow: View {
     let book: BookDTO
 
@@ -234,6 +236,7 @@ private struct BookRow: View {
     }
 }
 
+@MainActor
 private struct BookGridItem: View {
     let book: BookDTO
 
@@ -256,6 +259,7 @@ private struct BookGridItem: View {
     }
 }
 
+@MainActor
 private struct BookCover: View {
     let book: BookDTO
 

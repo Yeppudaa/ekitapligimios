@@ -1,6 +1,7 @@
 import SwiftUI
 import EkitapligimCore
 
+@MainActor
 struct AccountSecurityView: View {
     @EnvironmentObject private var container: AppContainer
     let currentEmail: String

@@ -1,6 +1,7 @@
 import SwiftUI
 import EkitapligimCore
 
+@MainActor
 struct BookDetailView: View {
     @EnvironmentObject private var container: AppContainer
     let bookID: Int
@@ -279,6 +280,7 @@ struct BookDetailView: View {
     }
 }
 
+@MainActor
 private struct BookCommentRow: View {
     let comment: BookCommentDTO
     let report: () -> Void
