@@ -609,6 +609,7 @@
     "myComments.loading" : { "localizations" : { "tr" : { "stringUnit" : { "state" : "translated", "value" : "Yorumlar yükleniyor" } } } },
     "myComments.title" : { "localizations" : { "tr" : { "stringUnit" : { "state" : "translated", "value" : "Yorumlarım" } } } },
     "myComments.unavailableTitle" : { "localizations" : { "tr" : { "stringUnit" : { "state" : "translated", "value" : "Yorumlar alınamadı" } } } },
+    "notifications.noDestination" : { "localizations" : { "tr" : { "stringUnit" : { "state" : "translated", "value" : "Bu bildirim için açılabilecek bir içerik bulunamadı." } } } },
     "community.directorySection" : { "localizations" : { "tr" : { "stringUnit" : { "state" : "translated", "value" : "Üyeler" } } } },
     "members.aboutSection" : { "localizations" : { "tr" : { "stringUnit" : { "state" : "translated", "value" : "Hakkında" } } } },
     "members.actionFailed" : { "localizations" : { "tr" : { "stringUnit" : { "state" : "translated", "value" : "Üye işlemi tamamlanamadı." } } } },

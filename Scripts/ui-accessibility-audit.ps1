@@ -111,6 +111,7 @@ foreach ($requiredLocalizationKey in @(
     "myComments.title",
     "myComments.loading",
     "myComments.emptyTitle",
+    "notifications.noDestination",
     "downloads.title",
     "downloads.emptyTitle",
     "downloads.downloading",

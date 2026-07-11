@@ -438,6 +438,40 @@ final class ModelDecodingTests: XCTestCase {
         XCTAssertEqual(page.total, 31)
     }
 
+    func testNotificationDecodesNativeRouteFields() throws {
+        let data = Data("""
+        {
+          "items": [
+            {
+              "id": "28",
+              "type": "post",
+              "title": "Yeni yanıt",
+              "message": "Konunuza yanıt verildi.",
+              "actor_username": "okur",
+              "target_url": "https://ekitapligim.com/threads/yanlis-hedef.15585/",
+              "app_route": "thread/15585",
+              "content_id": 15607,
+              "event_date": 1782941300,
+              "is_read": false,
+              "is_viewed": true
+            }
+          ],
+          "counts": { "unread": 1, "unviewed": 0, "conversations_unread": 0 },
+          "current_page": 1,
+          "last_page": 1,
+          "total": 1
+        }
+        """.utf8)
+
+        let page = try JSONDecoder.ekitapligim.decode(NotificationsPageDTO.self, from: data)
+        let notification = try XCTUnwrap(page.items.first)
+
+        XCTAssertEqual(notification.appRoute, "thread/15585")
+        XCTAssertEqual(notification.contentId, 15607)
+        XCTAssertEqual(notification.targetUrl, "https://ekitapligim.com/threads/yanlis-hedef.15585/")
+        XCTAssertEqual(notification.isRead, false)
+    }
+
     func testAuthResponseDecodesBackendShape() throws {
         let data = Data("""
         {

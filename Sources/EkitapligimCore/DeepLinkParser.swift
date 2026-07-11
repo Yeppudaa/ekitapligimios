@@ -1,6 +1,6 @@
 import Foundation
 
-public enum AppRoute: Equatable, Sendable {
+public enum AppRoute: Hashable, Sendable {
     case home
     case catalog
     case bookDetail(Int)
@@ -38,6 +38,46 @@ public struct DeepLinkParser: Sendable {
             return .requests
         default:
             return nil
+        }
+    }
+
+    public func parseNativeRoute(_ rawRoute: String?) -> AppRoute? {
+        guard let route = rawRoute?.trimmingCharacters(in: .whitespacesAndNewlines), !route.isEmpty else {
+            return nil
+        }
+        if route.contains("://") { return nil }
+
+        let segments = route.trimmingCharacters(in: CharacterSet(charactersIn: "/"))
+            .split(separator: "/")
+            .map(String.init)
+        guard let first = segments.first?.lowercased() else { return nil }
+        let id = segments.count == 2 ? Int(segments[1]) : nil
+
+        switch first {
+        case "home": return .home
+        case "catalog": return .catalog
+        case "detail": return id.map(AppRoute.bookDetail)
+        case "forum": return id.map(AppRoute.forumDetail) ?? .forum
+        case "thread": return id.map(AppRoute.thread)
+        case "authors": return .authors
+        case "publishers": return .publishers
+        case "requests": return .requests
+        default: return nil
+        }
+    }
+
+    public func parseNotification(
+        appRoute: String?,
+        targetURL: String?,
+        contentID: Int? = nil,
+        type: String? = nil
+    ) -> AppRoute? {
+        if let route = parseNativeRoute(appRoute) { return route }
+        if let targetURL, let route = parse(targetURL) { return route }
+        guard let contentID, contentID > 0 else { return nil }
+        switch type?.lowercased() {
+        case "post", "thread", "forum_post": return .thread(contentID)
+        default: return nil
         }
     }
 

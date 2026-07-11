@@ -8,6 +8,8 @@ struct NotificationsView: View {
     @State private var counts: NotificationCountsDTO?
     @State private var isLoading = false
     @State private var errorMessage: String?
+    @State private var destination: AppRoute?
+    @State private var navigationError: String?
 
     var body: some View {
         Group {
@@ -28,7 +30,7 @@ struct NotificationsView: View {
                     Section {
                         ForEach(notifications) { item in
                             NotificationRow(notification: item) {
-                                await markRead(item)
+                                await open(item)
                             }
                         }
                     }
@@ -36,6 +38,17 @@ struct NotificationsView: View {
             }
         }
         .navigationTitle(L10n.notificationsTitle)
+        .navigationDestination(item: $destination) { route in
+            destinationView(for: route)
+        }
+        .alert(L10n.notificationsUnavailableTitle, isPresented: Binding(
+            get: { navigationError != nil },
+            set: { if !$0 { navigationError = nil } }
+        )) {
+            Button(L10n.commonClose) { navigationError = nil }
+        } message: {
+            Text(navigationError ?? "")
+        }
         .toolbar {
             ToolbarItem(placement: .topBarTrailing) {
                 Button(L10n.notificationsMarkAllRead) {
@@ -59,15 +72,58 @@ struct NotificationsView: View {
         }
     }
 
-    private func markRead(_ notification: NotificationDTO) async {
-        guard let id = Int(notification.id) else { return }
-        try? await container.notifications.markRead(id: id)
-        await load()
+    @MainActor
+    private func open(_ notification: NotificationDTO) async {
+        if notification.isRead != true, let id = Int(notification.id) {
+            try? await container.notifications.markRead(id: id)
+            await load()
+        }
+
+        guard let route = DeepLinkParser().parseNotification(
+            appRoute: notification.appRoute,
+            targetURL: notification.targetUrl,
+            contentID: notification.contentId,
+            type: notification.type
+        ) else {
+            navigationError = L10n.notificationsNoDestination
+            return
+        }
+
+        switch route {
+        case .home:
+            container.selectedTab = .home
+        case .catalog:
+            container.selectedTab = .catalog
+        case .forum:
+            container.selectedTab = .community
+        default:
+            destination = route
+        }
     }
 
     private func markAllRead() async {
         try? await container.notifications.markAllRead()
         await load()
+    }
+
+    @ViewBuilder
+    private func destinationView(for route: AppRoute) -> some View {
+        switch route {
+        case .bookDetail(let id):
+            BookDetailView(bookID: id)
+        case .thread(let id):
+            ForumThreadDetailView(thread: ForumThreadDTO(id: String(id), title: L10n.myCommentsForumTitle, username: ""))
+        case .forumDetail(let id):
+            ForumThreadsView(forum: ForumDTO(id: String(id), title: L10n.communityForumsSection))
+        case .authors:
+            DirectoryView(kind: .author)
+        case .publishers:
+            DirectoryView(kind: .publisher)
+        case .requests:
+            BookRequestsView()
+        case .home, .catalog, .forum:
+            EmptyView()
+        }
     }
 }
 

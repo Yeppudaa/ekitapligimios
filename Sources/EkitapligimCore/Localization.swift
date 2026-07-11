@@ -436,6 +436,7 @@ public enum L10n {
     public static let notificationsUnread = localized("notifications.unread", defaultValue: "Okunmamış")
     public static let notificationsNew = localized("notifications.new", defaultValue: "Yeni")
     public static let notificationsMarkAllRead = localized("notifications.markAllRead", defaultValue: "Tümünü oku")
+    public static let notificationsNoDestination = localized("notifications.noDestination", defaultValue: "Bu bildirim için açılabilecek bir içerik bulunamadı.")
     public static let notificationsLoadFailed = localized("notifications.loadFailed", defaultValue: "Bildirimler alınamadı.")
 
     public static let profileTitle = localized("profile.title", defaultValue: "Profilim")

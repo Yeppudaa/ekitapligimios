@@ -602,6 +602,24 @@ public struct ForumDTO: Decodable, Equatable, Identifiable, Sendable {
     public let threadCount: Int?
     public let isBookForum: Bool?
 
+    public init(
+        id: String,
+        title: String,
+        description: String = "",
+        url: String = "",
+        stats: String? = nil,
+        threadCount: Int? = nil,
+        isBookForum: Bool? = nil
+    ) {
+        self.id = id
+        self.title = title
+        self.description = description
+        self.url = url
+        self.stats = stats
+        self.threadCount = threadCount
+        self.isBookForum = isBookForum
+    }
+
     public init(from decoder: Decoder) throws {
         let container = try decoder.container(keyedBy: CodingKeys.self)
         self.id = try container.decodeFlexibleString(forKey: .id, fallbackKeys: [.nodeId])
@@ -737,6 +755,7 @@ public struct NotificationDTO: Decodable, Equatable, Identifiable, Sendable {
     public let actorUsername: String?
     public let targetUrl: String?
     public let appRoute: String?
+    public let contentId: Int?
     public let eventDate: Int?
     public let isRead: Bool?
     public let isViewed: Bool?
