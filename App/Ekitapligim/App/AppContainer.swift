@@ -64,6 +64,7 @@ final class AppContainer: ObservableObject {
             try config.validateForRelease()
             if let session = try await tokenStore.loadSession() {
                 authState = .signedIn(session)
+                downloadManager.restoreDownloads()
                 storeKit.startObservingTransactions()
             }
         } catch {
@@ -138,6 +139,7 @@ final class AppContainer: ObservableObject {
 
     private func clearLocalSession() async {
         storeKit.stopObservingTransactions()
+        downloadManager.removeAllDownloads()
         try? await tokenStore.clear()
         authState = .signedOut
     }

@@ -129,6 +129,11 @@ struct ReaderView: View {
 
         isLoading = true
         defer { isLoading = false }
+        if let localFile = container.downloadManager.localFile(for: book.id) {
+            readerFileType = localFile.fileType
+            readerURL = localFile.url
+            return
+        }
         do {
             let session = try await container.books.createReaderSession(bookID: bookID, purpose: .read)
             guard let url = URL(string: session.sourceUrl), url.scheme == "https" else {

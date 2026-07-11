@@ -129,12 +129,28 @@ $downloadManager = Get-Content -Raw -LiteralPath "App/Ekitapligim/Downloads/Down
 foreach ($requiredDownloadControl in @(
     "DownloadFilePolicy.fileName",
     "DownloadFilePolicy.validateHeader",
+    "func restoreDownloads()",
+    "func localFile(for bookID: String)",
+    "func removeAllDownloads()",
     "isExcludedFromBackup = true",
     "FileProtectionType.completeUntilFirstUserAuthentication"
 )) {
     if ($downloadManager -notmatch [regex]::Escape($requiredDownloadControl)) {
         Fail "DownloadManager missing offline storage control: $requiredDownloadControl"
     }
+}
+$appContainer = Get-Content -Raw -LiteralPath "App/Ekitapligim/App/AppContainer.swift"
+foreach ($requiredOfflineLifecycleControl in @(
+    "downloadManager.restoreDownloads()",
+    "downloadManager.removeAllDownloads()"
+)) {
+    if ($appContainer -notmatch [regex]::Escape($requiredOfflineLifecycleControl)) {
+        Fail "AppContainer must restore authenticated offline downloads and remove them on session clear: $requiredOfflineLifecycleControl"
+    }
+}
+$readerView = Get-Content -Raw -LiteralPath "App/Ekitapligim/Features/ReaderView.swift"
+if ($readerView -notmatch [regex]::Escape("container.downloadManager.localFile(for: book.id)")) {
+    Fail "Reader must prefer a validated local download before creating a network reader session"
 }
 $downloadPolicy = Get-Content -Raw -LiteralPath "Sources/EkitapligimCore/DownloadFilePolicy.swift"
 if ($downloadPolicy -notmatch "invalidBookIdentifier" -or $downloadPolicy -notmatch "%PDF-" -or $downloadPolicy -notmatch "0x50, 0x4B") {

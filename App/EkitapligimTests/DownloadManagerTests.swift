@@ -34,4 +34,33 @@ final class DownloadManagerTests: XCTestCase {
 
         XCTAssertThrowsError(try manager.localURL(for: "../../Library", fileExtension: "pdf"))
     }
+
+    func testRestoresValidatedDownloadedBookFromDisk() throws {
+        let base = FileManager.default.temporaryDirectory
+            .appendingPathComponent(UUID().uuidString, isDirectory: true)
+        temporaryDirectory = base
+        let manager = DownloadManager(baseDirectory: base)
+        let localURL = try manager.localURL(for: "42", fileExtension: "epub")
+        try Data([0x50, 0x4B, 0x03, 0x04]).write(to: localURL)
+
+        manager.restoreDownloads()
+
+        XCTAssertEqual(manager.states["42"], .downloaded(localFileName: "book-42.epub"))
+        XCTAssertEqual(manager.localFile(for: "42")?.fileType, "epub")
+    }
+
+    func testRemovingAllDownloadsClearsFilesAndState() throws {
+        let base = FileManager.default.temporaryDirectory
+            .appendingPathComponent(UUID().uuidString, isDirectory: true)
+        temporaryDirectory = base
+        let manager = DownloadManager(baseDirectory: base)
+        let localURL = try manager.localURL(for: "42", fileExtension: "pdf")
+        try Data("%PDF-1.7".utf8).write(to: localURL)
+        manager.restoreDownloads()
+
+        manager.removeAllDownloads()
+
+        XCTAssertNil(manager.localFile(for: "42"))
+        XCTAssertTrue(manager.states.isEmpty)
+    }
 }

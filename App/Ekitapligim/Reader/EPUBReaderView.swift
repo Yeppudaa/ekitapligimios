@@ -73,7 +73,7 @@ private final class EPUBReaderModel: NSObject, ObservableObject, EPUBNavigatorDe
     }
 
     func open(sourceURL: URL) async {
-        guard sourceURL.scheme?.lowercased() == "https" else {
+        guard sourceURL.scheme?.lowercased() == "https" || sourceURL.isFileURL else {
             fail(with: L10n.readerAtsLinkMissing)
             return
         }
@@ -114,6 +114,13 @@ private final class EPUBReaderModel: NSObject, ObservableObject, EPUBNavigatorDe
     }
 
     private func downloadAndValidate(_ sourceURL: URL) async throws -> URL {
+        if sourceURL.isFileURL {
+            let handle = try FileHandle(forReadingFrom: sourceURL)
+            defer { try? handle.close() }
+            let header = try handle.read(upToCount: 1_024) ?? Data()
+            try DownloadFilePolicy.validateHeader(header, fileExtension: "epub")
+            return sourceURL
+        }
         let (downloadURL, response) = try await session.download(from: sourceURL)
         guard let http = response as? HTTPURLResponse, (200..<300).contains(http.statusCode) else {
             throw EPUBReaderError.serverRejected

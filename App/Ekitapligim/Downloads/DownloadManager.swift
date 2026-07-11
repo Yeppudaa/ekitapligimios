@@ -26,6 +26,38 @@ final class DownloadManager: ObservableObject {
         return directory.appendingPathComponent(fileName, isDirectory: false)
     }
 
+    func restoreDownloads() {
+        var restoredStates: [String: DownloadState] = [:]
+        for fileExtension in ["pdf", "epub"] {
+            guard let directory = try? downloadsDirectory(),
+                  let contents = try? fileManager.contentsOfDirectory(
+                    at: directory,
+                    includingPropertiesForKeys: nil,
+                    options: [.skipsHiddenFiles]
+                  ) else { continue }
+            for url in contents where url.pathExtension.lowercased() == fileExtension {
+                let prefix = "book-"
+                let fileName = url.deletingPathExtension().lastPathComponent
+                guard fileName.hasPrefix(prefix) else { continue }
+                let bookID = String(fileName.dropFirst(prefix.count))
+                guard (try? DownloadFilePolicy.fileName(bookID: bookID, fileExtension: fileExtension)) == url.lastPathComponent else {
+                    continue
+                }
+                restoredStates[bookID] = .downloaded(localFileName: url.lastPathComponent)
+            }
+        }
+        states = restoredStates
+    }
+
+    func localFile(for bookID: String) -> (url: URL, fileType: String)? {
+        for fileType in ["pdf", "epub"] {
+            guard let url = try? localURL(for: bookID, fileExtension: fileType),
+                  fileManager.fileExists(atPath: url.path) else { continue }
+            return (url, fileType)
+        }
+        return nil
+    }
+
     func download(bookID: String, sourceURL: URL, expectedFileType: String = "pdf") async {
         guard sourceURL.scheme == "https" else {
             states[bookID] = .failed(message: L10n.downloadSecureConnectionRequired)
@@ -66,6 +98,18 @@ final class DownloadManager: ObservableObject {
             states[bookID] = .notDownloaded
         } catch {
             states[bookID] = .failed(message: L10n.downloadRemovalFailed)
+        }
+    }
+
+    func removeAllDownloads() {
+        do {
+            let directory = try downloadsDirectory()
+            if fileManager.fileExists(atPath: directory.path) {
+                try fileManager.removeItem(at: directory)
+            }
+            states.removeAll()
+        } catch {
+            states.removeAll()
         }
     }
 
