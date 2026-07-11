@@ -56,7 +56,7 @@ final class StoreKitPurchaseService: ObservableObject {
             case .success(let verification):
                 let transaction = try checkVerified(verification)
                 let response = try await purchaseRepository.verifyAppStorePurchase(
-                    signedTransaction: transaction.jwsRepresentation,
+                    signedTransaction: verification.jwsRepresentation,
                     productID: transaction.productID,
                     originalTransactionID: String(transaction.originalID)
                 )
@@ -87,7 +87,7 @@ final class StoreKitPurchaseService: ObservableObject {
                 guard productIDs.contains(transaction.productID), transaction.revocationDate == nil else { continue }
                 if let expiration = transaction.expirationDate, expiration <= Date() { continue }
                 let response = try await purchaseRepository.verifyAppStorePurchase(
-                    signedTransaction: transaction.jwsRepresentation,
+                    signedTransaction: entitlement.jwsRepresentation,
                     productID: transaction.productID,
                     originalTransactionID: String(transaction.originalID)
                 )
@@ -119,7 +119,7 @@ final class StoreKitPurchaseService: ObservableObject {
             guard productIDs.contains(transaction.productID) else { return }
 
             let response = try await purchaseRepository.verifyAppStorePurchase(
-                signedTransaction: transaction.jwsRepresentation,
+                signedTransaction: result.jwsRepresentation,
                 productID: transaction.productID,
                 originalTransactionID: String(transaction.originalID)
             )
