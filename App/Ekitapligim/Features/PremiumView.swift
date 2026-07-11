@@ -27,37 +27,23 @@ private struct PremiumContentView: View {
 
     var body: some View {
         List {
-            Section {
-                Text(L10n.premiumDescription)
-            }
-
+            descriptionSection
             productsSection
-
-            Section {
-                Button(L10n.premiumRestore) {
-                    Task { await storeKit.restore() }
-                }
-                .disabled(!isSignedIn || isBusy)
-
-                if let subscriptionsURL = URL(string: "https://apps.apple.com/account/subscriptions") {
-                    Link(L10n.premiumManageSubscriptions, destination: subscriptionsURL)
-                }
-            }
-
-            Section(L10n.settingsLegalSection) {
-                Link(L10n.settingsTerms, destination: termsURL)
-                Link(L10n.settingsPrivacyPolicy, destination: privacyURL)
-            } footer: {
-                Text(L10n.premiumRenewalDisclosure)
-            }
+            actionsSection
+            legalSection
         }
         .navigationTitle(L10n.premiumTitle)
         .task { await storeKit.loadProducts() }
     }
 
-    @ViewBuilder
+    private var descriptionSection: some View {
+        Section {
+            Text(L10n.premiumDescription)
+        }
+    }
+
     private var productsSection: some View {
-        Section(L10n.premiumPlans) {
+        Section(header: Text(L10n.premiumPlans)) {
             switch storeKit.state {
             case .notLoaded, .loading:
                 ProgressView(L10n.premiumLoading)
@@ -66,7 +52,12 @@ private struct PremiumContentView: View {
                     Button {
                         Task { await storeKit.purchase(productID: product.id) }
                     } label: {
-                        LabeledContent(product.displayName, value: product.displayPrice)
+                        HStack {
+                            Text(product.displayName)
+                            Spacer()
+                            Text(product.displayPrice)
+                                .foregroundStyle(.secondary)
+                        }
                     }
                     .disabled(!isSignedIn)
                 }
@@ -92,6 +83,26 @@ private struct PremiumContentView: View {
                     Task { await storeKit.loadProducts() }
                 }
             }
+        }
+    }
+
+    private var actionsSection: some View {
+        Section {
+            Button(L10n.premiumRestore) {
+                Task { await storeKit.restore() }
+            }
+            .disabled(!isSignedIn || isBusy)
+
+            if let subscriptionsURL = URL(string: "https://apps.apple.com/account/subscriptions") {
+                Link(L10n.premiumManageSubscriptions, destination: subscriptionsURL)
+            }
+        }
+    }
+
+    private var legalSection: some View {
+        Section(header: Text(L10n.settingsLegalSection), footer: Text(L10n.premiumRenewalDisclosure)) {
+            Link(L10n.settingsTerms, destination: termsURL)
+            Link(L10n.settingsPrivacyPolicy, destination: privacyURL)
         }
     }
 
