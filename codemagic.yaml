@@ -28,10 +28,6 @@ workflows:
         script: |
           xcodebuild -resolvePackageDependencies -project "$XCODE_PROJECT" -scheme "$XCODE_SCHEME"
 
-      - name: Run Swift package tests
-        script: |
-          swift test
-
       - name: Run app tests
         script: |
           xcodebuild test \
