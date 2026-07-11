@@ -228,11 +228,26 @@ foreach ($requiredPremiumControl in @(
     "Transaction.currentEntitlements",
     "verifyAppStorePurchase",
     "AppStore.sync()",
-    "PurchaseVerificationPolicy.requireActive"
+    "PurchaseVerificationPolicy.requireActive",
+    "Transaction.updates",
+    "startObservingTransactions",
+    "stopObservingTransactions"
 )) {
     if ($storeKitService -notmatch [regex]::Escape($requiredPremiumControl)) {
         throw "StoreKit service missing purchase/restore verification control: $requiredPremiumControl"
     }
+}
+$appContainerSource = Get-Content -Raw -LiteralPath "App/Ekitapligim/App/AppContainer.swift"
+foreach ($requiredObserverLifecycleControl in @(
+    "storeKit.startObservingTransactions()",
+    "storeKit.stopObservingTransactions()"
+)) {
+    if ($appContainerSource -notmatch [regex]::Escape($requiredObserverLifecycleControl)) {
+        throw "StoreKit transaction observer is not tied to auth lifecycle: $requiredObserverLifecycleControl"
+    }
+}
+if ($storeKitService -notmatch "catch\s*\{\s*// Leave unverified or unsynced transactions unfinished") {
+    throw "StoreKit transaction updates must remain unfinished when backend synchronization fails"
 }
 
 $forbiddenBillingFindings = rg -n -i "BillingClient|Google Play Billing|play-billing" App Sources 2>$null

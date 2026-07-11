@@ -15,6 +15,7 @@
 - [ ] Account-deletion completion CLI dry-run and disposable-account execution verified; XenForo cleanup jobs drained and completion email received.
 - [ ] Backend Apple auth installed and verified with Apple JWKS/RS256 validation on staging.
 - [ ] Backend App Store JWS verification installed and tested with real Apple sandbox transactions.
+- [ ] Ask to Buy/pending approval and out-of-app completion were delivered through `Transaction.updates`, synchronized to the backend, and finished only after verification.
 - [ ] Backend user blocking/reporting installed and tested on staging.
 - [ ] Backend terms acceptance installed and tested before UGC posting is enabled.
 - [ ] App Store Server Notifications endpoint verifies JWS and is tested with real Apple sandbox notifications.

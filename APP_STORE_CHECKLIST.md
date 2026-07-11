@@ -16,7 +16,7 @@
 - Manual account deletion is disclosed as generally completing within 30 days, duplicate pending requests are idempotent, and operations must provide completion notice plus Sign in with Apple token revocation evidence.
 - UGC: report content, block user, moderation process, terms, support contact.
 - UGC terms acceptance is enforced client-side and server-side before forum replies. Staging install/test is still required before enabling posting in review builds.
-- Payments: StoreKit 2 for digital subscriptions/access.
+- Payments: StoreKit 2 for digital subscriptions/access. Authenticated `Transaction.updates` observation handles pending/out-of-app completions; unverified or backend-unsynced transactions remain unfinished for redelivery.
 - Privacy labels must match actual collection.
 - Privacy manifest exists at `App/Ekitapligim/Support/PrivacyInfo.xcprivacy` and must be reconciled with final App Store labels, including purchase history if premium remains enabled.
 - Review metadata draft exists at `APP_STORE_METADATA.md`.

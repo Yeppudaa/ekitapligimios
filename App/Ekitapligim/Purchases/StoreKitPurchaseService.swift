@@ -9,9 +9,25 @@ final class StoreKitPurchaseService: ObservableObject {
     private let productIDs = ["ekitapligim.premium.monthly", "ekitapligim.premium.yearly"]
     private let purchaseRepository: PurchaseRepository
     private var loadedProducts: [StoreProduct] = []
+    private var updatesTask: Task<Void, Never>?
 
     init(purchaseRepository: PurchaseRepository) {
         self.purchaseRepository = purchaseRepository
+    }
+
+    func startObservingTransactions() {
+        guard updatesTask == nil else { return }
+        updatesTask = Task { [weak self] in
+            for await update in Transaction.updates {
+                guard !Task.isCancelled else { break }
+                await self?.processTransactionUpdate(update)
+            }
+        }
+    }
+
+    func stopObservingTransactions() {
+        updatesTask?.cancel()
+        updatesTask = nil
     }
 
     func loadProducts() async {
@@ -93,6 +109,34 @@ final class StoreKitPurchaseService: ObservableObject {
             return value
         case .unverified:
             throw StoreKitError.notAvailableInStorefront
+        }
+    }
+
+    private func processTransactionUpdate(_ result: VerificationResult<Transaction>) async {
+        do {
+            let transaction = try checkVerified(result)
+            guard productIDs.contains(transaction.productID) else { return }
+
+            let response = try await purchaseRepository.verifyAppStorePurchase(
+                signedTransaction: transaction.jwsRepresentation,
+                productID: transaction.productID,
+                originalTransactionID: String(transaction.originalID)
+            )
+
+            do {
+                let serverExpiration = try PurchaseVerificationPolicy.requireActive(response)
+                await transaction.finish()
+                state = .purchased(
+                    productID: transaction.productID,
+                    expiration: serverExpiration ?? transaction.expirationDate
+                )
+            } catch is PurchaseVerificationError {
+                // The server verified and recorded the inactive transaction.
+                await transaction.finish()
+                state = loadedProducts.isEmpty ? .notLoaded : .available(products: loadedProducts)
+            }
+        } catch {
+            // Leave unverified or unsynced transactions unfinished so StoreKit can redeliver them.
         }
     }
 }

@@ -64,6 +64,7 @@ final class AppContainer: ObservableObject {
             try config.validateForRelease()
             if let session = try await tokenStore.loadSession() {
                 authState = .signedIn(session)
+                storeKit.startObservingTransactions()
             }
         } catch {
             authState = .signedOut
@@ -120,9 +121,11 @@ final class AppContainer: ObservableObject {
         )
         try await tokenStore.save(session: session)
         authState = .signedIn(session)
+        storeKit.startObservingTransactions()
     }
 
     func logout() async {
+        storeKit.stopObservingTransactions()
         try? await auth.logout()
         try? await tokenStore.clear()
         authState = .signedOut
