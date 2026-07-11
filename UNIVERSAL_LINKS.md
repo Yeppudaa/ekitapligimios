@@ -47,3 +47,5 @@ Replace `TEAMID` with the Apple Developer Team ID before deployment.
 ```
 
 Serve the file without a `.json` extension and with `application/json`.
+
+`RootView` receives associated-domain URLs through SwiftUI `.onOpenURL`, validates them with `DeepLinkParser`, and forwards only recognized Ekitapligim routes to `AppContainer.open(route:)`. Home/catalog/community links select their native tab; book, thread, forum, author, publisher, and request links open a native route sheet. Foreign hosts and unknown paths are ignored.

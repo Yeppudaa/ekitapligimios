@@ -26,5 +26,52 @@ struct RootView: View {
                 .tabItem { Label(L10n.tabAccount, systemImage: "person.crop.circle") }
                 .tag(AppTab.settings)
         }
+        .onOpenURL { url in
+            guard let route = DeepLinkParser().parse(url.absoluteString) else { return }
+            container.open(route: route)
+        }
+        .sheet(item: $container.presentedRoute) { route in
+            AppRouteView(route: route)
+        }
+    }
+}
+
+private struct AppRouteView: View {
+    @Environment(\.dismiss) private var dismiss
+    let route: AppRoute
+
+    var body: some View {
+        NavigationStack {
+            destination
+                .toolbar {
+                    ToolbarItem(placement: .topBarTrailing) {
+                        Button(L10n.commonClose) { dismiss() }
+                    }
+                }
+        }
+    }
+
+    @ViewBuilder
+    private var destination: some View {
+        switch route {
+        case .bookDetail(let id):
+            BookDetailView(bookID: id)
+        case .thread(let id):
+            ForumThreadDetailView(thread: ForumThreadDTO(id: String(id), title: L10n.myCommentsForumTitle, username: ""))
+        case .forumDetail(let id):
+            ForumThreadsView(forum: ForumDTO(id: String(id), title: L10n.communityForumsSection))
+        case .authors:
+            DirectoryView(kind: .author)
+        case .publishers:
+            DirectoryView(kind: .publisher)
+        case .requests:
+            BookRequestsView()
+        case .home:
+            HomeView()
+        case .catalog:
+            CatalogView()
+        case .forum:
+            CommunityView()
+        }
     }
 }

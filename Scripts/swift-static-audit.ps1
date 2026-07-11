@@ -98,6 +98,18 @@ if ($LASTEXITCODE -eq 0 -and $directBookPdfUsage) {
     Fail "Reader/download UI must use reader session source URLs instead of persistent book.pdfUrl:`n$directBookPdfUsage"
 }
 
+Write-Step "Checking Universal Link handling is connected"
+$rootView = Get-Content -Raw -LiteralPath "App/Ekitapligim/App/RootView.swift"
+foreach ($requiredDeepLinkControl in @(
+    ".onOpenURL",
+    "DeepLinkParser().parse",
+    "container.open(route: route)"
+)) {
+    if ($rootView -notmatch [regex]::Escape($requiredDeepLinkControl)) {
+        Fail "RootView missing Universal Link control: $requiredDeepLinkControl"
+    }
+}
+
 Write-Step "Checking offline download storage controls"
 $downloadManager = Get-Content -Raw -LiteralPath "App/Ekitapligim/Downloads/DownloadManager.swift"
 foreach ($requiredDownloadControl in @(

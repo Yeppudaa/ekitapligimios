@@ -1,6 +1,6 @@
 import Foundation
 
-public enum AppRoute: Hashable, Sendable {
+public enum AppRoute: Hashable, Identifiable, Sendable {
     case home
     case catalog
     case bookDetail(Int)
@@ -10,6 +10,20 @@ public enum AppRoute: Hashable, Sendable {
     case authors
     case publishers
     case requests
+
+    public var id: String {
+        switch self {
+        case .home: "home"
+        case .catalog: "catalog"
+        case .bookDetail(let id): "book-detail-\(id)"
+        case .forum: "forum"
+        case .forumDetail(let id): "forum-detail-\(id)"
+        case .thread(let id): "thread-\(id)"
+        case .authors: "authors"
+        case .publishers: "publishers"
+        case .requests: "requests"
+        }
+    }
 }
 
 public struct DeepLinkParser: Sendable {

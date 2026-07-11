@@ -9,6 +9,16 @@ final class DeepLinkParserTests: XCTestCase {
         )
     }
 
+    func testSupportedUniversalLinkFamilies() {
+        let parser = DeepLinkParser()
+
+        XCTAssertEqual(parser.parse("https://www.ekitapligim.com/threads/duyuru.47/"), .thread(47))
+        XCTAssertEqual(parser.parse("https://ekitapligim.com/forums/genel.12/"), .forumDetail(12))
+        XCTAssertEqual(parser.parse("https://ekitapligim.com/book-authors/orhan-pamuk/"), .authors)
+        XCTAssertEqual(parser.parse("https://ekitapligim.com/book-publishers/yapi-kredi/"), .publishers)
+        XCTAssertEqual(parser.parse("https://ekitapligim.com/book-requests/"), .requests)
+    }
+
     func testRejectsOtherHosts() {
         XCTAssertNil(DeepLinkParser().parse("https://example.com/books/foo.1/"))
     }

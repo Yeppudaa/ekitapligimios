@@ -16,6 +16,7 @@
 | Messages | `MessagesScreen.kt`, conversation routes | Conversations | Native list/detail/new conversation/reply implemented |
 | My comments | `MyCommentsScreen.kt`, `/me/comments` | Authenticated comment history and thread navigation | Native paginated comment history with forum-thread navigation implemented |
 | Notifications | Notifications controllers and `AppRoutes.routeForNotification` | Native notification center and target routing | Native list/read actions plus trusted book/thread/forum/directory/request navigation implemented |
+| Universal links | `AppRoutes.routeFromWebUrl` | Associated-domain native routing | `.onOpenURL` validates Ekitapligim URLs and opens native book/thread/forum/directory/request destinations |
 | Profile/settings | Profile and identity screens | Profile edit/settings/privacy/account access | Native profile/settings/privacy, registration, password reset, re-authenticated email change, and re-authenticated password change with mobile-session rotation implemented |
 | Account deletion | MobileApi endpoint exists | Settings flow using endpoint | Re-auth confirmation UI added |
 | Premium | Google Play Billing | StoreKit 2 + server verification | StoreKit 2 and verified backend implemented; Apple sandbox evidence remains |

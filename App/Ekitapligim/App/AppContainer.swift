@@ -6,6 +6,7 @@ import EkitapligimCore
 final class AppContainer: ObservableObject {
     @Published var authState: AuthenticationState = .signedOut
     @Published var selectedTab: AppTab = .home
+    @Published var presentedRoute: AppRoute?
 
     let downloadManager = DownloadManager()
     let readerBookmarks = ReaderBookmarkStore()
@@ -125,6 +126,22 @@ final class AppContainer: ObservableObject {
         try? await auth.logout()
         try? await tokenStore.clear()
         authState = .signedOut
+    }
+
+    func open(route: AppRoute) {
+        switch route {
+        case .home:
+            presentedRoute = nil
+            selectedTab = .home
+        case .catalog:
+            presentedRoute = nil
+            selectedTab = .catalog
+        case .forum:
+            presentedRoute = nil
+            selectedTab = .community
+        default:
+            presentedRoute = route
+        }
     }
 }
 
