@@ -12,6 +12,7 @@ workflows:
         distribution_type: app_store
         bundle_identifier: com.ekitapligim.app
       vars:
+        APP_STORE_APPLE_ID: "6789584323"
         APPLE_TEAM_ID: "QA67383767"
         XCODE_PROJECT: "Ekitapligim.xcodeproj"
         XCODE_SCHEME: "Ekitapligim"
@@ -66,6 +67,14 @@ workflows:
             tail -n 200 "$CM_BUILD_DIR/build/run-app-tests.log"
             exit 65
           fi
+
+      - name: Increment App Store build number
+        script: |
+          set -euo pipefail
+          LATEST_BUILD_NUMBER=$(app-store-connect get-latest-app-store-build-number "$APP_STORE_APPLE_ID" 2>/dev/null || echo 0)
+          NEXT_BUILD_NUMBER=$((LATEST_BUILD_NUMBER + 1))
+          echo "Using App Store build number: $NEXT_BUILD_NUMBER"
+          agvtool new-version -all "$NEXT_BUILD_NUMBER"
 
       - name: Build IPA for TestFlight
         script: |
