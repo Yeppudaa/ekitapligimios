@@ -234,6 +234,6 @@ Response: 200 after verification and entitlement update.
 Current backend behavior: verifies the Apple JWS certificate chain, records the verified notification hash, and updates entitlement state. Public sandbox verification is still required.
 
 ## Required Deployment Work Before iOS Release
-- Deploy MobileApi `1.0.81` or newer to public HTTPS staging and production.
+- Deploy MobileApi `1.0.82` or newer to public HTTPS staging and production.
 - Configure the Apple root CA and verify StoreKit sandbox transactions and App Store Server Notifications.
 - Exercise Apple login, identity changes, blocking, reporting, terms acceptance, account deletion, reader access, and subscription state with the App Review account.

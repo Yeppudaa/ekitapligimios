@@ -1,6 +1,6 @@
 # MobileApi iOS Backend Extension
 
-These files extend the existing XenForo `Ekitapligim/MobileApi` add-on for the native iOS app. The extension is installed and runtime-tested against the local XenForo environment through version `1.0.81`; production installation is still required. Use `Scripts/apply-mobileapi-ios-patch.ps1` to merge it into a full add-on checkout and create the XenForo upload ZIP.
+These files extend the existing XenForo `Ekitapligim/MobileApi` add-on for the native iOS app. The extension is installed and runtime-tested against the local XenForo environment through version `1.0.82`; production installation is still required. Use `Scripts/apply-mobileapi-ios-patch.ps1` to merge it into a full add-on checkout and create the XenForo upload ZIP.
 
 ## Endpoints Added
 - `POST /mobile-api/v1/auth/apple`

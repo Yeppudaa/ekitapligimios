@@ -227,11 +227,24 @@ foreach ($requiredPremiumControl in @(
     "premium.yearly",
     "Transaction.currentEntitlements",
     "verifyAppStorePurchase",
-    "AppStore.sync()"
+    "AppStore.sync()",
+    "PurchaseVerificationPolicy.requireActive"
 )) {
     if ($storeKitService -notmatch [regex]::Escape($requiredPremiumControl)) {
         throw "StoreKit service missing purchase/restore verification control: $requiredPremiumControl"
     }
+}
+
+$forbiddenBillingFindings = rg -n -i "BillingClient|Google Play Billing|play-billing" App Sources 2>$null
+if ($LASTEXITCODE -eq 0 -and $forbiddenBillingFindings) {
+    throw "iOS source contains Android billing code or prompts:`n$forbiddenBillingFindings"
+}
+
+$storeKitConfig = Get-Content -Raw -LiteralPath "App/Ekitapligim/StoreKit/Ekitapligim.storekit" | ConvertFrom-Json
+$configuredProductIds = @($storeKitConfig.subscriptionGroups.subscriptions.productID | Sort-Object -Unique)
+$expectedProductIds = @("ekitapligim.premium.monthly", "ekitapligim.premium.yearly")
+if (Compare-Object $expectedProductIds $configuredProductIds) {
+    throw "StoreKit configuration product IDs do not match the native purchase service"
 }
 foreach ($requiredPremiumUI in @(
     "premiumRestore",
@@ -380,6 +393,16 @@ foreach ($requiredAppleControl in @(
 )) {
     if ($appleAuthorizationSource -notmatch [regex]::Escape($requiredAppleControl)) {
         throw "Apple authorization implementation missing control: $requiredAppleControl"
+    }
+}
+$appStoreVerifySource = Get-Content -Raw -LiteralPath "Backend/MobileApi-addon/Api/Controller/AppStoreVerify.php"
+foreach ($requiredProductAllowlistControl in @(
+    "ekitapligim.premium.monthly",
+    "ekitapligim.premium.yearly",
+    "if (!in_array(`$productId, `$allowedProducts, true))"
+)) {
+    if ($appStoreVerifySource -notmatch [regex]::Escape($requiredProductAllowlistControl)) {
+        throw "App Store verification must fail closed to the configured product allowlist: $requiredProductAllowlistControl"
     }
 }
 $appleAuthControllerSource = Get-Content -Raw -LiteralPath "Backend/MobileApi-addon/Api/Controller/AuthApple.php"

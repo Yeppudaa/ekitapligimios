@@ -514,6 +514,22 @@ public struct BillingResponseDTO: Decodable, Equatable, Sendable {
     public let remainingDays: Int?
     public let planName: String?
     public let userTier: String?
+
+    public init(
+        success: Bool,
+        isPremium: Bool,
+        expirationTime: Int? = nil,
+        remainingDays: Int? = nil,
+        planName: String? = nil,
+        userTier: String? = nil
+    ) {
+        self.success = success
+        self.isPremium = isPremium
+        self.expirationTime = expirationTime
+        self.remainingDays = remainingDays
+        self.planName = planName
+        self.userTier = userTier
+    }
 }
 
 public protocol EmptyDataDecodable {

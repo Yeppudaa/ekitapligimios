@@ -18,8 +18,11 @@ class AppStoreVerify extends AbstractMobileController
 			return $this->apiError('signed_transaction and product_id are required.', 'invalid_input');
 		}
 
-		$allowedProducts = array_filter(array_map('trim', explode(',', (string) getenv('EKITAPLIGIM_IOS_PRODUCT_IDS'))));
-		if ($allowedProducts && !in_array($productId, $allowedProducts, true))
+		$configuredProducts = trim((string) getenv('EKITAPLIGIM_IOS_PRODUCT_IDS'));
+		$allowedProducts = $configuredProducts !== ''
+			? array_values(array_filter(array_map('trim', explode(',', $configuredProducts))))
+			: ['ekitapligim.premium.monthly', 'ekitapligim.premium.yearly'];
+		if (!in_array($productId, $allowedProducts, true))
 		{
 			return $this->apiError('Product is not configured for this app.', 'product_not_allowed');
 		}

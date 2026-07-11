@@ -38,13 +38,17 @@ final class StoreKitPurchaseService: ObservableObject {
             switch result {
             case .success(let verification):
                 let transaction = try checkVerified(verification)
-                _ = try await purchaseRepository.verifyAppStorePurchase(
+                let response = try await purchaseRepository.verifyAppStorePurchase(
                     signedTransaction: transaction.jwsRepresentation,
                     productID: transaction.productID,
                     originalTransactionID: String(transaction.originalID)
                 )
+                let serverExpiration = try PurchaseVerificationPolicy.requireActive(response)
                 await transaction.finish()
-                state = .purchased(productID: transaction.productID, expiration: transaction.expirationDate)
+                state = .purchased(
+                    productID: transaction.productID,
+                    expiration: serverExpiration ?? transaction.expirationDate
+                )
             case .pending:
                 state = .pending
             case .userCancelled:
@@ -64,11 +68,13 @@ final class StoreKitPurchaseService: ObservableObject {
             for await entitlement in Transaction.currentEntitlements {
                 let transaction = try checkVerified(entitlement)
                 guard productIDs.contains(transaction.productID), transaction.revocationDate == nil else { continue }
-                _ = try await purchaseRepository.verifyAppStorePurchase(
+                if let expiration = transaction.expirationDate, expiration <= Date() { continue }
+                let response = try await purchaseRepository.verifyAppStorePurchase(
                     signedTransaction: transaction.jwsRepresentation,
                     productID: transaction.productID,
                     originalTransactionID: String(transaction.originalID)
                 )
+                _ = try PurchaseVerificationPolicy.requireActive(response)
                 restoredProductID = transaction.productID
             }
             guard restoredProductID != nil else {

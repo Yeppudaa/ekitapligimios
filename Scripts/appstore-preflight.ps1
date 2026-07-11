@@ -95,7 +95,7 @@ foreach ($requiredMetadataText in @(
     "30 gün",
     "ekitapligim.premium.monthly",
     "ekitapligim.premium.yearly",
-    'MobileApi `1.0.81`',
+    'MobileApi `1.0.82`',
     "Other User Contact Info",
     "Coarse Location"
 )) {
