@@ -18,53 +18,68 @@ struct AccountSecurityView: View {
 
     var body: some View {
         Form {
-            Section(L10n.accountSecurityEmailSection) {
-                LabeledContent(L10n.accountSecurityCurrentEmail, value: currentEmail)
-                TextField(L10n.accountSecurityNewEmail, text: $email)
-                    .textContentType(.emailAddress)
-                    .keyboardType(.emailAddress)
-                    .textInputAutocapitalization(.never)
-                    .autocorrectionDisabled()
-                SecureField(L10n.accountSecurityCurrentPassword, text: $emailPassword)
-                    .textContentType(.password)
-                statusView(emailMessage)
-                Button(isChangingEmail ? L10n.accountSecuritySaving : L10n.accountSecurityUpdateEmail) {
-                    Task { await changeEmail() }
-                }
-                .disabled(!emailLooksValid || emailPassword.isEmpty || isChangingEmail || isChangingPassword)
-            } footer: {
-                Text(L10n.accountSecurityEmailFooter)
-            }
-
-            Section(L10n.accountSecurityPasswordSection) {
-                SecureField(L10n.accountSecurityCurrentPassword, text: $currentPassword)
-                    .textContentType(.password)
-                SecureField(L10n.accountSecurityNewPassword, text: $newPassword)
-                    .textContentType(.newPassword)
-                SecureField(L10n.accountSecurityConfirmPassword, text: $newPasswordConfirmation)
-                    .textContentType(.newPassword)
-                if !newPasswordConfirmation.isEmpty && newPassword != newPasswordConfirmation {
-                    Text(L10n.loginPasswordsMismatch)
-                        .foregroundStyle(.red)
-                }
-                statusView(passwordMessage)
-                Button(isChangingPassword ? L10n.accountSecuritySaving : L10n.accountSecurityUpdatePassword) {
-                    Task { await changePassword() }
-                }
-                .disabled(!canChangePassword || isChangingEmail || isChangingPassword)
-            } footer: {
-                Text(L10n.accountSecurityPasswordFooter)
-            }
+            emailSection
+            passwordSection
         }
         .navigationTitle(L10n.accountSecurityTitle)
         .navigationBarTitleDisplayMode(.inline)
     }
 
+    private var emailSection: some View {
+        Section(header: Text(L10n.accountSecurityEmailSection), footer: Text(L10n.accountSecurityEmailFooter)) {
+            securityRow(title: L10n.accountSecurityCurrentEmail, value: currentEmail)
+            TextField(L10n.accountSecurityNewEmail, text: $email)
+                .textContentType(.emailAddress)
+                .keyboardType(.emailAddress)
+                .textInputAutocapitalization(.never)
+                .autocorrectionDisabled()
+            SecureField(L10n.accountSecurityCurrentPassword, text: $emailPassword)
+                .textContentType(.password)
+            statusView(emailMessage)
+            Button(isChangingEmail ? L10n.accountSecuritySaving : L10n.accountSecurityUpdateEmail) {
+                Task { await changeEmail() }
+            }
+            .disabled(!emailLooksValid || emailPassword.isEmpty || isChangingEmail || isChangingPassword)
+        }
+    }
+
+    private var passwordSection: some View {
+        Section(header: Text(L10n.accountSecurityPasswordSection), footer: Text(L10n.accountSecurityPasswordFooter)) {
+            SecureField(L10n.accountSecurityCurrentPassword, text: $currentPassword)
+                .textContentType(.password)
+            SecureField(L10n.accountSecurityNewPassword, text: $newPassword)
+                .textContentType(.newPassword)
+            SecureField(L10n.accountSecurityConfirmPassword, text: $newPasswordConfirmation)
+                .textContentType(.newPassword)
+            if !newPasswordConfirmation.isEmpty && newPassword != newPasswordConfirmation {
+                Text(L10n.loginPasswordsMismatch)
+                    .foregroundStyle(.red)
+            }
+            statusView(passwordMessage)
+            Button(isChangingPassword ? L10n.accountSecuritySaving : L10n.accountSecurityUpdatePassword) {
+                Task { await changePassword() }
+            }
+            .disabled(!canChangePassword || isChangingEmail || isChangingPassword)
+        }
+    }
+
     @ViewBuilder
     private func statusView(_ message: StatusMessage?) -> some View {
         if let message {
-            Label(message.text, systemImage: message.isError ? "exclamationmark.triangle" : "checkmark.circle")
-                .foregroundStyle(message.isError ? .red : .green)
+            HStack {
+                Image(systemName: message.isError ? "exclamationmark.triangle" : "checkmark.circle")
+                Text(message.text)
+            }
+            .foregroundStyle(message.isError ? .red : .green)
+        }
+    }
+
+    private func securityRow(title: String, value: String) -> some View {
+        HStack {
+            Text(title)
+            Spacer()
+            Text(value)
+                .foregroundStyle(.secondary)
         }
     }
 

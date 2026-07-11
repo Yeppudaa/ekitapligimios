@@ -20,6 +20,7 @@ struct BookDetailView: View {
     @State private var commentsError: String?
     @State private var selectedCommentForReport: BookCommentDTO?
     @State private var showingCommentLoginAlert = false
+    @State private var showingReport = false
     private let contentSafety = ContentSafety()
 
     private var isSignedIn: Bool {
@@ -31,108 +32,19 @@ struct BookDetailView: View {
         Group {
             if isLoading {
                 ProgressView(L10n.bookDetailLoading)
-            } else if let errorMessage {
-                ContentUnavailableView(L10n.bookDetailOpenFailed, systemImage: "exclamationmark.triangle", description: Text(errorMessage))
-            } else if let book {
+            } else if let errorMessage = errorMessage {
+                ContentUnavailableView(
+                    L10n.bookDetailOpenFailed,
+                    systemImage: "exclamationmark.triangle",
+                    description: Text(errorMessage)
+                )
+            } else if let book = book {
                 List {
-                    Section {
-                        Text(book.title).font(.title2.bold())
-                        Text(book.author).foregroundStyle(.secondary)
-                        Text(book.description.isEmpty ? L10n.bookDetailMissingDescription : book.description)
-                    }
-                    Section {
-                        NavigationLink {
-                            ReaderView(book: book)
-                        } label: {
-                            Label(access?.canReadOnline == true ? L10n.bookDetailRead : L10n.bookDetailCheckReading, systemImage: "book")
-                        }
-                        Button {
-                            Task { await download(book) }
-                        } label: {
-                            Label(L10n.bookDetailOfflineDownload, systemImage: "arrow.down.circle")
-                        }
-                        .disabled(access?.canDownload != true)
-                        Button {
-                            showingReport = true
-                        } label: {
-                            Label(L10n.bookDetailReportIssue, systemImage: "flag")
-                        }
-                    }
-                    if let downloadStatusMessage {
-                        Section {
-                            Text(downloadStatusMessage)
-                        }
-                    }
-                    if !similarBooks.isEmpty {
-                        Section(L10n.bookDetailSimilarBooks) {
-                            ForEach(similarBooks) { similar in
-                                NavigationLink {
-                                    BookDetailView(bookID: Int(similar.id) ?? 0)
-                                } label: {
-                                    VStack(alignment: .leading, spacing: 4) {
-                                        Text(similar.title).font(.headline)
-                                        Text(similar.author).font(.subheadline).foregroundStyle(.secondary)
-                                        if !similar.category.isEmpty {
-                                            Text(similar.category).font(.caption).foregroundStyle(.secondary)
-                                        }
-                                    }
-                                    .padding(.vertical, 4)
-                                }
-                            }
-                        }
-                    }
-                    Section(L10n.bookCommentsTitle) {
-                        if isSignedIn {
-                            HStack(spacing: 4) {
-                                ForEach(1...5, id: \.self) { value in
-                                    Button {
-                                        commentRating = value
-                                    } label: {
-                                        Image(systemName: value <= commentRating ? "star.fill" : "star")
-                                            .foregroundStyle(.yellow)
-                                    }
-                                    .buttonStyle(.borderless)
-                                    .accessibilityLabel(L10n.bookCommentsRating(value))
-                                }
-                            }
-                            TextField(L10n.bookCommentsPlaceholder, text: $commentText, axis: .vertical)
-                                .lineLimit(2...6)
-                                .onChange(of: commentText) { _, value in commentText = String(value.prefix(10_000)) }
-                            Button(L10n.bookCommentsSubmit) {
-                                Task { await submitComment() }
-                            }
-                            .disabled(commentText.trimmed.isEmpty || isSubmittingComment)
-                        } else {
-                            Button(L10n.bookCommentsLoginToComment) {
-                                showingCommentLoginAlert = true
-                            }
-                        }
-
-                        if let commentsError {
-                            Text(commentsError)
-                                .font(.footnote)
-                                .foregroundStyle(.red)
-                        }
-
-                        if comments.isEmpty && commentsError == nil {
-                            Text(L10n.bookCommentsEmpty)
-                                .foregroundStyle(.secondary)
-                        }
-
-                        ForEach(comments) { comment in
-                            BookCommentRow(comment: comment) {
-                                if isSignedIn {
-                                    selectedCommentForReport = comment
-                                } else {
-                                    showingCommentLoginAlert = true
-                                }
-                            }
-                        }
-
-                        if commentsPage < commentsLastPage {
-                            Button(L10n.commonLoadMore) { Task { await loadComments(reset: false) } }
-                        }
-                    }
+                    bookHeaderSection(book)
+                    bookActionsSection(book)
+                    downloadStatusSection
+                    similarBooksSection
+                    commentsSection
                 }
             }
         }
@@ -154,7 +66,137 @@ struct BookDetailView: View {
         }
     }
 
-    @State private var showingReport = false
+    private func bookHeaderSection(_ book: BookDTO) -> some View {
+        Section {
+            Text(book.title).font(.title2.bold())
+            Text(book.author).foregroundStyle(.secondary)
+            Text(book.description.isEmpty ? L10n.bookDetailMissingDescription : book.description)
+        }
+    }
+
+    private func bookActionsSection(_ book: BookDTO) -> some View {
+        Section {
+            NavigationLink {
+                ReaderView(book: book)
+            } label: {
+                Label(access?.canReadOnline == true ? L10n.bookDetailRead : L10n.bookDetailCheckReading, systemImage: "book")
+            }
+            Button {
+                Task { await download(book) }
+            } label: {
+                Label(L10n.bookDetailOfflineDownload, systemImage: "arrow.down.circle")
+            }
+            .disabled(access?.canDownload != true)
+            Button {
+                showingReport = true
+            } label: {
+                Label(L10n.bookDetailReportIssue, systemImage: "flag")
+            }
+        }
+    }
+
+    @ViewBuilder
+    private var downloadStatusSection: some View {
+        if let downloadStatusMessage {
+            Section {
+                Text(downloadStatusMessage)
+            }
+        }
+    }
+
+    @ViewBuilder
+    private var similarBooksSection: some View {
+        if !similarBooks.isEmpty {
+            Section(L10n.bookDetailSimilarBooks) {
+                ForEach(similarBooks) { similar in
+                    NavigationLink {
+                        BookDetailView(bookID: Int(similar.id) ?? 0)
+                    } label: {
+                        VStack(alignment: .leading, spacing: 4) {
+                            Text(similar.title).font(.headline)
+                            Text(similar.author).font(.subheadline).foregroundStyle(.secondary)
+                            if !similar.category.isEmpty {
+                                Text(similar.category).font(.caption).foregroundStyle(.secondary)
+                            }
+                        }
+                        .padding(.vertical, 4)
+                    }
+                }
+            }
+        }
+    }
+
+    private var commentsSection: some View {
+        Section(L10n.bookCommentsTitle) {
+            commentsHeader
+            commentsFeedback
+            commentsList
+            commentsLoadMore
+        }
+    }
+
+    @ViewBuilder
+    private var commentsHeader: some View {
+        if isSignedIn {
+            HStack(spacing: 4) {
+                ForEach(1...5, id: \.self) { value in
+                    Button {
+                        commentRating = value
+                    } label: {
+                        Image(systemName: value <= commentRating ? "star.fill" : "star")
+                            .foregroundStyle(.yellow)
+                    }
+                    .buttonStyle(.borderless)
+                    .accessibilityLabel(L10n.bookCommentsRating(value))
+                }
+            }
+            TextField(L10n.bookCommentsPlaceholder, text: $commentText, axis: .vertical)
+                .lineLimit(2...6)
+                .onChange(of: commentText) { _, value in commentText = String(value.prefix(10_000)) }
+            Button(L10n.bookCommentsSubmit) {
+                Task { await submitComment() }
+            }
+            .disabled(commentText.trimmed.isEmpty || isSubmittingComment)
+        } else {
+            Button(L10n.bookCommentsLoginToComment) {
+                showingCommentLoginAlert = true
+            }
+        }
+    }
+
+    @ViewBuilder
+    private var commentsFeedback: some View {
+        if let commentsError {
+            Text(commentsError)
+                .font(.footnote)
+                .foregroundStyle(.red)
+        }
+
+        if comments.isEmpty && commentsError == nil {
+            Text(L10n.bookCommentsEmpty)
+                .foregroundStyle(.secondary)
+        }
+    }
+
+    @ViewBuilder
+    private var commentsList: some View {
+        ForEach(comments) { comment in
+            BookCommentRow(comment: comment) {
+                if isSignedIn {
+                    selectedCommentForReport = comment
+                } else {
+                    showingCommentLoginAlert = true
+                }
+            }
+        }
+    }
+
+    @ViewBuilder
+    private var commentsLoadMore: some View {
+        if commentsPage < commentsLastPage {
+            Button(L10n.commonLoadMore) { Task { await loadComments(reset: false) } }
+        }
+    }
 
     private func load() async {
         isLoading = true
