@@ -3,6 +3,7 @@ import PDFKit
 import UIKit
 import EkitapligimCore
 
+@MainActor
 struct ReaderView: View {
     @EnvironmentObject private var container: AppContainer
     let book: BookDTO
@@ -27,37 +28,9 @@ struct ReaderView: View {
 
     var body: some View {
         VStack(spacing: 0) {
-            ReaderToolbar(
-                title: book.title,
-                progressPercent: displayedProgressPercent,
-                detail: readerFileType == "epub"
-                    ? L10n.readerEPUBFormat
-                    : L10n.readerPage(progress.currentPage, progress.totalPages),
-                isBookmarked: isCurrentPageBookmarked,
-                bookmarkCount: bookmarks.count,
-                supportsBookmarks: readerFileType != "epub",
-                onToggleBookmark: toggleCurrentBookmark,
-                onShowBookmarks: { showsBookmarks = true }
-            )
+            readerToolbar
             Divider()
-            if isLoading {
-                ProgressView(L10n.readerPreparing)
-                    .frame(maxWidth: .infinity, maxHeight: .infinity)
-            } else if let errorMessage {
-                ContentUnavailableView(L10n.readerUnavailable, systemImage: "lock.shield", description: Text(errorMessage))
-            } else if let url = readerURL {
-                if readerFileType == "epub" {
-                    EPUBReaderView(
-                        sourceURL: url,
-                        progressPercent: $epubProgressPercent,
-                        position: $epubPosition
-                    )
-                } else {
-                    PDFReader(url: url, progress: $progress, requestedPage: $requestedPage)
-                }
-            } else {
-                ContentUnavailableView(L10n.readerUnavailable, systemImage: "lock.shield", description: Text(L10n.readerSecureLinkMissing))
-            }
+            readerContent
         }
         .navigationBarTitleDisplayMode(.inline)
         .sheet(isPresented: $showsBookmarks) {
@@ -76,6 +49,36 @@ struct ReaderView: View {
             await loadReaderSession()
         }
         .onDisappear { saveProgress() }
+    }
+
+    @ViewBuilder
+    private var readerToolbar: some View {
+        ReaderToolbar(
+            title: book.title,
+            progressPercent: displayedProgressPercent,
+            detail: readerFileType == "epub" ? L10n.readerEPUBFormat : L10n.readerPage(progress.currentPage, progress.totalPages),
+            isBookmarked: isCurrentPageBookmarked,
+            bookmarkCount: bookmarks.count,
+            supportsBookmarks: readerFileType != "epub",
+            onToggleBookmark: toggleCurrentBookmark,
+            onShowBookmarks: { showsBookmarks = true }
+        )
+    }
+
+    @ViewBuilder
+    private var readerContent: some View {
+        if isLoading {
+            ProgressView(L10n.readerPreparing)
+                .frame(maxWidth: .infinity, maxHeight: .infinity)
+        } else if let errorMessage {
+            ContentUnavailableView(L10n.readerUnavailable, systemImage: "lock.shield", description: Text(errorMessage))
+        } else if let url = readerURL, readerFileType == "epub" {
+            EPUBReaderView(sourceURL: url, progressPercent: $epubProgressPercent, position: $epubPosition)
+        } else if let url = readerURL {
+            PDFReader(url: url, progress: $progress, requestedPage: $requestedPage)
+        } else {
+            ContentUnavailableView(L10n.readerUnavailable, systemImage: "lock.shield", description: Text(L10n.readerSecureLinkMissing))
+        }
     }
 
     private var isCurrentPageBookmarked: Bool {
@@ -152,6 +155,7 @@ struct ReaderView: View {
     }
 }
 
+@MainActor
 private struct ReaderToolbar: View {
     let title: String
     let progressPercent: Double
@@ -201,6 +205,7 @@ private struct ReaderToolbar: View {
     }
 }
 
+@MainActor
 private struct ReaderBookmarksView: View {
     @Environment(\.dismiss) private var dismiss
     let bookmarks: [ReaderBookmark]

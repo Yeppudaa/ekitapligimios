@@ -1,6 +1,7 @@
 import SwiftUI
 import EkitapligimCore
 
+@MainActor
 struct RootView: View {
     @EnvironmentObject private var container: AppContainer
 
@@ -36,13 +37,14 @@ struct RootView: View {
     }
 }
 
+@MainActor
 private struct AppRouteView: View {
     @Environment(\.dismiss) private var dismiss
     let route: AppRoute
 
     var body: some View {
         NavigationStack {
-            destination
+            routeDestination
                 .toolbar {
                     ToolbarItem(placement: .topBarTrailing) {
                         Button(L10n.commonClose) { dismiss() }
@@ -52,7 +54,7 @@ private struct AppRouteView: View {
     }
 
     @ViewBuilder
-    private var destination: some View {
+    private var routeDestination: some View {
         switch route {
         case .bookDetail(let id):
             BookDetailView(bookID: id)

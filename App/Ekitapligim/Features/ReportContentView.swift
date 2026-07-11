@@ -6,6 +6,7 @@ enum ReportKind: Equatable {
     case post(postID: Int)
 }
 
+@MainActor
 struct ReportContentView: View {
     @EnvironmentObject private var container: AppContainer
     @Environment(\.dismiss) private var dismiss
@@ -21,32 +22,9 @@ struct ReportContentView: View {
     var body: some View {
         NavigationStack {
             Form {
-                Section {
-                    Picker(L10n.reportReason, selection: $reportType) {
-                        Text(L10n.reportObjectionable).tag("objectionable")
-                        Text(L10n.reportCopyright).tag("copyright")
-                        Text(L10n.reportBrokenFile).tag("broken_file")
-                        Text(L10n.reportOther).tag("other")
-                    }
-                    TextEditor(text: $message)
-                        .frame(minHeight: 120)
-                        .accessibilityLabel(L10n.reportMessageLabel)
-                } footer: {
-                    Text(L10n.reportFooter)
-                }
-
-                if let statusMessage {
-                    Section {
-                        Text(statusMessage)
-                    }
-                }
-
-                Section {
-                    Button(L10n.reportSubmit) {
-                        Task { await submit() }
-                    }
-                    .disabled(message.trimmingCharacters(in: .whitespacesAndNewlines).count < 8 || isSubmitting)
-                }
+                reportDetailsSection
+                reportStatusSection
+                submitSection
             }
             .navigationTitle(L10n.reportTitle)
             .toolbar {
@@ -54,6 +32,34 @@ struct ReportContentView: View {
                     Button(L10n.commonClose) { dismiss() }
                 }
             }
+        }
+    }
+
+    private var reportDetailsSection: some View {
+        Section(footer: Text(L10n.reportFooter)) {
+            Picker(L10n.reportReason, selection: $reportType) {
+                Text(L10n.reportObjectionable).tag("objectionable")
+                Text(L10n.reportCopyright).tag("copyright")
+                Text(L10n.reportBrokenFile).tag("broken_file")
+                Text(L10n.reportOther).tag("other")
+            }
+            TextEditor(text: $message)
+                .frame(minHeight: 120)
+                .accessibilityLabel(L10n.reportMessageLabel)
+        }
+    }
+
+    @ViewBuilder
+    private var reportStatusSection: some View {
+        if let statusMessage {
+            Section { Text(statusMessage) }
+        }
+    }
+
+    private var submitSection: some View {
+        Section {
+            Button(L10n.reportSubmit) { Task { await submit() } }
+                .disabled(message.trimmingCharacters(in: .whitespacesAndNewlines).count < 8 || isSubmitting)
         }
     }
 

@@ -44,6 +44,8 @@ targets:
         DEVELOPMENT_TEAM: "$(APPLE_TEAM_ID)"
         ASSETCATALOG_COMPILER_APPICON_NAME: AppIcon
         SWIFT_VERSION: "5.10"
+        SWIFT_STRICT_CONCURRENCY: minimal
+        SWIFT_COMPILATION_MODE: singlefile
         ENABLE_USER_SCRIPT_SANDBOXING: YES
         SUPPORTS_MACCATALYST: NO
         TARGETED_DEVICE_FAMILY: "1,2"
@@ -73,6 +75,8 @@ targets:
       base:
         PRODUCT_BUNDLE_IDENTIFIER: com.ekitapligim.app.tests
         SWIFT_VERSION: "5.10"
+        SWIFT_STRICT_CONCURRENCY: minimal
+        SWIFT_COMPILATION_MODE: singlefile
         GENERATE_INFOPLIST_FILE: YES
   EkitapligimUITests:
     type: bundle.ui-testing
@@ -87,6 +91,8 @@ targets:
         PRODUCT_BUNDLE_IDENTIFIER: com.ekitapligim.app.uitests
         TEST_TARGET_NAME: Ekitapligim
         SWIFT_VERSION: "5.10"
+        SWIFT_STRICT_CONCURRENCY: minimal
+        SWIFT_COMPILATION_MODE: singlefile
         GENERATE_INFOPLIST_FILE: YES
 schemes:
   Ekitapligim:
