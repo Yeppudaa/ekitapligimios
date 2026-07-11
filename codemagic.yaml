@@ -56,13 +56,16 @@ workflows:
 
       - name: Archive production build
         script: |
+          set -o pipefail
           xcodebuild archive \
             -project "$XCODE_PROJECT" \
             -scheme "$XCODE_SCHEME" \
             -configuration "$XCODE_CONFIGURATION" \
+            -destination "generic/platform=iOS" \
             -archivePath "$CM_BUILD_DIR/build/Ekitapligim.xcarchive" \
+            -allowProvisioningUpdates \
             CODE_SIGN_STYLE=Automatic \
-            DEVELOPMENT_TEAM="$APPLE_TEAM_ID"
+            DEVELOPMENT_TEAM="$APPLE_TEAM_ID" 2>&1 | tee "$CM_BUILD_DIR/build/archive-production.log"
 
     artifacts:
       - build/**/*
