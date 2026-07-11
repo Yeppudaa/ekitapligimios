@@ -1,0 +1,56 @@
+workflows:
+  ios-production:
+    name: Ekitapligim iOS Production
+    max_build_duration: 120
+    instance_type: mac_mini_m2
+
+    environment:
+      xcode: latest
+      vars:
+        APPLE_TEAM_ID: "QA67383767"
+        XCODE_PROJECT: "Ekitapligim.xcodeproj"
+        XCODE_SCHEME: "Ekitapligim"
+        XCODE_CONFIGURATION: "Production"
+
+    scripts:
+      - name: Install xcodegen if missing
+        script: |
+          if ! command -v xcodegen >/dev/null 2>&1; then
+            brew update
+            brew install xcodegen
+          fi
+
+      - name: Generate Xcode project
+        script: |
+          xcodegen generate
+
+      - name: Resolve Swift Package dependencies
+        script: |
+          xcodebuild -resolvePackageDependencies -project "$XCODE_PROJECT" -scheme "$XCODE_SCHEME"
+
+      - name: Run unit tests
+        script: |
+          xcodebuild test \
+            -project "$XCODE_PROJECT" \
+            -scheme "$XCODE_SCHEME" \
+            -configuration Development \
+            -destination "platform=iOS Simulator,name=iPhone 16,OS=latest" \
+            CODE_SIGNING_ALLOWED=NO
+
+      - name: Archive production build
+        script: |
+          xcodebuild archive \
+            -project "$XCODE_PROJECT" \
+            -scheme "$XCODE_SCHEME" \
+            -configuration "$XCODE_CONFIGURATION" \
+            -archivePath "$CM_BUILD_DIR/build/Ekitapligim.xcarchive" \
+            CODE_SIGN_STYLE=Automatic \
+            DEVELOPMENT_TEAM="$APPLE_TEAM_ID"
+
+    artifacts:
+      - build/**/*
+
+    publishing:
+      email:
+        recipients:
+          - acarsamsung37@gmail.com
