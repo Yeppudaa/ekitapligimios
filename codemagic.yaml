@@ -34,7 +34,7 @@ workflows:
             -project "$XCODE_PROJECT" \
             -scheme "$XCODE_SCHEME" \
             -configuration Development \
-            -destination "platform=iOS Simulator,OS=latest,name=iPhone 15" \
+            -destination "platform=iOS Simulator,name=iPhone 17,OS=latest" \
             -resultBundlePath "$CM_BUILD_DIR/build/EkitapligimTests.xcresult" \
             CODE_SIGNING_ALLOWED=NO
 
