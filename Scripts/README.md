@@ -107,7 +107,13 @@ Pass a current random `ms_at_` access token to `-BearerToken` to include authent
 .\Scripts\api-smoke-test.ps1 -BaseUrl "http://localhost/ekitapligim/mobile-api/v1/" -BearerToken $env:EKITAPLIGIM_SMOKE_ACCESS_TOKEN -AllowInsecure
 ```
 
-Use `-ExerciseMutations` only with a disposable demo account. It writes a low-impact reader progress and library update for the selected or first visible book:
+Alternatively, set `EKITAPLIGIM_SMOKE_LOGIN` and `EKITAPLIGIM_SMOKE_PASSWORD` for a disposable account. The script obtains a mobile access token without printing it:
+
+```powershell
+.\Scripts\api-smoke-test.ps1 -BaseUrl "http://localhost/ekitapligim/mobile-api/v1/" -AllowInsecure
+```
+
+Use `-ExerciseMutations` only with a disposable demo account. It writes a low-impact reader progress and library update for the selected or first visible book, and verifies separately authorized read and (when entitled) download reader sessions:
 
 ```powershell
 .\Scripts\api-smoke-test.ps1 -BaseUrl "http://localhost/ekitapligim/mobile-api/v1/" -BearerToken $env:EKITAPLIGIM_SMOKE_ACCESS_TOKEN -AllowInsecure -ExerciseMutations

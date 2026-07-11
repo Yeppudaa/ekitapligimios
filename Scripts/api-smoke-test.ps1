@@ -4,6 +4,10 @@ param(
 
     [string]$BearerToken = "",
 
+    [string]$Login = "",
+
+    [string]$Password = "",
+
     [switch]$AllowInsecure,
 
     [switch]$ExerciseMutations,
@@ -161,6 +165,39 @@ function Invoke-SmokePut($Path, $Body, [switch]$RequiresAuth) {
     }
 }
 
+function Resolve-SmokeAccessToken() {
+    if (-not [string]::IsNullOrWhiteSpace($BearerToken)) {
+        return $BearerToken
+    }
+
+    $resolvedLogin = if ([string]::IsNullOrWhiteSpace($Login)) { [string]$env:EKITAPLIGIM_SMOKE_LOGIN } else { $Login }
+    $resolvedPassword = if ([string]::IsNullOrWhiteSpace($Password)) { [string]$env:EKITAPLIGIM_SMOKE_PASSWORD } else { $Password }
+    if ([string]::IsNullOrWhiteSpace($resolvedLogin) -and [string]::IsNullOrWhiteSpace($resolvedPassword)) {
+        return ""
+    }
+    if ([string]::IsNullOrWhiteSpace($resolvedLogin) -or [string]::IsNullOrWhiteSpace($resolvedPassword)) {
+        throw "Provide both Login and Password, or set both EKITAPLIGIM_SMOKE_LOGIN and EKITAPLIGIM_SMOKE_PASSWORD."
+    }
+
+    $uri = [Uri]::new($script:baseUri, "auth/login")
+    try {
+        $response = Invoke-RestMethod -Uri $uri -Method POST -Body @{ login = $resolvedLogin; password = $resolvedPassword } -TimeoutSec $TimeoutSec
+    } catch {
+        $statusCode = $_.Exception.Response.StatusCode.value__
+        if ($statusCode) {
+            throw "FAIL POST auth/login -> HTTP $statusCode"
+        }
+        throw "FAIL POST auth/login -> $($_.Exception.Message)"
+    }
+
+    $accessToken = [string]$response.access_token
+    if (-not $accessToken.StartsWith("ms_at_")) {
+        throw "FAIL POST auth/login -> response is missing a valid mobile access token"
+    }
+    Write-Host "PASS POST auth/login -> authenticated smoke session"
+    return $accessToken
+}
+
 $normalized = Normalize-BaseUrl $BaseUrl
 $script:baseUri = [Uri]$normalized
 
@@ -170,6 +207,8 @@ if ($script:baseUri.Scheme -ne "https" -and -not $AllowInsecure) {
 if (($script:baseUri.Host -match "localhost|127\.0\.0\.1|192\.168\.|^10\.") -and -not $AllowInsecure) {
     throw "BaseUrl points to a local/private host. Use -AllowInsecure only for local development checks."
 }
+
+$BearerToken = Resolve-SmokeAccessToken
 
 Write-Step "Running API smoke test against $normalized"
 $booksResponse = Invoke-SmokeJsonGet "books?page=1"
@@ -269,13 +308,32 @@ if ($ExerciseMutations) {
             position_value = "1"
             progress_percent = "1"
         } -RequiresAuth
-        $session = Invoke-SmokePostJson "books/$mutationBookId/reader/session" @{} -RequiresAuth
+        $readerAccess = Invoke-SmokeJsonGet "books/$mutationBookId/reader/access" -RequiresAuth
+        if ($readerAccess.access.can_read_online -ne $true) {
+            throw "FAIL books/$mutationBookId/reader/access -> disposable user cannot read this book"
+        }
+        $session = Invoke-SmokePostJson "books/$mutationBookId/reader/session" @{ purpose = "read" } -RequiresAuth
         $sessionSourceUrl = if ($session.source_url) { [string]$session.source_url } else { [string]$session.sourceUrl }
         if (-not $sessionSourceUrl) {
             throw "FAIL books/$mutationBookId/reader/session -> response missing source URL"
         }
         if (-not $AllowInsecure -and -not $sessionSourceUrl.StartsWith("https://")) {
             throw "FAIL books/$mutationBookId/reader/session -> source URL must be HTTPS for App Store builds"
+        }
+        Write-Host "PASS POST books/$mutationBookId/reader/session (read) -> authorized reader session"
+
+        if ($readerAccess.access.can_download -eq $true) {
+            $downloadSession = Invoke-SmokePostJson "books/$mutationBookId/reader/session" @{ purpose = "download" } -RequiresAuth
+            $downloadSourceUrl = if ($downloadSession.source_url) { [string]$downloadSession.source_url } else { [string]$downloadSession.sourceUrl }
+            if (-not $downloadSourceUrl) {
+                throw "FAIL books/$mutationBookId/reader/session (download) -> response missing source URL"
+            }
+            if (-not $AllowInsecure -and -not $downloadSourceUrl.StartsWith("https://")) {
+                throw "FAIL books/$mutationBookId/reader/session (download) -> source URL must be HTTPS for App Store builds"
+            }
+            Write-Host "PASS POST books/$mutationBookId/reader/session (download) -> authorized download session"
+        } else {
+            Write-Host "SKIP download reader session (disposable user lacks download entitlement)"
         }
         Invoke-SmokePut "me/library/$mutationBookId" @{
             shelf_state = "reading"
