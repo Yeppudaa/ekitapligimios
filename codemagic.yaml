@@ -16,7 +16,7 @@ workflows:
       cancel_previous_builds: true
 
     environment:
-      xcode: 16.4
+      xcode: 26.3
       ios_signing:
         distribution_type: app_store
         bundle_identifier: com.ekitapligim.app
@@ -64,7 +64,7 @@ workflows:
             -project "$XCODE_PROJECT" \
             -scheme "$XCODE_SCHEME" \
             -configuration Development \
-            -destination "platform=iOS Simulator,name=iPhone 16,OS=latest" \
+            -destination "platform=iOS Simulator,name=iPhone 17,OS=latest" \
             -resultBundlePath "$CM_BUILD_DIR/build/EkitapligimTests.xcresult" \
             CODE_SIGNING_ALLOWED=NO \
             SWIFT_COMPILATION_MODE=singlefile \
