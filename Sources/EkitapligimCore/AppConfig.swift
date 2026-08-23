@@ -18,15 +18,15 @@ public struct AppConfig: Sendable, Equatable {
     }
 
     public var supportURL: URL {
-        webBaseURL.appending(path: "diger/iletisim")
+        webBaseURL.appendingPathComponent("diger/iletisim", isDirectory: false)
     }
 
     public var privacyPolicyURL: URL {
-        webBaseURL.appending(path: "yardim/gizlilik-politikasi/")
+        webBaseURL.appendingPathComponent("yardim/gizlilik-politikasi", isDirectory: true)
     }
 
     public var termsURL: URL {
-        webBaseURL.appending(path: "yardim/kurallar/")
+        webBaseURL.appendingPathComponent("yardim/kurallar", isDirectory: true)
     }
 
     public static func production() throws -> AppConfig {
