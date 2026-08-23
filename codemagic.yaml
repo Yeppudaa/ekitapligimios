@@ -6,6 +6,15 @@ workflows:
     integrations:
       app_store_connect: "Ekitapligim Codemagic"
 
+    triggering:
+      events:
+        - push
+      branch_patterns:
+        - pattern: master
+          include: true
+          source: true
+      cancel_previous_builds: true
+
     environment:
       xcode: latest
       ios_signing:
@@ -94,5 +103,5 @@ workflows:
           - acarsamsung37@gmail.com
       app_store_connect:
         auth: integration
-        submit_to_testflight: false
+        submit_to_testflight: true
         submit_to_app_store: false
