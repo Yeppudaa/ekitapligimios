@@ -157,6 +157,9 @@ if ($infoPlist -match "<key>NSAllowsArbitraryLoads</key>\s*<true/>") {
 if ($infoPlist -match "<key>NSAllowsArbitraryLoadsInWebContent</key>\s*<true/>") {
     throw "Info.plist must not allow arbitrary web content loads"
 }
+if ($infoPlist -notmatch "<key>ITSAppUsesNonExemptEncryption</key>\s*<false/>") {
+    throw "Info.plist must declare that the app does not use non-exempt encryption"
+}
 foreach ($requiredPrivacyType in @(
     "NSPrivacyCollectedDataTypeEmailAddress",
     "NSPrivacyCollectedDataTypeOtherUserContactInfo",
