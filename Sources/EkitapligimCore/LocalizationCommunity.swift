@@ -451,6 +451,9 @@ public extension L10n {
     static var chatComposerNoPermission: String {
         tr("chat.composer.noPermission", "Bu hesap için mesaj gönderme yetkisi bulunmuyor.")
     }
+    static var chatComposerDisabled: String {
+        tr("chat.composer.disabled", "Bu odada sohbet devre dışı.")
+    }
     static var chatSendFailed: String { tr("chat.sendFailed", "Mesaj gönderilemedi. Lütfen tekrar deneyin.") }
 
     static var chatRoomsLoading: String { tr("chat.roomsLoading", "Sohbet odaları hazırlanıyor…") }
@@ -497,6 +500,8 @@ public extension L10n {
     static var liveActivityTypeComment: String { tr("liveActivity.type.comment", "Yorum") }
     static var liveActivityTypeReview: String { tr("liveActivity.type.review", "İnceleme") }
     static var liveActivityTypeAgenda: String { tr("liveActivity.type.agenda", "Kitap Gündemi") }
+    static var liveActivityTypeChat: String { tr("liveActivity.type.chat", "Okur sohbeti") }
+    static var liveActivityTypeRequest: String { tr("liveActivity.type.request", "Kitap isteği") }
     static var liveActivityTypeGeneric: String { tr("liveActivity.type.generic", "Kitap hareketi") }
 
     // MARK: - Ana sayfa

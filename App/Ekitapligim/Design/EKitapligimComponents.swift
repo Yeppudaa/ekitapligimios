@@ -337,7 +337,7 @@ struct EKLoadMoreButton: View {
 
 /// The pulsing "CANLI" badge Android shows above live feeds.
 struct EKLiveBadge: View {
-    var title: String = L10n.liveBadge
+    var title: String = L10n.liveActivityBadge
     var onDark: Bool = true
 
     var body: some View {

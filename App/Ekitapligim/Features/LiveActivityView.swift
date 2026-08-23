@@ -36,7 +36,7 @@ struct LiveActivityView: View {
         HStack(alignment: .center, spacing: 12) {
             VStack(alignment: .leading, spacing: 5) {
                 EKLiveBadge()
-                Text(L10n.liveActivityHeroTitle)
+                Text(L10n.liveActivitySubtitle)
                     .font(.title3.weight(.heavy))
                     .foregroundStyle(.white)
                 Text(L10n.liveActivityHeroBody)
@@ -100,7 +100,7 @@ struct LiveActivityView: View {
 
         errorMessage = nil
         do {
-            let page = try await container.liveActivity.feed(
+            let page = try await container.liveActivity.activity(
                 limit: 20,
                 before: reset ? nil : nextBefore,
                 userID: userID
@@ -114,7 +114,7 @@ struct LiveActivityView: View {
             nextBefore = page.nextBefore
             hasMore = page.hasMore && page.nextBefore != nil
         } catch {
-            errorMessage = L10n.liveActivityErrorMessage
+            errorMessage = L10n.liveActivityLoadFailed
             if reset { items = [] }
         }
     }
@@ -233,15 +233,15 @@ enum LiveActivityKind {
 
     var title: String {
         switch self {
-        case .reading: L10n.liveTypeReading
-        case .finished: L10n.liveTypeFinished
-        case .review: L10n.liveTypeReview
-        case .comment: L10n.liveTypeComment
-        case .agenda: L10n.liveTypeAgenda
-        case .chat: L10n.liveTypeChat
-        case .member: L10n.liveTypeMember
-        case .request: L10n.liveTypeRequest
-        case .other: L10n.liveTypeOther
+        case .reading: L10n.liveActivityTypeReading
+        case .finished: L10n.liveActivityTypeRead
+        case .review: L10n.liveActivityTypeReview
+        case .comment: L10n.liveActivityTypeComment
+        case .agenda: L10n.liveActivityTypeAgenda
+        case .chat: L10n.liveActivityTypeChat
+        case .member: L10n.liveActivityTypeJoin
+        case .request: L10n.liveActivityTypeRequest
+        case .other: L10n.liveActivityTypeGeneric
         }
     }
 
