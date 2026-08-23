@@ -5,6 +5,7 @@ param(
 $ErrorActionPreference = "Stop"
 $root = Resolve-Path (Join-Path $PSScriptRoot "..")
 Set-Location $root
+. (Join-Path $PSScriptRoot "text-search.ps1")
 
 function Write-Step($Message) {
     Write-Host "==> $Message"
@@ -34,8 +35,8 @@ $placeholderTargets = @(
 )
 
 $placeholderPattern = "\[[A-Z0-9_]+\]|TEAMID|\$\(APPLE_TEAM_ID\)"
-$matches = rg -n --pcre2 $placeholderPattern $placeholderTargets 2>$null
-if ($LASTEXITCODE -eq 0 -and $matches -and -not $AllowPlaceholders) {
+$matches = Find-TextMatches -Pattern $placeholderPattern -Paths $placeholderTargets
+if ($matches -and -not $AllowPlaceholders) {
     throw "App Store preflight placeholders remain:`n$matches"
 }
 if ($matches) {
@@ -83,8 +84,8 @@ foreach ($obsoleteURL in @(
     "https://ekitapligim.com/privacy-policy",
     "https://ekitapligim.com/terms"
 )) {
-    $obsoleteMatches = rg -n -F $obsoleteURL APP_STORE_METADATA.md App/Ekitapligim Sources 2>$null
-    if ($LASTEXITCODE -eq 0 -and $obsoleteMatches) {
+    $obsoleteMatches = Find-TextMatches -Pattern $obsoleteURL -Paths APP_STORE_METADATA.md, App/Ekitapligim, Sources -SimpleMatch
+    if ($obsoleteMatches) {
         throw "Obsolete/non-live legal URL remains:`n$obsoleteMatches"
     }
 }

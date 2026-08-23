@@ -5,6 +5,7 @@ let package = Package(
     name: "EkitapligimIOS",
     defaultLocalization: "tr",
     platforms: [
+        .macOS(.v13),
         .iOS(.v17)
     ],
     products: [

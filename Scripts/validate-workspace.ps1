@@ -5,6 +5,7 @@ param(
 $ErrorActionPreference = "Stop"
 $root = Resolve-Path (Join-Path $PSScriptRoot "..")
 Set-Location $root
+. (Join-Path $PSScriptRoot "text-search.ps1")
 
 function Write-Step($Message) {
     Write-Host "==> $Message"
@@ -184,8 +185,8 @@ foreach ($requiredApiType in @(
 }
 
 Write-Step "Checking Swift source for release-blocking markers"
-$swiftFindings = rg -n "try!|fatalError|preconditionFailure|TODO|FIXME" App Sources Tests 2>$null
-if ($LASTEXITCODE -eq 0 -and $swiftFindings) {
+$swiftFindings = Find-TextMatches -Pattern "try!|fatalError|preconditionFailure|TODO|FIXME" -Paths App, Sources, Tests
+if ($swiftFindings) {
     throw "Swift source contains release-blocking markers:`n$swiftFindings"
 }
 
@@ -251,8 +252,8 @@ if ($storeKitService -notmatch "catch\s*\{\s*// Leave unverified or unsynced tra
     throw "StoreKit transaction updates must remain unfinished when backend synchronization fails"
 }
 
-$forbiddenBillingFindings = rg -n -i "BillingClient|Google Play Billing|play-billing" App Sources 2>$null
-if ($LASTEXITCODE -eq 0 -and $forbiddenBillingFindings) {
+$forbiddenBillingFindings = Find-TextMatches -Pattern "BillingClient|Google Play Billing|play-billing" -Paths App, Sources -IgnoreCase
+if ($forbiddenBillingFindings) {
     throw "iOS source contains Android billing code or prompts:`n$forbiddenBillingFindings"
 }
 
@@ -295,8 +296,8 @@ $secretPatterns = @(
 )
 $scanTargets = @("App", "Sources", "Tests", "Backend", "Package.swift", "project.yml")
 foreach ($pattern in $secretPatterns) {
-    $matches = rg -n --pcre2 $pattern $scanTargets 2>$null
-    if ($LASTEXITCODE -eq 0 -and $matches) {
+    $matches = Find-TextMatches -Pattern $pattern -Paths $scanTargets
+    if ($matches) {
         throw "Potential secret matched pattern '$pattern':`n$matches"
     }
 }
@@ -412,8 +413,8 @@ if ($recordPosition -lt 0 -or $revokePosition -lt 0 -or $recordPosition -gt $rev
 if (([regex]::Matches($accountDeletionMailSource, '->setContent\(')).Count -lt 2) {
     throw "Account deletion request and completion notices must both define mail content"
 }
-$legacyBearerFindings = rg -n "xf_user:" "Backend/MobileApi-addon" -g "*.php" 2>$null
-if ($LASTEXITCODE -eq 0 -and $legacyBearerFindings) {
+$legacyBearerFindings = Find-TextMatches -Pattern "xf_user:" -Paths "Backend/MobileApi-addon" -Include "*.php"
+if ($legacyBearerFindings) {
     throw "Backend runtime source still contains insecure legacy bearer tokens:`n$legacyBearerFindings"
 }
 $mobilePatchSource = Get-Content -Raw -LiteralPath "Scripts/apply-mobileapi-ios-patch.ps1"

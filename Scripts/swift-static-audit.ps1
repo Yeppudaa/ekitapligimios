@@ -1,6 +1,7 @@
 $ErrorActionPreference = "Stop"
 $root = Resolve-Path (Join-Path $PSScriptRoot "..")
 Set-Location $root
+. (Join-Path $PSScriptRoot "text-search.ps1")
 
 function Write-Step($Message) {
     Write-Host "==> $Message"
@@ -11,8 +12,8 @@ function Fail($Message) {
 }
 
 Write-Step "Checking Swift files for force unwraps and release markers"
-$forceFindings = rg -n "try!|as!|fatalError|preconditionFailure|TODO|FIXME" App Sources Tests 2>$null
-if ($LASTEXITCODE -eq 0 -and $forceFindings) {
+$forceFindings = Find-TextMatches -Pattern "try!|as!|fatalError|preconditionFailure|TODO|FIXME" -Paths App, Sources, Tests
+if ($forceFindings) {
     Fail "Swift release marker or unsafe force operation found:`n$forceFindings"
 }
 
@@ -80,7 +81,7 @@ foreach ($requiredEPUBControl in @(
 }
 
 Write-Step "Checking common accidental localhost references in app config"
-$configFindings = rg -n "localhost|127\.0\.0\.1|http://" App/Ekitapligim/Config App/Ekitapligim/App App/Ekitapligim/Features App/Ekitapligim/Downloads App/Ekitapligim/Security App/Ekitapligim/Purchases Sources 2>$null |
+$configFindings = Find-TextMatches -Pattern "localhost|127\.0\.0\.1|http://" -Paths App/Ekitapligim/Config, App/Ekitapligim/App, App/Ekitapligim/Features, App/Ekitapligim/Downloads, App/Ekitapligim/Security, App/Ekitapligim/Purchases, Sources |
     Where-Object { $_ -notmatch "^Sources\\EkitapligimCore\\AppConfig\.swift:" }
 if ($configFindings) {
     Fail "Runtime source/config contains localhost or insecure URL:`n$configFindings"
@@ -93,8 +94,8 @@ if ($appConfig -notmatch 'URL\(string:\s*"https://ekitapligim\.com/mobile-api/v1
 }
 
 Write-Step "Checking reader/download flows use authorized session URLs"
-$directBookPdfUsage = rg -n "book\.pdfUrl" App/Ekitapligim/Features App/Ekitapligim/Downloads 2>$null
-if ($LASTEXITCODE -eq 0 -and $directBookPdfUsage) {
+$directBookPdfUsage = Find-TextMatches -Pattern "book\.pdfUrl" -Paths App/Ekitapligim/Features, App/Ekitapligim/Downloads
+if ($directBookPdfUsage) {
     Fail "Reader/download UI must use reader session source URLs instead of persistent book.pdfUrl:`n$directBookPdfUsage"
 }
 $bookDetail = Get-Content -Raw -LiteralPath "App/Ekitapligim/Features/BookDetailView.swift"
