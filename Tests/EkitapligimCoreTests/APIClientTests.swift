@@ -65,7 +65,7 @@ final class APIClientTests: XCTestCase {
     private func makeConfig() throws -> AppConfig {
         AppConfig(
             environment: .staging,
-            apiBaseURL: try XCTUnwrap(URL(string: "https://staging.ekitapligim.com/mobile-api/v1/")),
+            apiBaseURL: try XCTUnwrap(URL(string: "https://staging.ekitapligim.com/ios-api/v1/")),
             webBaseURL: try XCTUnwrap(URL(string: "https://ekitapligim.com/"))
         )
     }

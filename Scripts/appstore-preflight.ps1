@@ -108,8 +108,8 @@ foreach ($requiredMetadataText in @(
 Write-Step "Checking production API configuration"
 $productionConfig = Get-Content -Raw -LiteralPath "App/Ekitapligim/Config/Production.xcconfig"
 $productionApiURL = Normalize-XcconfigURL (Get-XcconfigValue $productionConfig "EKITAPLIGIM_API_BASE_URL")
-if ($productionApiURL -ne "https://ekitapligim.com/mobile-api/v1/") {
-    throw "Production API URL must be https://ekitapligim.com/mobile-api/v1/: $productionApiURL"
+if ($productionApiURL -ne "https://ekitapligim.com/ios-api/v1/") {
+    throw "Production API URL must be https://ekitapligim.com/ios-api/v1/: $productionApiURL"
 }
 try {
     $productionApiUri = [Uri]$productionApiURL

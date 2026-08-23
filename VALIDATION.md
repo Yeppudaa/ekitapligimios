@@ -14,7 +14,7 @@ Latest local result in this workspace: passed. It includes the Swift static audi
 
 `Scripts/swift-test-windows.ps1` loaded Swift 6.3.3 with the Visual Studio x64 toolchain, built `EkitapligimCore`, and passed all 72 unit tests. This run exposed and fixed portable compilation issues plus legacy XenForo numeric `nodeId` decoding. It does not compile the SwiftUI app or Apple-only frameworks; those remain macOS/Xcode gates.
 
-Public HTTPS verification on 2026-07-11 confirmed the configured support, privacy-policy, and terms/community-rules pages return HTTP 200. Production `GET /mobile-api/v1/books?page=1` and `GET /.well-known/apple-app-site-association` return HTTP 404, so public backend and universal-link deployment remain release blockers. `Scripts/public-release-audit.ps1` now verifies these surfaces, JSON/content types, and the real Team ID plus bundle ID after deployment.
+Public HTTPS verification on 2026-07-11 confirmed the configured support, privacy-policy, and terms/community-rules pages return HTTP 200. Production `GET /ios-api/v1/books?page=1` and `GET /.well-known/apple-app-site-association` return HTTP 404, so public backend and universal-link deployment remain release blockers. `Scripts/public-release-audit.ps1` now verifies these surfaces, JSON/content types, and the real Team ID plus bundle ID after deployment.
 
 `Scripts/prepare-public-deployment.ps1` was exercised with a non-production test Team ID. It validated the XenForo archive layout, generated a placeholder-free AASA app identifier, rejected an invalid Team ID and an existing output directory, and reproduced MobileApi `1.0.84` SHA-256 `2490668F8F113C495DFD532A569F6394AAC458713C9B4E34D79B48D6C9D2DA80`. The generated verification directory was removed after inspection.
 
@@ -24,7 +24,7 @@ Notification parity now follows Android's target-routing behavior. `DeepLinkPars
 
 Universal Link application handling is now connected rather than entitlement-only. `RootView.onOpenURL` parses recognized Ekitapligim URL families and delegates to the same centralized route presenter used by notifications; base routes select a tab and content routes open a native NavigationStack sheet. The static audit fails if this wiring is removed. Associated-domain delivery itself still requires the public AASA deployment and signed-device evidence.
 
-Authenticated `me/comments` runtime validation used disposable local user `51`: registration issued a random `ms_at_` mobile session, `GET /mobile-api/v1/me/comments?page=1` returned the expected empty `items` collection and pagination page `1`, and account-deletion request `21` was accepted with password re-authentication. The guarded CLI completed deletion; verification found zero user rows, zero active sessions, state `completed`, and zero-length username/email/reason plus cleared password-verification evidence. The completion email reached the mail path but could not be delivered because local SMTP remains unavailable.
+Authenticated `me/comments` runtime validation used disposable local user `51`: registration issued a random `ms_at_` mobile session, `GET /ios-api/v1/me/comments?page=1` returned the expected empty `items` collection and pagination page `1`, and account-deletion request `21` was accepted with password re-authentication. The guarded CLI completed deletion; verification found zero user rows, zero active sessions, state `completed`, and zero-length username/email/reason plus cleared password-verification evidence. The completion email reached the mail path but could not be delivered because local SMTP remains unavailable.
 
 Populated comment-history runtime validation then used disposable local user `53`. The user accepted the current community rules, created visible forum reply `15609` in thread `11177`, and `GET me/comments?page=1` returned that exact post/thread with pagination total `1`. Cleanup hard-deleted the post through XenForo `Post\DeleterService`, completed account-deletion request `22`, and verified zero post rows, user rows, active sessions, or matching disposable accounts. The retained request is completed with username/email/reason and password-verification evidence scrubbed. A deliberately selected closed thread rejected an earlier write as expected; its temporary account was also removed with XenForo `User\DeleteService`.
 
@@ -50,27 +50,27 @@ Native profile editing now covers about, location, HTTP/HTTPS website, and activ
 
 Mobile session runtime checks passed locally over HTTP after installing `1.0.60`: random `ms_at_`/`ms_rt_` issuance authenticated `/me`; refresh returned a new pair; the previous access and refresh tokens were rejected; the refreshed access token worked; legacy `xf_user:1` was rejected; logout succeeded; and the logged-out access token was rejected. Tokens were redacted from command output. The iOS API client now performs one coordinated refresh after an authenticated 401, persists the rotated session in Keychain, retries once, and clears invalid sessions to prevent refresh loops.
 
-The backend patch now adds `GET /mobile-api/v1/book-detail/{thread_id}` as the iOS book-detail endpoint. Local route rebuild and runtime checks confirmed it returns the existing `Book` controller JSON payload, while avoiding the web book URL route family that caused `GET /mobile-api/v1/books/{id}` to fall through to an HTML 404 page.
+The backend patch now adds `GET /ios-api/v1/book-detail/{thread_id}` as the iOS book-detail endpoint. Local route rebuild and runtime checks confirmed it returns the existing `Book` controller JSON payload, while avoiding the web book URL route family that caused `GET /ios-api/v1/books/{id}` to fall through to an HTML 404 page.
 
 StoreKit transaction and App Store Server Notification controllers include JWS signature and certificate-chain verification logic. Runtime verification requires `EKITAPLIGIM_APPLE_ROOT_CA_FILE` or `EKITAPLIGIM_APPLE_ROOT_CA_PEM`; without that configured, signed purchase verification deliberately fails closed.
 
-Local negative billing check passed: `POST /mobile-api/v1/billing/app-store/verify` with bearer token and malformed `signed_transaction=not.a.validjws` returned HTTP 400 and did not grant premium state.
+Local negative billing check passed: `POST /ios-api/v1/billing/app-store/verify` with bearer token and malformed `signed_transaction=not.a.validjws` returned HTTP 400 and did not grant premium state.
 
-Local entitlement wiring check passed: a temporary active row in `xf_ekitapligim_mobile_appstore_entitlement` for non-premium `xf_user:3` changed `GET /mobile-api/v1/me/subscription` from `member/isPremium=false` to `premium/isPremium=true` with a 30-day expiration; deleting the row returned the user to `member/isPremium=false`.
+Local entitlement wiring check passed: a temporary active row in `xf_ekitapligim_mobile_appstore_entitlement` for non-premium `xf_user:3` changed `GET /ios-api/v1/me/subscription` from `member/isPremium=false` to `premium/isPremium=true` with a 30-day expiration; deleting the row returned the user to `member/isPremium=false`.
 
 Local negative Apple login check passed: a JWT-shaped token with `alg=RS256` and an unknown `kid` returned HTTP 400 `Apple identity token could not be verified`, proving unsigned/unknown-key Apple tokens fail closed instead of logging in.
 
-Local account deletion request check passed: authenticated `xf_user:3` posted `POST /mobile-api/v1/me/account-deletion-request`, received success with a request ID, and `xf_ekitapligim_mobile_account_deletion_request` contained a pending row. The test row was deleted after verification.
+Local account deletion request check passed: authenticated `xf_user:3` posted `POST /ios-api/v1/me/account-deletion-request`, received success with a request ID, and `xf_ekitapligim_mobile_account_deletion_request` contained a pending row. The test row was deleted after verification.
 
-Local UGC terms gate check passed: after deleting `xf_user:3` terms acceptance, `POST /mobile-api/v1/threads/1/posts` returned HTTP 403 `Topluluk kurallarını kabul etmeden cevap yazamazsınız.` before any reply was created.
+Local UGC terms gate check passed: after deleting `xf_user:3` terms acceptance, `POST /ios-api/v1/threads/1/posts` returned HTTP 403 `Topluluk kurallarını kabul etmeden cevap yazamazsınız.` before any reply was created.
 
-`Scripts/ugc-safety-smoke-test.ps1 -BaseUrl "http://localhost/ekitapligim/mobile-api/v1/" -BearerToken "xf_user:3" -BlockedUserId 4 -ThreadId 1 -AllowInsecure` passed locally. It verified block/unblock, `me/blocked-members`, terms acceptance round-trip, and unauthenticated reply rejection.
+`Scripts/ugc-safety-smoke-test.ps1 -BaseUrl "http://localhost/ekitapligim/ios-api/v1/" -BearerToken "xf_user:3" -BlockedUserId 4 -ThreadId 1 -AllowInsecure` passed locally. It verified block/unblock, `me/blocked-members`, terms acceptance round-trip, and unauthenticated reply rejection.
 
 GitHub Actions workflow `.github/workflows/ios-ci.yml` is configured for Windows source validation and macOS unsigned iOS build/test validation using XcodeGen, `swift test`, and `xcodebuild ... CODE_SIGNING_ALLOWED=NO`. YAML parsing passed locally for `.github/workflows/ios-ci.yml` and `project.yml`.
 
 Privacy manifest coverage check now runs in `Scripts/validate-workspace.ps1`. It verifies no tracking is declared and that email address, user ID, product interaction, purchase history, user content, file timestamp reason API, and UserDefaults reason API entries remain present.
 
-Release configuration checks now normalize Xcode `.xcconfig` URL escaping such as `https:/$()/...` and verify the Production API resolves to `https://ekitapligim.com/mobile-api/v1/`. Both `Scripts/validate-workspace.ps1` and `Scripts/appstore-preflight.ps1` also fail if `Info.plist` enables broad App Transport Security arbitrary-load exceptions.
+Release configuration checks now normalize Xcode `.xcconfig` URL escaping such as `https:/$()/...` and verify the Production API resolves to `https://ekitapligim.com/ios-api/v1/`. Both `Scripts/validate-workspace.ps1` and `Scripts/appstore-preflight.ps1` also fail if `Info.plist` enables broad App Transport Security arbitrary-load exceptions.
 
 SwiftUI accessibility coverage check now runs in `Scripts/validate-workspace.ps1`. It verifies icon-only buttons have accessibility labels or equivalent semantics, multi-line text editors have explicit labels, and localization resources remain present.
 
@@ -82,7 +82,7 @@ The native PDF reader now observes PDFKit page changes, updates visible progress
 
 Offline download hardening is now implemented: safe book identifiers prevent path traversal, only PDF/EPUB file types are accepted, downloaded headers are validated before persistence, failed destinations are cleaned up, the directory and files use complete-until-first-authentication protection, and both are excluded from backup. Cross-platform policy tests were added under `Tests/EkitapligimCoreTests/DownloadFilePolicyTests.swift`; iOS sandbox backup-exclusion tests were added under `App/EkitapligimTests/DownloadManagerTests.swift` and wired into the Xcode scheme. These tests still require macOS/Xcode execution.
 
-`Scripts/api-smoke-test.ps1 -BaseUrl "http://localhost/ekitapligim/mobile-api/v1/" -AllowInsecure` passed locally for public unauthenticated endpoints after the XenForo addon patch, including books, book detail, forums, a forum thread list, a thread post list, and book stats.
+`Scripts/api-smoke-test.ps1 -BaseUrl "http://localhost/ekitapligim/ios-api/v1/" -AllowInsecure` passed locally for public unauthenticated endpoints after the XenForo addon patch, including books, book detail, forums, a forum thread list, a thread post list, and book stats.
 
 The native home screen now consumes `GET /book-stats` through a typed repository. The current local XenForo response was checked directly and returned 14,404 books, 7,131 authors, 1,564 publishers, and 32 categories; endpoint and payload decoding XCTest sources cover the same contract. Interactive loading, pull-to-refresh and retry behavior still require the macOS UI test gate.
 
@@ -140,9 +140,9 @@ Member directory smoke passed for `GET /members?page=1&per_page=2&sort=alphabeti
 
 Book comment smoke passed for a selected visible book at `GET /books/{id}/comments?page=1`. Native iOS comment paging, 1–5 star selection, text submission, and per-comment reporting are wired to XenForo post IDs. Runtime negative checks confirmed unauthenticated and empty comment submissions are rejected; successful comment/rating/report mutations remain for the disposable reviewer account.
 
-`Scripts/api-smoke-test.ps1 -BaseUrl "http://localhost/ekitapligim/mobile-api/v1/" -BearerToken "xf_user:1" -AllowInsecure` passed locally for authenticated iOS endpoints: profile, library, subscription, terms status, terms acceptance, and notification counts.
+`Scripts/api-smoke-test.ps1 -BaseUrl "http://localhost/ekitapligim/ios-api/v1/" -BearerToken "xf_user:1" -AllowInsecure` passed locally for authenticated iOS endpoints: profile, library, subscription, terms status, terms acceptance, and notification counts.
 
-`Scripts/api-smoke-test.ps1 -BaseUrl "http://localhost/ekitapligim/mobile-api/v1/" -BearerToken "xf_user:3" -AllowInsecure -ExerciseMutations` passed locally. It selected the first visible book from the catalog and verified authenticated reader-progress and library-update mutation endpoints return HTTP 200. During this check, iOS reader-progress query parameters were aligned with the backend contract (`position_type`, `position_value`, `progress_percent`), catalog decoding was aligned with nested `pagination`, and profile loading was aligned with the direct `/me` response shape.
+`Scripts/api-smoke-test.ps1 -BaseUrl "http://localhost/ekitapligim/ios-api/v1/" -BearerToken "xf_user:3" -AllowInsecure -ExerciseMutations` passed locally. It selected the first visible book from the catalog and verified authenticated reader-progress and library-update mutation endpoints return HTTP 200. During this check, iOS reader-progress query parameters were aligned with the backend contract (`position_type`, `position_value`, `progress_percent`), catalog decoding was aligned with nested `pagination`, and profile loading was aligned with the direct `/me` response shape.
 
 Latest local re-run note: `xf_user:3` now fails `books/{id}/reader/session` with HTTP 400 `Daily read limit or permission denied.` after repeated local smoke executions, which is consistent with daily read-limit enforcement. Re-running the same authenticated mutation smoke path with privileged local `xf_user:1` passed, including `reader/session` source URL generation.
 

@@ -1,9 +1,13 @@
-# Mobile API Documentation
+# iOS API Documentation
+
+The native iOS app consumes the standalone XenForo add-on `Ekitapligim/IosApi` at:
+
+Android continues to use `https://{host}/mobile-api/v1/` through `Ekitapligim/MobileApi`. The route paths below are identical; only the base URL prefix differs for iOS.
 
 Base URL must be public HTTPS:
 
 ```text
-https://{host}/mobile-api/v1/
+https://{host}/ios-api/v1/
 ```
 
 Production iOS builds must not use `localhost`, private IPs, or HTTP.

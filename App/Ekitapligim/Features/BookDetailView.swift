@@ -60,7 +60,7 @@ struct BookDetailView: View {
             }
         }
         .alert(L10n.bookCommentsLoginRequiredTitle, isPresented: $showingCommentLoginAlert) {
-            Button(L10n.bookRequestsGoToLogin) { container.selectedTab = .settings }
+            Button(L10n.bookRequestsGoToLogin) { container.selectedTab = .profile }
             Button(L10n.commonCancel, role: .cancel) {}
         } message: {
             Text(L10n.bookCommentsLoginRequiredMessage)

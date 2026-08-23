@@ -23,18 +23,18 @@ final class APIEndpointTests: XCTestCase {
     }
 
     func testBooksEndpointBuildsQuery() throws {
-        let base = try XCTUnwrap(URL(string: "https://ekitapligim.com/mobile-api/v1/"))
+        let base = try XCTUnwrap(URL(string: "https://ekitapligim.com/ios-api/v1/"))
         let url = try APIEndpoint.books(page: 2, query: "Orhan", category: "Roman", order: "popular").url(relativeTo: base)
 
         XCTAssertEqual(url.scheme, "https")
         XCTAssertEqual(url.host, "ekitapligim.com")
-        XCTAssertTrue(url.absoluteString.contains("/mobile-api/v1/books"))
+        XCTAssertTrue(url.absoluteString.contains("/ios-api/v1/books"))
         XCTAssertTrue(url.absoluteString.contains("page=2"))
         XCTAssertTrue(url.absoluteString.contains("q=Orhan"))
     }
 
     func testBooksEndpointBuildsAdvancedFilters() throws {
-        let base = try XCTUnwrap(URL(string: "https://ekitapligim.com/mobile-api/v1/"))
+        let base = try XCTUnwrap(URL(string: "https://ekitapligim.com/ios-api/v1/"))
         let endpoint = APIEndpoint.books(
             page: 3,
             category: "12",
@@ -56,7 +56,7 @@ final class APIEndpointTests: XCTestCase {
     }
 
     func testDirectoryEndpointsUseNativeMobileRoutes() throws {
-        let base = try XCTUnwrap(URL(string: "https://ekitapligim.com/mobile-api/v1/"))
+        let base = try XCTUnwrap(URL(string: "https://ekitapligim.com/ios-api/v1/"))
         let authors = APIEndpoint.directory(kind: .author, page: 2, query: "Yaşar")
         let authorURL = try authors.url(relativeTo: base)
 
@@ -266,5 +266,57 @@ final class APIEndpointTests: XCTestCase {
         XCTAssertEqual(accept.path, "me/terms/accept")
         XCTAssertEqual(accept.method, .post)
         XCTAssertTrue(accept.requiresAuthentication)
+    }
+
+    func testCommunityEndpointsMatchAndroidRoutes() throws {
+        let base = try XCTUnwrap(URL(string: "https://ekitapligim.com/ios-api/v1/"))
+
+        let agenda = APIEndpoint.bookAgenda(tab: .agenda, filter: "review", page: 2, perPage: 15)
+        XCTAssertEqual(agenda.path, "book-agenda")
+        XCTAssertFalse(agenda.requiresAuthentication)
+        let agendaURL = try agenda.url(relativeTo: base)
+        XCTAssertTrue(agendaURL.absoluteString.contains("tab=agenda"))
+        XCTAssertTrue(agendaURL.absoluteString.contains("filter=review"))
+
+        XCTAssertEqual(APIEndpoint.bookAgendaPost(id: "19").path, "book-agenda/19")
+        XCTAssertEqual(APIEndpoint.toggleBookAgendaReaction(postID: "19").path, "book-agenda/19/reaction")
+        XCTAssertTrue(APIEndpoint.toggleBookAgendaReaction(postID: "19").requiresAuthentication)
+
+        XCTAssertEqual(APIEndpoint.chatRooms.path, "chat/rooms")
+        XCTAssertFalse(APIEndpoint.chatRooms.requiresAuthentication)
+
+        let chatMessages = APIEndpoint.chatMessages(roomID: "1", limit: 40, afterID: "99")
+        XCTAssertEqual(chatMessages.path, "chat/rooms/1/messages")
+        let chatURL = try chatMessages.url(relativeTo: base)
+        XCTAssertTrue(chatURL.absoluteString.contains("after_id=99"))
+
+        let live = APIEndpoint.liveActivity(limit: 20, before: 1_700_000, userID: "37")
+        XCTAssertEqual(live.path, "live-activity")
+        let liveURL = try live.url(relativeTo: base)
+        XCTAssertTrue(liveURL.absoluteString.contains("user_id=37"))
+
+        XCTAssertEqual(APIEndpoint.readingStats.path, "me/reading-stats")
+        XCTAssertTrue(APIEndpoint.readingStats.requiresAuthentication)
+
+        let avatar = APIEndpoint.uploadProfileImage(
+            kind: .avatar,
+            fileName: "avatar.jpg",
+            mimeType: "image/jpeg",
+            data: Data([0xFF, 0xD8, 0xFF])
+        )
+        XCTAssertEqual(avatar.path, "me/avatar")
+        XCTAssertTrue(avatar.requiresAuthentication)
+        if case .multipart(let file) = avatar.body {
+            XCTAssertEqual(file.field, "image")
+            XCTAssertEqual(file.fileName, "avatar.jpg")
+        } else {
+            XCTFail("Expected multipart body")
+        }
+    }
+
+    func testMissingEndpointDetection() {
+        let missing = APIClientError.httpStatus(404, nil)
+        XCTAssertTrue(missing.isMissingEndpoint)
+        XCTAssertFalse(APIClientError.authenticationRequired.isMissingEndpoint)
     }
 }

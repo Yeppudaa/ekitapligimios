@@ -5,6 +5,7 @@ import EkitapligimCore
 @MainActor
 struct RootView: View {
     @EnvironmentObject private var container: AppContainer
+    @Environment(\.scenePhase) private var scenePhase
     @State private var isMenuPresented = false
 
     init() {
@@ -18,55 +19,97 @@ struct RootView: View {
 
     var body: some View {
         ZStack(alignment: .topTrailing) {
-            TabView(selection: $container.selectedTab) {
-                HomeView().tabItem { Label(L10n.tabHome, systemImage: "house.fill") }.tag(AppTab.home)
-                CatalogView().tabItem { Label(L10n.tabCatalog, systemImage: "books.vertical.fill") }.tag(AppTab.catalog)
-                LibraryView().tabItem { Label(L10n.tabLibrary, systemImage: "bookmark.fill") }.tag(AppTab.library)
-                CommunityView().tabItem { Label(L10n.tabCommunity, systemImage: "person.3.fill") }.tag(AppTab.community)
-                SettingsView().tabItem { Label(L10n.tabAccount, systemImage: "person.crop.circle.fill") }.tag(AppTab.settings)
-            }
-            .tint(EKitapligimPalette.teal)
-
-            Button { withAnimation(.easeOut(duration: 0.2)) { isMenuPresented = true } } label: {
-                Image(systemName: "line.3.horizontal")
-                    .font(.title3.weight(.semibold))
-                    .foregroundStyle(EKitapligimPalette.ink)
-                    .frame(width: 42, height: 42)
-                    .background(.white.opacity(0.96))
-                    .clipShape(RoundedRectangle(cornerRadius: 8, style: .continuous))
-                    .overlay { RoundedRectangle(cornerRadius: 8).stroke(EKitapligimPalette.border) }
-            }
-            .accessibilityLabel(L10n.menuTitle)
-            .padding(.top, 8)
-            .padding(.trailing, 12)
-
-            if isMenuPresented {
-                Color.black.opacity(0.28)
-                    .ignoresSafeArea()
-                    .onTapGesture { closeMenu() }
-                    .transition(.opacity)
-                    .zIndex(1)
-                AppSideMenu(onSelect: selectMenuItem, onClose: closeMenu)
-                    .frame(maxWidth: 356)
-                    .transition(.move(edge: .trailing))
-                    .zIndex(2)
-            }
+            tabs
+            menuButton
+            drawer
         }
         .onOpenURL { url in
             guard let route = DeepLinkParser().parse(url.absoluteString) else { return }
             container.open(route: route)
         }
+        .onChange(of: scenePhase) { _, phase in
+            if phase == .active { container.handleScenePhaseActive() }
+        }
         .sheet(item: $container.presentedRoute) { route in
-            AppRouteView(route: route)
+            AppRouteSheet(route: route)
         }
     }
 
-    private func selectMenuItem(_ item: AppMenuItem) {
-        closeMenu()
-        switch item.destination {
-        case .tab(let tab): container.selectedTab = tab
-        case .route(let route): container.presentedRoute = route
+    private var tabs: some View {
+        TabView(selection: $container.selectedTab) {
+            HomeView()
+                .tabItem { Label(AppTab.home.title, systemImage: AppTab.home.systemImage) }
+                .tag(AppTab.home)
+
+            CatalogView()
+                .tabItem { Label(AppTab.catalog.title, systemImage: AppTab.catalog.systemImage) }
+                .tag(AppTab.catalog)
+
+            NavigationStack { DirectoryView(kind: .author) }
+                .tabItem { Label(AppTab.authors.title, systemImage: AppTab.authors.systemImage) }
+                .tag(AppTab.authors)
+
+            NavigationStack { BookRequestsView() }
+                .tabItem { Label(AppTab.requests.title, systemImage: AppTab.requests.systemImage) }
+                .tag(AppTab.requests)
+
+            CommunityView()
+                .tabItem { Label(AppTab.forum.title, systemImage: AppTab.forum.systemImage) }
+                .tag(AppTab.forum)
+
+            NavigationStack { ProfileView() }
+                .tabItem { Label(AppTab.profile.title, systemImage: AppTab.profile.systemImage) }
+                .badge(container.totalUnread)
+                .tag(AppTab.profile)
         }
+        .tint(EKitapligimPalette.teal)
+    }
+
+    private var menuButton: some View {
+        Button { withAnimation(.easeOut(duration: 0.2)) { isMenuPresented = true } } label: {
+            Image(systemName: "line.3.horizontal")
+                .accessibilityHidden(true)
+                .font(.title3.weight(.semibold))
+                .foregroundStyle(EKitapligimPalette.ink)
+                .frame(width: 42, height: 42)
+                .background(.white.opacity(0.96))
+                .clipShape(RoundedRectangle(cornerRadius: 8, style: .continuous))
+                .overlay { RoundedRectangle(cornerRadius: 8).stroke(EKitapligimPalette.border) }
+                .overlay(alignment: .topTrailing) {
+                    if container.totalUnread > 0 {
+                        Circle()
+                            .fill(EKitapligimPalette.amber)
+                            .frame(width: 9, height: 9)
+                            .offset(x: 3, y: -3)
+                    }
+                }
+        }
+        .accessibilityLabel(L10n.menuTitle)
+        .padding(.top, 8)
+        .padding(.trailing, 12)
+    }
+
+    @ViewBuilder private var drawer: some View {
+        if isMenuPresented {
+            Color.black.opacity(0.28)
+                .ignoresSafeArea()
+                .onTapGesture { closeMenu() }
+                .transition(.opacity)
+                .zIndex(1)
+
+            HStack(spacing: 0) {
+                AppSideMenu(onSelect: navigate, onClose: closeMenu)
+                    .frame(maxWidth: 356)
+                Spacer(minLength: 0)
+            }
+            .transition(.move(edge: .leading))
+            .zIndex(2)
+        }
+    }
+
+    private func navigate(to route: AppRoute) {
+        closeMenu()
+        container.open(route: route)
     }
 
     private func closeMenu() {
@@ -74,118 +117,296 @@ struct RootView: View {
     }
 }
 
+// MARK: - Yan menü
+
+@MainActor
 private struct AppSideMenu: View {
-    let onSelect: (AppMenuItem) -> Void
+    @EnvironmentObject private var container: AppContainer
+    let onSelect: (AppRoute) -> Void
     let onClose: () -> Void
 
-    private let items: [AppMenuItem] = [
-        .init(title: L10n.tabHome, subtitle: L10n.homeExploreSection, icon: "house.fill", destination: .tab(.home)),
-        .init(title: L10n.tabCatalog, subtitle: L10n.homeOpenCatalog, icon: "books.vertical.fill", destination: .tab(.catalog)),
-        .init(title: L10n.directoryAuthorsTitle, subtitle: L10n.menuAuthorsSubtitle, icon: "person.2.fill", destination: .route(.authors)),
-        .init(title: L10n.directoryPublishersTitle, subtitle: L10n.menuPublishersSubtitle, icon: "building.2.fill", destination: .route(.publishers)),
-        .init(title: L10n.bookRequestsTitle, subtitle: L10n.menuRequestsSubtitle, icon: "heart.fill", destination: .route(.requests)),
-        .init(title: L10n.tabCommunity, subtitle: L10n.communityForumsSection, icon: "bubble.left.and.bubble.right.fill", destination: .tab(.community)),
-        .init(title: L10n.tabLibrary, subtitle: L10n.homeContinueReading, icon: "bookmark.fill", destination: .tab(.library)),
-        .init(title: L10n.tabAccount, subtitle: L10n.settingsAccountSection, icon: "person.crop.circle.fill", destination: .tab(.settings))
-    ]
+    private var primaryItems: [AppMenuItem] {
+        [
+            AppMenuItem(route: .home, title: L10n.menuHome, subtitle: L10n.menuHomeSubtitle, icon: "house.fill"),
+            AppMenuItem(route: .catalog, title: L10n.menuBooks, subtitle: L10n.menuBooksSubtitle, icon: "books.vertical.fill"),
+            AppMenuItem(route: .bookAgenda, title: L10n.menuBookAgenda, subtitle: L10n.menuBookAgendaSubtitle, icon: "text.book.closed.fill"),
+            AppMenuItem(route: .chat, title: L10n.menuChat, subtitle: L10n.menuChatSubtitle, icon: "bubble.left.and.text.bubble.right.fill"),
+            AppMenuItem(route: .liveActivity, title: L10n.menuLiveActivity, subtitle: L10n.menuLiveActivitySubtitle, icon: "bolt.fill"),
+            AppMenuItem(route: .requests, title: L10n.menuRequests, subtitle: L10n.menuRequestsSubtitle, icon: "heart.fill"),
+            AppMenuItem(route: .authors, title: L10n.menuAuthors, subtitle: L10n.menuAuthorsSubtitle, icon: "person.2.fill"),
+            AppMenuItem(route: .publishers, title: L10n.menuPublishers, subtitle: L10n.menuPublishersSubtitle, icon: "building.2.fill"),
+            AppMenuItem(route: .forum, title: L10n.menuForum, subtitle: L10n.menuForumSubtitle, icon: "bubble.left.and.bubble.right.fill"),
+            AppMenuItem(route: .members, title: L10n.menuMembers, subtitle: L10n.menuMembersSubtitle, icon: "person.3.fill"),
+            AppMenuItem(
+                route: .messages,
+                title: L10n.menuMessages,
+                subtitle: L10n.menuMessagesSubtitle,
+                icon: "envelope.fill",
+                badgeCount: container.unreadMessages
+            )
+        ]
+    }
+
+    private var accountItems: [AppMenuItem] {
+        guard container.isSignedIn else {
+            return [
+                AppMenuItem(route: .login, title: L10n.commonLogin, subtitle: L10n.menuLoginSubtitle, icon: "arrow.right.square.fill"),
+                AppMenuItem(route: .login, title: L10n.menuRegister, subtitle: L10n.menuRegisterSubtitle, icon: "person.badge.plus.fill")
+            ]
+        }
+        return [
+            AppMenuItem(
+                route: .profile,
+                title: L10n.menuProfile,
+                subtitle: L10n.menuProfileSubtitle,
+                icon: "person.crop.circle.fill",
+                badgeCount: container.totalUnread
+            ),
+            AppMenuItem(
+                route: .notifications,
+                title: L10n.menuNotifications,
+                subtitle: L10n.menuNotificationsSubtitle,
+                icon: "bell.fill",
+                badgeCount: container.unreadNotifications
+            ),
+            AppMenuItem(route: .library(tab: 0), title: L10n.menuLibrary, subtitle: L10n.menuLibrarySubtitle, icon: "books.vertical.circle.fill")
+        ]
+    }
 
     var body: some View {
         VStack(spacing: 0) {
-            HStack(spacing: 12) {
-                EKitapligimBrandLogo().frame(width: 112, height: 58)
-                VStack(alignment: .leading, spacing: 2) {
-                    Text(L10n.homeTitle).font(.headline).foregroundStyle(EKitapligimPalette.ink)
-                    Text(L10n.menuSubtitle).font(.caption2).foregroundStyle(EKitapligimPalette.muted)
-                }
-                Spacer()
-                Button(action: onClose) {
-                    Image(systemName: "xmark").foregroundStyle(EKitapligimPalette.muted).frame(width: 40, height: 40)
-                }
-            }
-            .padding(.horizontal, 16)
-            .padding(.vertical, 14)
-
+            header
             ScrollView {
-                LazyVStack(spacing: 5) {
-                    ForEach(items) { item in
-                        Button { onSelect(item) } label: {
-                            HStack(spacing: 12) {
-                                Image(systemName: item.icon)
-                                    .accessibilityLabel(item.title)
-                                    .foregroundStyle(EKitapligimPalette.teal)
-                                    .frame(width: 38, height: 38)
-                                    .background(EKitapligimPalette.tealSoft)
-                                    .clipShape(RoundedRectangle(cornerRadius: 11, style: .continuous))
-                                VStack(alignment: .leading, spacing: 2) {
-                                    Text(item.title).font(.subheadline.weight(.bold)).foregroundStyle(EKitapligimPalette.ink)
-                                    Text(item.subtitle).font(.caption2).foregroundStyle(EKitapligimPalette.muted).lineLimit(1)
-                                }
-                                Spacer()
-                                Image(systemName: "chevron.right").font(.caption).foregroundStyle(EKitapligimPalette.muted)
-                            }
-                            .padding(.horizontal, 10)
-                            .padding(.vertical, 7)
-                        }
-                        .buttonStyle(.plain)
-                        .accessibilityLabel(item.title)
+                LazyVStack(alignment: .leading, spacing: 4) {
+                    ForEach(primaryItems) { item in
+                        menuRow(item)
                     }
 
-                    Button { onSelect(.init(title: L10n.premiumShortTitle, subtitle: L10n.premiumDescription, icon: "crown.fill", destination: .tab(.settings))) } label: {
-                        Label(L10n.premiumTitle, systemImage: "crown.fill")
-                            .font(.subheadline.weight(.heavy))
-                            .foregroundStyle(EKitapligimPalette.amber)
-                            .frame(maxWidth: .infinity, alignment: .leading)
-                            .padding(14)
-                            .background(EKitapligimPalette.amberSoft)
-                            .clipShape(RoundedRectangle(cornerRadius: 15, style: .continuous))
+                    premiumCard
+                        .padding(.top, 10)
+
+                    Text(container.isSignedIn ? L10n.menuAccountSection : L10n.menuMembershipSection)
+                        .font(.caption.weight(.heavy))
+                        .foregroundStyle(EKitapligimPalette.muted)
+                        .padding(.horizontal, 10)
+                        .padding(.top, 16)
+                        .padding(.bottom, 4)
+
+                    ForEach(accountItems) { item in
+                        menuRow(item)
                     }
-                    .buttonStyle(.plain)
-                    .padding(.top, 8)
                 }
                 .padding(.horizontal, 12)
+                .padding(.bottom, 28)
             }
         }
         .frame(maxHeight: .infinity)
         .background(EKitapligimPalette.pageGradient)
         .ignoresSafeArea(edges: .bottom)
     }
+
+    private var header: some View {
+        HStack(spacing: 12) {
+            EKitapligimBrandLogo().frame(width: 112, height: 58)
+            VStack(alignment: .leading, spacing: 2) {
+                Text(L10n.menuBrandTitle)
+                    .font(.headline)
+                    .foregroundStyle(EKitapligimPalette.ink)
+                Text(L10n.menuSubtitle)
+                    .font(.caption2)
+                    .foregroundStyle(EKitapligimPalette.muted)
+            }
+            Spacer(minLength: 0)
+            Button(action: onClose) {
+                Image(systemName: "xmark")
+                    .foregroundStyle(EKitapligimPalette.muted)
+                    .frame(width: 40, height: 40)
+            }
+            .accessibilityLabel(L10n.menuClose)
+        }
+        .padding(.horizontal, 16)
+        .padding(.vertical, 14)
+    }
+
+    private func menuRow(_ item: AppMenuItem) -> some View {
+        Button { onSelect(item.route) } label: {
+            HStack(spacing: 12) {
+                Image(systemName: item.icon)
+                    .accessibilityHidden(true)
+                    .foregroundStyle(EKitapligimPalette.teal)
+                    .frame(width: 38, height: 38)
+                    .background(EKitapligimPalette.tealSoft)
+                    .clipShape(RoundedRectangle(cornerRadius: 11, style: .continuous))
+                VStack(alignment: .leading, spacing: 2) {
+                    Text(item.title)
+                        .font(.subheadline.weight(.bold))
+                        .foregroundStyle(EKitapligimPalette.ink)
+                    Text(item.subtitle)
+                        .font(.caption2)
+                        .foregroundStyle(EKitapligimPalette.muted)
+                        .lineLimit(1)
+                }
+                Spacer(minLength: 0)
+                EKUnreadBadge(count: item.badgeCount)
+                Image(systemName: "chevron.right")
+                    .font(.caption)
+                    .foregroundStyle(EKitapligimPalette.muted)
+            }
+            .padding(.horizontal, 10)
+            .padding(.vertical, 8)
+            .contentShape(Rectangle())
+        }
+        .buttonStyle(.plain)
+        .accessibilityLabel(
+            item.badgeCount > 0 ? "\(item.title), \(L10n.unreadCountAccessibility(item.badgeCount))" : item.title
+        )
+    }
+
+    private var premiumCard: some View {
+        Button { onSelect(.premium) } label: {
+            HStack(spacing: 12) {
+                Image(systemName: "crown.fill")
+                    .accessibilityHidden(true)
+                    .font(.headline)
+                    .foregroundStyle(.white)
+                    .frame(width: 38, height: 38)
+                    .background(.white.opacity(0.2))
+                    .clipShape(RoundedRectangle(cornerRadius: 11, style: .continuous))
+                VStack(alignment: .leading, spacing: 2) {
+                    Text(L10n.premiumTitle)
+                        .font(.subheadline.weight(.heavy))
+                        .foregroundStyle(.white)
+                    Text(L10n.menuPremiumSubtitle)
+                        .font(.caption2)
+                        .foregroundStyle(.white.opacity(0.85))
+                        .lineLimit(2)
+                        .multilineTextAlignment(.leading)
+                }
+                Spacer(minLength: 0)
+            }
+            .padding(14)
+            .frame(maxWidth: .infinity, alignment: .leading)
+            .background(EKitapligimPalette.quotaPremiumGradient)
+            .clipShape(RoundedRectangle(cornerRadius: 15, style: .continuous))
+        }
+        .buttonStyle(.plain)
+        .accessibilityLabel(L10n.premiumTitle)
+    }
 }
 
 private struct AppMenuItem: Identifiable {
-    enum Destination { case tab(AppTab), route(AppRoute) }
-    let id = UUID()
+    let route: AppRoute
     let title: String
     let subtitle: String
     let icon: String
-    let destination: Destination
+    var badgeCount: Int = 0
+
+    var id: String { "\(route.nativeRoute)-\(title)" }
 }
 
+// MARK: - Route sunumu
+
 @MainActor
-private struct AppRouteView: View {
+private struct AppRouteSheet: View {
+    @EnvironmentObject private var container: AppContainer
     @Environment(\.dismiss) private var dismiss
     let route: AppRoute
 
     var body: some View {
         NavigationStack {
-            routeDestination
+            destination
                 .toolbar {
-                    ToolbarItem(placement: .topBarTrailing) { Button(L10n.commonClose) { dismiss() } }
+                    ToolbarItem(placement: .topBarTrailing) {
+                        Button(L10n.commonClose) { dismiss() }
+                    }
                 }
         }
         .tint(EKitapligimPalette.teal)
     }
 
+    @ViewBuilder private var destination: some View {
+        if route.requiresAuthentication && !container.isSignedIn {
+            LoginRequiredView()
+        } else {
+            routeDestination
+        }
+    }
+
     @ViewBuilder private var routeDestination: some View {
         switch route {
-        case .bookDetail(let id): BookDetailView(bookID: id)
-        case .thread(let id): ForumThreadDetailView(thread: ForumThreadDTO(id: String(id), title: L10n.myCommentsForumTitle, username: ""))
-        case .forumDetail(let id): ForumThreadsView(forum: ForumDTO(id: String(id), title: L10n.communityForumsSection))
-        case .authors: DirectoryView(kind: .author)
-        case .publishers: DirectoryView(kind: .publisher)
-        case .requests: BookRequestsView()
-        case .home: HomeView()
-        case .catalog: CatalogView()
-        case .forum: CommunityView()
+        case .home, .catalog, .forum, .authors, .requests, .profile:
+            // Bottom-bar routes are handled by `AppContainer.open(route:)` and never reach the sheet.
+            EmptyView()
+        case .login:
+            LoginView()
+        case .bookDetail(let id), .reader(let id):
+            BookDetailView(bookID: id)
+        case .forumDetail(let id):
+            ForumThreadsView(forum: ForumDTO(id: String(id), title: L10n.communityForumsSection))
+        case .thread(let id):
+            ForumThreadDetailView(thread: ForumThreadDTO(id: String(id), title: L10n.myCommentsForumTitle, username: ""))
+        case .publishers:
+            DirectoryView(kind: .publisher)
+        case .bookAgenda:
+            BookAgendaView()
+        case .bookAgendaPost(let id):
+            BookAgendaDetailView(postID: String(id))
+        case .chat:
+            ChatView()
+        case .chatRoom(let id):
+            ChatView(initialRoomID: String(id))
+        case .liveActivity:
+            LiveActivityView()
+        case .members:
+            MembersView()
+        case .member(let id):
+            MemberProfileView(memberID: String(id))
+        case .messages:
+            ConversationsView()
+        case .conversation(let id):
+            ConversationDetailView(conversationID: String(id))
+        case .notifications:
+            NotificationsView()
+        case .profileEdit:
+            ProfileEditView()
+        case .library(let tab):
+            LibraryView(initialTab: LibraryTab(index: tab))
+        case .stats:
+            StatsView()
+        case .myComments:
+            MyCommentsView()
+        case .premium:
+            PremiumView()
         }
+    }
+}
+
+@MainActor
+private struct LoginRequiredView: View {
+    @State private var showingLogin = false
+
+    var body: some View {
+        VStack(spacing: 14) {
+            Image(systemName: "lock.circle.fill")
+                .font(.system(size: 46))
+                .foregroundStyle(EKitapligimPalette.teal)
+            Text(L10n.bookCommentsLoginRequiredTitle)
+                .font(.headline)
+                .foregroundStyle(EKitapligimPalette.ink)
+            Text(L10n.menuLoginSubtitle)
+                .font(.subheadline)
+                .foregroundStyle(EKitapligimPalette.muted)
+                .multilineTextAlignment(.center)
+            Button(L10n.commonLogin) { showingLogin = true }
+                .font(.subheadline.weight(.bold))
+                .foregroundStyle(.white)
+                .padding(.horizontal, 26)
+                .padding(.vertical, 12)
+                .background(EKitapligimPalette.teal, in: Capsule())
+        }
+        .padding(30)
+        .frame(maxWidth: .infinity, maxHeight: .infinity)
+        .background(EKitapligimPageBackground())
+        .sheet(isPresented: $showingLogin) { LoginView() }
     }
 }

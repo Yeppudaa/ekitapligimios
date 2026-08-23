@@ -55,7 +55,7 @@ struct BookRequestsView: View {
             }
         }
         .alert(L10n.bookRequestsLoginRequiredTitle, isPresented: $showLoginAlert) {
-            Button(L10n.bookRequestsGoToLogin) { container.selectedTab = .settings }
+            Button(L10n.bookRequestsGoToLogin) { container.selectedTab = .profile }
             Button(L10n.commonCancel, role: .cancel) {}
         } message: {
             Text(L10n.bookRequestsLoginRequiredMessage)

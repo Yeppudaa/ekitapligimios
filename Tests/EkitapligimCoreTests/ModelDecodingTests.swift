@@ -551,7 +551,7 @@ final class ModelDecodingTests: XCTestCase {
         let data = Data("""
         {
           "token": "reader-token",
-          "source_url": "https://ekitapligim.com/mobile-api/v1/books/42/reader/source?t=reader-token",
+          "source_url": "https://ekitapligim.com/ios-api/v1/books/42/reader/source?t=reader-token",
           "file_type": "epub"
         }
         """.utf8)

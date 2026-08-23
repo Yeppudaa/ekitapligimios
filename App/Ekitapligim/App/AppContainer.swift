@@ -8,6 +8,37 @@ final class AppContainer: ObservableObject {
     @Published var selectedTab: AppTab = .home
     @Published var presentedRoute: AppRoute?
 
+    // Android keeps this data at app level so the shell, menu and profile all read the same values.
+    @Published private(set) var profileState: ProfileDTO?
+    @Published private(set) var subscription: SubscriptionDTO?
+    @Published private(set) var readingStats: ReadingStatsDTO?
+    @Published private(set) var libraryItems: [LibraryItemDTO] = []
+    @Published private(set) var unreadNotifications = 0
+    @Published private(set) var unreadMessages = 0
+    @Published private(set) var isRefreshingSession = false
+
+    var totalUnread: Int { unreadNotifications + unreadMessages }
+    var isSignedIn: Bool { if case .signedIn = authState { return true }; return false }
+    var isAdmin: Bool { profileState?.isAdmin ?? (subscription?.isAdminTier ?? false) }
+    var isPremium: Bool { subscription?.isPremium ?? (profileState?.isPremium ?? false) }
+
+    var currentlyReading: [LibraryItemDTO] { libraryItems.filter { $0.shelfState == "reading" } }
+    var finishedBooks: [LibraryItemDTO] { libraryItems.filter { $0.shelfState == "read" } }
+    var wantToRead: [LibraryItemDTO] { libraryItems.filter { $0.shelfState == "want_to_read" } }
+    var favoriteBooks: [LibraryItemDTO] { libraryItems.filter(\.isFavorite) }
+    var downloadedBooks: [LibraryItemDTO] { libraryItems.filter(\.isDownloaded) }
+
+    /// The most advanced in-progress book, used by the "Kaldığın yerden devam et" cards.
+    var continueReadingItem: LibraryItemDTO? {
+        currentlyReading
+            .filter { $0.progressPercent > 0 || $0.lastReadPage > 0 }
+            .max { $0.progressPercent < $1.progressPercent }
+            ?? currentlyReading.first
+    }
+
+    private var unreadPollTask: Task<Void, Never>?
+    private static let unreadPollInterval: Duration = .seconds(60)
+
     let downloadManager = DownloadManager()
     let readerBookmarks = ReaderBookmarkStore()
     let config: AppConfig
@@ -27,10 +58,15 @@ final class AppContainer: ObservableObject {
     let community: CommunityRepository
     let profile: ProfileRepository
     let notifications: NotificationsRepository
+    let subscriptions: SubscriptionRepository
+    let readingStatsRepository: ReadingStatsRepository
+    let bookAgenda: BookAgendaRepository
+    let chat: ChatRepository
+    let liveActivity: LiveActivityRepository
 
     init() {
         let apiURL = Bundle.main.urlValue(for: "EKITAPLIGIM_API_BASE_URL")
-            ?? URL(string: "https://ekitapligim.com/mobile-api/v1/")
+            ?? URL(string: "https://ekitapligim.com/ios-api/v1/")
             ?? URL(fileURLWithPath: "/invalid-api-config")
         let webURL = URL(string: "https://ekitapligim.com/")
             ?? URL(fileURLWithPath: "/invalid-web-config")
@@ -57,6 +93,11 @@ final class AppContainer: ObservableObject {
         self.community = CommunityRepository(apiClient: apiClient)
         self.profile = ProfileRepository(apiClient: apiClient)
         self.notifications = NotificationsRepository(apiClient: apiClient)
+        self.subscriptions = SubscriptionRepository(apiClient: apiClient)
+        self.readingStatsRepository = ReadingStatsRepository(apiClient: apiClient)
+        self.bookAgenda = BookAgendaRepository(apiClient: apiClient)
+        self.chat = ChatRepository(apiClient: apiClient)
+        self.liveActivity = LiveActivityRepository(apiClient: apiClient)
     }
 
     func bootstrap() async {
@@ -66,10 +107,94 @@ final class AppContainer: ObservableObject {
                 authState = .signedIn(session)
                 downloadManager.restoreDownloads()
                 storeKit.startObservingTransactions()
+                await refreshSessionData()
+                startUnreadPolling()
             }
         } catch {
             authState = .signedOut
         }
+    }
+
+    // MARK: - Oturum verisi
+
+    /// Loads everything the shell and profile need in one pass; each call degrades independently.
+    func refreshSessionData() async {
+        guard isSignedIn else { return }
+        isRefreshingSession = true
+        defer { isRefreshingSession = false }
+
+        async let profileResult = try? profile.profile()
+        async let subscriptionResult = try? subscriptions.subscription()
+        async let libraryResult = try? books.library()
+        async let statsResult = try? readingStatsRepository.stats()
+        async let countsResult = try? notifications.counts()
+
+        let (loadedProfile, loadedSubscription, loadedLibrary, loadedStats, counts) = await (
+            profileResult, subscriptionResult, libraryResult, statsResult, countsResult
+        )
+
+        if let loadedProfile { profileState = loadedProfile }
+        if let loadedSubscription { subscription = loadedSubscription }
+        if let loadedLibrary { libraryItems = loadedLibrary.items }
+        // The dedicated route may not be deployed yet, in which case the profile payload carries the stats.
+        readingStats = loadedStats.flatMap { $0 } ?? loadedProfile?.readingStats ?? readingStats
+        if let counts { applyCounts(counts) }
+    }
+
+    func refreshUnreadCounts() async {
+        guard isSignedIn, let counts = try? await notifications.counts() else { return }
+        applyCounts(counts)
+    }
+
+    func refreshLibrary() async {
+        guard isSignedIn, let page = try? await books.library() else { return }
+        libraryItems = page.items
+    }
+
+    func updateProfile(_ updated: ProfileDTO) {
+        profileState = updated
+    }
+
+    func updateReadingStats(_ updated: ReadingStatsDTO) {
+        readingStats = updated
+    }
+
+    private func applyCounts(_ counts: NotificationCountsDTO) {
+        unreadNotifications = max(counts.unread, 0)
+        unreadMessages = max(counts.conversationsUnread ?? 0, 0)
+    }
+
+    func startUnreadPolling() {
+        unreadPollTask?.cancel()
+        unreadPollTask = Task { [weak self] in
+            while !Task.isCancelled {
+                try? await Task.sleep(for: Self.unreadPollInterval)
+                if Task.isCancelled { return }
+                await self?.refreshUnreadCounts()
+            }
+        }
+    }
+
+    func stopUnreadPolling() {
+        unreadPollTask?.cancel()
+        unreadPollTask = nil
+    }
+
+    /// Called when the scene becomes active again so badges are never stale on return.
+    func handleScenePhaseActive() {
+        guard isSignedIn else { return }
+        startUnreadPolling()
+        Task { await refreshUnreadCounts() }
+    }
+
+    private func clearSessionData() {
+        stopUnreadPolling()
+        profileState = nil
+        subscription = nil
+        readingStats = nil
+        libraryItems = []
+        unreadNotifications = 0
+        unreadMessages = 0
     }
 
     func signIn(username: String, password: String) async throws {
@@ -118,7 +243,7 @@ final class AppContainer: ObservableObject {
         try await account.requestAccountDeletion(currentPassword: currentPassword, reason: reason)
         await clearLocalSession()
         presentedRoute = nil
-        selectedTab = .settings
+        selectedTab = .profile
     }
 
     private func applyAuthResponse(_ response: AuthResponseDTO) async throws {
@@ -130,6 +255,8 @@ final class AppContainer: ObservableObject {
         try await tokenStore.save(session: session)
         authState = .signedIn(session)
         storeKit.startObservingTransactions()
+        await refreshSessionData()
+        startUnreadPolling()
     }
 
     func logout() async {
@@ -142,31 +269,61 @@ final class AppContainer: ObservableObject {
         downloadManager.removeAllDownloads()
         try? await tokenStore.clear()
         authState = .signedOut
+        clearSessionData()
     }
 
     func open(route: AppRoute) {
-        switch route {
-        case .home:
+        if let tab = AppTab(route: route) {
             presentedRoute = nil
-            selectedTab = .home
-        case .catalog:
-            presentedRoute = nil
-            selectedTab = .catalog
-        case .forum:
-            presentedRoute = nil
-            selectedTab = .community
-        default:
-            presentedRoute = route
+            selectedTab = tab
+            return
         }
+        presentedRoute = route
     }
 }
 
-enum AppTab: Hashable {
+/// The six bottom-bar destinations, matching `AppRoutes.bottomNavigationRoutes` on Android.
+enum AppTab: Hashable, CaseIterable {
     case home
     case catalog
-    case library
-    case community
-    case settings
+    case authors
+    case requests
+    case forum
+    case profile
+
+    init?(route: AppRoute) {
+        switch route {
+        case .home: self = .home
+        case .catalog: self = .catalog
+        case .authors: self = .authors
+        case .requests: self = .requests
+        case .forum: self = .forum
+        case .profile: self = .profile
+        default: return nil
+        }
+    }
+
+    var title: String {
+        switch self {
+        case .home: L10n.tabHome
+        case .catalog: L10n.tabCatalogShort
+        case .authors: L10n.tabAuthors
+        case .requests: L10n.tabRequests
+        case .forum: L10n.tabForum
+        case .profile: L10n.tabProfile
+        }
+    }
+
+    var systemImage: String {
+        switch self {
+        case .home: "house.fill"
+        case .catalog: "books.vertical.fill"
+        case .authors: "person.2.fill"
+        case .requests: "heart.fill"
+        case .forum: "bubble.left.and.bubble.right.fill"
+        case .profile: "person.crop.circle.fill"
+        }
+    }
 }
 
 private extension Bundle {

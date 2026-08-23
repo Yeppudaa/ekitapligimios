@@ -117,10 +117,30 @@ public final class APIClient: Sendable {
                 .joined(separator: "&")
                 .data(using: .utf8)
             request.setValue("application/x-www-form-urlencoded; charset=utf-8", forHTTPHeaderField: "Content-Type")
+        case .multipart(let file):
+            let boundary = "EkitapligimBoundary-\(UUID().uuidString)"
+            request.httpBody = Self.multipartBody(for: file, boundary: boundary)
+            request.setValue("multipart/form-data; boundary=\(boundary)", forHTTPHeaderField: "Content-Type")
+            request.timeoutInterval = 60
         case .none:
             break
         }
         return request
+    }
+
+    static func multipartBody(for file: MultipartFile, boundary: String) -> Data {
+        var body = Data()
+        let header = """
+        --\(boundary)\r
+        Content-Disposition: form-data; name="\(file.field)"; filename="\(file.fileName)"\r
+        Content-Type: \(file.mimeType)\r
+        \r
+
+        """
+        body.append(Data(header.utf8))
+        body.append(file.data)
+        body.append(Data("\r\n--\(boundary)--\r\n".utf8))
+        return body
     }
 
     public func authenticatedRequest(_ endpoint: APIEndpoint) async throws -> URLRequest {
@@ -162,6 +182,24 @@ public enum APIClientError: Error, Equatable {
     case authenticationRequired
     case httpStatus(Int, APIErrorEnvelope?)
     case decodingFailed(String)
+
+    /// A 404 on an optional endpoint means the deployed server add-on predates that route,
+    /// so callers can degrade instead of surfacing an error.
+    public var isMissingEndpoint: Bool {
+        if case .httpStatus(404, _) = self { return true }
+        return false
+    }
+
+    public var serverMessage: String? {
+        guard case .httpStatus(_, let envelope) = self else { return nil }
+        return envelope?.errors.first?.message
+    }
+}
+
+public extension Error {
+    var isMissingEndpoint: Bool {
+        (self as? APIClientError)?.isMissingEndpoint ?? false
+    }
 }
 
 public struct APIErrorEnvelope: Decodable, Equatable, Sendable {

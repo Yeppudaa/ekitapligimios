@@ -31,7 +31,7 @@ public struct AppConfig: Sendable, Equatable {
 
     public static func production() throws -> AppConfig {
         guard
-            let apiURL = URL(string: "https://ekitapligim.com/mobile-api/v1/"),
+            let apiURL = URL(string: "https://ekitapligim.com/ios-api/v1/"),
             let webURL = URL(string: "https://ekitapligim.com/")
         else {
             throw ConfigurationError.invalidDefaultURL

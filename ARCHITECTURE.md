@@ -3,10 +3,12 @@
 ## Proposed System
 ```mermaid
 flowchart LR
-  IOS["Native iOS app"] --> API["HTTPS Mobile API v1"]
-  API --> XF["XenForo services"]
+  IOS["Native iOS app"] --> IosAPI["HTTPS iOS API /ios-api/v1"]
+  Android["Android app"] --> MobileAPI["HTTPS Mobile API /mobile-api/v1"]
+  IosAPI --> XF["XenForo services"]
+  MobileAPI --> XF
   XF --> DB["XenForo database"]
-  API --> STORE["App Store Server API / Notifications"]
+  IosAPI --> STORE["App Store Server API / Notifications"]
 ```
 
 The iOS app must consume a public HTTPS mobile API. It must not use XenForo database credentials or privileged API keys.
@@ -24,7 +26,7 @@ The iOS app must consume a public HTTPS mobile API. It must not use XenForo data
 
 ## Current Android Findings
 - Native Compose application with routes for home, catalog, authors, publishers, requests, forum, members, messages, profile, notifications, premium, detail, reader, library, stats, and comments.
-- Backend addon exposes `mobile-api/v1` public routes plus XenForo `/api` routes.
+- Backend: Android uses `Ekitapligim/MobileApi` at `/mobile-api/v1/`. iOS uses standalone `Ekitapligim/IosApi` at `/ios-api/v1/`, delegating shared catalog/community controllers to MobileApi.
 - Reader supports remote PDF/EPUB-like downloads, progress updates, access checks, daily read/download quotas, and Google Drive URL fallback.
 - Premium exists through Google Play billing placeholder verification.
 - Google authentication exists. iOS must add Sign in with Apple if Google auth remains.

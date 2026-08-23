@@ -730,21 +730,133 @@ public struct ForumPostDTO: Decodable, Equatable, Identifiable, Sendable {
     }
 }
 
+public struct ProfileBadgeDTO: Decodable, Equatable, Identifiable, Sendable {
+    public let id: String
+    public let title: String
+    public let description: String
+    public let points: Int
+    public let awardDate: Int
+
+    public init(from decoder: Decoder) throws {
+        let container = try decoder.container(keyedBy: CodingKeys.self)
+        self.id = try container.decodeFlexibleString(forKey: .id)
+        self.title = try container.decodeIfPresent(String.self, forKey: .title) ?? ""
+        self.description = try container.decodeIfPresent(String.self, forKey: .description) ?? ""
+        self.points = container.decodeFlexibleInt(forKey: .points)
+        self.awardDate = container.decodeFlexibleInt(forKey: .awardDate)
+    }
+
+    private enum CodingKeys: String, CodingKey {
+        case id
+        case title
+        case description
+        case points
+        case awardDate
+    }
+}
+
 public struct ProfileDTO: Decodable, Equatable, Sendable {
     public let id: String
     public let username: String
     public let email: String
     public let title: String?
+    public let userTitle: String?
+    public let customTitle: String?
     public let avatarUrl: String?
+    public let bannerUrl: String?
     public let messageCount: Int?
     public let reactionScore: Int?
+    public let trophyPoints: Int?
     public let registerDate: Int?
+    public let lastActivity: Int?
     public let isStaff: Bool?
     public let canEdit: Bool?
+    public let canUploadAvatar: Bool?
+    public let canUploadBanner: Bool?
     public let about: String?
+    public let signature: String?
     public let location: String?
     public let website: String?
+    public let timezone: String?
     public let activityVisible: Bool?
+    public let role: UserRoleDTO?
+    public let readingStats: ReadingStatsDTO?
+    public let badges: [ProfileBadgeDTO]
+
+    public var isAdmin: Bool { role?.isAdmin ?? false }
+    public var isModerator: Bool { role?.isModerator ?? false }
+    public var isPremium: Bool { role?.isPremium ?? false }
+
+    /// The display title shown under the username, preferring the member's own custom title.
+    public var displayTitle: String? {
+        for candidate in [customTitle, title, userTitle, role?.roleLabel] {
+            if let candidate, !candidate.isEmpty { return candidate }
+        }
+        return nil
+    }
+
+    public init(from decoder: Decoder) throws {
+        let container = try decoder.container(keyedBy: CodingKeys.self)
+        self.id = try container.decodeFlexibleString(forKey: .id, fallbackKeys: [.userId])
+        self.username = try container.decodeIfPresent(String.self, forKey: .username) ?? ""
+        self.email = try container.decodeIfPresent(String.self, forKey: .email) ?? ""
+        self.title = try container.decodeIfPresent(String.self, forKey: .title)
+        self.userTitle = try container.decodeIfPresent(String.self, forKey: .userTitle)
+        self.customTitle = try container.decodeIfPresent(String.self, forKey: .customTitle)
+        self.avatarUrl = try container.decodeIfPresent(String.self, forKey: .avatarUrl)
+        self.bannerUrl = try container.decodeIfPresent(String.self, forKey: .bannerUrl)
+        self.messageCount = try container.decodeIfPresent(Int.self, forKey: .messageCount)
+        self.reactionScore = try container.decodeIfPresent(Int.self, forKey: .reactionScore)
+        self.trophyPoints = try container.decodeIfPresent(Int.self, forKey: .trophyPoints)
+        self.registerDate = try container.decodeIfPresent(Int.self, forKey: .registerDate)
+        self.lastActivity = try container.decodeIfPresent(Int.self, forKey: .lastActivity)
+        self.isStaff = try container.decodeIfPresent(Bool.self, forKey: .isStaff)
+        self.canEdit = try container.decodeIfPresent(Bool.self, forKey: .canEdit)
+        self.canUploadAvatar = try container.decodeIfPresent(Bool.self, forKey: .canUploadAvatar)
+        self.canUploadBanner = try container.decodeIfPresent(Bool.self, forKey: .canUploadBanner)
+        self.about = try container.decodeIfPresent(String.self, forKey: .about)
+        self.signature = try container.decodeIfPresent(String.self, forKey: .signature)
+        self.location = try container.decodeIfPresent(String.self, forKey: .location)
+        self.website = try container.decodeIfPresent(String.self, forKey: .website)
+        self.timezone = try container.decodeIfPresent(String.self, forKey: .timezone)
+        self.activityVisible = try container.decodeIfPresent(Bool.self, forKey: .activityVisible)
+        self.role = try container.decodeIfPresent(UserRoleDTO.self, forKey: .role)
+        self.readingStats = try container.decodeIfPresent(ReadingStatsDTO.self, forKey: .readingStats)
+        self.badges = try container.decodeIfPresent([ProfileBadgeDTO].self, forKey: .badges)
+            ?? container.decodeIfPresent([ProfileBadgeDTO].self, forKey: .earnedBadges)
+            ?? []
+    }
+
+    private enum CodingKeys: String, CodingKey {
+        case id
+        case userId
+        case username
+        case email
+        case title
+        case userTitle
+        case customTitle
+        case avatarUrl
+        case bannerUrl
+        case messageCount
+        case reactionScore
+        case trophyPoints
+        case registerDate
+        case lastActivity
+        case isStaff
+        case canEdit
+        case canUploadAvatar
+        case canUploadBanner
+        case about
+        case signature
+        case location
+        case website
+        case timezone
+        case activityVisible
+        case role
+        case readingStats
+        case badges
+        case earnedBadges
+    }
 }
 
 public struct NotificationDTO: Decodable, Equatable, Identifiable, Sendable {
@@ -767,7 +879,7 @@ public struct NotificationCountsDTO: Decodable, Equatable, Sendable {
     public let conversationsUnread: Int?
 }
 
-private extension KeyedDecodingContainer {
+extension KeyedDecodingContainer {
     func decodeFlexibleStringIfPresent(forKey key: Key) throws -> String? {
         if let value = try? decodeIfPresent(String.self, forKey: key) {
             return value
@@ -788,5 +900,34 @@ private extension KeyedDecodingContainer {
             }
         }
         return ""
+    }
+
+    /// The mobile API returns some numeric fields as strings (for example `page_number: ""`).
+    func decodeFlexibleInt(forKey key: Key, fallbackKeys: [Key] = [], default defaultValue: Int = 0) -> Int {
+        for candidate in [key] + fallbackKeys {
+            if let value = try? decodeIfPresent(Int.self, forKey: candidate) {
+                return value
+            }
+            if let text = try? decodeIfPresent(String.self, forKey: candidate), let value = Int(text) {
+                return value
+            }
+            if let value = try? decodeIfPresent(Double.self, forKey: candidate) {
+                return Int(value)
+            }
+        }
+        return defaultValue
+    }
+
+    func decodeFlexibleBool(forKey key: Key, default defaultValue: Bool = false) -> Bool {
+        if let value = try? decodeIfPresent(Bool.self, forKey: key) {
+            return value
+        }
+        if let value = try? decodeIfPresent(Int.self, forKey: key) {
+            return value != 0
+        }
+        if let text = try? decodeIfPresent(String.self, forKey: key) {
+            return text == "1" || text.lowercased() == "true"
+        }
+        return defaultValue
     }
 }

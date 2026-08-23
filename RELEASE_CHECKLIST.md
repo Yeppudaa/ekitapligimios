@@ -20,12 +20,12 @@
 - [ ] Backend user blocking/reporting installed and tested on staging.
 - [ ] Backend terms acceptance installed and tested before UGC posting is enabled.
 - [ ] App Store Server Notifications endpoint verifies JWS and is tested with real Apple sandbox notifications.
-- [ ] `Scripts/apply-mobileapi-ios-patch.ps1` used to prepare the MobileApi addon package.
+- [ ] `Scripts/build-ios-api-addon.ps1 -CreateZip` produced the standalone `Ekitapligim/IosApi` XenForo package; `Ekitapligim/MobileApi` remains untouched for Android.
 - [ ] `Scripts/prepare-public-deployment.ps1 -TeamId "..."` produced a manifest, matching SHA-256, XenForo ZIP, and placeholder-free AASA file.
 - [ ] Backend account deletion endpoint stores deletion requests and supports Apple/no-password accounts.
 - [ ] Profile and notification APIs verified against staging permissions.
 - [ ] Privacy settings behavior reconciled with App Store privacy labels before submission.
-- [ ] Production API config resolves to `https://ekitapligim.com/mobile-api/v1/` after Xcode `.xcconfig` expansion.
+- [ ] Production API config resolves to `https://ekitapligim.com/ios-api/v1/` after Xcode `.xcconfig` expansion.
 - [ ] App Transport Security has no broad arbitrary-load exception.
 - [ ] Universal links configured.
 - [ ] `apple-app-site-association` deployed according to `UNIVERSAL_LINKS.md`.

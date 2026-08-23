@@ -20,7 +20,7 @@
 - Run `Scripts/api-smoke-test.ps1` against public staging.
 - Session restoration.
 - Book list/detail/search.
-- Mobile book detail route `GET /mobile-api/v1/book-detail/{thread_id}`.
+- Mobile book detail route `GET /ios-api/v1/book-detail/{thread_id}`.
 - Reader access/session/progress.
 - Reader progress and library mutation smoke checks with a disposable authenticated staging account.
 - Reader and offline download flows must use `reader/session` source URLs, not persistent web `pdfUrl` values.
@@ -69,9 +69,9 @@ On macOS:
 ```bash
 ./Scripts/validate-workspace.ps1
 ./Scripts/swift-static-audit.ps1
-./Scripts/api-smoke-test.ps1 -BaseUrl https://staging.ekitapligim.com/mobile-api/v1/
-./Scripts/api-smoke-test.ps1 -BaseUrl https://staging.ekitapligim.com/mobile-api/v1/ -BearerToken "$EKITAPLIGIM_REVIEW_BEARER_TOKEN"
-./Scripts/api-smoke-test.ps1 -BaseUrl https://staging.ekitapligim.com/mobile-api/v1/ -BearerToken "$EKITAPLIGIM_REVIEW_BEARER_TOKEN" -ExerciseMutations
+./Scripts/api-smoke-test.ps1 -BaseUrl https://staging.ekitapligim.com/ios-api/v1/
+./Scripts/api-smoke-test.ps1 -BaseUrl https://staging.ekitapligim.com/ios-api/v1/ -BearerToken "$EKITAPLIGIM_REVIEW_BEARER_TOKEN"
+./Scripts/api-smoke-test.ps1 -BaseUrl https://staging.ekitapligim.com/ios-api/v1/ -BearerToken "$EKITAPLIGIM_REVIEW_BEARER_TOKEN" -ExerciseMutations
 ./Scripts/appstore-preflight.ps1
 swift test
 xcodegen generate
@@ -142,7 +142,7 @@ xcodebuild test -scheme Ekitapligim -destination 'platform=iOS Simulator,name=iP
 - Universal-link tests cover `ekitapligim.com` and `www.ekitapligim.com` book, thread, forum, author, publisher, and request URL families plus foreign-host rejection. Static validation requires `RootView.onOpenURL`, `DeepLinkParser`, and centralized `AppContainer.open(route:)` wiring; signed-device associated-domain resolution remains an Xcode/TestFlight gate.
 - Member tests cover list/search/sort construction, collision-free profile/follow routes, current list decoding, public list/profile smoke, and unauthenticated follow rejection.
 - Book-comment tests cover list/create endpoint construction, current pagination/comment decoding, public list smoke, and rejection of unauthenticated or empty writes. Each rendered comment exposes the existing authenticated post-report flow.
-- `Scripts/api-smoke-test.ps1 -BaseUrl "http://localhost/ekitapligim/mobile-api/v1/" -AllowInsecure` passed locally: `books?page=1`, selected `book-detail/{id}`, `forums`, a selected `forums/{id}/threads?page=1`, a selected `threads/{id}/posts?page=1`, and `book-stats` returned successfully; authenticated endpoints were skipped without a bearer token.
+- `Scripts/api-smoke-test.ps1 -BaseUrl "http://localhost/ekitapligim/ios-api/v1/" -AllowInsecure` passed locally: `books?page=1`, selected `book-detail/{id}`, `forums`, a selected `forums/{id}/threads?page=1`, a selected `threads/{id}/posts?page=1`, and `book-stats` returned successfully; authenticated endpoints were skipped without a bearer token.
 - Authenticated local smoke with a disposable account and random `ms_at_` token passed forum traversal, profile, library, subscription, terms, notification counts, conversations, reader progress/session, and library mutation.
 - A disposable account passed successful profile editing and password rotation: both old tokens and the old password were rejected, while the returned session and new password authenticated; account deletion then left zero active sessions.
 - A disposable account passed successful email mutation with the local confirmation-disabled configuration: the new address persisted, IP auditing was recorded, login/profile loading continued, and both old/new notice attempts reached the unavailable local SMTP transport.

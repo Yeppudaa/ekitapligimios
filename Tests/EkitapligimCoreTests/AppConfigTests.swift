@@ -11,7 +11,7 @@ final class AppConfigTests: XCTestCase {
     }
 
     func testProductionRejectsLocalhost() throws {
-        let apiBaseURL = try XCTUnwrap(URL(string: "https://localhost/mobile-api/v1/"))
+        let apiBaseURL = try XCTUnwrap(URL(string: "https://localhost/ios-api/v1/"))
         let webBaseURL = try XCTUnwrap(URL(string: "https://ekitapligim.com/"))
         let config = AppConfig(
             environment: .production,
@@ -25,7 +25,7 @@ final class AppConfigTests: XCTestCase {
     }
 
     func testProductionRejectsHTTP() throws {
-        let apiBaseURL = try XCTUnwrap(URL(string: "http://ekitapligim.com/mobile-api/v1/"))
+        let apiBaseURL = try XCTUnwrap(URL(string: "http://ekitapligim.com/ios-api/v1/"))
         let webBaseURL = try XCTUnwrap(URL(string: "https://ekitapligim.com/"))
         let config = AppConfig(
             environment: .production,

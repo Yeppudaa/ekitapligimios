@@ -116,7 +116,7 @@ private struct ConversationRow: View {
 }
 
 @MainActor
-private struct ConversationDetailView: View {
+struct ConversationDetailView: View {
     @EnvironmentObject private var container: AppContainer
     let conversationID: String
 

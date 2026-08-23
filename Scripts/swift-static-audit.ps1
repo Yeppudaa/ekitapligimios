@@ -88,7 +88,7 @@ if ($configFindings) {
 }
 
 $appConfig = Get-Content -Raw -LiteralPath "Sources/EkitapligimCore/AppConfig.swift"
-if ($appConfig -notmatch 'URL\(string:\s*"https://ekitapligim\.com/mobile-api/v1/"\)' -or
+if ($appConfig -notmatch 'URL\(string:\s*"https://ekitapligim\.com/ios-api/v1/"\)' -or
     $appConfig -notmatch 'URL\(string:\s*"https://ekitapligim\.com/"\)') {
     Fail "AppConfig production defaults must point to HTTPS ekitapligim.com URLs"
 }

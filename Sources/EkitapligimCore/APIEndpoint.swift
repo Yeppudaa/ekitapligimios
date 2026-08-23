@@ -40,6 +40,47 @@ public struct APIEndpoint: Sendable, Equatable {
 public enum RequestBody: Equatable, Sendable {
     case json(Data)
     case form([String: String])
+    case multipart(MultipartFile)
+}
+
+public struct MultipartFile: Equatable, Sendable {
+    public let field: String
+    public let fileName: String
+    public let mimeType: String
+    public let data: Data
+
+    public init(field: String, fileName: String, mimeType: String, data: Data) {
+        self.field = field
+        self.fileName = fileName
+        self.mimeType = mimeType
+        self.data = data
+    }
+}
+
+public enum ProfileImageKind: String, Equatable, Sendable, CaseIterable {
+    case avatar
+    case banner
+}
+
+public enum BookAgendaTab: String, Equatable, Sendable, CaseIterable {
+    case personal
+    case following
+    case agenda
+}
+
+public enum BookAgendaPostType: String, Equatable, Sendable, CaseIterable {
+    case standard
+    case book
+    case quotation
+    case review
+    case progress
+}
+
+public enum BookAgendaVisibility: String, Equatable, Sendable, CaseIterable {
+    case `public`
+    case members
+    case followers
+    case `private`
 }
 
 public enum ReaderSessionPurpose: String, Equatable, Sendable {
@@ -416,6 +457,204 @@ public extension APIEndpoint {
             method: .post,
             path: "billing/app-store/verify",
             body: .form(fields),
+            requiresAuthentication: true
+        )
+    }
+}
+
+// MARK: - Kitap Gündemi
+
+public extension APIEndpoint {
+    static func bookAgenda(
+        tab: BookAgendaTab = .agenda,
+        filter: String? = nil,
+        page: Int = 1,
+        perPage: Int = 15
+    ) -> APIEndpoint {
+        var items = [
+            URLQueryItem(name: "tab", value: tab.rawValue),
+            URLQueryItem(name: "page", value: String(page)),
+            URLQueryItem(name: "per_page", value: String(min(max(perPage, 5), 30)))
+        ]
+        if let filter, !filter.isEmpty { items.append(URLQueryItem(name: "filter", value: filter)) }
+        return APIEndpoint(method: .get, path: "book-agenda", queryItems: items, requiresAuthentication: tab != .agenda)
+    }
+
+    static func bookAgendaPost(id: String) -> APIEndpoint {
+        APIEndpoint(method: .get, path: "book-agenda/\(id)")
+    }
+
+    static func createBookAgendaPost(
+        message: String,
+        postType: BookAgendaPostType,
+        visibility: BookAgendaVisibility = .public,
+        bookThreadID: String? = nil,
+        quotePostID: String? = nil,
+        reviewTitle: String? = nil,
+        rating: Int? = nil,
+        pageNumber: Int? = nil,
+        progressCurrent: Int? = nil,
+        progressTotal: Int? = nil
+    ) -> APIEndpoint {
+        var fields = [
+            "message": message,
+            "post_type": postType.rawValue,
+            "visibility": visibility.rawValue
+        ]
+        if let bookThreadID, !bookThreadID.isEmpty { fields["book_thread_id"] = bookThreadID }
+        if let quotePostID, !quotePostID.isEmpty { fields["quote_post_id"] = quotePostID }
+        if let reviewTitle, !reviewTitle.isEmpty { fields["review_title"] = reviewTitle }
+        if let rating, rating > 0 { fields["rating"] = String(rating) }
+        if let pageNumber, pageNumber > 0 { fields["page_number"] = String(pageNumber) }
+        if let progressCurrent, progressCurrent > 0 { fields["progress_current"] = String(progressCurrent) }
+        if let progressTotal, progressTotal > 0 { fields["progress_total"] = String(progressTotal) }
+        return APIEndpoint(method: .post, path: "book-agenda", body: .form(fields), requiresAuthentication: true)
+    }
+
+    static func updateBookAgendaPost(id: String, message: String, visibility: BookAgendaVisibility) -> APIEndpoint {
+        APIEndpoint(
+            method: .post,
+            path: "book-agenda/\(id)",
+            body: .form(["message": message, "visibility": visibility.rawValue]),
+            requiresAuthentication: true
+        )
+    }
+
+    static func deleteBookAgendaPost(id: String) -> APIEndpoint {
+        APIEndpoint(method: .delete, path: "book-agenda/\(id)", requiresAuthentication: true)
+    }
+
+    static func bookAgendaComments(postID: String) -> APIEndpoint {
+        APIEndpoint(method: .get, path: "book-agenda/\(postID)/comments")
+    }
+
+    static func createBookAgendaComment(postID: String, message: String) -> APIEndpoint {
+        APIEndpoint(
+            method: .post,
+            path: "book-agenda/\(postID)/comments",
+            body: .form(["message": message]),
+            requiresAuthentication: true
+        )
+    }
+
+    static func updateBookAgendaComment(commentID: String, message: String) -> APIEndpoint {
+        APIEndpoint(
+            method: .post,
+            path: "book-agenda-comments/\(commentID)",
+            body: .form(["message": message]),
+            requiresAuthentication: true
+        )
+    }
+
+    static func deleteBookAgendaComment(commentID: String) -> APIEndpoint {
+        APIEndpoint(method: .delete, path: "book-agenda-comments/\(commentID)", requiresAuthentication: true)
+    }
+
+    static func toggleBookAgendaReaction(postID: String) -> APIEndpoint {
+        APIEndpoint(
+            method: .post,
+            path: "book-agenda/\(postID)/reaction",
+            body: .form(["reaction_id": "1"]),
+            requiresAuthentication: true
+        )
+    }
+
+    static func toggleBookAgendaBookmark(postID: String) -> APIEndpoint {
+        APIEndpoint(method: .post, path: "book-agenda/\(postID)/bookmark", requiresAuthentication: true)
+    }
+
+    static func toggleBookAgendaRepost(postID: String) -> APIEndpoint {
+        APIEndpoint(method: .post, path: "book-agenda/\(postID)/repost", requiresAuthentication: true)
+    }
+
+    static func followBookAgendaActor(userID: String, follow: Bool) -> APIEndpoint {
+        APIEndpoint(
+            method: .post,
+            path: "book-agenda-follow/\(userID)",
+            body: .form(["follow": follow ? "1" : "0"]),
+            requiresAuthentication: true
+        )
+    }
+}
+
+// MARK: - Okur Sohbeti
+
+public extension APIEndpoint {
+    static let chatRooms = APIEndpoint(method: .get, path: "chat/rooms")
+
+    static func chatMessages(
+        roomID: String,
+        limit: Int = 40,
+        beforeID: String? = nil,
+        afterID: String? = nil
+    ) -> APIEndpoint {
+        var items = [URLQueryItem(name: "limit", value: String(min(max(limit, 10), 60)))]
+        if let beforeID, !beforeID.isEmpty { items.append(URLQueryItem(name: "before_id", value: beforeID)) }
+        if let afterID, !afterID.isEmpty { items.append(URLQueryItem(name: "after_id", value: afterID)) }
+        return APIEndpoint(method: .get, path: "chat/rooms/\(roomID)/messages", queryItems: items)
+    }
+
+    static func sendChatMessage(roomID: String, message: String) -> APIEndpoint {
+        APIEndpoint(
+            method: .post,
+            path: "chat/rooms/\(roomID)/messages",
+            body: .form(["message": message]),
+            requiresAuthentication: true
+        )
+    }
+}
+
+// MARK: - Canlı Aktivite
+
+public extension APIEndpoint {
+    static func liveActivity(limit: Int = 20, before: Int? = nil, userID: String? = nil) -> APIEndpoint {
+        var items = [URLQueryItem(name: "limit", value: String(min(max(limit, 1), 40)))]
+        if let before, before > 0 { items.append(URLQueryItem(name: "before", value: String(before))) }
+        if let userID, !userID.isEmpty { items.append(URLQueryItem(name: "user_id", value: userID)) }
+        return APIEndpoint(method: .get, path: "live-activity", queryItems: items)
+    }
+}
+
+// MARK: - Okuma istatistikleri ve profil görselleri
+
+public extension APIEndpoint {
+    static let readingStats = APIEndpoint(method: .get, path: "me/reading-stats", requiresAuthentication: true)
+
+    static func setDailyReadingGoal(minutes: Int) -> APIEndpoint {
+        APIEndpoint(
+            method: .post,
+            path: "me/reading-stats",
+            body: .form(["daily_goal_minutes": String(min(max(minutes, 10), 240))]),
+            requiresAuthentication: true
+        )
+    }
+
+    static func recordReadingSession(
+        clientSessionID: String,
+        bookID: String,
+        readingDate: String,
+        seconds: Int,
+        pages: Int
+    ) -> APIEndpoint {
+        APIEndpoint(
+            method: .post,
+            path: "me/reading-stats",
+            body: .form([
+                "client_session_id": clientSessionID,
+                "book_id": bookID,
+                "reading_date": readingDate,
+                "seconds": String(max(seconds, 0)),
+                "pages": String(max(pages, 0))
+            ]),
+            requiresAuthentication: true
+        )
+    }
+
+    static func uploadProfileImage(kind: ProfileImageKind, fileName: String, mimeType: String, data: Data) -> APIEndpoint {
+        APIEndpoint(
+            method: .post,
+            path: "me/\(kind.rawValue)",
+            body: .multipart(MultipartFile(field: "image", fileName: fileName, mimeType: mimeType, data: data)),
             requiresAuthentication: true
         )
     }

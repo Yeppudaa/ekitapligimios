@@ -1,7 +1,7 @@
 [CmdletBinding()]
 param(
     [Uri]$SiteBaseUrl = "https://ekitapligim.com/",
-    [Uri]$ApiBaseUrl = "https://ekitapligim.com/mobile-api/v1/",
+    [Uri]$ApiBaseUrl = "https://ekitapligim.com/ios-api/v1/",
     [string]$TeamId,
     [string]$BundleId = "com.ekitapligim.app"
 )

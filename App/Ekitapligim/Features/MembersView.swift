@@ -115,7 +115,7 @@ private struct MemberRow: View {
 }
 
 @MainActor
-private struct MemberProfileView: View {
+struct MemberProfileView: View {
     @EnvironmentObject private var container: AppContainer
     let memberID: String
 

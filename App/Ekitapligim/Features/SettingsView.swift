@@ -7,18 +7,17 @@ struct SettingsView: View {
     @State private var showingLogin = false
 
     var body: some View {
-        NavigationStack {
-            List {
-                authenticationSection
-                profileSection
-                accountSection
-                legalSection
-                privacySection
-            }
-            .navigationTitle(L10n.settingsTitle)
-            .sheet(isPresented: $showingLogin) {
-                LoginView()
-            }
+        List {
+            authenticationSection
+            profileSection
+            accountSection
+            legalSection
+            privacySection
+        }
+        .navigationTitle(L10n.settingsTitle)
+        .navigationBarTitleDisplayMode(.inline)
+        .sheet(isPresented: $showingLogin) {
+            LoginView()
         }
     }
 
@@ -43,7 +42,6 @@ struct SettingsView: View {
 
     private var profileSection: some View {
         Section(L10n.settingsProfileSection) {
-            settingsLink(L10n.settingsProfile, icon: "person.text.rectangle", destination: ProfileView())
             settingsLink(L10n.settingsNotifications, icon: "bell", destination: NotificationsView())
             settingsLink(L10n.conversationsTitle, icon: "envelope", destination: ConversationsView())
             settingsLink(L10n.myCommentsTitle, icon: "text.bubble", destination: MyCommentsView())

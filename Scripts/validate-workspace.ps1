@@ -122,7 +122,7 @@ if ($productionConfig -match "localhost|127\.0\.0\.1|http://|192\.168\.|10\.0\."
     throw "Production.xcconfig contains a local or insecure URL"
 }
 $productionApiURL = Normalize-XcconfigURL (Get-XcconfigValue $productionConfig "EKITAPLIGIM_API_BASE_URL")
-if ($productionApiURL -ne "https://ekitapligim.com/mobile-api/v1/") {
+if ($productionApiURL -ne "https://ekitapligim.com/ios-api/v1/") {
     throw "Production.xcconfig does not point at the expected HTTPS production API: $productionApiURL"
 }
 try {

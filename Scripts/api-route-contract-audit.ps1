@@ -1,7 +1,7 @@
 $ErrorActionPreference = "Stop"
 $root = Resolve-Path (Join-Path $PSScriptRoot "..")
 $endpointPath = Join-Path $root "Sources/EkitapligimCore/APIEndpoint.swift"
-$contractPath = Join-Path $root "Backend/MobileApi-addon/public-route-contract.txt"
+$contractPath = Join-Path $root "Backend/IosApi-addon/public-route-contract.txt"
 
 function Test-RouteMatch([string]$Endpoint, [string]$Contract) {
     $endpointSegments = @($Endpoint.Trim('/') -split '/')
@@ -39,7 +39,7 @@ if ($missing.Count) {
 
 Write-Host "API route contract audit completed: $($endpoints.Count) Swift path templates matched."
 
-$installedRoutesPath = "C:\xampp\htdocs\ekitapligim\src\addons\Ekitapligim\MobileApi\_data\routes.xml"
+$installedRoutesPath = "C:\xampp\htdocs\ekitapligim\src\addons\Ekitapligim\IosApi\_data\routes.xml"
 if (Test-Path -LiteralPath $installedRoutesPath) {
     [xml]$installedRoutes = Get-Content -Raw -LiteralPath $installedRoutesPath
     $installedTemplates = @($installedRoutes.routes.route | Where-Object {
@@ -55,7 +55,7 @@ if (Test-Path -LiteralPath $installedRoutesPath) {
         }
     }
     if ($missingInstalled.Count) {
-        throw "Public route contract missing from installed MobileApi routes:`n$($missingInstalled -join "`n")"
+        throw "Public route contract missing from installed IosApi routes:`n$($missingInstalled -join "`n")"
     }
-    Write-Host "Installed MobileApi route audit completed: $($contracts.Count) contract templates matched."
+    Write-Host "Installed IosApi route audit completed: $($contracts.Count) contract templates matched."
 }

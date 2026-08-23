@@ -24,9 +24,9 @@ This repository currently contains the audited architecture documentation and a 
 Required environment values for local development:
 
 ```text
-EKITAPLIGIM_DEVELOPMENT_API_BASE_URL=https://staging.example.com/mobile-api/v1/
-EKITAPLIGIM_STAGING_API_BASE_URL=https://staging.ekitapligim.com/mobile-api/v1/
-EKITAPLIGIM_PRODUCTION_API_BASE_URL=https://ekitapligim.com/mobile-api/v1/
+EKITAPLIGIM_DEVELOPMENT_API_BASE_URL=https://staging.example.com/ios-api/v1/
+EKITAPLIGIM_STAGING_API_BASE_URL=https://staging.ekitapligim.com/ios-api/v1/
+EKITAPLIGIM_PRODUCTION_API_BASE_URL=https://ekitapligim.com/ios-api/v1/
 ```
 
 Do not place secret values in this repository.
@@ -39,7 +39,7 @@ Windows/source validation:
 ```powershell
 .\Scripts\validate-workspace.ps1
 .\Scripts\swift-test-windows.ps1
-.\Scripts\api-smoke-test.ps1 -BaseUrl "https://staging.ekitapligim.com/mobile-api/v1/"
+.\Scripts\api-smoke-test.ps1 -BaseUrl "https://staging.ekitapligim.com/ios-api/v1/"
 .\Scripts\appstore-preflight.ps1
 .\\Scripts\\apply-mobileapi-ios-patch.ps1 -AddonPath "C:\\path\\to\\MobileApi-addon" -CreateZip
 .\\Scripts\\generate-branded-appicon.ps1 -SourcePath "C:\\path\\to\\app_logo_round.png"

@@ -86,7 +86,7 @@ $manifest = [ordered]@{
     addon_zip = Split-Path $zipDestination -Leaf
     addon_sha256 = $hash
     aasa_public_url = "https://ekitapligim.com/.well-known/apple-app-site-association"
-    api_health_url = "https://ekitapligim.com/mobile-api/v1/books?page=1"
+    api_health_url = "https://ekitapligim.com/ios-api/v1/books?page=1"
 }
 $manifest | ConvertTo-Json | Set-Content -LiteralPath (Join-Path $resolvedOutput "deployment-manifest.json") -Encoding utf8NoBOM
 

@@ -270,6 +270,228 @@ public struct ProfileRepository: Sendable {
     public func comments(page: Int = 1) async throws -> MyCommentsPageDTO {
         try await apiClient.request(.myComments(page: page), as: MyCommentsPageDTO.self)
     }
+
+    public func uploadImage(kind: ProfileImageKind, fileName: String, mimeType: String, data: Data) async throws -> ProfileMediaDTO {
+        try await apiClient.request(
+            .uploadProfileImage(kind: kind, fileName: fileName, mimeType: mimeType, data: data),
+            as: ProfileMediaDTO.self
+        )
+    }
+}
+
+public struct SubscriptionRepository: Sendable {
+    private let apiClient: APIClient
+
+    public init(apiClient: APIClient) {
+        self.apiClient = apiClient
+    }
+
+    public func subscription() async throws -> SubscriptionDTO {
+        try await apiClient.request(.subscription, as: SubscriptionDTO.self)
+    }
+}
+
+public struct ReadingStatsRepository: Sendable {
+    private let apiClient: APIClient
+
+    public init(apiClient: APIClient) {
+        self.apiClient = apiClient
+    }
+
+    /// Returns `nil` when the deployed server add-on does not expose the reading-stats route yet,
+    /// so the profile can fall back to the stats embedded in the profile payload.
+    public func stats() async throws -> ReadingStatsDTO? {
+        do {
+            return try await apiClient.request(.readingStats, as: ReadingStatsDTO.self)
+        } catch where error.isMissingEndpoint {
+            return nil
+        }
+    }
+
+    public func setDailyGoal(minutes: Int) async throws -> ReadingStatsDTO? {
+        do {
+            return try await apiClient.request(.setDailyReadingGoal(minutes: minutes), as: ReadingStatsDTO.self)
+        } catch where error.isMissingEndpoint {
+            return nil
+        }
+    }
+
+    public func recordSession(
+        clientSessionID: String,
+        bookID: String,
+        readingDate: String,
+        seconds: Int,
+        pages: Int
+    ) async throws -> ReadingStatsDTO? {
+        do {
+            return try await apiClient.request(
+                .recordReadingSession(
+                    clientSessionID: clientSessionID,
+                    bookID: bookID,
+                    readingDate: readingDate,
+                    seconds: seconds,
+                    pages: pages
+                ),
+                as: ReadingStatsDTO.self
+            )
+        } catch where error.isMissingEndpoint {
+            return nil
+        }
+    }
+}
+
+public struct BookAgendaRepository: Sendable {
+    private let apiClient: APIClient
+
+    public init(apiClient: APIClient) {
+        self.apiClient = apiClient
+    }
+
+    public func feed(
+        tab: BookAgendaTab = .agenda,
+        filter: String? = nil,
+        page: Int = 1,
+        perPage: Int = 15
+    ) async throws -> BookAgendaPageDTO {
+        try await apiClient.request(
+            .bookAgenda(tab: tab, filter: filter, page: page, perPage: perPage),
+            as: BookAgendaPageDTO.self
+        )
+    }
+
+    public func post(id: String) async throws -> BookAgendaPostDTO {
+        try await apiClient.request(.bookAgendaPost(id: id), as: BookAgendaPostEnvelopeDTO.self).post
+    }
+
+    public func createPost(
+        message: String,
+        postType: BookAgendaPostType,
+        visibility: BookAgendaVisibility = .public,
+        bookThreadID: String? = nil,
+        reviewTitle: String? = nil,
+        rating: Int? = nil,
+        pageNumber: Int? = nil,
+        progressCurrent: Int? = nil,
+        progressTotal: Int? = nil
+    ) async throws -> BookAgendaPostDTO {
+        try await apiClient.request(
+            .createBookAgendaPost(
+                message: message,
+                postType: postType,
+                visibility: visibility,
+                bookThreadID: bookThreadID,
+                reviewTitle: reviewTitle,
+                rating: rating,
+                pageNumber: pageNumber,
+                progressCurrent: progressCurrent,
+                progressTotal: progressTotal
+            ),
+            as: BookAgendaPostEnvelopeDTO.self
+        ).post
+    }
+
+    public func updatePost(id: String, message: String, visibility: BookAgendaVisibility) async throws -> BookAgendaPostDTO {
+        try await apiClient.request(
+            .updateBookAgendaPost(id: id, message: message, visibility: visibility),
+            as: BookAgendaPostEnvelopeDTO.self
+        ).post
+    }
+
+    public func deletePost(id: String) async throws {
+        let _: SuccessResponse = try await apiClient.request(.deleteBookAgendaPost(id: id))
+    }
+
+    public func comments(postID: String) async throws -> [BookAgendaCommentDTO] {
+        try await apiClient.request(.bookAgendaComments(postID: postID), as: BookAgendaCommentsPageDTO.self).comments
+    }
+
+    public func createComment(postID: String, message: String) async throws -> BookAgendaCommentDTO {
+        try await apiClient.request(
+            .createBookAgendaComment(postID: postID, message: message),
+            as: BookAgendaCommentEnvelopeDTO.self
+        ).comment
+    }
+
+    public func updateComment(commentID: String, message: String) async throws -> BookAgendaCommentDTO {
+        try await apiClient.request(
+            .updateBookAgendaComment(commentID: commentID, message: message),
+            as: BookAgendaCommentEnvelopeDTO.self
+        ).comment
+    }
+
+    public func deleteComment(commentID: String) async throws {
+        let _: SuccessResponse = try await apiClient.request(.deleteBookAgendaComment(commentID: commentID))
+    }
+
+    public func toggleReaction(postID: String) async throws -> BookAgendaActionDTO {
+        try await apiClient.request(.toggleBookAgendaReaction(postID: postID), as: BookAgendaActionDTO.self)
+    }
+
+    public func toggleBookmark(postID: String) async throws -> BookAgendaActionDTO {
+        try await apiClient.request(.toggleBookAgendaBookmark(postID: postID), as: BookAgendaActionDTO.self)
+    }
+
+    public func toggleRepost(postID: String) async throws -> BookAgendaActionDTO {
+        try await apiClient.request(.toggleBookAgendaRepost(postID: postID), as: BookAgendaActionDTO.self)
+    }
+
+    /// Returns `nil` when the follow route is not deployed, letting the caller keep the current state.
+    public func setFollow(userID: String, follow: Bool) async throws -> BookAgendaFollowDTO? {
+        do {
+            return try await apiClient.request(
+                .followBookAgendaActor(userID: userID, follow: follow),
+                as: BookAgendaFollowDTO.self
+            )
+        } catch where error.isMissingEndpoint {
+            return nil
+        }
+    }
+}
+
+public struct ChatRepository: Sendable {
+    private let apiClient: APIClient
+
+    public init(apiClient: APIClient) {
+        self.apiClient = apiClient
+    }
+
+    public func rooms() async throws -> ChatRoomsDTO {
+        try await apiClient.request(.chatRooms, as: ChatRoomsDTO.self)
+    }
+
+    public func messages(
+        roomID: String,
+        limit: Int = 40,
+        beforeID: String? = nil,
+        afterID: String? = nil
+    ) async throws -> ChatMessagesPageDTO {
+        try await apiClient.request(
+            .chatMessages(roomID: roomID, limit: limit, beforeID: beforeID, afterID: afterID),
+            as: ChatMessagesPageDTO.self
+        )
+    }
+
+    public func send(roomID: String, message: String) async throws -> ChatMessageDTO {
+        try await apiClient.request(
+            .sendChatMessage(roomID: roomID, message: message),
+            as: ChatMessageEnvelopeDTO.self
+        ).message
+    }
+}
+
+public struct LiveActivityRepository: Sendable {
+    private let apiClient: APIClient
+
+    public init(apiClient: APIClient) {
+        self.apiClient = apiClient
+    }
+
+    public func activity(limit: Int = 20, before: Int? = nil, userID: String? = nil) async throws -> LiveActivityPageDTO {
+        try await apiClient.request(
+            .liveActivity(limit: limit, before: before, userID: userID),
+            as: LiveActivityPageDTO.self
+        )
+    }
 }
 
 public struct NotificationsRepository: Sendable {

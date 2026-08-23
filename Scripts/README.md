@@ -72,7 +72,7 @@ Usage:
 Checks that a staging or production Mobile API is reachable. The public checks include books, forums, a forum thread list, a thread post list, and book stats:
 
 ```powershell
-.\Scripts\api-smoke-test.ps1 -BaseUrl "https://staging.ekitapligim.com/mobile-api/v1/"
+.\Scripts\api-smoke-test.ps1 -BaseUrl "https://staging.ekitapligim.com/ios-api/v1/"
 ```
 
 ## `public-release-audit.ps1`
@@ -106,32 +106,32 @@ Inspects the newest XenForo release ZIP before deployment. It verifies the publi
 For local development only:
 
 ```powershell
-.\Scripts\api-smoke-test.ps1 -BaseUrl "http://localhost/ekitapligim/mobile-api/v1/" -AllowInsecure
+.\Scripts\api-smoke-test.ps1 -BaseUrl "http://localhost/ekitapligim/ios-api/v1/" -AllowInsecure
 ```
 
 Pass a current random `ms_at_` access token to `-BearerToken` to include authenticated endpoints. Legacy `xf_user:*` bearer values are rejected.
 
 ```powershell
-.\Scripts\api-smoke-test.ps1 -BaseUrl "http://localhost/ekitapligim/mobile-api/v1/" -BearerToken $env:EKITAPLIGIM_SMOKE_ACCESS_TOKEN -AllowInsecure
+.\Scripts\api-smoke-test.ps1 -BaseUrl "http://localhost/ekitapligim/ios-api/v1/" -BearerToken $env:EKITAPLIGIM_SMOKE_ACCESS_TOKEN -AllowInsecure
 ```
 
 Alternatively, set `EKITAPLIGIM_SMOKE_LOGIN` and `EKITAPLIGIM_SMOKE_PASSWORD` for a disposable account. The script obtains a mobile access token without printing it:
 
 ```powershell
-.\Scripts\api-smoke-test.ps1 -BaseUrl "http://localhost/ekitapligim/mobile-api/v1/" -AllowInsecure
+.\Scripts\api-smoke-test.ps1 -BaseUrl "http://localhost/ekitapligim/ios-api/v1/" -AllowInsecure
 ```
 
 Use `-ExerciseMutations` only with a disposable demo account. It writes a low-impact reader progress and library update for the selected or first visible book, and verifies separately authorized read and (when entitled) download reader sessions:
 
 ```powershell
-.\Scripts\api-smoke-test.ps1 -BaseUrl "http://localhost/ekitapligim/mobile-api/v1/" -BearerToken $env:EKITAPLIGIM_SMOKE_ACCESS_TOKEN -AllowInsecure -ExerciseMutations
+.\Scripts\api-smoke-test.ps1 -BaseUrl "http://localhost/ekitapligim/ios-api/v1/" -BearerToken $env:EKITAPLIGIM_SMOKE_ACCESS_TOKEN -AllowInsecure -ExerciseMutations
 ```
 
 ## `session-rotation-smoke-test.ps1`
 Uses `EKITAPLIGIM_SMOKE_LOGIN` and `EKITAPLIGIM_SMOKE_PASSWORD` for a disposable account. It verifies refresh rotation, old-token rejection, refreshed access, logout, and post-logout rejection without printing tokens.
 
 ```powershell
-.\Scripts\session-rotation-smoke-test.ps1 -BaseUrl "https://staging.ekitapligim.com/mobile-api/v1/"
+.\Scripts\session-rotation-smoke-test.ps1 -BaseUrl "https://staging.ekitapligim.com/ios-api/v1/"
 ```
 
 ## `ugc-safety-smoke-test.ps1`
@@ -141,7 +141,7 @@ Checks App Review-critical community safety flows: block/unblock, blocked member
 For local development:
 
 ```powershell
-.\Scripts\ugc-safety-smoke-test.ps1 -BaseUrl "http://localhost/ekitapligim/mobile-api/v1/" -BearerToken $env:EKITAPLIGIM_SMOKE_ACCESS_TOKEN -BlockedUserId 4 -ThreadId 1 -AllowInsecure
+.\Scripts\ugc-safety-smoke-test.ps1 -BaseUrl "http://localhost/ekitapligim/ios-api/v1/" -BearerToken $env:EKITAPLIGIM_SMOKE_ACCESS_TOKEN -BlockedUserId 4 -ThreadId 1 -AllowInsecure
 ```
 
 Use a disposable normal-member token and a safe demo target user on staging. The script attempts cleanup by unblocking the target user at the end.
@@ -160,25 +160,36 @@ During development, placeholders can be allowed explicitly:
 .\Scripts\appstore-preflight.ps1 -AllowPlaceholders
 ```
 
-## `apply-mobileapi-ios-patch.ps1`
+## `build-ios-api-addon.ps1`
 
-Applies the iOS MobileApi backend scaffold to an existing XenForo addon checkout and can create an upload zip:
+Builds the standalone `Ekitapligim/IosApi` XenForo add-on for `/ios-api/v1/`. Regenerates routes from the read-only Android MobileApi reference, runs the Swift route contract audit, validates IosApi action prefixes, and optionally creates an upload zip:
 
 ```powershell
-.\Scripts\apply-mobileapi-ios-patch.ps1 -AddonPath "C:\path\to\MobileApi-addon" -CreateZip
+.\Scripts\build-ios-api-addon.ps1
+.\Scripts\build-ios-api-addon.ps1 -CreateZip
 ```
 
-The script also regenerates public route bridge controllers so XenForo public routes such as `/mobile-api/v1/books`, `/mobile-api/v1/forums/{id}/threads`, and `/mobile-api/v1/threads/{id}/posts` dispatch to the API-style controller methods and render JSON. After route merging, it audits every `action_prefix` and fails if the corresponding XenForo `actionX` controller method is missing.
+Install `Ekitapligim/IosApi` in XenForo after `Ekitapligim/MobileApi` is active. Android continues to use `/mobile-api/v1/` unchanged.
 
-Use `-BumpVersion` when routes or controller surface changes need a XenForo add-on upgrade/import cycle:
+## `generate-ios-api-routes.ps1`
+
+Transforms public `mobile-api` routes from the Android MobileApi reference into `ios-api` routes for the IosApi add-on, excluding Android-only billing/push routes and remapping iOS-owned controllers.
 
 ```powershell
-.\Scripts\apply-mobileapi-ios-patch.ps1 -AddonPath "C:\path\to\MobileApi-addon" -BumpVersion -CreateZip
+.\Scripts\generate-ios-api-routes.ps1
+```
+
+## `apply-mobileapi-ios-patch.ps1` (Deprecated)
+
+**Deprecated.** Aborts unless `-ForceDeprecated` is passed. Use `build-ios-api-addon.ps1` instead so iOS and Android APIs stay separated.
+
+```powershell
+.\Scripts\apply-mobileapi-ios-patch.ps1 -AddonPath "C:\path\to\MobileApi-addon" -ForceDeprecated -CreateZip
 ```
 
 ## `api-route-contract-audit.ps1`
 
-Compares every Swift `APIEndpoint` path template with `Backend/MobileApi-addon/public-route-contract.txt`. When the local XenForo addon exists, it also verifies that contract against the installed public route XML.
+Compares every Swift `APIEndpoint` path template with `Backend/IosApi-addon/public-route-contract.txt`. When the local XenForo IosApi add-on is installed, it also verifies that contract against the installed public route XML.
 
 ```powershell
 .\Scripts\api-route-contract-audit.ps1

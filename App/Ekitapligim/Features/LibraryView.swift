@@ -1,42 +1,73 @@
 import SwiftUI
 import EkitapligimCore
 
+/// Android `library/{tab}` indeksleriyle aynı: 0 Okuyorum, 1 Okuyacağım, 2 Okudum, 3 Favoriler, 4 İndirmeler.
+enum LibraryTab: Int, CaseIterable, Identifiable, Hashable {
+    case reading = 0
+    case wantToRead = 1
+    case finished = 2
+    case favorites = 3
+    case downloads = 4
+
+    var id: Int { rawValue }
+
+    init(index: Int) {
+        self = LibraryTab(rawValue: index) ?? .reading
+    }
+
+    var title: String {
+        switch self {
+        case .reading: L10n.libraryTabReading
+        case .wantToRead: L10n.libraryTabWantToRead
+        case .finished: L10n.libraryTabFinished
+        case .favorites: L10n.libraryTabFavorites
+        case .downloads: L10n.libraryTabDownloads
+        }
+    }
+
+    var icon: String {
+        switch self {
+        case .reading: "book.pages.fill"
+        case .wantToRead: "clock.fill"
+        case .finished: "checkmark.seal.fill"
+        case .favorites: "heart.fill"
+        case .downloads: "arrow.down.circle.fill"
+        }
+    }
+}
+
 @MainActor
 struct LibraryView: View {
     @EnvironmentObject private var container: AppContainer
+
+    private let initialTab: LibraryTab
+    @State private var selectedTab: LibraryTab
     @State private var items: [LibraryItemDTO] = []
-    @State private var selectedShelf: LibraryShelf = .all
     @State private var isLoading = false
     @State private var errorMessage: String?
 
+    init(initialTab: LibraryTab = .reading) {
+        self.initialTab = initialTab
+        _selectedTab = State(initialValue: initialTab)
+    }
+
     var body: some View {
-        NavigationStack {
-            ZStack {
-                EKitapligimPageBackground()
-                ScrollView {
-                    LazyVStack(spacing: 14) {
-                        headerCard
-                        shelfPicker
-                        content
-                    }
-                    .padding(.horizontal, 18)
-                    .padding(.vertical, 12)
+        ZStack {
+            EKitapligimPageBackground()
+            ScrollView {
+                LazyVStack(spacing: 14) {
+                    headerCard
+                    tabPicker
+                    content
                 }
-                .refreshable { await load() }
+                .padding(.horizontal, 18)
+                .padding(.vertical, 12)
             }
-            .navigationTitle(L10n.libraryTitle)
-            .navigationBarTitleDisplayMode(.large)
-            .toolbar {
-                ToolbarItem(placement: .topBarTrailing) {
-                    NavigationLink { DownloadsView() } label: {
-                        Image(systemName: "arrow.down.circle.fill")
-                    }
-                    .accessibilityLabel(L10n.libraryDownloadsLabel)
-                }
-            }
-            .tint(EKitapligimPalette.teal)
-            .task { await load() }
+            .refreshable { await load() }
         }
+        .navigationTitle(L10n.libraryHeaderTitle)
+        .navigationBarTitleDisplayMode(.large)
+        .task { await load() }
     }
 
     private var headerCard: some View {
@@ -49,7 +80,7 @@ struct LibraryView: View {
                 .clipShape(RoundedRectangle(cornerRadius: 14, style: .continuous))
                 .overlay { RoundedRectangle(cornerRadius: 14).stroke(EKitapligimPalette.border) }
             VStack(alignment: .leading, spacing: 3) {
-                Text(L10n.libraryTitle)
+                Text(L10n.libraryHeaderTitle)
                     .font(.title3.weight(.heavy))
                     .foregroundStyle(EKitapligimPalette.ink)
                 Text(L10n.libraryHeaderSubtitle)
@@ -82,33 +113,31 @@ struct LibraryView: View {
         .overlay { RoundedRectangle(cornerRadius: 18).stroke(EKitapligimPalette.border) }
     }
 
-    private var shelfPicker: some View {
+    private var tabPicker: some View {
         ScrollView(.horizontal, showsIndicators: false) {
             HStack(spacing: 10) {
-                ForEach(LibraryShelf.allCases) { shelf in
-                    Button {
-                        selectedShelf = shelf
-                    } label: {
+                ForEach(LibraryTab.allCases) { tab in
+                    Button { selectedTab = tab } label: {
                         HStack(spacing: 8) {
-                            Image(systemName: shelf.icon)
-                                .accessibilityLabel(shelf.title)
+                            Image(systemName: tab.icon)
+                                .accessibilityLabel(tab.title)
                             VStack(alignment: .leading, spacing: 1) {
-                                Text(shelf.title).font(.caption.weight(.bold))
-                                Text(shelfCount(shelf), format: .number).font(.caption2)
+                                Text(tab.title).font(.caption.weight(.bold))
+                                Text(tabCount(tab), format: .number).font(.caption2)
                             }
                         }
-                        .foregroundStyle(selectedShelf == shelf ? EKitapligimPalette.tealDark : EKitapligimPalette.muted)
+                        .foregroundStyle(selectedTab == tab ? EKitapligimPalette.tealDark : EKitapligimPalette.muted)
                         .padding(.horizontal, 13)
                         .frame(height: 58)
-                        .background(selectedShelf == shelf ? EKitapligimPalette.tealSoft : .white)
+                        .background(selectedTab == tab ? EKitapligimPalette.tealSoft : .white)
                         .clipShape(RoundedRectangle(cornerRadius: 16, style: .continuous))
                         .overlay {
                             RoundedRectangle(cornerRadius: 16)
-                                .stroke(selectedShelf == shelf ? EKitapligimPalette.teal : EKitapligimPalette.border, lineWidth: selectedShelf == shelf ? 2 : 1)
+                                .stroke(selectedTab == tab ? EKitapligimPalette.teal : EKitapligimPalette.border, lineWidth: selectedTab == tab ? 2 : 1)
                         }
                     }
                     .buttonStyle(.plain)
-                    .accessibilityLabel(shelf.title)
+                    .accessibilityLabel(tab.title)
                 }
             }
         }
@@ -134,54 +163,53 @@ struct LibraryView: View {
         }
     }
 
-    private var filteredItems: [LibraryItemDTO] { filteredItems(for: selectedShelf) }
+    private var filteredItems: [LibraryItemDTO] { items(for: selectedTab) }
 
-    private func filteredItems(for shelf: LibraryShelf) -> [LibraryItemDTO] {
-        switch shelf {
-        case .all: items
-        case .reading: items.filter { $0.shelfState.uppercased() == "OKUYORUM" || ($0.progressPercent > 0 && $0.progressPercent < 100) }
-        case .finished: items.filter { $0.shelfState.uppercased() == "OKUDUM" || $0.progressPercent >= 100 }
-        case .favorites: items.filter(\.isFavorite)
-        case .downloads: items.filter(\.isDownloaded)
+    private func items(for tab: LibraryTab) -> [LibraryItemDTO] {
+        switch tab {
+        case .reading:
+            items.filter {
+                let shelf = $0.shelfState.uppercased()
+                return shelf == "OKUYORUM" || shelf == "READING" || ($0.progressPercent > 0 && $0.progressPercent < 100)
+            }
+        case .wantToRead:
+            items.filter {
+                let shelf = $0.shelfState.uppercased()
+                return shelf == "OKUYACAGIM" || shelf == "WANT_TO_READ"
+            }
+        case .finished:
+            items.filter {
+                let shelf = $0.shelfState.uppercased()
+                return shelf == "OKUDUM" || shelf == "READ" || $0.progressPercent >= 100
+            }
+        case .favorites:
+            items.filter(\.isFavorite)
+        case .downloads:
+            items.filter(\.isDownloaded)
         }
     }
 
-    private func shelfCount(_ shelf: LibraryShelf) -> Int { filteredItems(for: shelf).count }
+    private func tabCount(_ tab: LibraryTab) -> Int { items(for: tab).count }
 
     private func load() async {
         isLoading = true
         errorMessage = nil
         defer { isLoading = false }
-        do { items = try await container.books.library().items }
-        catch { errorMessage = L10n.libraryLoadFailed }
-    }
-}
-
-private enum LibraryShelf: String, CaseIterable, Identifiable {
-    case all, reading, finished, favorites, downloads
-    var id: String { rawValue }
-    var title: String {
-        switch self {
-        case .all: L10n.libraryShelfAll
-        case .reading: L10n.libraryShelfReading
-        case .finished: L10n.libraryShelfFinished
-        case .favorites: L10n.libraryShelfFavorites
-        case .downloads: L10n.libraryShelfDownloads
+        guard container.isSignedIn else {
+            items = []
+            return
         }
-    }
-    var icon: String {
-        switch self {
-        case .all: "books.vertical"
-        case .reading: "book.pages"
-        case .finished: "checkmark.circle"
-        case .favorites: "heart"
-        case .downloads: "arrow.down.circle"
+        do {
+            items = try await container.books.library().items
+        } catch {
+            errorMessage = L10n.libraryLoadFailed
         }
     }
 }
 
 private struct LibraryBookCard: View {
     let item: LibraryItemDTO
+
     var body: some View {
         HStack(spacing: 16) {
             EKitapligimRemoteCover(urlString: item.coverUrl)
