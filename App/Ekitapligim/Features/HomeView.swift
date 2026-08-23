@@ -781,7 +781,8 @@ private struct HomeAgendaCard: View {
             .foregroundStyle(EKitapligimPalette.muted)
         }
         .padding(14)
-        .frame(width: 260, minHeight: 130, alignment: .topLeading)
+        .frame(width: 260, alignment: .topLeading)
+        .frame(minHeight: 130, alignment: .topLeading)
         .ekitapligimCard(radius: 16)
     }
 }
