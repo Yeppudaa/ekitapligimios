@@ -2244,6 +2244,21 @@
     "profile.edit.website" : {
       "localizations" : { "tr" : { "stringUnit" : { "state" : "translated", "value" : "Web sitesi" } } }
     },
+    "home.searchPrompt" : { "localizations" : { "tr" : { "stringUnit" : { "state" : "translated", "value" : "Kitap, yazar, yayınevi veya ISBN ara..." } } } },
+    "home.popularBooks" : { "localizations" : { "tr" : { "stringUnit" : { "state" : "translated", "value" : "Popüler Kitaplar" } } } },
+    "home.popularBooksSubtitle" : { "localizations" : { "tr" : { "stringUnit" : { "state" : "translated", "value" : "Okurların en çok ilgi gösterdiği kitaplar" } } } },
+    "home.newestBooks" : { "localizations" : { "tr" : { "stringUnit" : { "state" : "translated", "value" : "Yeni Eklenenler" } } } },
+    "home.newestBooksSubtitle" : { "localizations" : { "tr" : { "stringUnit" : { "state" : "translated", "value" : "Kütüphaneye yeni katılan eserler" } } } },
+    "home.seeAll" : { "localizations" : { "tr" : { "stringUnit" : { "state" : "translated", "value" : "Tümünü gör" } } } },
+    "home.communitySubtitle" : { "localizations" : { "tr" : { "stringUnit" : { "state" : "translated", "value" : "Kitaplar üzerine konuş, paylaş ve keşfet" } } } },
+    "premium.shortTitle" : { "localizations" : { "tr" : { "stringUnit" : { "state" : "translated", "value" : "Premium" } } } },
+    "library.headerSubtitle" : { "localizations" : { "tr" : { "stringUnit" : { "state" : "translated", "value" : "Raflarını düzenle ve okumaya devam et" } } } },
+    "library.bookCountLabel" : { "localizations" : { "tr" : { "stringUnit" : { "state" : "translated", "value" : "kitap" } } } },
+    "menu.title" : { "localizations" : { "tr" : { "stringUnit" : { "state" : "translated", "value" : "Menü" } } } },
+    "menu.subtitle" : { "localizations" : { "tr" : { "stringUnit" : { "state" : "translated", "value" : "Kitap, forum ve okuma alanın" } } } },
+    "menu.authorsSubtitle" : { "localizations" : { "tr" : { "stringUnit" : { "state" : "translated", "value" : "Yazar arşivi ve eserleri" } } } },
+    "menu.publishersSubtitle" : { "localizations" : { "tr" : { "stringUnit" : { "state" : "translated", "value" : "Yayınevlerine göre keşfet" } } } },
+    "menu.requestsSubtitle" : { "localizations" : { "tr" : { "stringUnit" : { "state" : "translated", "value" : "İstekleri incele ve oy ver" } } } },
     "terms.title" : {
       "localizations" : {
         "tr" : {

@@ -22,19 +22,24 @@ struct CatalogView: View {
 
     var body: some View {
         NavigationStack {
-            Group {
-                if isLoading {
-                    ProgressView(L10n.catalogLoading)
-                } else if let message = errorMessage {
-                    ContentUnavailableView(L10n.catalogUnavailableTitle, systemImage: "wifi.exclamationmark", description: Text(message))
-                } else if books.isEmpty {
-                    ContentUnavailableView(L10n.catalogEmptyTitle, systemImage: "magnifyingglass", description: Text(L10n.catalogEmptyDescription))
-                } else {
-                    catalogContent
+            ZStack {
+                EKitapligimPageBackground()
+                Group {
+                    if isLoading {
+                        ProgressView(L10n.catalogLoading).tint(EKitapligimPalette.teal)
+                    } else if let message = errorMessage {
+                        ContentUnavailableView(L10n.catalogUnavailableTitle, systemImage: "wifi.exclamationmark", description: Text(message))
+                    } else if books.isEmpty {
+                        ContentUnavailableView(L10n.catalogEmptyTitle, systemImage: "magnifyingglass", description: Text(L10n.catalogEmptyDescription))
+                    } else {
+                        catalogContent
+                    }
                 }
             }
             .navigationTitle(L10n.catalogTitle)
+            .navigationBarTitleDisplayMode(.large)
             .searchable(text: $query, prompt: L10n.catalogSearchPrompt)
+            .tint(EKitapligimPalette.teal)
             .toolbar {
                 ToolbarItem(placement: .topBarTrailing) {
                     Button {
@@ -73,11 +78,15 @@ struct CatalogView: View {
     private var catalogContent: some View {
         switch displayMode {
         case .list:
-            List {
-                ForEach(books) { book in
-                    NavigationLink(value: book.id) { BookRow(book: book) }
+            ScrollView {
+                LazyVStack(spacing: 12) {
+                    ForEach(books) { book in
+                        NavigationLink(value: book.id) { BookRow(book: book) }
+                            .buttonStyle(.plain)
+                    }
+                    loadMoreButton.buttonStyle(.bordered)
                 }
-                loadMoreButton
+                .padding(16)
             }
         case .grid:
             ScrollView {
@@ -223,16 +232,35 @@ private struct BookRow: View {
     let book: BookDTO
 
     var body: some View {
-        HStack(spacing: 12) {
+        HStack(spacing: 14) {
             BookCover(book: book)
-                .frame(width: 54, height: 81)
-            VStack(alignment: .leading, spacing: 4) {
-                Text(book.title).font(.headline).lineLimit(2)
-                Text(book.author).font(.subheadline).foregroundStyle(.secondary).lineLimit(1)
-                Text(book.category).font(.caption).foregroundStyle(.secondary).lineLimit(1)
+                .frame(width: 76, height: 112)
+            VStack(alignment: .leading, spacing: 6) {
+                Text(book.title).font(.headline).foregroundStyle(EKitapligimPalette.ink).lineLimit(2)
+                Text(book.author).font(.subheadline).foregroundStyle(EKitapligimPalette.muted).lineLimit(1)
+                if !book.category.isEmpty {
+                    Text(book.category)
+                        .font(.caption.weight(.semibold))
+                        .foregroundStyle(EKitapligimPalette.tealDark)
+                        .padding(.horizontal, 9)
+                        .padding(.vertical, 4)
+                        .background(EKitapligimPalette.tealSoft)
+                        .clipShape(Capsule())
+                }
+                Spacer(minLength: 0)
+                HStack {
+                    if let rating = book.rating, rating > 0 {
+                        Label(rating.formatted(.number.precision(.fractionLength(1))), systemImage: "star.fill")
+                            .foregroundStyle(EKitapligimPalette.amber)
+                    }
+                    Spacer()
+                    Image(systemName: "chevron.right").foregroundStyle(EKitapligimPalette.teal)
+                }.font(.caption.weight(.bold))
             }
         }
-        .padding(.vertical, 4)
+        .padding(14)
+        .frame(maxWidth: .infinity, alignment: .leading)
+        .ekitapligimCard()
     }
 }
 
@@ -247,14 +275,16 @@ private struct BookGridItem: View {
                 .frame(maxWidth: .infinity)
             Text(book.title)
                 .font(.subheadline.weight(.semibold))
-                .foregroundStyle(.primary)
+                .foregroundStyle(EKitapligimPalette.ink)
                 .lineLimit(2)
             Text(book.author)
                 .font(.caption)
-                .foregroundStyle(.secondary)
+                .foregroundStyle(EKitapligimPalette.muted)
                 .lineLimit(1)
         }
+        .padding(9)
         .frame(maxWidth: .infinity, alignment: .leading)
+        .ekitapligimCard(radius: 12)
         .accessibilityElement(children: .combine)
     }
 }
@@ -284,8 +314,8 @@ private struct BookCover: View {
             }
         }
         .clipped()
-        .background(.quaternary)
-        .clipShape(RoundedRectangle(cornerRadius: 4))
+        .background(EKitapligimPalette.tealSoft)
+        .clipShape(RoundedRectangle(cornerRadius: 10, style: .continuous))
         .accessibilityHidden(true)
     }
 

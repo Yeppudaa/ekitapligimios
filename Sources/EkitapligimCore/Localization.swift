@@ -243,6 +243,11 @@ public enum L10n {
     public static let tabLibrary = localized("tab.library", defaultValue: "Kitaplığım")
     public static let tabCommunity = localized("tab.community", defaultValue: "Topluluk")
     public static let tabAccount = localized("tab.account", defaultValue: "Hesap")
+    public static let menuTitle = localized("menu.title", defaultValue: "Menü")
+    public static let menuSubtitle = localized("menu.subtitle", defaultValue: "Kitap, forum ve okuma alanın")
+    public static let menuAuthorsSubtitle = localized("menu.authorsSubtitle", defaultValue: "Yazar arşivi ve eserleri")
+    public static let menuPublishersSubtitle = localized("menu.publishersSubtitle", defaultValue: "Yayınevlerine göre keşfet")
+    public static let menuRequestsSubtitle = localized("menu.requestsSubtitle", defaultValue: "İstekleri incele ve oy ver")
 
     public static let homeTitle = localized("home.title", defaultValue: "Ekitaplığım")
     public static let homeOpenCatalog = localized("home.openCatalog", defaultValue: "Kitap kataloğunu aç")
@@ -255,6 +260,14 @@ public enum L10n {
     public static let homeAuthors = localized("home.stats.authors", defaultValue: "Yazar")
     public static let homePublishers = localized("home.stats.publishers", defaultValue: "Yayınevi")
     public static let homeCategories = localized("home.stats.categories", defaultValue: "Kategori")
+    public static let homeSearchPrompt = localized("home.searchPrompt", defaultValue: "Kitap, yazar, yayınevi veya ISBN ara...")
+    public static let homePopularBooks = localized("home.popularBooks", defaultValue: "Popüler Kitaplar")
+    public static let homePopularBooksSubtitle = localized("home.popularBooksSubtitle", defaultValue: "Okurların en çok ilgi gösterdiği kitaplar")
+    public static let homeNewestBooks = localized("home.newestBooks", defaultValue: "Yeni Eklenenler")
+    public static let homeNewestBooksSubtitle = localized("home.newestBooksSubtitle", defaultValue: "Kütüphaneye yeni katılan eserler")
+    public static let homeSeeAll = localized("home.seeAll", defaultValue: "Tümünü gör")
+    public static let homeCommunitySubtitle = localized("home.communitySubtitle", defaultValue: "Kitaplar üzerine konuş, paylaş ve keşfet")
+    public static let premiumShortTitle = localized("premium.shortTitle", defaultValue: "Premium")
 
     public static func homeStatAccessibility(_ label: String, _ value: Int) -> String {
         String(format: localized("home.stats.accessibility", defaultValue: "%@: %d"), label, value)
@@ -363,6 +376,8 @@ public enum L10n {
     public static let libraryReadingProgressLabel = localized("library.readingProgressLabel", defaultValue: "Okuma ilerlemesi")
     public static let libraryFavoriteBadge = localized("library.favoriteBadge", defaultValue: "Favori")
     public static let libraryDownloadedBadge = localized("library.downloadedBadge", defaultValue: "İndirildi")
+    public static let libraryHeaderSubtitle = localized("library.headerSubtitle", defaultValue: "Raflarını düzenle ve okumaya devam et")
+    public static let libraryBookCountLabel = localized("library.bookCountLabel", defaultValue: "kitap")
 
     public static let downloadsTitle = localized("downloads.title", defaultValue: "İndirilenler")
     public static let downloadsEmptyTitle = localized("downloads.emptyTitle", defaultValue: "İndirilen kitap yok")

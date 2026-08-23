@@ -10,6 +10,12 @@
 ## Promotional Text
 Kitapları keşfedin, PDF ve EPUB okuyun, kaldığınız yeri eşitleyin ve Ekitaplığım okur topluluğuna katılın.
 
+## What's New
+- Ana sayfa, katalog ve kitaplık Android uygulamasının görsel kimliğiyle uyumlu olacak şekilde yenilendi.
+- Yeni Ekitaplığım renk sistemi, marka logosu, kart düzenleri ve uygulama menüsü eklendi.
+- Katalog liste/ızgara görünümü ile kitaplık rafları ve okuma ilerlemesi daha anlaşılır hale getirildi.
+- Erişilebilirlik etiketleri ve Türkçe yerelleştirmeler güncellendi.
+
 ## Description
 Ekitaplığım, Ekitapligim.com kitap kataloğunu ve okur topluluğunu iPhone ve iPad’e taşıyan native bir uygulamadır.
 
