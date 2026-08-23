@@ -662,7 +662,7 @@ struct HomeView: View {
 
     private func dailySeededShuffle(_ books: [BookDTO]) -> [BookDTO] {
         let seed = Calendar.current.ordinality(of: .day, in: .year, for: Date()) ?? 0
-        books.enumerated().sorted { ($0.offset ^ seed) % books.count < ($1.offset ^ seed) % books.count }.map(\.element)
+        return books.enumerated().sorted { ($0.offset ^ seed) % books.count < ($1.offset ^ seed) % books.count }.map(\.element)
     }
 
     private func shuffledPopular(_ books: [BookDTO]) -> [BookDTO] {
