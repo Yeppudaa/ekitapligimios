@@ -609,7 +609,7 @@ public struct LibraryItemDTO: Decodable, Equatable, Sendable {
         self.pageCount = pageCount
     }
 
-    func updating(
+    public func updating(
         shelfState: String? = nil,
         progressPercent: Int? = nil,
         lastReadPage: Int? = nil,

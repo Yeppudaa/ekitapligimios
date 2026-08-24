@@ -134,7 +134,7 @@ struct ReaderView: View {
         let libraryItem = container.libraryItems.first(where: { $0.bookId == book.id })
         let normalizedShelf = libraryItem?.normalizedShelfState ?? ""
         guard normalizedShelf.isEmpty || normalizedShelf == "NONE" else { return }
-        let progress = libraryItem?.readingProgressForShelfUpdate ?? (0, 0)
+        let progress = libraryItem?.readingProgressForShelfUpdate ?? (percent: 0, page: 0)
         try? await container.books.updateLibraryItem(
             bookID: bookID,
             shelfState: "OKUYORUM",
