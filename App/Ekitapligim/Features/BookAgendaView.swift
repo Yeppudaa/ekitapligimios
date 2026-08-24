@@ -581,7 +581,7 @@ struct BookAgendaPostCard: View {
 
     private var typeTitle: String {
         if post.type == "quote" { return L10n.agendaTypeQuote }
-        switch kind {
+        return switch kind {
         case .book: L10n.agendaTypeBook
         case .quotation: L10n.agendaTypeQuotation
         case .review: L10n.agendaTypeReview
@@ -592,7 +592,7 @@ struct BookAgendaPostCard: View {
 
     private var typeAccent: Color {
         if post.type == "quote" { return Color(hex: 0x5A67B7) }
-        switch kind {
+        return switch kind {
         case .book: EKitapligimPalette.agendaTeal
         case .quotation: EKitapligimPalette.agendaPurple
         case .review: EKitapligimPalette.agendaGold
