@@ -64,6 +64,15 @@ foreach ($route in @($routes.routes.route | Where-Object { $_.controller -like "
     }
 }
 
+Write-Step "Auditing IosApi Pub wrappers for public routes"
+foreach ($route in @($routes.routes.route | Where-Object { $_.controller -like "*IosApi:*" })) {
+    $controllerName = ([string]$route.controller -split ":")[-1]
+    $pubPath = Join-Path $addonRoot "Pub\Controller\$controllerName.php"
+    if (-not (Test-Path -LiteralPath $pubPath)) {
+        throw "Missing Pub wrapper for $($route.controller): $pubPath"
+    }
+}
+
 Write-Step "Running PHP syntax checks"
 $php = Get-Command php -ErrorAction SilentlyContinue
 if ($php) {

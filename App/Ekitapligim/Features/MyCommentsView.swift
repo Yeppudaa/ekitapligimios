@@ -11,48 +11,54 @@ struct MyCommentsView: View {
     @State private var errorMessage: String?
 
     var body: some View {
-        Group {
-            if isLoading && comments.isEmpty {
-                ProgressView(L10n.myCommentsLoading)
-            } else if let errorMessage, comments.isEmpty {
-                ContentUnavailableView {
-                    Label(L10n.myCommentsUnavailableTitle, systemImage: "exclamationmark.triangle")
-                } description: {
-                    Text(errorMessage)
-                } actions: {
-                    Button(L10n.commonRetry) { Task { await load(reset: true) } }
-                }
-            } else if comments.isEmpty {
-                ContentUnavailableView(
-                    L10n.myCommentsEmptyTitle,
-                    systemImage: "text.bubble",
-                    description: Text(L10n.myCommentsEmptyDescription)
-                )
-            } else {
-                List {
-                    ForEach(comments) { comment in
-                        NavigationLink {
-                            ForumThreadDetailView(thread: thread(from: comment))
-                        } label: {
-                            VStack(alignment: .leading, spacing: 6) {
-                                Text(comment.threadTitle ?? L10n.myCommentsForumTitle)
-                                    .font(.headline)
-                                    .lineLimit(1)
-                                Text(comment.message)
-                                    .font(.subheadline)
-                                    .foregroundStyle(.secondary)
-                                    .lineLimit(3)
+        EKitapligimScreen {
+            Group {
+                if isLoading && comments.isEmpty {
+                    EKLoadingState(message: L10n.myCommentsLoading)
+                } else if let errorMessage, comments.isEmpty {
+                    EKErrorState(title: L10n.myCommentsUnavailableTitle, message: errorMessage) {
+                        Task { await load(reset: true) }
+                    }
+                } else if comments.isEmpty {
+                    EKEmptyState(
+                        title: L10n.myCommentsEmptyTitle,
+                        message: L10n.myCommentsEmptyDescription,
+                        systemImage: "text.bubble"
+                    )
+                } else {
+                    ScrollView {
+                        LazyVStack(spacing: 12) {
+                            ForEach(comments) { comment in
+                                NavigationLink {
+                                    ForumThreadDetailView(thread: thread(from: comment))
+                                } label: {
+                                    VStack(alignment: .leading, spacing: 6) {
+                                        Text(comment.threadTitle ?? L10n.myCommentsForumTitle)
+                                            .font(.headline)
+                                            .foregroundStyle(EKitapligimPalette.ink)
+                                            .lineLimit(1)
+                                        Text(comment.message)
+                                            .font(.subheadline)
+                                            .foregroundStyle(EKitapligimPalette.muted)
+                                            .lineLimit(3)
+                                    }
+                                    .frame(maxWidth: .infinity, alignment: .leading)
+                                    .padding(14)
+                                    .ekitapligimCard(radius: 14)
+                                }
+                                .buttonStyle(.plain)
                             }
-                            .padding(.vertical, 4)
+                            if page < lastPage {
+                                EKLoadMoreButton(isLoading: isLoading) {
+                                    Task { await load(reset: false) }
+                                }
+                            }
                         }
+                        .padding(.horizontal, 18)
+                        .padding(.vertical, 12)
                     }
-
-                    if page < lastPage {
-                        Button(L10n.commonLoadMore) { Task { await load(reset: false) } }
-                            .disabled(isLoading)
-                    }
+                    .refreshable { await load(reset: true) }
                 }
-                .refreshable { await load(reset: true) }
             }
         }
         .navigationTitle(L10n.myCommentsTitle)

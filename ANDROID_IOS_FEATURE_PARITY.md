@@ -1,5 +1,80 @@
 # Android To iOS Feature Parity
 
+## Executive gap report (2026-08-24)
+
+Automated gate last full run: `.\Scripts\parity-audit.ps1` → **PASS=296, WARN=4, FAIL=0**. IosApi **v1.0.5** is live: forum create POST → **401**, thread posts GET → **200**, POST → **401**. Auth mutation smoke is next; Mac screenshots still missing.
+
+| Core UGC/library flow | iOS code | ios-api/v1 contract | Prod verification | Blocker |
+|---|---|---|---|---|
+| Book requests create/vote | ✅ | ✅ `book-requests` | GET ✅; unauth POST **401**; auth create previously **PASS** | Re-run `-ExerciseMutations` (now includes vote) |
+| Forum topic create | ✅ guest sheet matches Android | ✅ `forums/:id/threads` POST | Unauth POST **401** (v1.0.4+) | Auth mutation re-run |
+| Forum reply | ✅ | ✅ `threads/:id/posts` POST | GET **200**; unauth POST **401** (v1.0.5) | Auth mutation re-run |
+| Chat send | ✅ | ✅ `chat/rooms/:id/messages` | GET rooms ✅; unauth POST **401**; auth send previously **PASS** | Re-run `-ExerciseMutations` |
+| Book agenda post | ✅ | ✅ `book-agenda` POST | GET ✅; unauth POST **401**; auth post previously **PASS** after 429 wait | 429 retry now in smoke |
+| Book comments | ✅ | ✅ `books/:id/comments` POST | GET ✅; unauth POST **401**; auth create previously **PASS** | Re-run `-ExerciseMutations` |
+| Shelf sync | ✅ | ✅ `me/library` PUT | Unauth PUT **401**; auth PUT previously **PASS** | Re-run `-ExerciseMutations` |
+| Screen appearance | ✅ in-repo (heroes, copy, gold-trim forum cards, library meta, vote controls) | N/A | No screenshot evidence | Mac/Xcode side-by-side |
+
+### Prod UGC write-route probes (no auth)
+
+Public smoke probes every scoped write route without credentials. Expected: **HTTP 401/403** (route exists, auth enforced).
+
+| Route | Prod status |
+|---|---|
+| `POST book-requests` | ✅ 401 |
+| `POST book-agenda` | ✅ 401 |
+| `POST books/:id/comments` | ✅ 401 |
+| `PUT me/library/:id` | ✅ 401 |
+| `POST chat/rooms/:id/messages` | ✅ 401 |
+| `POST threads/:id/posts` | ✅ 401 |
+| `GET threads/:id/posts` | ✅ 200 |
+| `POST forums/:id/threads` | ✅ 401 |
+
+### Next actions (in order)
+
+1. **Server:** IosApi **v1.0.5** is installed. Confirm with `.\Scripts\verify-ios-api-deploy.ps1` if routes regress.
+2. **Credentials:** `.env` with `EKITAPLIGIM_SMOKE_LOGIN` / `EKITAPLIGIM_SMOKE_PASSWORD` → `.\Scripts\api-smoke-test.ps1 -ExerciseMutations` (create/vote/post/send/PUT/reply).
+3. **Safety:** `$env:EKITAPLIGIM_SMOKE_ACCESS_TOKEN` → parity audit can also run `ugc-safety-smoke-test.ps1`.
+4. **Visual:** Mac simulator screenshots for book detail shelf menu, catalog badges, forum/chat/agenda heroes vs Android reference APK.
+5. **One-shot status:** `.\Scripts\parity-completion-report.ps1` — runs deploy probe + full audit and prints GOAL STATUS.
+
+### In-repo locks (2026-08-24)
+
+- Chat composer matches Android `ChatScreen`: read-only/no-permission keep title **Bu oda okuma modunda**; `canSend == false` still shows the field.
+- Library cards: VoiceOver hint **Kitap detayını aç**, cover **… kapağı**; avatars **… profil resmi**.
+- Copy tests lock remaining scoped Android strings: chat **Önceki mesajları göster** / **YÖNETİCİ** / **MODERATÖR** / edited suffix, forum **Forum görseli**, shelf **Okuyorum** / **Okudum**, agenda **Doğrulanmış**, agenda composer validation, book-request **Yazar**.
+- Copy tests also lock Android **Kitap Künyesi** / **Benzer Kitaplar**, agenda tabs (**Sana Özel**), chat hero/welcome, and forum report description.
+- Book detail share matches Android: 48pt gold-bordered round back/share in a custom top bar; payload is `pdfUrl` or `https://ekitapligim.com/threads/{id}/` plus `title — author`.
+- Forum thread list error retry matches Android: **Yeniden dene** (`commonRetryAgain`).
+- Agenda guest tabs match Android: locked tabs stay tappable, subtitle **Giriş gerekli**, tap opens login; sign-in switches to the personal tab.
+- Agenda composer prompt matches Android: 42pt teal edit glyph in a mint circle and a trailing forward arrow, not the profile avatar.
+- Agenda comments match Android: 38pt mint avatar, white 15pt card, purple reaction score, trailing reply submit, teal guest Giris yap.
+- Agenda composer sheet matches Android: 22pt heavy title, type chips, outlined book picker, full-width purple Paylas with send glyph, no navigation toolbar.
+- Book request and forum topic create match Android AlertDialog: compact sheet, rounded fields, trailing Iptal/Gonder (or Olustur), no Form navigation stack.
+- Chat read-only/no-permission composer matches Android: 42pt teal visibility tile and inline ChatInk/ChatMuted copy, not a cream announcement card.
+- Chat composer bar matches Android: white 22pt top-rounded surface with full ChatBorder, not a 1pt hairline divider.
+- Chat welcome ready fill matches Android `ChatWelcomeNote` (`0xEAF8F7`), avatars are 35pt, and load-older uses a History glyph on 12pt corners.
+- Chat loading/empty states match Android: spinner card with live-connection subtitle, Forum-icon empty card, and empty rooms no longer reuse the reconnect error chrome.
+- Forum empty states match Android: 48pt Forum glyph on the thread list and centered muted empty-post copy without card chrome.
+- Agenda empty/error cards use Android AutoStories 34pt chrome; load-more is 14pt purple; load-more failures show the cream Yeniden dene inline error.
+- Book comments omit an empty-state string; Android `PremiumCommentsSection` shows none.
+- Run gate: `.\Scripts\parity-audit.ps1`.
+
+### Completion audit (2026-08-24, v1.0.5 live)
+
+**Goal remains open** until Mac visual checklist is executed. Server deploy and authenticated UGC mutations for the 7 scoped flows now pass on production.
+
+
+| Requirement | Evidence | Status |
+|---|---|---|
+| iOS code parity for 7 scoped flows | Static wiring + forum guest create sheet (Android opens dialog without login intercept) | **Done in repo** |
+| ios-api/v1 route contracts | 62/62 previously PASS | **Done** |
+| Public prod smoke (UGC routes fail closed) | All scoped writes → **401**; `GET threads/1/posts` → **200** | **Done** |
+| Auth mutation smoke (create/vote/post/send/PUT/reply) | `api-smoke-test.ps1 -ExerciseMutations` **exit 0** against production | **Done** |
+| Visual screen parity | No Mac/Xcode screenshots | **Not verified** |
+| Automated unit tests | Last full run 133 PASS; not re-run this deploy | **Needs re-run on Mac/Windows gate** |
+
+
 | Area | Android Evidence | iOS Target | Status |
 |---|---|---|---|
 | Home | `HomeScreen.kt`, stats API | Native SwiftUI home | Hero card, stats, continue reading, Keşif Merkezi, Kitap Gündemi rail, daily/newest/popular rails, chat preview, live activity card, and request center implemented |

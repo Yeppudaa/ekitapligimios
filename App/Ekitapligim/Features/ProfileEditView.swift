@@ -26,8 +26,9 @@ struct ProfileEditView: View {
     private var profile: ProfileDTO? { container.profileState }
 
     var body: some View {
-        Form {
-            imageSection
+        EKitapligimScreen {
+            Form {
+                imageSection
             generalSection
             if let errorMessage {
                 Section { Text(errorMessage).foregroundStyle(EKitapligimPalette.danger) }
@@ -38,6 +39,8 @@ struct ProfileEditView: View {
                 }
                 .disabled(isSaving)
             }
+            }
+            .ekitapligimListScreen()
         }
         .navigationTitle(L10n.profileEditTitle)
         .navigationBarTitleDisplayMode(.inline)

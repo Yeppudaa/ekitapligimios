@@ -10,10 +10,11 @@ struct CatalogView: View {
     @State private var filters = CatalogFilters()
     @State private var currentPage = 1
     @State private var lastPage = 1
-    @State private var isLoading = false
+    @State private var isLoading = true
     @State private var isLoadingMore = false
     @State private var showingFilters = false
     @State private var errorMessage: String?
+    @State private var heroCollapseProgress: CGFloat = 0
     @AppStorage("catalog.displayMode") private var displayModeRawValue = CatalogDisplayMode.list.rawValue
 
     private var displayMode: CatalogDisplayMode {
@@ -57,7 +58,7 @@ struct CatalogView: View {
                 }
             }
             .navigationDestination(for: String.self) { id in
-                BookDetailView(bookID: Int(id) ?? 0)
+                BookDetailDestination(bookIDString: id)
             }
             .task {
                 await loadCategories()
@@ -76,34 +77,113 @@ struct CatalogView: View {
 
     @ViewBuilder
     private var catalogContent: some View {
+        ScrollView {
+            LazyVStack(spacing: 14) {
+                EKScrollOffsetTracker()
+                catalogHero
+                categoryChips
+                catalogControls
+                catalogGridOrList
+                loadMoreButton.buttonStyle(.bordered)
+            }
+            .padding(16)
+        }
+        .ekCollapsibleScrollTracking { heroCollapseProgress = $0 }
+    }
+
+    private var catalogHero: some View {
+        EKCollapsibleHero(progress: heroCollapseProgress) {
+            VStack(alignment: .leading, spacing: 8) {
+                Text(L10n.catalogHeroTitle)
+                    .font(.title2.weight(.heavy))
+                    .foregroundStyle(EKitapligimPalette.ink)
+                Text(L10n.catalogHeroSubtitle(books.count, lastPage))
+                    .font(.caption)
+                    .foregroundStyle(EKitapligimPalette.muted)
+            }
+            .frame(maxWidth: .infinity, alignment: .leading)
+            .padding(18)
+            .background(
+                LinearGradient(
+                    colors: [Color(hex: 0xE8F7F7), Color(hex: 0xFFFCF4)],
+                    startPoint: .topLeading,
+                    endPoint: .bottomTrailing
+                )
+            )
+            .clipShape(RoundedRectangle(cornerRadius: 18, style: .continuous))
+            .overlay { RoundedRectangle(cornerRadius: 18).stroke(EKitapligimPalette.border) }
+        } collapsed: {
+            HStack(spacing: 10) {
+                Image(systemName: "books.vertical.fill")
+                    .foregroundStyle(EKitapligimPalette.teal)
+                Text(L10n.catalogHeroTitle)
+                    .font(.headline.weight(.bold))
+                    .foregroundStyle(EKitapligimPalette.ink)
+                    .lineLimit(1)
+                Spacer(minLength: 0)
+                Text(L10n.catalogHeroSubtitle(books.count, lastPage))
+                    .font(.caption2)
+                    .foregroundStyle(EKitapligimPalette.muted)
+                    .lineLimit(1)
+            }
+            .padding(.horizontal, 16)
+            .padding(.vertical, 12)
+            .background(EKitapligimPalette.paper)
+            .clipShape(RoundedRectangle(cornerRadius: 14, style: .continuous))
+            .overlay { RoundedRectangle(cornerRadius: 14).stroke(EKitapligimPalette.border) }
+        }
+    }
+
+    private var categoryChips: some View {
+        ScrollView(.horizontal, showsIndicators: false) {
+            HStack(spacing: 8) {
+                EKChip(title: L10n.catalogFilterAllCategories, isSelected: filters.categoryID.isEmpty) {
+                    filters.categoryID = ""
+                    Task { await load(reset: true) }
+                }
+                ForEach(categories) { forum in
+                    EKChip(title: forum.title, isSelected: filters.categoryID == forum.id) {
+                        filters.categoryID = forum.id
+                        Task { await load(reset: true) }
+                    }
+                }
+            }
+        }
+    }
+
+    private var catalogControls: some View {
+        HStack(spacing: 10) {
+            Toggle(isOn: $filters.premiumOnly) {
+                Text(L10n.catalogFilterPremium)
+                    .font(.caption.weight(.bold))
+            }
+            .toggleStyle(.switch)
+            .tint(EKitapligimPalette.teal)
+            .onChange(of: filters.premiumOnly) { _, _ in Task { await load(reset: true) } }
+            Spacer(minLength: 0)
+            CatalogMetric(title: L10n.catalogStatBooks, value: EKitapligimFormat.count(books.count))
+            CatalogMetric(title: L10n.catalogStatPages, value: "\(lastPage)")
+        }
+        .padding(14)
+        .ekitapligimCard(radius: 14)
+    }
+
+    @ViewBuilder
+    private var catalogGridOrList: some View {
         switch displayMode {
         case .list:
-            ScrollView {
-                LazyVStack(spacing: 12) {
-                    ForEach(books) { book in
-                        NavigationLink(value: book.id) { BookRow(book: book) }
-                            .buttonStyle(.plain)
-                    }
-                    loadMoreButton.buttonStyle(.bordered)
-                }
-                .padding(16)
+            ForEach(books) { book in
+                NavigationLink(value: book.id) { BookRow(book: book) }
+                    .buttonStyle(.plain)
             }
         case .grid:
-            ScrollView {
-                LazyVGrid(
-                    columns: [GridItem(.adaptive(minimum: 140, maximum: 220), spacing: 16)],
-                    spacing: 20
-                ) {
-                    ForEach(books) { book in
-                        NavigationLink(value: book.id) { BookGridItem(book: book) }
-                            .buttonStyle(.plain)
-                    }
-                }
-                .padding(16)
-                if currentPage < lastPage {
-                    loadMoreButton
-                        .buttonStyle(.bordered)
-                        .padding(.bottom, 20)
+            LazyVGrid(
+                columns: [GridItem(.adaptive(minimum: 140, maximum: 220), spacing: 16)],
+                spacing: 20
+            ) {
+                ForEach(books) { book in
+                    NavigationLink(value: book.id) { BookGridItem(book: book) }
+                        .buttonStyle(.plain)
                 }
             }
         }
@@ -227,13 +307,28 @@ private struct CatalogFiltersView: View {
     }
 }
 
+private struct CatalogMetric: View {
+    let title: String
+    let value: String
+
+    var body: some View {
+        VStack(spacing: 2) {
+            Text(value).font(.headline.weight(.heavy)).foregroundStyle(EKitapligimPalette.tealDark)
+            Text(title).font(.caption2).foregroundStyle(EKitapligimPalette.muted)
+        }
+        .padding(.horizontal, 10)
+        .padding(.vertical, 8)
+        .background(EKitapligimPalette.tealSoft, in: RoundedRectangle(cornerRadius: 10, style: .continuous))
+    }
+}
+
 @MainActor
 private struct BookRow: View {
     let book: BookDTO
 
     var body: some View {
         HStack(spacing: 14) {
-            BookCover(book: book)
+            CatalogBookCover(book: book)
                 .frame(width: 76, height: 112)
             VStack(alignment: .leading, spacing: 6) {
                 Text(book.title).font(.headline).foregroundStyle(EKitapligimPalette.ink).lineLimit(2)
@@ -270,7 +365,7 @@ private struct BookGridItem: View {
 
     var body: some View {
         VStack(alignment: .leading, spacing: 7) {
-            BookCover(book: book)
+            CatalogBookCover(book: book)
                 .aspectRatio(2 / 3, contentMode: .fit)
                 .frame(maxWidth: .infinity)
             Text(book.title)
@@ -286,6 +381,70 @@ private struct BookGridItem: View {
         .frame(maxWidth: .infinity, alignment: .leading)
         .ekitapligimCard(radius: 12)
         .accessibilityElement(children: .combine)
+    }
+}
+
+@MainActor
+private struct CatalogBookCover: View {
+    @EnvironmentObject private var container: AppContainer
+    let book: BookDTO
+
+    private var isFavorite: Bool {
+        container.libraryItems.first(where: { $0.bookId == book.id })?.isFavoriteItem ?? false
+    }
+
+    private var isDownloaded: Bool {
+        if container.libraryItems.first(where: { $0.bookId == book.id })?.isDownloaded == true {
+            return true
+        }
+        if case .downloaded = container.downloadManager.states[book.id] {
+            return true
+        }
+        return container.downloadManager.localFile(for: book.id) != nil
+    }
+
+    var body: some View {
+        ZStack {
+            BookCover(book: book)
+
+            if isFavorite {
+                Image(systemName: "heart.fill")
+                    .font(.caption2.weight(.bold))
+                    .foregroundStyle(.white)
+                    .padding(6)
+                    .background(Color.black.opacity(0.46), in: Circle())
+                    .frame(maxWidth: .infinity, maxHeight: .infinity, alignment: .topTrailing)
+                    .padding(6)
+                    .accessibilityLabel(L10n.libraryFavoriteBadge)
+            }
+
+            if book.isPremiumOnly {
+                HStack(spacing: 3) {
+                    Image(systemName: "crown.fill")
+                        .font(.system(size: 9, weight: .bold))
+                    Text("PREMIUM")
+                        .font(.system(size: 9, weight: .heavy))
+                }
+                .foregroundStyle(EKitapligimPalette.teal)
+                .padding(.horizontal, 8)
+                .padding(.vertical, 5)
+                .background(Color.white.opacity(0.94), in: Capsule())
+                .frame(maxWidth: .infinity, maxHeight: .infinity, alignment: .bottomLeading)
+                .padding(8)
+                .accessibilityLabel(L10n.catalogFilterPremium)
+            }
+
+            if isDownloaded {
+                Image(systemName: "arrow.down.circle.fill")
+                    .font(.caption.weight(.bold))
+                    .foregroundStyle(.white)
+                    .padding(6)
+                    .background(EKitapligimPalette.teal, in: Circle())
+                    .frame(maxWidth: .infinity, maxHeight: .infinity, alignment: .bottomTrailing)
+                    .padding(6)
+                    .accessibilityLabel(L10n.libraryDownloadedBadge)
+            }
+        }
     }
 }
 

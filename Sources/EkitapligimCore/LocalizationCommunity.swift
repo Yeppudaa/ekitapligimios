@@ -32,6 +32,9 @@ public extension L10n {
     static func readingGoalProgressAccessibility(_ percent: Int) -> String {
         String(format: tr("accessibility.readingGoalProgress", "Günlük hedefin yüzde %d tamamlandı"), percent)
     }
+    static func profilePhotoAccessibility(_ username: String) -> String {
+        String(format: tr("accessibility.profilePhoto", "%@ profil resmi"), username)
+    }
 
     // MARK: - Alt sekmeler
 
@@ -318,6 +321,8 @@ public extension L10n {
     static var agendaPinned: String { tr("agenda.pinned", "Sabitlendi") }
     static var agendaFeatured: String { tr("agenda.featured", "Öne çıkan") }
     static var agendaFollow: String { tr("agenda.follow", "Takip et") }
+    static var agendaPostOptions: String { tr("agenda.postOptions", "Paylaşım seçenekleri") }
+    static var agendaCommentOptions: String { tr("agenda.commentOptions", "Yorum seçenekleri") }
     static var agendaFollowing: String { tr("agenda.following", "Takipte") }
     static var agendaProgressLabel: String { tr("agenda.progressLabel", "Okuma ilerlemesi") }
     static func agendaPageLabel(_ page: Int) -> String { String(format: tr("agenda.pageLabel", "Sayfa %d"), page) }
@@ -417,12 +422,30 @@ public extension L10n {
     static var chatEdited: String { tr("chat.edited", " · düzenlendi") }
     static var chatRoleAdmin: String { tr("chat.role.admin", "YÖNETİCİ") }
     static var chatRoleModerator: String { tr("chat.role.moderator", "MODERATÖR") }
+    static var chatRolePremium: String { tr("chat.role.premium", "Premium Üye") }
+    static var chatRoleStaff: String { tr("chat.role.staff", "EKİP") }
     static var chatRoomFallbackDescription: String {
         tr("chat.roomFallbackDescription", "Kitaplar üzerine canlı sohbet")
     }
     static func chatOnlineCount(_ value: Int) -> String { String(format: tr("chat.onlineCount", "%d çevrimiçi"), value) }
     static var chatRoomOpen: String { tr("chat.roomOpen", "Açık") }
     static var chatLiveBadge: String { tr("chat.liveBadge", "CANLI") }
+    static var chatHeroTitle: String { tr("chat.hero.title", "Canlı okur topluluğu") }
+    static var chatHeroSubtitle: String {
+        tr("chat.hero.subtitle", "Kitapları konuş, yeni keşiflere birlikte ulaş.")
+    }
+    static var chatHeroLiveUpdate: String { tr("chat.hero.liveUpdate", "Mesajlar anlık güncellenir") }
+    static var chatSessionRefresh: String { tr("chat.sessionRefresh", "Oturumu yenile") }
+    static var chatSessionPreparingTitle: String { tr("chat.sessionPreparingTitle", "Sohbet hesabın hazırlanıyor") }
+    static var chatSessionPreparingSubtitle: String {
+        tr("chat.sessionPreparingSubtitle", "Oturumun güvenli biçimde doğrulanıyor…")
+    }
+    static var chatComposerSessionTitle: String {
+        tr("chat.composer.sessionTitle", "Mesajlar görünür, oturumun yenilenmeli")
+    }
+    static var chatComposerSessionSubtitle: String {
+        tr("chat.composer.sessionSubtitle", "Okumaya devam edebilirsin. Mesaj yazmak için hesabına tekrar bağlan.")
+    }
 
     static var chatStatusMember: String { tr("chat.status.member", "Üye olarak bağlısın") }
     static var chatStatusSecureRead: String { tr("chat.status.secureRead", "Güvenli okuma modu") }
@@ -461,6 +484,7 @@ public extension L10n {
         tr("chat.roomsLoadingSubtitle", "Canlı topluluk bağlantısı kuruluyor")
     }
     static var chatRoomsFailed: String { tr("chat.roomsFailed", "Sohbet odaları yüklenemedi.") }
+    static var chatMessagesFailed: String { tr("chat.messagesFailed", "Sohbet mesajları yüklenemedi.") }
     static var chatRoomsEmpty: String {
         tr("chat.roomsEmpty", "Şu anda katılabileceğiniz bir sohbet odası yok.")
     }
@@ -599,10 +623,10 @@ public extension L10n {
     // MARK: - Kütüphane sekmeleri
 
     static var libraryTabReading: String { tr("library.tab.reading", "Okuyorum") }
-    static var libraryTabWantToRead: String { tr("library.tab.wantToRead", "Okuyacağım") }
+    static var libraryTabWantToRead: String { tr("library.tab.wantToRead", "Daha sonra oku") }
     static var libraryTabFinished: String { tr("library.tab.finished", "Okudum") }
     static var libraryTabFavorites: String { tr("library.tab.favorites", "Favoriler") }
-    static var libraryTabDownloads: String { tr("library.tab.downloads", "İndirmeler") }
+    static var libraryTabDownloads: String { tr("library.tab.downloads", "İndirme geçmişi") }
     static var libraryHeaderTitle: String { tr("library.header.title", "Kişisel Kitaplığım") }
 
     private static func tr(_ key: String, _ defaultValue: String) -> String {

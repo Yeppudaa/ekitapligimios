@@ -12,28 +12,44 @@ struct ConversationsView: View {
     @State private var errorMessage: String?
 
     var body: some View {
-        Group {
-            if isLoading && conversations.isEmpty {
-                ProgressView(L10n.conversationsLoading)
-            } else if let errorMessage, conversations.isEmpty {
-                ContentUnavailableView(L10n.conversationsUnavailableTitle, systemImage: "wifi.exclamationmark", description: Text(errorMessage))
-            } else if conversations.isEmpty {
-                ContentUnavailableView(L10n.conversationsEmptyTitle, systemImage: "envelope.open", description: Text(L10n.conversationsEmptyDescription))
-            } else {
-                List {
-                    ForEach(conversations) { conversation in
-                        NavigationLink {
-                            ConversationDetailView(conversationID: conversation.id)
-                        } label: {
-                            ConversationRow(conversation: conversation)
+        EKitapligimScreen {
+            Group {
+                if isLoading && conversations.isEmpty {
+                    EKLoadingState(message: L10n.conversationsLoading)
+                } else if let errorMessage, conversations.isEmpty {
+                    EKErrorState(title: L10n.conversationsUnavailableTitle, message: errorMessage) {
+                        Task { await load(reset: true) }
+                    }
+                } else if conversations.isEmpty {
+                    EKEmptyState(
+                        title: L10n.conversationsEmptyTitle,
+                        message: L10n.conversationsEmptyDescription,
+                        systemImage: "envelope.open"
+                    )
+                } else {
+                    ScrollView {
+                        LazyVStack(spacing: 12) {
+                            ForEach(conversations) { conversation in
+                                NavigationLink {
+                                    ConversationDetailView(conversationID: conversation.id)
+                                } label: {
+                                    ConversationRow(conversation: conversation)
+                                        .padding(14)
+                                        .ekitapligimCard(radius: 14)
+                                }
+                                .buttonStyle(.plain)
+                            }
+                            if currentPage < lastPage {
+                                EKLoadMoreButton(isLoading: isLoading) {
+                                    Task { await load(reset: false) }
+                                }
+                            }
                         }
+                        .padding(.horizontal, 18)
+                        .padding(.vertical, 12)
                     }
-                    if currentPage < lastPage {
-                        Button(L10n.commonLoadMore) { Task { await load(reset: false) } }
-                            .disabled(isLoading)
-                    }
+                    .refreshable { await load(reset: true) }
                 }
-                .refreshable { await load(reset: true) }
             }
         }
         .navigationTitle(L10n.conversationsTitle)
@@ -127,20 +143,24 @@ struct ConversationDetailView: View {
     @State private var errorMessage: String?
 
     var body: some View {
-        VStack(spacing: 0) {
-            Group {
-                if isLoading && detail == nil {
-                    ProgressView(L10n.conversationsLoading)
-                } else if let errorMessage, detail == nil {
-                    ContentUnavailableView(L10n.conversationsUnavailableTitle, systemImage: "wifi.exclamationmark", description: Text(errorMessage))
-                } else if let detail {
-                    List(detail.messages) { message in
-                        MessageBubble(message: message)
-                            .listRowSeparator(.hidden)
+        EKitapligimScreen {
+            VStack(spacing: 0) {
+                Group {
+                    if isLoading && detail == nil {
+                        EKLoadingState(message: L10n.conversationsLoading)
+                    } else if let errorMessage, detail == nil {
+                        EKErrorState(title: L10n.conversationsUnavailableTitle, message: errorMessage) {
+                            Task { await load() }
+                        }
+                    } else if let detail {
+                        List(detail.messages) { message in
+                            MessageBubble(message: message)
+                                .listRowSeparator(.hidden)
+                        }
+                        .listStyle(.plain)
+                        .ekitapligimListScreen()
                     }
-                    .listStyle(.plain)
                 }
-            }
 
             if detail?.conversation.canReply == true {
                 HStack(alignment: .bottom, spacing: 8) {
@@ -159,6 +179,7 @@ struct ConversationDetailView: View {
                 }
                 .padding(10)
                 .background(.bar)
+            }
             }
         }
         .navigationTitle(detail?.conversation.title ?? L10n.conversationsMessageTitle)

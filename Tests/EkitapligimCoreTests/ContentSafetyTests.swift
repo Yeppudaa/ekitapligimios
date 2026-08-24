@@ -10,6 +10,11 @@ final class ContentSafetyTests: XCTestCase {
         XCTAssertEqual(ContentSafety().validateUserGeneratedText("   "), .rejected(reason: .empty))
     }
 
+    func testAcceptsShortNonBlankTextMatchingAndroidIsNotBlank() {
+        XCTAssertEqual(ContentSafety().validateUserGeneratedText("a"), .accepted)
+        XCTAssertEqual(ContentSafety().validateUserGeneratedText("ok"), .accepted)
+    }
+
     func testRejectsBlockedTerms() {
         XCTAssertEqual(ContentSafety().validateUserGeneratedText("Bu bir spamlink mesajıdır."), .rejected(reason: .blockedTerm))
     }

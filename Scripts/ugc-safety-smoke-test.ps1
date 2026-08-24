@@ -129,6 +129,31 @@ try {
         Write-Host "PASS POST threads/$ThreadId/posts without auth -> expected HTTP $status"
     }
 
+    Write-Step "Checking forum thread create route (requires deployed IosApi ForumThreads::actionPost)"
+    $forums = Invoke-JsonGet "forums"
+    if ($forums.forums -and $forums.forums.Count -gt 0) {
+        $forumId = [string]$forums.forums[0].id
+        try {
+            $created = Invoke-JsonPost "forums/$forumId/threads" @{
+                title = "UGC smoke thread $(Get-Date -Format 'HHmmss')"
+                message = "Automated UGC safety smoke test message."
+            }
+            if (-not $created.thread -and -not $created.id) {
+                throw "Forum create response missing thread payload."
+            }
+            Write-Host "PASS POST forums/$forumId/threads -> created thread"
+        } catch {
+            $status = if ($_.Exception.Response) { [int]$_.Exception.Response.StatusCode } else { 0 }
+            if ($status -eq 404 -or $status -eq 405) {
+                Write-Host "WARN POST forums/$forumId/threads -> HTTP $status (deploy IosApi v1.0.3+ to enable forum topic create)"
+            } else {
+                throw
+            }
+        }
+    } else {
+        Write-Host "SKIP forum thread create (no visible forums)"
+    }
+
     Write-Host "UGC safety smoke test completed."
 } finally {
     try {

@@ -6,28 +6,41 @@ struct DownloadsView: View {
     @EnvironmentObject private var container: AppContainer
 
     var body: some View {
-        List {
-            if container.downloadManager.states.isEmpty {
-                ContentUnavailableView(L10n.downloadsEmptyTitle, systemImage: "arrow.down.circle", description: Text(L10n.downloadsEmptyDescription))
-            } else {
-                ForEach(container.downloadManager.states.keys.sorted(), id: \.self) { bookID in
-                    let state = container.downloadManager.states[bookID] ?? .notDownloaded
-                    DownloadStateRow(bookID: bookID, state: state)
-                        .swipeActions(edge: .trailing, allowsFullSwipe: true) {
-                            if case .downloaded(let fileName) = state {
-                                Button(role: .destructive) {
-                                    Task {
-                                        await container.downloadManager.remove(
-                                            bookID: bookID,
-                                            fileExtension: URL(fileURLWithPath: fileName).pathExtension
-                                        )
+        EKitapligimScreen {
+            Group {
+                if container.downloadManager.states.isEmpty {
+                    EKEmptyState(
+                        title: L10n.downloadsEmptyTitle,
+                        message: L10n.downloadsEmptyDescription,
+                        systemImage: "arrow.down.circle"
+                    )
+                } else {
+                    ScrollView {
+                        LazyVStack(spacing: 12) {
+                            ForEach(container.downloadManager.states.keys.sorted(), id: \.self) { bookID in
+                                let state = container.downloadManager.states[bookID] ?? .notDownloaded
+                                DownloadStateRow(bookID: bookID, state: state)
+                                    .padding(14)
+                                    .ekitapligimCard(radius: 14)
+                                    .contextMenu {
+                                        if case .downloaded(let fileName) = state {
+                                            Button(role: .destructive) {
+                                                Task {
+                                                    await container.downloadManager.remove(
+                                                        bookID: bookID,
+                                                        fileExtension: URL(fileURLWithPath: fileName).pathExtension
+                                                    )
+                                                }
+                                            } label: {
+                                                Label(L10n.commonRemove, systemImage: "trash")
+                                            }
+                                        }
                                     }
-                                } label: {
-                                    Image(systemName: "trash")
-                                }
-                                .accessibilityLabel(L10n.commonRemove)
                             }
                         }
+                        .padding(.horizontal, 18)
+                        .padding(.vertical, 12)
+                    }
                 }
             }
         }
@@ -42,12 +55,13 @@ private struct DownloadStateRow: View {
 
     var body: some View {
         HStack {
-            VStack(alignment: .leading) {
+            VStack(alignment: .leading, spacing: 4) {
                 Text(L10n.commonBookNumber(bookID))
                     .font(.headline)
+                    .foregroundStyle(EKitapligimPalette.ink)
                 Text(statusText)
                     .font(.caption)
-                    .foregroundStyle(.secondary)
+                    .foregroundStyle(EKitapligimPalette.muted)
             }
             Spacer()
             Image(systemName: iconName)
@@ -76,9 +90,9 @@ private struct DownloadStateRow: View {
 
     private var iconColor: Color {
         switch state {
-        case .downloaded: .green
-        case .failed: .red
-        default: .secondary
+        case .downloaded: EKitapligimPalette.success
+        case .failed: EKitapligimPalette.danger
+        default: EKitapligimPalette.muted
         }
     }
 }

@@ -152,6 +152,22 @@ final class ModelDecodingTests: XCTestCase {
         XCTAssertEqual(page.items.first?.id, "3")
         XCTAssertEqual(page.items.first?.requestedBy, "Ekitapligim")
         XCTAssertEqual(page.items.first?.voteCount, 13)
+        XCTAssertEqual(true, page.items.first?.allowsVote)
+    }
+
+    func testBookRequestAllowsVoteOnlyWhenPending() throws {
+        let acquired = Data("""
+        { "book_requests": [{ "id": "1", "title": "A", "author": "B", "status": "ACQUIRED" }] }
+        """.utf8)
+        let rejected = Data("""
+        { "book_requests": [{ "id": "2", "title": "A", "author": "B", "status": "REJECTED" }] }
+        """.utf8)
+
+        let acquiredPage = try JSONDecoder.ekitapligim.decode(BookRequestsPageDTO.self, from: acquired)
+        let rejectedPage = try JSONDecoder.ekitapligim.decode(BookRequestsPageDTO.self, from: rejected)
+
+        XCTAssertEqual(false, acquiredPage.items.first?.allowsVote)
+        XCTAssertEqual(false, rejectedPage.items.first?.allowsVote)
     }
 
     func testBookRequestVoteDecodesSnakeCaseCount() throws {
@@ -215,7 +231,8 @@ final class ModelDecodingTests: XCTestCase {
               "isPremiumOnly": false,
               "view_count": 1,
               "reaction_score": 0,
-              "rating": 0
+              "rating": 0,
+              "file_type": "unknown"
             }
           ],
           "pagination": {
@@ -230,9 +247,24 @@ final class ModelDecodingTests: XCTestCase {
         let page = try JSONDecoder.ekitapligim.decode(BooksPageDTO.self, from: data)
 
         XCTAssertEqual(page.books.first?.id, "15585")
+        XCTAssertEqual(page.books.first?.displayedDownloadCount, 1)
+        XCTAssertEqual(page.books.first?.displayedFormat, "PDF / EPUB")
         XCTAssertEqual(page.currentPage, 1)
         XCTAssertEqual(page.lastPage, 721)
         XCTAssertEqual(page.totalBooks, 14409)
+    }
+
+    func testBookDisplayedFormatUppercasesKnownTypeLikeAndroid() throws {
+        let data = Data("""
+        {
+          "id": "1", "title": "T", "author": "A", "publisher": "P", "isbn": "",
+          "category": "", "language": "", "publish_year": "", "description": "",
+          "cover_url": "", "pdf_url": "", "page_count": 1, "isPremiumOnly": false,
+          "file_type": "epub"
+        }
+        """.utf8)
+        let book = try JSONDecoder.ekitapligim.decode(BookDTO.self, from: data)
+        XCTAssertEqual(book.displayedFormat, "EPUB")
     }
 
     func testBookDetailEnvelopeDecodesSimilarBooks() throws {
@@ -402,6 +434,29 @@ final class ModelDecodingTests: XCTestCase {
 
         XCTAssertEqual(envelope.post.id, "15607")
         XCTAssertEqual(envelope.post.message, "Cevap")
+    }
+
+    func testForumThreadCreateEnvelopeDecodesThread() throws {
+        let data = Data("""
+        {
+          "success": true,
+          "thread": {
+            "id": "15585",
+            "title": "Yeni konu",
+            "username": "Ekitapligim",
+            "reply_count": 0,
+            "view_count": 0,
+            "post_date": 1782941300,
+            "can_reply": true,
+            "is_sticky": false
+          }
+        }
+        """.utf8)
+
+        let envelope = try JSONDecoder.ekitapligim.decode(ForumThreadEnvelope.self, from: data)
+
+        XCTAssertEqual(envelope.thread.id, "15585")
+        XCTAssertEqual(envelope.thread.title, "Yeni konu")
     }
 
     func testMyCommentsDecodeCurrentBackendShape() throws {

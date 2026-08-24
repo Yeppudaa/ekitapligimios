@@ -12,27 +12,32 @@ struct NotificationsView: View {
     @State private var navigationError: String?
 
     var body: some View {
-        Group {
-            if isLoading {
-                ProgressView(L10n.notificationsLoading)
-            } else if let errorMessage {
-                ContentUnavailableView(L10n.notificationsUnavailableTitle, systemImage: "bell.badge", description: Text(errorMessage))
-            } else if notifications.isEmpty {
-                ContentUnavailableView(L10n.notificationsEmptyTitle, systemImage: "bell")
-            } else {
-                List {
-                    if let counts {
-                        Section {
-                            LabeledContent(L10n.notificationsUnread, value: String(counts.unread))
-                            LabeledContent(L10n.notificationsNew, value: String(counts.unviewed ?? 0))
-                        }
+        EKitapligimScreen {
+            Group {
+                if isLoading {
+                    EKLoadingState(message: L10n.notificationsLoading)
+                } else if let errorMessage {
+                    EKErrorState(title: L10n.notificationsUnavailableTitle, message: errorMessage) {
+                        Task { await load() }
                     }
-                    Section {
-                        ForEach(notifications) { item in
-                            NotificationRow(notification: item) {
-                                await open(item)
+                } else if notifications.isEmpty {
+                    EKEmptyState(title: L10n.notificationsEmptyTitle, systemImage: "bell")
+                } else {
+                    ScrollView {
+                        LazyVStack(spacing: 12) {
+                            if let counts {
+                                notificationCountsCard(counts)
+                            }
+                            ForEach(notifications) { item in
+                                NotificationRow(notification: item) {
+                                    await open(item)
+                                }
+                                .padding(14)
+                                .ekitapligimCard(radius: 14)
                             }
                         }
+                        .padding(.horizontal, 18)
+                        .padding(.vertical, 12)
                     }
                 }
             }
@@ -55,6 +60,22 @@ struct NotificationsView: View {
             }
         }
         .task { await load() }
+    }
+
+    private func notificationCountsCard(_ counts: NotificationCountsDTO) -> some View {
+        HStack {
+            VStack(alignment: .leading) {
+                Text(L10n.notificationsUnread).font(.caption).foregroundStyle(EKitapligimPalette.muted)
+                Text("\(counts.unread)").font(.title3.weight(.heavy)).foregroundStyle(EKitapligimPalette.tealDark)
+            }
+            Spacer()
+            VStack(alignment: .trailing) {
+                Text(L10n.notificationsNew).font(.caption).foregroundStyle(EKitapligimPalette.muted)
+                Text("\(counts.unviewed ?? 0)").font(.title3.weight(.heavy)).foregroundStyle(EKitapligimPalette.amber)
+            }
+        }
+        .padding(14)
+        .ekitapligimCard(radius: 14)
     }
 
     private func load() async {

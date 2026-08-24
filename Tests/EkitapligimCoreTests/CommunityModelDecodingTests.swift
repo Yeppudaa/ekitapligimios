@@ -452,4 +452,22 @@ final class CommunityModelDecodingTests: XCTestCase {
         XCTAssertNotNil(media.avatarUrl)
         XCTAssertNil(media.bannerUrl)
     }
+
+    func testBookAgendaPostUpdatingPreservesFieldsAndCommentCount() throws {
+        let page = try decoder.decode(
+            BookAgendaPageDTO.self,
+            from: Data(
+                """
+                {"items":[{"id":"19","type":"standard","message":"Test","comment_count":2,"reaction_score":1,"repost_count":0,"bookmark_count":0,"view_count":1,"actor":{"id":"1","username":"u"},"attachments":[],"viewer":{}}],"has_more":false}
+                """.utf8
+            )
+        )
+        let original = try XCTUnwrap(page.items.first)
+        let updated = original.updating(commentCount: 3)
+
+        XCTAssertEqual(updated.commentCount, 3)
+        XCTAssertEqual(updated.id, original.id)
+        XCTAssertEqual(updated.message, original.message)
+        XCTAssertEqual(updated.reactionScore, original.reactionScore)
+    }
 }

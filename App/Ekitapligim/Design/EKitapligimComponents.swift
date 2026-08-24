@@ -52,14 +52,7 @@ enum EKitapligimFormat {
 
     /// Mirrors the Android relative timestamps: Az önce / n dk önce / n sa önce / n gün önce.
     static func relativeTime(_ timestamp: Int, dayCutoff: Int = 7) -> String {
-        guard timestamp > 0 else { return "" }
-        let elapsed = Int(Date().timeIntervalSince1970) - timestamp
-        if elapsed < 60 { return L10n.timeJustNow }
-        if elapsed < 3_600 { return L10n.timeMinutesAgo(elapsed / 60) }
-        if elapsed < 86_400 { return L10n.timeHoursAgo(elapsed / 3_600) }
-        let days = elapsed / 86_400
-        if days < dayCutoff { return L10n.timeDaysAgo(days) }
-        return shortDate(timestamp)
+        CommunityRelativeTimeFormatting.format(timestampSeconds: timestamp, dayCutoff: dayCutoff)
     }
 
     /// Reading duration in the Android format, e.g. "2 sa 15 dk".
@@ -122,8 +115,50 @@ struct EKPill: View {
     }
 }
 
+struct ForumMessageBody: View {
+    let message: String
+
+    private var blocks: [ForumMessageBlock] {
+        ForumMessageFormatting.blocks(from: message)
+    }
+
+    var body: some View {
+        if blocks.isEmpty {
+            Text(L10n.forumMessageEmpty)
+                .font(.body)
+                .foregroundStyle(Color(hex: 0x6E7482))
+        } else {
+            VStack(alignment: .leading, spacing: 11) {
+                ForEach(blocks) { block in
+                    if block.isSeparator {
+                        Rectangle()
+                            .fill(Color(hex: 0x087A80))
+                            .frame(height: 1.5)
+                            .padding(.vertical, 6)
+                    } else if block.isHeading {
+                        Text(block.text)
+                            .font(.title3.weight(.bold))
+                            .foregroundStyle(Color(hex: 0x0E1B2B))
+                    } else if block.isBullet {
+                        Text(block.text)
+                            .font(.body)
+                            .foregroundStyle(Color(hex: 0x242A38))
+                            .padding(.leading, 4)
+                    } else {
+                        Text(block.text)
+                            .font(.body)
+                            .foregroundStyle(Color(hex: 0x242A38))
+                            .frame(maxWidth: .infinity, alignment: .leading)
+                    }
+                }
+            }
+        }
+    }
+}
+
 struct EKChip: View {
     let title: String
+    var systemImage: String? = nil
     let isSelected: Bool
     var selectedBackground: Color = EKitapligimPalette.profileTealDeep
     var selectedForeground: Color = .white
@@ -132,18 +167,24 @@ struct EKChip: View {
 
     var body: some View {
         Button(action: action) {
-            Text(title)
-                .font(.subheadline.weight(.bold))
-                .foregroundStyle(isSelected ? selectedForeground : Color(hex: 0x425C63))
-                .padding(.horizontal, 15)
-                .padding(.vertical, 9)
-                .background(isSelected ? AnyShapeStyle(selectedBackground) : AnyShapeStyle(Color.white), in: Capsule())
-                .overlay {
-                    if !isSelected {
-                        Capsule().stroke(Color(hex: 0xD9E5E7))
-                    }
+            HStack(spacing: 6) {
+                if let systemImage {
+                    Image(systemName: systemImage)
+                        .font(.caption.weight(.semibold))
                 }
-                .opacity(isEnabled ? 1 : 0.55)
+                Text(title)
+                    .font(.subheadline.weight(.bold))
+            }
+            .foregroundStyle(isSelected ? selectedForeground : Color(hex: 0x425C63))
+            .padding(.horizontal, 15)
+            .padding(.vertical, 9)
+            .background(isSelected ? AnyShapeStyle(selectedBackground) : AnyShapeStyle(Color.white), in: Capsule())
+            .overlay {
+                if !isSelected {
+                    Capsule().stroke(Color(hex: 0xD9E5E7))
+                }
+            }
+            .opacity(isEnabled ? 1 : 0.55)
         }
         .buttonStyle(.plain)
         .disabled(!isEnabled)
@@ -213,7 +254,8 @@ struct EKAvatar: View {
         .frame(width: size, height: size)
         .background(background)
         .clipShape(shape)
-        .accessibilityHidden(true)
+        .accessibilityLabel(L10n.profilePhotoAccessibility(username))
+        .accessibilityHidden(secureURL == nil)
     }
 
     private var placeholder: some View {
@@ -254,9 +296,15 @@ struct EKStateCard: View {
     var message: String? = nil
     var retryTitle: String? = nil
     var retry: (() -> Void)? = nil
+    var systemImage: String? = nil
 
     var body: some View {
-        VStack(spacing: 9) {
+        VStack(spacing: 8) {
+            if let systemImage {
+                Image(systemName: systemImage)
+                    .font(.system(size: 34))
+                    .foregroundStyle(EKitapligimPalette.agendaPurple)
+            }
             Text(title)
                 .font(.headline)
                 .foregroundStyle(EKitapligimPalette.agendaInk)
@@ -275,7 +323,7 @@ struct EKStateCard: View {
             }
         }
         .frame(maxWidth: .infinity)
-        .padding(24)
+        .padding(systemImage == nil ? 24 : 28)
         .ekitapligimCard()
     }
 }
@@ -284,11 +332,14 @@ struct EKInlineError: View {
     let message: String
     var retryTitle: String? = nil
     var retry: (() -> Void)? = nil
+    var showsIcon: Bool = true
 
     var body: some View {
-        HStack(alignment: .top, spacing: 10) {
-            Image(systemName: "exclamationmark.triangle.fill")
-                .foregroundStyle(EKitapligimPalette.warningInk)
+        HStack(alignment: .center, spacing: 10) {
+            if showsIcon {
+                Image(systemName: "exclamationmark.triangle.fill")
+                    .foregroundStyle(EKitapligimPalette.warningInk)
+            }
             Text(message)
                 .font(.caption)
                 .foregroundStyle(EKitapligimPalette.warningInk)
@@ -301,7 +352,7 @@ struct EKInlineError: View {
         }
         .padding(12)
         .background(EKitapligimPalette.warningBackground)
-        .clipShape(RoundedRectangle(cornerRadius: 13, style: .continuous))
+        .clipShape(RoundedRectangle(cornerRadius: 14, style: .continuous))
         .overlay {
             RoundedRectangle(cornerRadius: 13, style: .continuous)
                 .stroke(EKitapligimPalette.warningBorder)
@@ -309,9 +360,69 @@ struct EKInlineError: View {
     }
 }
 
+/// Gold spline decoration used on Android forum hero cards.
+struct EKForumGoldDecoration: View {
+    var body: some View {
+        Canvas { context, size in
+            let gold = Color(hex: 0xE2B866)
+            for index in 0..<4 {
+                let y = size.height * (0.18 + Double(index) * 0.085)
+                var path = Path()
+                path.move(to: CGPoint(x: size.width * 0.70, y: y))
+                path.addCurve(
+                    to: CGPoint(x: size.width, y: y - 24),
+                    control1: CGPoint(x: size.width * 0.82, y: y - 30),
+                    control2: CGPoint(x: size.width * 0.90, y: y + 28)
+                )
+                context.stroke(path, with: .color(gold.opacity(0.28)), lineWidth: 1)
+            }
+            let crossCenters: [CGPoint] = [
+                CGPoint(x: size.width * 0.80, y: size.height * 0.25),
+                CGPoint(x: size.width * 0.84, y: size.height * 0.17),
+                CGPoint(x: size.width * 0.88, y: size.height * 0.12)
+            ]
+            for (index, center) in crossCenters.enumerated() {
+                let radius = CGFloat(4 + index)
+                var horizontal = Path()
+                horizontal.move(to: CGPoint(x: center.x - radius, y: center.y))
+                horizontal.addLine(to: CGPoint(x: center.x + radius, y: center.y))
+                var vertical = Path()
+                vertical.move(to: CGPoint(x: center.x, y: center.y - radius))
+                vertical.addLine(to: CGPoint(x: center.x, y: center.y + radius))
+                context.stroke(horizontal, with: .color(gold.opacity(0.65)), lineWidth: 1)
+                context.stroke(vertical, with: .color(gold.opacity(0.65)), lineWidth: 1)
+            }
+        }
+        .allowsHitTesting(false)
+    }
+}
+
+extension View {
+    /// Cream gradient + gold trim matching Android `ForumThreadsHero`.
+    func forumHeroSurface(radius: CGFloat = 16) -> some View {
+        background {
+            ZStack {
+                LinearGradient(
+                    colors: [.white, Color(hex: 0xF2FAF9), Color(hex: 0xFFF8EC)],
+                    startPoint: .leading,
+                    endPoint: .trailing
+                )
+                EKForumGoldDecoration()
+            }
+        }
+        .clipShape(RoundedRectangle(cornerRadius: radius, style: .continuous))
+        .overlay {
+            RoundedRectangle(cornerRadius: radius, style: .continuous)
+                .stroke(Color(hex: 0xE4C184), lineWidth: 1)
+        }
+    }
+}
+
 /// The feeds page with an explicit button rather than scroll-edge loading, mirroring Android.
 struct EKLoadMoreButton: View {
     let isLoading: Bool
+    var title: String = L10n.commonLoadMore
+    var loadingTitle: String = L10n.commonLoading
     var tint: Color = EKitapligimPalette.teal
     let action: () -> Void
 
@@ -321,7 +432,7 @@ struct EKLoadMoreButton: View {
                 if isLoading {
                     ProgressView().tint(.white).controlSize(.small)
                 }
-                Text(isLoading ? L10n.commonLoading : L10n.commonLoadMore)
+                Text(isLoading ? loadingTitle : title)
                     .font(.subheadline.weight(.bold))
             }
             .foregroundStyle(.white)

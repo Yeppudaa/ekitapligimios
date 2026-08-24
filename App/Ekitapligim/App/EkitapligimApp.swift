@@ -10,6 +10,7 @@ struct EkitapligimApp: App {
         WindowGroup {
             RootView()
                 .environmentObject(container)
+                .preferredColorScheme(.light)
                 .task {
                     await container.bootstrap()
                 }

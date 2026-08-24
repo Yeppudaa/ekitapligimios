@@ -10,39 +10,42 @@ struct MembersView: View {
     @State private var currentPage = 0
     @State private var lastPage = 1
     @State private var total = 0
-    @State private var isLoading = false
+    @State private var isLoading = true
     @State private var errorMessage: String?
 
     var body: some View {
-        Group {
-            if isLoading && members.isEmpty {
-                ProgressView(L10n.membersLoading)
-            } else if let errorMessage, members.isEmpty {
-                ContentUnavailableView(L10n.membersUnavailableTitle, systemImage: "wifi.exclamationmark", description: Text(errorMessage))
-            } else if members.isEmpty {
-                ContentUnavailableView(L10n.membersEmptyTitle, systemImage: "person.3", description: Text(L10n.membersEmptyDescription))
-            } else {
-                List {
-                    Section {
-                        LabeledContent(L10n.membersTotalLabel, value: "\(total)")
-                        Picker(L10n.membersSortLabel, selection: $sort) {
-                            Text(L10n.membersSortAlphabetical).tag("alphabetical")
-                            Text(L10n.membersSortNewest).tag("newest")
-                            Text(L10n.membersSortActive).tag("active")
-                        }
-                        .pickerStyle(.menu)
-                        .onChange(of: sort) { _, _ in Task { await load(reset: true) } }
+        EKitapligimScreen {
+            Group {
+                if isLoading && members.isEmpty {
+                    EKLoadingState(message: L10n.membersLoading)
+                } else if let errorMessage, members.isEmpty {
+                    EKErrorState(title: L10n.membersUnavailableTitle, message: errorMessage) {
+                        Task { await load(reset: true) }
                     }
-                    ForEach(members) { member in
-                        NavigationLink {
-                            MemberProfileView(memberID: member.id)
-                        } label: {
-                            MemberRow(member: member)
+                } else if members.isEmpty {
+                    EKEmptyState(title: L10n.membersEmptyTitle, message: L10n.membersEmptyDescription, systemImage: "person.3")
+                } else {
+                    ScrollView {
+                        LazyVStack(spacing: 12) {
+                            membersHeader
+                            ForEach(members) { member in
+                                NavigationLink {
+                                    MemberProfileView(memberID: member.id)
+                                } label: {
+                                    MemberRow(member: member)
+                                        .padding(14)
+                                        .ekitapligimCard(radius: 14)
+                                }
+                                .buttonStyle(.plain)
+                            }
+                            if currentPage < lastPage {
+                                EKLoadMoreButton(isLoading: isLoading) {
+                                    Task { await load(reset: false) }
+                                }
+                            }
                         }
-                    }
-                    if currentPage < lastPage {
-                        Button(L10n.commonLoadMore) { Task { await load(reset: false) } }
-                            .disabled(isLoading)
+                        .padding(.horizontal, 18)
+                        .padding(.vertical, 12)
                     }
                 }
             }
@@ -53,8 +56,28 @@ struct MembersView: View {
         .task { await load(reset: true) }
     }
 
+    private var membersHeader: some View {
+        VStack(alignment: .leading, spacing: 10) {
+            HStack {
+                Text(L10n.membersTotalLabel)
+                    .font(.caption.weight(.bold))
+                    .foregroundStyle(EKitapligimPalette.muted)
+                Spacer()
+                Text("\(total)").font(.headline.weight(.heavy)).foregroundStyle(EKitapligimPalette.tealDark)
+            }
+            Picker(L10n.membersSortLabel, selection: $sort) {
+                Text(L10n.membersSortAlphabetical).tag("alphabetical")
+                Text(L10n.membersSortNewest).tag("newest")
+                Text(L10n.membersSortActive).tag("active")
+            }
+            .pickerStyle(.segmented)
+            .onChange(of: sort) { _, _ in Task { await load(reset: true) } }
+        }
+        .padding(14)
+        .ekitapligimCard(radius: 14)
+    }
+
     private func load(reset: Bool) async {
-        guard !isLoading else { return }
         isLoading = true
         errorMessage = nil
         defer { isLoading = false }
@@ -120,7 +143,7 @@ struct MemberProfileView: View {
     let memberID: String
 
     @State private var member: MemberDTO?
-    @State private var isLoading = false
+    @State private var isLoading = true
     @State private var isActing = false
     @State private var errorMessage: String?
     @State private var operationError: String?
@@ -133,61 +156,32 @@ struct MemberProfileView: View {
     }
 
     var body: some View {
-        Group {
-            if isLoading && member == nil {
-                ProgressView(L10n.membersProfileLoading)
-            } else if let errorMessage, member == nil {
-                ContentUnavailableView(L10n.membersUnavailableTitle, systemImage: "wifi.exclamationmark", description: Text(errorMessage))
-            } else if let member {
-                List {
-                    Section {
-                        HStack(spacing: 14) {
-                            AsyncImage(url: URL(string: member.avatarUrl)) { image in
-                                image.resizable().scaledToFill()
-                            } placeholder: {
-                                Image(systemName: "person.crop.circle.fill").resizable().foregroundStyle(.secondary)
-                            }
-                            .frame(width: 72, height: 72)
-                            .clipShape(Circle())
-                            .accessibilityHidden(true)
-                            VStack(alignment: .leading, spacing: 4) {
-                                Text(member.username).font(.title3.weight(.semibold))
-                                Text(member.roleLabel.isEmpty ? member.userTitle : member.roleLabel)
-                                    .foregroundStyle(.secondary)
-                            }
-                        }
+        EKitapligimScreen {
+            Group {
+                if isLoading && member == nil {
+                    EKLoadingState(message: L10n.membersProfileLoading)
+                } else if let errorMessage, member == nil {
+                    EKErrorState(title: L10n.membersUnavailableTitle, message: errorMessage) {
+                        Task { await load() }
                     }
-
-                    Section(L10n.membersStatsSection) {
-                        LabeledContent(L10n.membersMessagesLabel, value: "\(member.messageCount)")
-                        LabeledContent(L10n.membersReactionsLabel, value: "\(member.reactionScore)")
-                        if member.registerDate > 0 {
-                            LabeledContent(L10n.membersJoinedLabel) {
-                                Text(Date(timeIntervalSince1970: TimeInterval(member.registerDate)), format: .dateTime.day().month().year())
+                } else if let member {
+                    ScrollView {
+                        LazyVStack(spacing: 14) {
+                            memberHero(member)
+                            statsCard(member)
+                            if !member.about.isEmpty || !member.location.isEmpty {
+                                aboutCard(member)
+                            }
+                            if isSignedIn {
+                                actionsCard(member)
                             }
                         }
+                        .padding(.horizontal, 18)
+                        .padding(.vertical, 12)
                     }
-
-                    if !member.about.isEmpty || !member.location.isEmpty {
-                        Section(L10n.membersAboutSection) {
-                            if !member.about.isEmpty { Text(member.about) }
-                            if !member.location.isEmpty { LabeledContent(L10n.membersLocationLabel, value: member.location) }
-                        }
-                    }
-
-                    if isSignedIn {
-                        Section(L10n.membersActionsSection) {
-                            if member.canFollow || member.isFollowed {
-                                Button(member.isFollowed ? L10n.membersUnfollow : L10n.membersFollow) {
-                                    Task { await toggleFollow(member) }
-                                }
-                                .disabled(isActing)
-                            }
-                            Button(L10n.membersBlock, role: .destructive) {
-                                showBlockConfirmation = true
-                            }
-                            .disabled(isActing || Int(member.id) == nil)
-                        }
+                } else {
+                    EKErrorState(title: L10n.membersProfileLoadFailed, message: nil) {
+                        Task { await load() }
                     }
                 }
             }
@@ -211,6 +205,76 @@ struct MemberProfileView: View {
         ) {
             Button(L10n.commonClose) { operationError = nil }
         }
+    }
+
+    private func memberHero(_ member: MemberDTO) -> some View {
+        HStack(spacing: 14) {
+            AsyncImage(url: URL(string: member.avatarUrl)) { image in
+                image.resizable().scaledToFill()
+            } placeholder: {
+                Image(systemName: "person.crop.circle.fill").resizable().foregroundStyle(EKitapligimPalette.muted)
+            }
+            .frame(width: 72, height: 72)
+            .clipShape(Circle())
+            .accessibilityHidden(true)
+            VStack(alignment: .leading, spacing: 4) {
+                Text(member.username).font(.title3.weight(.semibold)).foregroundStyle(EKitapligimPalette.ink)
+                Text(member.roleLabel.isEmpty ? member.userTitle : member.roleLabel)
+                    .foregroundStyle(EKitapligimPalette.muted)
+            }
+            Spacer(minLength: 0)
+        }
+        .padding(16)
+        .ekitapligimCard()
+    }
+
+    private func statsCard(_ member: MemberDTO) -> some View {
+        VStack(spacing: 10) {
+            LabeledContent(L10n.membersMessagesLabel, value: "\(member.messageCount)")
+            LabeledContent(L10n.membersReactionsLabel, value: "\(member.reactionScore)")
+            if member.registerDate > 0 {
+                LabeledContent(L10n.membersJoinedLabel) {
+                    Text(Date(timeIntervalSince1970: TimeInterval(member.registerDate)), format: .dateTime.day().month().year())
+                }
+            }
+        }
+        .padding(16)
+        .ekitapligimCard(radius: 14)
+    }
+
+    private func aboutCard(_ member: MemberDTO) -> some View {
+        VStack(alignment: .leading, spacing: 8) {
+            Text(L10n.membersAboutSection).font(.headline).foregroundStyle(EKitapligimPalette.ink)
+            if !member.about.isEmpty { Text(member.about).foregroundStyle(EKitapligimPalette.profileInk) }
+            if !member.location.isEmpty {
+                LabeledContent(L10n.membersLocationLabel, value: member.location)
+            }
+        }
+        .padding(16)
+        .frame(maxWidth: .infinity, alignment: .leading)
+        .ekitapligimCard(radius: 14)
+    }
+
+    private func actionsCard(_ member: MemberDTO) -> some View {
+        VStack(spacing: 10) {
+            if member.canFollow || member.isFollowed {
+                Button(member.isFollowed ? L10n.membersUnfollow : L10n.membersFollow) {
+                    Task { await toggleFollow(member) }
+                }
+                .font(.subheadline.weight(.bold))
+                .foregroundStyle(.white)
+                .frame(maxWidth: .infinity)
+                .padding(.vertical, 12)
+                .background(EKitapligimPalette.teal, in: RoundedRectangle(cornerRadius: 12))
+                .disabled(isActing)
+            }
+            Button(L10n.membersBlock, role: .destructive) {
+                showBlockConfirmation = true
+            }
+            .disabled(isActing || Int(member.id) == nil)
+        }
+        .padding(16)
+        .ekitapligimCard(radius: 14)
     }
 
     private func load() async {

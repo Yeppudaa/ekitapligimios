@@ -6,12 +6,14 @@ struct PremiumView: View {
     @EnvironmentObject private var container: AppContainer
 
     var body: some View {
-        PremiumContentView(
-            storeKit: container.storeKit,
-            isSignedIn: isSignedIn,
-            termsURL: container.config.termsURL,
-            privacyURL: container.config.privacyPolicyURL
-        )
+        EKitapligimScreen {
+            PremiumContentView(
+                storeKit: container.storeKit,
+                isSignedIn: isSignedIn,
+                termsURL: container.config.termsURL,
+                privacyURL: container.config.privacyPolicyURL
+            )
+        }
     }
 
     private var isSignedIn: Bool {
@@ -34,6 +36,7 @@ private struct PremiumContentView: View {
             actionsSection
             legalSection
         }
+        .ekitapligimListScreen()
         .navigationTitle(L10n.premiumTitle)
         .task { await storeKit.loadProducts() }
     }

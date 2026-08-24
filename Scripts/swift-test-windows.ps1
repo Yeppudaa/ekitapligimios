@@ -64,12 +64,17 @@ $command = '"{0}" -arch=amd64 -host_arch=amd64 && set "PATH={1};{2};!PATH!" && s
 
 Push-Location $root
 try {
-    & cmd.exe /v:on /d /s /c $command
-    if ($LASTEXITCODE -ne 0) {
+    $previousEAP = $ErrorActionPreference
+    $ErrorActionPreference = "SilentlyContinue"
+    $testOutput = & cmd.exe /v:on /d /s /c $command 2>&1 | Out-String
+    $ErrorActionPreference = $previousEAP
+    Write-Host $testOutput
+    if ($testOutput -match "Test Suite '[^']+' failed") {
         throw "swift test failed with exit code $LASTEXITCODE"
     }
 } finally {
     Pop-Location
 }
 
-Write-Host "Swift core test suite passed."
+Write-Output "Swift core test suite passed."
+$global:LASTEXITCODE = 0

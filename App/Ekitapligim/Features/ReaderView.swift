@@ -46,6 +46,7 @@ struct ReaderView: View {
         }
         .task {
             refreshBookmarks()
+            await promoteReadingShelfIfNeeded()
             await loadReaderSession()
         }
         .onDisappear { saveProgress() }
@@ -114,13 +115,33 @@ struct ReaderView: View {
         guard let bookID else { return }
         let latestPage = readerFileType == "epub" ? epubPosition : progress.currentPage
         let latestPercent = displayedProgressPercent
+        let percentInt = Int(latestPercent.rounded())
         Task {
-            try? await container.books.updateProgress(
+            if (try? await container.books.updateProgress(
                 bookID: bookID,
                 page: latestPage,
                 percent: latestPercent
-            )
+            )) != nil {
+                container.patchLibraryItem(book.id) { item in
+                    item.updating(progressPercent: percentInt, lastReadPage: latestPage)
+                }
+            }
         }
+    }
+
+    private func promoteReadingShelfIfNeeded() async {
+        guard case .signedIn = container.authState, let bookID else { return }
+        let libraryItem = container.libraryItems.first(where: { $0.bookId == book.id })
+        let normalizedShelf = libraryItem?.normalizedShelfState ?? ""
+        guard normalizedShelf.isEmpty || normalizedShelf == "NONE" else { return }
+        let progress = libraryItem?.readingProgressForShelfUpdate ?? (0, 0)
+        try? await container.books.updateLibraryItem(
+            bookID: bookID,
+            shelfState: "OKUYORUM",
+            progressPercent: progress.percent,
+            lastReadPage: progress.page
+        )
+        await container.refreshLibrary()
     }
 
     private func loadReaderSession() async {
@@ -320,6 +341,47 @@ private struct PDFReader: UIViewRepresentable {
                 NotificationCenter.default.removeObserver(pageObserver)
             }
             pageObserver = nil
+        }
+    }
+}
+
+@MainActor
+struct ReaderLoaderView: View {
+    @EnvironmentObject private var container: AppContainer
+    let bookID: Int
+
+    @State private var book: BookDTO?
+    @State private var isLoading = true
+    @State private var errorMessage: String?
+
+    var body: some View {
+        Group {
+            if isLoading {
+                EKLoadingState(message: L10n.bookDetailLoading)
+            } else if let book {
+                ReaderView(book: book)
+            } else {
+                EKErrorState(title: L10n.bookDetailOpenFailed, message: errorMessage ?? L10n.bookDetailLoadFailed) {
+                    Task { await load() }
+                }
+            }
+        }
+        .task(id: bookID) { await load() }
+    }
+
+    private func load() async {
+        guard bookID > 0 else {
+            isLoading = false
+            errorMessage = L10n.bookDetailInvalidId
+            return
+        }
+        isLoading = true
+        defer { isLoading = false }
+        do {
+            book = try await container.books.book(id: bookID)
+        } catch {
+            book = nil
+            errorMessage = L10n.bookDetailLoadFailed
         }
     }
 }

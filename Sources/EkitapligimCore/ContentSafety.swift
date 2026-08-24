@@ -13,9 +13,6 @@ public struct ContentSafety: Sendable {
         if trimmed.isEmpty {
             return .rejected(reason: .empty)
         }
-        if trimmed.count < 3 {
-            return .rejected(reason: .tooShort)
-        }
         let folded = trimmed.lowercased(with: Locale(identifier: "tr_TR"))
         if blockedTerms.contains(where: { folded.contains($0) }) {
             return .rejected(reason: .blockedTerm)

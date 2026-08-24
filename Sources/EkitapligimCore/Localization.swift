@@ -4,25 +4,71 @@ public enum L10n {
     public static let bookDetailTitle = localized("book.detail.title", defaultValue: "Kitap Detayı")
     public static let bookDetailLoading = localized("book.detail.loading", defaultValue: "Kitap yükleniyor")
     public static let bookDetailOpenFailed = localized("book.detail.openFailed", defaultValue: "Kitap açılamadı")
-    public static let bookDetailMissingDescription = localized("book.detail.missingDescription", defaultValue: "Açıklama bulunmuyor.")
-    public static let bookDetailRead = localized("book.detail.read", defaultValue: "Oku")
+    public static let bookDetailMissingDescription = localized("book.detail.missingDescription", defaultValue: "Bu kitap için özet henüz eklenmemiş.")
+    public static let bookDetailRead = localized("book.detail.read", defaultValue: "Hemen Oku")
     public static let bookDetailCheckReading = localized("book.detail.checkReading", defaultValue: "Okuma durumunu kontrol et")
-    public static let bookDetailOfflineDownload = localized("book.detail.offlineDownload", defaultValue: "Çevrimdışı indir")
+    public static let bookDetailOfflineDownload = localized("book.detail.offlineDownload", defaultValue: "İndir")
     public static let bookDetailReportIssue = localized("book.detail.reportIssue", defaultValue: "Sorun bildir")
+    public static let bookDetailIssueTitle = localized("book.detail.issueTitle", defaultValue: "Sorun mu var?")
+    public static let bookDetailIssueSubtitle = localized("book.detail.issueSubtitle", defaultValue: "Kitap kaydıyla ilgili hızlı bildirim gönderin.")
+    public static let bookDetailIssueBrokenLink = localized("book.detail.issueBrokenLink", defaultValue: "Kırık link")
+    public static let bookDetailIssueMissingCover = localized("book.detail.issueMissingCover", defaultValue: "Eksik kapak")
+    public static let bookDetailIssueCopyright = localized("book.detail.issueCopyright", defaultValue: "Telif")
+    public static let bookDetailIssueLoginRequired = localized("book.detail.issueLoginRequired", defaultValue: "Bildirimde bulunmak için giriş yapmalısınız.")
+    public static let bookDetailIssueCopyrightLoginRequired = localized("book.detail.issueCopyrightLoginRequired", defaultValue: "Telif bildirimi için giriş yapmalısınız.")
+    public static func bookDetailIssueSubmitted(_ label: String) -> String {
+        String(format: localized("book.detail.issueSubmitted", defaultValue: "%@ bildiriminiz alındı."), label)
+    }
+    public static let bookDetailIssueSubmitFailed = localized("book.detail.issueSubmitFailed", defaultValue: "Bildirim gönderilemedi. Lütfen tekrar deneyin.")
     public static let bookDetailLoadFailed = localized("book.detail.loadFailed", defaultValue: "Kitap bilgileri alınamadı.")
     public static let bookDetailSimilarBooks = localized("book.detail.similarBooks", defaultValue: "Benzer Kitaplar")
     public static let bookDetailInvalidId = localized("book.detail.invalidId", defaultValue: "Kitap kimliği geçersiz.")
     public static let bookDetailSecureDownloadMissing = localized("book.detail.secureDownloadMissing", defaultValue: "Güvenli indirme bağlantısı alınamadı.")
+    public static let bookDetailLoginRequiredMessage = localized("book.detail.loginRequiredMessage", defaultValue: "Okumak veya indirmek için giriş yapın.")
     public static let bookDetailDownloadReady = localized("book.detail.downloadReady", defaultValue: "Kitap çevrimdışı okuma için indirildi.")
     public static let bookDetailDownloadStarted = localized("book.detail.downloadStarted", defaultValue: "İndirme başlatıldı.")
+    public static let bookDetailInfoTitle = localized("book.detail.infoTitle", defaultValue: "Kitap Künyesi")
+    public static let bookDetailInfoCategory = localized("book.detail.infoCategory", defaultValue: "Kategori")
+    public static let bookDetailInfoLanguage = localized("book.detail.infoLanguage", defaultValue: "Dil")
+    public static let bookDetailInfoISBN = localized("book.detail.infoISBN", defaultValue: "ISBN")
+    public static let bookDetailInfoYear = localized("book.detail.infoYear", defaultValue: "Yayın Yılı")
+    public static let bookDetailInfoPages = localized("book.detail.infoPages", defaultValue: "Sayfa")
+    public static let bookDetailInfoFormat = localized("book.detail.infoFormat", defaultValue: "Format")
+    public static let bookDetailUnknownFormat = localized("book.detail.unknownFormat", defaultValue: "PDF / EPUB")
+    public static let bookDetailSynopsisSectionTitle = localized("book.detail.synopsisSectionTitle", defaultValue: "Özet / Açıklama")
+    public static let bookDetailAddToFavorites = localized("book.detail.addToFavorites", defaultValue: "Favorilerime ekle")
+    public static func bookDetailDownloadCount(_ count: Int) -> String {
+        String(format: localized("book.detail.downloadCount", defaultValue: "%d indirme"), count)
+    }
+    public static let bookDetailUnspecified = localized("book.detail.unspecified", defaultValue: "Belirtilmemiş")
+    public static let bookDetailSynopsisTitle = localized("book.detail.synopsisTitle", defaultValue: "Kitap Özeti")
+    public static let bookDetailSynopsisSubtitle = localized("book.detail.synopsisSubtitle", defaultValue: "Açıklama içeriği")
+    public static let bookDetailSynopsisReadMore = localized("book.detail.synopsisReadMore", defaultValue: "Devamını oku")
+    public static let bookDetailSynopsisShowLess = localized("book.detail.synopsisShowLess", defaultValue: "Daha az göster")
+    public static let libraryUpdateFailed = localized("library.updateFailed", defaultValue: "Raf güncellenemedi.")
     public static let bookCommentsTitle = localized("bookComments.title", defaultValue: "Kullanıcı Yorumları")
-    public static let bookCommentsPlaceholder = localized("bookComments.placeholder", defaultValue: "Bu kitap hakkındaki düşüncelerinizi paylaşın")
-    public static let bookCommentsSubmit = localized("bookComments.submit", defaultValue: "Yorum gönder")
+    public static func bookCommentsTitleCount(_ count: Int) -> String {
+        String(format: localized("bookComments.titleCount", defaultValue: "Kullanıcı Yorumları (%d)"), count)
+    }
+    public static let bookCommentsYourRating = localized("bookComments.yourRating", defaultValue: "Puanınız:")
+    public static let bookCommentsPlaceholder = localized(
+        "bookComments.placeholder",
+        defaultValue: "Bu kitap hakkındaki düşüncelerinizi paylaşın..."
+    )
+    public static let bookCommentsSubmit = localized("bookComments.submit", defaultValue: "Yorum Gönder")
     public static let bookCommentsEmpty = localized("bookComments.empty", defaultValue: "Henüz yorum yapılmamış.")
     public static let bookCommentsLoadFailed = localized("bookComments.loadFailed", defaultValue: "Yorumlar yüklenemedi.")
     public static let bookCommentsSubmitFailed = localized("bookComments.submitFailed", defaultValue: "Yorum gönderilemedi.")
     public static let bookCommentsReport = localized("bookComments.report", defaultValue: "Yorumu bildir")
-    public static let bookCommentsLoginToComment = localized("bookComments.loginToComment", defaultValue: "Yorum yapmak için giriş yap")
+    public static let bookCommentsLoginToComment = localized("bookComments.loginToComment", defaultValue: "Giriş")
+    public static let bookCommentsSignedInSubtitle = localized(
+        "bookComments.signedInSubtitle",
+        defaultValue: "Kitap hakkındaki düşüncelerinizi paylaşın."
+    )
+    public static let bookCommentsGuestSubtitle = localized(
+        "bookComments.guestSubtitle",
+        defaultValue: "Yorum yazmak için üye olun veya giriş yapın."
+    )
     public static let bookCommentsLoginRequiredTitle = localized("bookComments.loginRequiredTitle", defaultValue: "Giriş gerekli")
     public static let bookCommentsLoginRequiredMessage = localized("bookComments.loginRequiredMessage", defaultValue: "Yorum yazmak veya bildirmek için giriş yapın.")
 
@@ -37,6 +83,15 @@ public enum L10n {
     public static let directoryEmptyDescription = localized("directory.emptyDescription", defaultValue: "Aramanızı değiştirip yeniden deneyin.")
     public static let directorySearchPrompt = localized("directory.searchPrompt", defaultValue: "Ara")
     public static let directoryLoadFailed = localized("directory.loadFailed", defaultValue: "Yazar ve yayınevi bilgileri alınamadı.")
+    public static let directoryStatEntries = localized("directory.stat.entries", defaultValue: "Kayıt")
+    public static let directoryStatBooks = localized("directory.stat.books", defaultValue: "Kitap")
+    public static let directorySortAscending = localized("directory.sort.ascending", defaultValue: "Alfabetik A-Z")
+    public static let directorySortDescending = localized("directory.sort.descending", defaultValue: "Alfabetik Z-A")
+    public static let directoryAuthorArchive = localized("directory.authorArchive", defaultValue: "Yazar Arşivi")
+    public static let directoryPublisherArchive = localized("directory.publisherArchive", defaultValue: "Yayınevi Arşivi")
+    public static func directoryHeroSubtitle(_ entries: Int, _ books: Int) -> String {
+        String(format: localized("directory.heroSubtitle", defaultValue: "%1$d kayıt · %2$d kitap"), entries, books)
+    }
     public static let commonLoadMore = localized("common.loadMore", defaultValue: "Daha fazla yükle")
 
     public static func directoryBookCount(_ count: Int) -> String {
@@ -123,25 +178,93 @@ public enum L10n {
     public static let reportMessageLabel = localized("report.messageLabel", defaultValue: "Rapor açıklaması")
     public static let reportFooter = localized("report.footer", defaultValue: "Raporlar moderasyon ekibine gönderilir. Kötüye kullanım bildirimleri güvenlik amacıyla incelenir.")
     public static let reportSubmit = localized("report.submit", defaultValue: "Raporu gönder")
+    public static let bookDetailIssueBrokenLinkReportTitle = localized(
+        "book.detail.issueBrokenLinkReportTitle",
+        defaultValue: "Kırık link bildir"
+    )
+    public static let bookDetailIssueBrokenLinkReportDescription = localized(
+        "book.detail.issueBrokenLinkReportDescription",
+        defaultValue: "Okuma veya indirme bağlantısında sorun varsa admin ekibine iletin."
+    )
+    public static let bookDetailIssueBrokenLinkReportPlaceholder = localized(
+        "book.detail.issueBrokenLinkReportPlaceholder",
+        defaultValue: "Örn. PDF açılmıyor veya dosya indirilemiyor."
+    )
+    public static let bookDetailIssueMissingCoverReportTitle = localized(
+        "book.detail.issueMissingCoverReportTitle",
+        defaultValue: "Eksik kapak bildir"
+    )
+    public static let bookDetailIssueMissingCoverReportDescription = localized(
+        "book.detail.issueMissingCoverReportDescription",
+        defaultValue: "Kapak görseli eksik, hatalı veya bozuk görünüyorsa bildirin."
+    )
+    public static let bookDetailIssueMissingCoverReportPlaceholder = localized(
+        "book.detail.issueMissingCoverReportPlaceholder",
+        defaultValue: "Örn. Kapak görünmüyor veya yanlış kitap kapağı geliyor."
+    )
+    public static let bookDetailIssueCopyrightReportTitle = localized(
+        "book.detail.issueCopyrightReportTitle",
+        defaultValue: "Telif bildirimi gönder"
+    )
+    public static let bookDetailIssueCopyrightReportDescription = localized(
+        "book.detail.issueCopyrightReportDescription",
+        defaultValue: "Telif veya hak sahipliğiyle ilgili bildiriminizi admin ekibine iletin."
+    )
+    public static let bookDetailIssueCopyrightReportPlaceholder = localized(
+        "book.detail.issueCopyrightReportPlaceholder",
+        defaultValue: "Hak sahipliği, temsil durumu veya talebinize dair kısa açıklama yazın."
+    )
+    public static let forumThreadReportDescription = localized(
+        "forumThread.reportDescription",
+        defaultValue: "Bu forum mesajında spam, hakaret, telif ihlali veya uygunsuz içerik olduğunu düşünüyorsanız yönetime bildirin."
+    )
+    public static let forumThreadReportPlaceholder = localized(
+        "forumThread.reportPlaceholder",
+        defaultValue: "Kısa açıklama yazın..."
+    )
+    public static let forumThreadReportSubmit = localized("forumThread.reportSubmit", defaultValue: "Raporla")
     public static let commonClose = localized("common.close", defaultValue: "Kapat")
+    public static let commonShare = localized("common.share", defaultValue: "Paylaş")
     public static let commonRemove = localized("common.remove", defaultValue: "Sil")
     public static let commonCancel = localized("common.cancel", defaultValue: "İptal")
+    public static let commonSuccess = localized("common.success", defaultValue: "Başarılı")
     public static let commonSubmit = localized("common.submit", defaultValue: "Gönder")
     public static let commonRetry = localized("common.retry", defaultValue: "Tekrar dene")
     public static let reportSubmitted = localized("report.submitted", defaultValue: "Raporunuz alındı.")
     public static let reportSubmitFailed = localized("report.submitFailed", defaultValue: "Rapor gönderilemedi.")
 
     public static let bookRequestsTitle = localized("bookRequests.title", defaultValue: "Kitap İstekleri")
+    public static let bookRequestsHeroTitle = localized("bookRequests.heroTitle", defaultValue: "Sosyal & Topluluk")
+    public static let bookRequestsHeroSubtitle = localized(
+        "bookRequests.heroSubtitle",
+        defaultValue: "Ortak okuma gruplarına katıl,\nkütüphaneye yeni kitap iste!"
+    )
     public static let bookRequestsLoading = localized("bookRequests.loading", defaultValue: "Kitap istekleri yükleniyor")
     public static let bookRequestsUnavailableTitle = localized("bookRequests.unavailableTitle", defaultValue: "İstekler alınamadı")
-    public static let bookRequestsEmptyTitle = localized("bookRequests.emptyTitle", defaultValue: "Henüz kitap isteği yok")
+    public static let bookRequestsEmptyTitle = localized("bookRequests.emptyTitle", defaultValue: "Henüz kitap isteği yapılmamış.")
     public static let bookRequestsEmptyDescription = localized("bookRequests.emptyDescription", defaultValue: "Aradığınız kitabı ilk siz isteyebilirsiniz.")
+    public static let bookRequestsGuestCreateHint = localized(
+        "bookRequests.guestCreateHint",
+        defaultValue: "İstek göndermek için önce giriş yapmalısınız."
+    )
+    public static let bookRequestsCreated = localized("bookRequests.created", defaultValue: "Kitap isteğiniz gönderildi.")
+    public static let bookRequestsVoteSaved = localized("bookRequests.voteSaved", defaultValue: "Oyunuz kaydedildi.")
     public static let bookRequestsCreate = localized("bookRequests.create", defaultValue: "Yeni kitap isteği")
-    public static let bookRequestsBookTitle = localized("bookRequests.bookTitle", defaultValue: "Kitap adı")
+    public static let bookRequestsCreateDialogTitle = localized("bookRequests.createDialogTitle", defaultValue: "Yeni Kitap İstemi Yap")
+    public static let bookRequestsListSection = localized("bookRequests.listSection", defaultValue: "Kitap İstek Listesi")
+    public static let bookRequestsRequestAction = localized("bookRequests.requestAction", defaultValue: "İstekte Bulun")
+    public static let bookRequestsBookTitle = localized("bookRequests.bookTitle", defaultValue: "Kitap Adı")
     public static let bookRequestsAuthor = localized("bookRequests.author", defaultValue: "Yazar")
-    public static let bookRequestsAuthorMissing = localized("bookRequests.authorMissing", defaultValue: "Yazar belirtilmemiş")
-    public static let bookRequestsISBN = localized("bookRequests.isbn", defaultValue: "ISBN (isteğe bağlı)")
-    public static let bookRequestsSubmitting = localized("bookRequests.submitting", defaultValue: "Gönderiliyor")
+    public static let bookRequestsAuthorMissing = localized("bookRequests.authorMissing", defaultValue: "Belirtilmemiş")
+    public static func bookRequestsAuthorLine(_ author: String) -> String {
+        let value = author.trimmingCharacters(in: .whitespacesAndNewlines)
+        return String(
+            format: localized("bookRequests.authorLine", defaultValue: "Yazar: %@"),
+            value.isEmpty ? bookRequestsAuthorMissing : value
+        )
+    }
+    public static let bookRequestsISBN = localized("bookRequests.isbn", defaultValue: "ISBN (Opsiyonel)")
+    public static let bookRequestsSubmitting = localized("bookRequests.submitting", defaultValue: "Gönderiliyor...")
     public static let bookRequestsLoadFailed = localized("bookRequests.loadFailed", defaultValue: "Kitap istekleri yüklenemedi.")
     public static let bookRequestsCreateFailed = localized("bookRequests.createFailed", defaultValue: "Kitap isteği gönderilemedi.")
     public static let bookRequestsVoteFailed = localized("bookRequests.voteFailed", defaultValue: "Oy işlemi tamamlanamadı.")
@@ -156,14 +279,17 @@ public enum L10n {
     }
 
     public static func bookRequestsVoteCount(_ count: Int) -> String {
-        String(format: localized("bookRequests.voteCount", defaultValue: "%d oy"), count)
+        // Match Android SocialScreen vote affordance: "${voteCount} Oy"
+        String(format: localized("bookRequests.voteCount", defaultValue: "%d Oy"), count)
     }
+
+    public static let bookRequestsVoteAccessibility = localized("bookRequests.voteAccessibility", defaultValue: "Upvote")
 
     public static func bookRequestsStatus(_ status: String) -> String {
         switch status.uppercased() {
-        case "ACQUIRED": localized("bookRequests.status.acquired", defaultValue: "Temin edildi")
-        case "REJECTED": localized("bookRequests.status.rejected", defaultValue: "Reddedildi")
-        default: localized("bookRequests.status.pending", defaultValue: "Bekliyor")
+        case "ACQUIRED": localized("bookRequests.status.acquired", defaultValue: "Temin Edildi")
+        case "REJECTED": localized("bookRequests.status.rejected", defaultValue: "Uygun Bulunmadı")
+        default: localized("bookRequests.status.pending", defaultValue: "Oylanıyor")
         }
     }
 
@@ -335,6 +461,12 @@ public enum L10n {
     public static let premiumRestoreFailed = localized("premium.error.restore", defaultValue: "Satın almalar geri yüklenemedi veya sunucuda doğrulanamadı.")
 
     public static let catalogTitle = localized("catalog.title", defaultValue: "Kitaplar")
+    public static let catalogHeroTitle = localized("catalog.hero.title", defaultValue: "Kataloğu Keşfet")
+    public static func catalogHeroSubtitle(_ books: Int, _ pages: Int) -> String {
+        String(format: localized("catalog.hero.subtitle", defaultValue: "%1$d kitap · %2$d sayfa"), books, pages)
+    }
+    public static let catalogStatBooks = localized("catalog.stat.books", defaultValue: "Kitap")
+    public static let catalogStatPages = localized("catalog.stat.pages", defaultValue: "Sayfa")
     public static let catalogLoading = localized("catalog.loading", defaultValue: "Kitaplar yükleniyor")
     public static let catalogUnavailableTitle = localized("catalog.unavailableTitle", defaultValue: "Katalog açılamadı")
     public static let catalogEmptyTitle = localized("catalog.emptyTitle", defaultValue: "Kitap bulunamadı")
@@ -363,20 +495,50 @@ public enum L10n {
     public static let libraryTitle = localized("library.title", defaultValue: "Kitaplığım")
     public static let libraryLoading = localized("library.loading", defaultValue: "Kitaplık yükleniyor")
     public static let libraryUnavailableTitle = localized("library.unavailableTitle", defaultValue: "Kitaplık alınamadı")
-    public static let libraryEmptyTitle = localized("library.emptyTitle", defaultValue: "Kitap bulunamadı")
-    public static let libraryEmptyDescription = localized("library.emptyDescription", defaultValue: "Bu rafta henüz kitap yok.")
+    public static let libraryEmptyTitle = localized("library.emptyTitle", defaultValue: "Bu rafta henüz kitap yok.")
+    public static let libraryEmptyDescription = localized("library.emptyDescription", defaultValue: "Kitap eklediğinde burada görünecek.")
+    public static let librarySelectedShelfLabel = localized("library.selectedShelfLabel", defaultValue: "Seçili raf")
+    public static func librarySelectedShelfBooks(_ count: Int) -> String {
+        String(format: localized("library.selectedShelfBooks", defaultValue: "%d kitap bu rafta"), count)
+    }
+    public static func libraryTabBookCount(_ count: Int) -> String {
+        String(format: localized("library.tabBookCount", defaultValue: "%d kitap"), count)
+    }
+    public static let forumMessageEmpty = localized("forumMessage.empty", defaultValue: "Mesaj içeriği görüntülenemedi.")
     public static let libraryLoadFailed = localized("library.loadFailed", defaultValue: "Kitaplık bilgileri alınamadı.")
     public static let libraryDownloadsLabel = localized("library.downloadsLabel", defaultValue: "İndirilenler")
     public static let libraryShelfPicker = localized("library.shelfPicker", defaultValue: "Raf")
+    public static let libraryShelfAdd = localized("library.shelf.add", defaultValue: "Rafa Ekle")
+    public static let libraryShelfLater = localized("library.shelf.later", defaultValue: "Daha sonra oku")
+    public static let libraryShelfLaterShort = localized("library.shelf.laterShort", defaultValue: "Daha sonra")
+    public static let libraryShelfRemove = localized("library.shelf.remove", defaultValue: "Raftan Kaldır")
     public static let libraryShelfAll = localized("library.shelf.all", defaultValue: "Tümü")
     public static let libraryShelfReading = localized("library.shelf.reading", defaultValue: "Okuyorum")
     public static let libraryShelfFinished = localized("library.shelf.finished", defaultValue: "Okudum")
     public static let libraryShelfFavorites = localized("library.shelf.favorites", defaultValue: "Favoriler")
     public static let libraryShelfDownloads = localized("library.shelf.downloads", defaultValue: "İndirilen")
     public static let libraryReadingProgressLabel = localized("library.readingProgressLabel", defaultValue: "Okuma ilerlemesi")
+    public static let libraryOpenBookDetail = localized("library.openBookDetail", defaultValue: "Kitap detayını aç")
+    public static func libraryCoverAccessibility(_ title: String) -> String {
+        String(format: localized("library.coverAccessibility", defaultValue: "%@ kapağı"), title)
+    }
     public static let libraryFavoriteBadge = localized("library.favoriteBadge", defaultValue: "Favori")
     public static let libraryDownloadedBadge = localized("library.downloadedBadge", defaultValue: "İndirildi")
-    public static let libraryHeaderSubtitle = localized("library.headerSubtitle", defaultValue: "Raflarını düzenle ve okumaya devam et")
+    public static let libraryDownloadOfflineReady = localized("library.downloadOfflineReady", defaultValue: "Cihazda çevrimdışı okumaya hazır")
+    public static let libraryDownloadServerHistory = localized("library.downloadServerHistory", defaultValue: "Daha önce indirildi")
+    public static let libraryMetaFinished = localized("library.meta.finished", defaultValue: "Tamamlandı")
+    public static let libraryMetaWantToRead = localized("library.meta.wantToRead", defaultValue: "Daha sonra oku")
+    public static let libraryMetaFavorite = localized("library.meta.favorite", defaultValue: "Favorilerde")
+    public static let libraryMetaDownloaded = localized("library.meta.downloaded", defaultValue: "İndirildi")
+    public static let libraryMetaContinue = localized("library.meta.continue", defaultValue: "Devam et")
+    public static let libraryAuthorMissing = localized("library.authorMissing", defaultValue: "Yazar bilgisi yok")
+    public static func libraryMetaLastPage(_ page: Int) -> String {
+        String(format: localized("library.meta.lastPage", defaultValue: "Kaldığın yer: %d. sayfa"), page)
+    }
+    public static let libraryHeaderSubtitle = localized("library.headerSubtitle", defaultValue: "Okuma yolculuğunu raflarına göre yönet.")
+    public static func librarySelectedShelf(_ shelf: String, _ count: Int) -> String {
+        String(format: localized("library.selectedShelf", defaultValue: "Seçili raf: %1$@ · %2$d kitap"), shelf, count)
+    }
     public static let libraryBookCountLabel = localized("library.bookCountLabel", defaultValue: "kitap")
 
     public static let downloadsTitle = localized("downloads.title", defaultValue: "İndirilenler")
@@ -402,6 +564,7 @@ public enum L10n {
     }
 
     public static let communityTitle = localized("community.title", defaultValue: "Topluluk")
+    public static let communityHeroSubtitle = localized("community.hero.subtitle", defaultValue: "Forumlar, üyeler ve güvenlik araçları")
     public static let communityLoading = localized("community.loading", defaultValue: "Forumlar yükleniyor")
     public static let communityUnavailableTitle = localized("community.unavailableTitle", defaultValue: "Forumlar alınamadı")
     public static let communityForumsSection = localized("community.forumsSection", defaultValue: "Forumlar")
@@ -426,24 +589,76 @@ public enum L10n {
 
     public static let forumThreadsLoading = localized("forumThreads.loading", defaultValue: "Konular yükleniyor")
     public static let forumThreadsUnavailableTitle = localized("forumThreads.unavailableTitle", defaultValue: "Konular alınamadı")
-    public static let forumThreadsEmptyTitle = localized("forumThreads.emptyTitle", defaultValue: "Konu yok")
+    public static let forumThreadsEmptyTitle = localized("forumThreads.emptyTitle", defaultValue: "Bu forumda henüz konu yok.")
+    public static let forumThreadsEmptyDescription = localized("forumThreads.emptyDescription", defaultValue: "İlk konuyu açmak için sağ üstteki + düğmesine dokunun.")
     public static let forumThreadsInvalidForum = localized("forumThreads.invalidForum", defaultValue: "Forum kimliği geçersiz.")
     public static let forumThreadsLoadFailed = localized("forumThreads.loadFailed", defaultValue: "Forum konuları alınamadı.")
+    public static let forumThreadsCreate = localized("forumThreads.create", defaultValue: "Konu Aç")
+    public static let forumThreadsCreateDialogTitle = localized("forumThreads.createDialogTitle", defaultValue: "Yeni konu aç")
+    public static let forumThreadsCreateAccessibility = localized("forumThreads.createAccessibility", defaultValue: "Yeni konu")
+    public static let forumThreadsLoadMore = localized("forumThreads.loadMore", defaultValue: "Daha fazla konu yükle")
+    public static let forumThreadsLoadMoreLoading = localized("forumThreads.loadMoreLoading", defaultValue: "Yükleniyor...")
+    public static let forumThreadsCreateSubmit = localized("forumThreads.createSubmit", defaultValue: "Oluştur")
+    public static let forumThreadsCreateTitleSection = localized("forumThreads.createTitleSection", defaultValue: "Konu başlığı")
+    public static let forumThreadsCreateTitlePlaceholder = localized("forumThreads.createTitlePlaceholder", defaultValue: "Konu başlığı")
+    public static let forumThreadsCreateMessageSection = localized("forumThreads.createMessageSection", defaultValue: "İlk mesaj")
+    public static let forumThreadsCreateFailedTitle = localized("forumThreads.createFailedTitle", defaultValue: "Konu açılamadı")
+    public static let forumThreadsCreateFailedMessage = localized("forumThreads.createFailedMessage", defaultValue: "Konu oluşturulurken bir hata oluştu.")
+    public static let forumThreadsCreateSuccess = localized("forumThreads.createSuccess", defaultValue: "Konu oluşturuldu.")
+    public static let forumThreadsLoginRequiredMessage = localized("forumThreads.loginRequiredMessage", defaultValue: "Konu açmak için giriş yapmalısınız.")
+    public static let forumThreadsCommunitySubtitle = localized("forumThreads.communitySubtitle", defaultValue: "Ekitaplığım topluluk forumu")
+    public static let forumThreadsHeroMetricLabel = localized("forumThreads.heroMetricLabel", defaultValue: "Konu")
+    public static let forumThreadsHeroHint = localized("forumThreads.heroHint", defaultValue: "Toplulukla paylaşmak istediğiniz konuları buradan açabilirsiniz.")
+    public static let forumThreadsSticky = localized("forumThreads.sticky", defaultValue: "Sabitlenmiş konu")
+
+    public static func forumThreadsHeroCount(_ count: Int) -> String {
+        String(format: localized("forumThreads.heroCount", defaultValue: "%d Konu"), count)
+    }
+
+    public static func forumThreadsCollapsedCount(_ count: Int) -> String {
+        String(format: localized("forumThreads.collapsedCount", defaultValue: "%d konu"), count)
+    }
 
     public static func forumThreadsMeta(username: String, replyCount: Int, viewCount: Int) -> String {
         String(format: localized("forumThreads.meta", defaultValue: "%@ • %d cevap • %d görüntüleme"), username, replyCount, viewCount)
     }
 
+    public static func forumThreadDetailMeta(_ replies: Int) -> String {
+        String(format: localized("forumThread.detailMeta", defaultValue: "%d mesaj · Ekitaplığım Forum"), replies)
+    }
+
+    public static func forumThreadCollapsedMessageCount(_ count: Int) -> String {
+        String(format: localized("forumThread.collapsedMessageCount", defaultValue: "%d mesaj"), count)
+    }
+
+    public static let forumDefaultUsername = localized("forum.defaultUsername", defaultValue: "Ekitaplığım")
+    public static let forumThreadEmptyPosts = localized("forumThread.emptyPosts", defaultValue: "Bu konuda mesaj bulunamadı.")
+    public static let forumThreadGuestLoginShort = localized("forumThread.guestLoginShort", defaultValue: "Giriş")
+
     public static let forumThreadLoading = localized("forumThread.loading", defaultValue: "Mesajlar yükleniyor")
-    public static let forumThreadReportPost = localized("forumThread.reportPost", defaultValue: "Mesajı bildir")
+    public static let forumThreadReportPost = localized("forumThread.reportPost", defaultValue: "Mesajı raporla")
+    public static let forumThreadReportAction = localized("forumThread.reportAction", defaultValue: "Raporla")
+    public static let forumThreadReplyPlaceholder = localized("forumThread.replyPlaceholder", defaultValue: "Cevabınızı yazın...")
+    public static let forumThreadPostImage = localized("forumThread.postImage", defaultValue: "Forum görseli")
     public static let forumThreadBlockUser = localized("forumThread.blockUser", defaultValue: "Kullanıcıyı engelle")
     public static let forumThreadReplySection = localized("forumThread.replySection", defaultValue: "Cevap yaz")
     public static let forumThreadReplyTextLabel = localized("forumThread.replyTextLabel", defaultValue: "Cevap metni")
-    public static let forumThreadSubmitReply = localized("forumThread.submitReply", defaultValue: "Cevabı gönder")
+    public static let forumThreadSubmitReply = localized("forumThread.submitReply", defaultValue: "Cevapla")
     public static let forumThreadInvalidThread = localized("forumThread.invalidThread", defaultValue: "Konu kimliği geçersiz.")
     public static let forumThreadLoadFailed = localized("forumThread.loadFailed", defaultValue: "Konu mesajları alınamadı.")
     public static let forumThreadReplyPublished = localized("forumThread.replyPublished", defaultValue: "Cevabınız yayınlandı.")
     public static let forumThreadReplyFailed = localized("forumThread.replyFailed", defaultValue: "Cevap gönderilemedi.")
+    public static let forumThreadGuestReplyTitle = localized("forumThread.guestReplyTitle", defaultValue: "Cevap yazmak için kayıt olun")
+    public static let forumThreadGuestReplyMessage = localized(
+        "forumThread.guestReplyMessage",
+        defaultValue: "Forum sohbetine katılmak için giriş yapın veya ücretsiz hesap oluşturun."
+    )
+    public static let forumThreadReplyLockedTitle = localized("forumThread.replyLockedTitle", defaultValue: "Bu konuya cevap veremezsiniz")
+    public static let forumThreadReplyLockedMessage = localized("forumThread.replyLockedMessage", defaultValue: "Forum izinleriniz bu konuya yazmanıza izin vermiyor.")
+    public static let forumThreadReplyPermissionHint = localized(
+        "forumThread.replyPermissionHint",
+        defaultValue: "Cevap yetkiniz gönderim sırasında kontrol edilir."
+    )
 
     public static let notificationsTitle = localized("notifications.title", defaultValue: "Bildirimler")
     public static let notificationsLoading = localized("notifications.loading", defaultValue: "Bildirimler yükleniyor")

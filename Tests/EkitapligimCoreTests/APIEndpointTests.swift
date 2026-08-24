@@ -176,6 +176,17 @@ final class APIEndpointTests: XCTestCase {
         XCTAssertEqual(reply.path, "threads/99/posts")
         XCTAssertEqual(reply.method, .post)
         XCTAssertTrue(reply.requiresAuthentication)
+
+        let create = APIEndpoint.createForumThread(forumID: 12, title: "Başlık", message: "Mesaj")
+        XCTAssertEqual(create.path, "forums/12/threads")
+        XCTAssertEqual(create.method, .post)
+        XCTAssertTrue(create.requiresAuthentication)
+
+        XCTAssertEqual(APIEndpoint.createBookRequest(title: "T", author: "A", isbn: "").path, "book-requests")
+        XCTAssertTrue(APIEndpoint.createBookRequest(title: "T", author: "A", isbn: "").requiresAuthentication)
+
+        XCTAssertEqual(APIEndpoint.sendChatMessage(roomID: "3", message: "Selam").path, "chat/rooms/3/messages")
+        XCTAssertTrue(APIEndpoint.sendChatMessage(roomID: "3", message: "Selam").requiresAuthentication)
     }
 
     func testLibraryUpdateRequiresAuthentication() {

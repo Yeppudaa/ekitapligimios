@@ -123,12 +123,25 @@ struct LiveActivityView: View {
 // MARK: - Aktivite satırı
 
 struct LiveActivityRow: View {
+    @EnvironmentObject private var container: AppContainer
     let item: LiveActivityItemDTO
     var showsChevron: Bool = true
 
     private var kind: LiveActivityKind { LiveActivityKind(rawValue: item.type) }
 
     var body: some View {
+        Button {
+            openActivity()
+        } label: {
+            rowContent
+        }
+        .buttonStyle(.plain)
+        .disabled(!hasDestination)
+        .accessibilityLabel(hasDestination ? item.message : item.message)
+        .accessibilityHint(kind.title)
+    }
+
+    private var rowContent: some View {
         HStack(alignment: .top, spacing: 12) {
             ZStack {
                 Circle()
@@ -184,19 +197,37 @@ struct LiveActivityRow: View {
                 }
             }
 
-            if showsChevron, let destination = bookID {
-                NavigationLink { BookDetailView(bookID: destination) } label: {
-                    Image(systemName: "chevron.right")
-                        .font(.caption2)
-                        .foregroundStyle(EKitapligimPalette.muted)
-                }
-                .accessibilityLabel(L10n.agendaOpenBook)
+            if showsChevron, hasDestination {
+                Image(systemName: "chevron.right")
+                    .font(.caption2)
+                    .foregroundStyle(EKitapligimPalette.muted)
             }
         }
         .padding(13)
         .frame(maxWidth: .infinity, alignment: .leading)
         .ekitapligimCard(radius: 15)
         .accessibilityElement(children: .combine)
+    }
+
+    private var hasDestination: Bool {
+        resolvedRoute != nil || bookID != nil
+    }
+
+    private var resolvedRoute: AppRoute? {
+        DeepLinkParser().parseNotification(
+            appRoute: item.appRoute,
+            targetURL: item.targetUrl,
+            contentID: Int(item.id),
+            type: item.type
+        )
+    }
+
+    private func openActivity() {
+        if let route = resolvedRoute {
+            container.open(route: route)
+        } else if let bookID {
+            container.open(route: .bookDetail(bookID))
+        }
     }
 
     private var bookID: Int? {

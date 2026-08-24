@@ -76,6 +76,13 @@ public enum BookAgendaPostType: String, Equatable, Sendable, CaseIterable {
     case progress
 }
 
+public enum BookAgendaComposerRules: Sendable {
+    /// Android AgendaComposerDialog treats blank page fields as 0, so current=5/total empty is invalid.
+    public static func isProgressCurrentExceedingTotal(_ current: String, total: String) -> Bool {
+        (Int(current) ?? 0) > (Int(total) ?? 0)
+    }
+}
+
 public enum BookAgendaVisibility: String, Equatable, Sendable, CaseIterable {
     case `public`
     case members
@@ -421,6 +428,18 @@ public extension APIEndpoint {
             method: .get,
             path: "forums/\(forumID)/threads",
             queryItems: [URLQueryItem(name: "page", value: String(page))]
+        )
+    }
+
+    static func createForumThread(forumID: Int, title: String, message: String) -> APIEndpoint {
+        APIEndpoint(
+            method: .post,
+            path: "forums/\(forumID)/threads",
+            body: .form([
+                "title": title,
+                "message": message
+            ]),
+            requiresAuthentication: true
         )
     }
 

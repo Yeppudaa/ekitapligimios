@@ -27,7 +27,13 @@ Regenerate routes after MobileApi reference updates:
 2. Upload and install `Ekitapligim/IosApi` from Admin → Add-ons.
 3. Rebuild routes/caches if prompted.
 4. Configure Apple server secrets (see below).
-5. Run smoke tests:
+5. Verify forum topic create route responds (401/403 without auth, not 404):
+
+```powershell
+.\Scripts\parity-audit.ps1 -BaseUrl "https://ekitapligim.com/ios-api/v1/"
+```
+
+6. Run smoke tests:
 
 ```powershell
 .\Scripts\api-smoke-test.ps1 -BaseUrl "https://ekitapligim.com/ios-api/v1/"
@@ -46,6 +52,8 @@ Regenerate routes after MobileApi reference updates:
 - `POST /ios-api/v1/members/{user_id}/block|unblock`
 - `GET|POST /ios-api/v1/me/terms`, `POST /ios-api/v1/me/terms/accept`
 - `POST /ios-api/v1/posts/{post_id}/report`
+- `POST /ios-api/v1/forums/{node_id}/threads` — create forum topic (IosApi `ForumThreads::actionPost`; requires v1.0.4+ deploy)
+- `GET|POST /ios-api/v1/threads/{thread_id}/posts` — list/reply (IosApi `ThreadPosts` + Pub wrapper; requires v1.0.5+ deploy)
 
 All other iOS app endpoints are registered under `/ios-api/v1/` but delegate to existing `Ekitapligim\MobileApi` controllers. Reading stats, profile media uploads, and book-agenda follow are owned by IosApi so they work even when MobileApi route import is incomplete on the server.
 

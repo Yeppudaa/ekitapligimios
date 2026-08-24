@@ -124,6 +124,11 @@ public struct BookRequestDTO: Decodable, Equatable, Identifiable, Sendable {
         self.status = try container.decodeIfPresent(String.self, forKey: .status) ?? "PENDING"
     }
 
+    /// Android `SocialScreen` only enables upvote while the request is still `PENDING`.
+    public var allowsVote: Bool {
+        status.trimmingCharacters(in: .whitespacesAndNewlines).uppercased() == "PENDING"
+    }
+
     private enum CodingKeys: String, CodingKey {
         case id
         case requestId
@@ -397,8 +402,40 @@ public struct BookDTO: Decodable, Equatable, Identifiable, Sendable {
     public let pageCount: Int
     public let isPremiumOnly: Bool
     public let viewCount: Int?
+    public let downloadCount: Int?
     public let reactionScore: Int?
     public let rating: Double?
+    public let fileType: String?
+
+    /// Android `displayBookFormat`: blank/unknown → "PDF / EPUB", else tr-TR uppercase.
+    public var displayedFormat: String {
+        let normalized = (fileType ?? "").trimmingCharacters(in: .whitespacesAndNewlines)
+        if normalized.isEmpty || normalized.compare("unknown", options: .caseInsensitive) == .orderedSame {
+            return "PDF / EPUB"
+        }
+        return normalized.uppercased(with: Locale(identifier: "tr_TR"))
+    }
+
+    public var displayedDownloadCount: Int {
+        if let downloadCount, downloadCount > 0 { return downloadCount }
+        return viewCount ?? 0
+    }
+}
+
+
+/// Android book-detail share: pdfUrl.ifBlank { site thread URL } and "$title — $author\n$url".
+public enum BookShareFormatting {
+    public static func urlString(pdfURL: String, bookID: String) -> String {
+        let trimmed = pdfURL.trimmingCharacters(in: .whitespacesAndNewlines)
+        if trimmed.isEmpty {
+            return "https://ekitapligim.com/threads/\(bookID)/"
+        }
+        return trimmed
+    }
+
+    public static func body(title: String, author: String, pdfURL: String, bookID: String) -> String {
+        "\(title) — \(author)\n\(urlString(pdfURL: pdfURL, bookID: bookID))"
+    }
 }
 
 public struct BookCommentDTO: Decodable, Equatable, Identifiable, Sendable {
@@ -546,6 +583,127 @@ public struct LibraryItemDTO: Decodable, Equatable, Sendable {
         case author
         case coverUrl
         case pageCount
+    }
+
+    public init(
+        bookId: String,
+        shelfState: String,
+        progressPercent: Int,
+        lastReadPage: Int,
+        isDownloaded: Bool,
+        isFavorite: Bool,
+        title: String,
+        author: String,
+        coverUrl: String,
+        pageCount: Int
+    ) {
+        self.bookId = bookId
+        self.shelfState = shelfState
+        self.progressPercent = progressPercent
+        self.lastReadPage = lastReadPage
+        self.isDownloaded = isDownloaded
+        self.isFavorite = isFavorite
+        self.title = title
+        self.author = author
+        self.coverUrl = coverUrl
+        self.pageCount = pageCount
+    }
+
+    func updating(
+        shelfState: String? = nil,
+        progressPercent: Int? = nil,
+        lastReadPage: Int? = nil,
+        isDownloaded: Bool? = nil,
+        isFavorite: Bool? = nil
+    ) -> LibraryItemDTO {
+        LibraryItemDTO(
+            bookId: bookId,
+            shelfState: shelfState ?? self.shelfState,
+            progressPercent: progressPercent ?? self.progressPercent,
+            lastReadPage: lastReadPage ?? self.lastReadPage,
+            isDownloaded: isDownloaded ?? self.isDownloaded,
+            isFavorite: isFavorite ?? self.isFavorite,
+            title: title,
+            author: author,
+            coverUrl: coverUrl,
+            pageCount: pageCount
+        )
+    }
+}
+
+public extension LibraryItemDTO {
+    var normalizedShelfState: String {
+        shelfState.trimmingCharacters(in: .whitespacesAndNewlines).uppercased()
+    }
+
+    var isOnReadingShelf: Bool {
+        switch normalizedShelfState {
+        case "OKUYORUM", "READING", "CURRENTLY_READING", "CURRENT":
+            return true
+        default:
+            return progressPercent > 0 && progressPercent < 100
+        }
+    }
+
+    var isOnWantToReadShelf: Bool {
+        normalizedShelfState == "OKUYACAGIM" || normalizedShelfState == "WANT_TO_READ"
+    }
+
+    var isOnFinishedShelf: Bool {
+        normalizedShelfState == "OKUDUM" || normalizedShelfState == "READ" || normalizedShelfState == "FINISHED" || progressPercent >= 100
+    }
+
+    var isFavoriteItem: Bool {
+        isFavorite || normalizedShelfState == "FAVORI" || normalizedShelfState == "FAVORITE" || normalizedShelfState == "FAV"
+    }
+
+    /// Values Android sends when changing shelf/favorite without resetting reader progress.
+    var readingProgressForShelfUpdate: (percent: Int, page: Int) {
+        (progressPercent, lastReadPage)
+    }
+
+    /// Display progress: prefer API percent, else derive from lastReadPage/pageCount like Android.
+    var displayProgressPercent: Int {
+        // Android `libraryProgress`: finished shelf always shows 100%.
+        if isOnFinishedShelf { return 100 }
+        if progressPercent > 0 { return min(100, max(0, progressPercent)) }
+        guard pageCount > 0, lastReadPage > 1 else { return 0 }
+        return min(99, max(1, (lastReadPage * 100) / pageCount))
+    }
+
+    /// Shelf-aware subtitle for library cards (Android `libraryMetaText`).
+    var libraryMetaText: String {
+        libraryMetaText(treatingAsDownloaded: isDownloaded)
+    }
+
+    func libraryMetaText(treatingAsDownloaded downloaded: Bool) -> String {
+        if isOnFinishedShelf { return L10n.libraryMetaFinished }
+        if progressPercent > 0 || lastReadPage > 1 {
+            return L10n.libraryMetaLastPage(max(1, lastReadPage))
+        }
+        if downloaded || isDownloaded { return L10n.libraryMetaDownloaded }
+        if isOnWantToReadShelf { return L10n.libraryMetaWantToRead }
+        if isFavoriteItem { return L10n.libraryMetaFavorite }
+        return L10n.libraryMetaContinue
+    }
+
+    /// Reading/want/finished label for shelf menus when the API stores FAVORI/NONE without explicit shelf codes.
+    var displayShelfStateForMenu: String {
+        switch normalizedShelfState {
+        case "OKUYORUM", "READING", "CURRENTLY_READING", "CURRENT":
+            return "OKUYORUM"
+        case "OKUYACAGIM", "WANT_TO_READ":
+            return "OKUYACAGIM"
+        case "OKUDUM", "READ", "FINISHED":
+            return "OKUDUM"
+        case "FAVORI", "FAVORITE", "FAV", "NONE", "":
+            if isOnReadingShelf { return "OKUYORUM" }
+            if isOnWantToReadShelf { return "OKUYACAGIM" }
+            if isOnFinishedShelf { return "OKUDUM" }
+            return ""
+        default:
+            return shelfState
+        }
     }
 }
 

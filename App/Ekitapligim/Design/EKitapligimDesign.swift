@@ -1,4 +1,5 @@
 import SwiftUI
+import EkitapligimCore
 
 enum EKitapligimPalette {
     static let page = Color(red: 250 / 255, green: 252 / 255, blue: 252 / 255)
@@ -141,6 +142,82 @@ struct EKitapligimPageBackground: View {
     }
 }
 
+/// Shared light-theme chrome matching the Android app shell.
+enum EKitapligimAppearance {
+    static func configure() {
+        let nav = UINavigationBarAppearance()
+        nav.configureWithOpaqueBackground()
+        nav.backgroundColor = UIColor(red: 251 / 255, green: 254 / 255, blue: 254 / 255, alpha: 1)
+        nav.shadowColor = UIColor(red: 226 / 255, green: 232 / 255, blue: 234 / 255, alpha: 1)
+        nav.titleTextAttributes = [.foregroundColor: UIColor(red: 16 / 255, green: 33 / 255, blue: 47 / 255, alpha: 1)]
+        nav.largeTitleTextAttributes = [.foregroundColor: UIColor(red: 16 / 255, green: 33 / 255, blue: 47 / 255, alpha: 1)]
+        UINavigationBar.appearance().standardAppearance = nav
+        UINavigationBar.appearance().scrollEdgeAppearance = nav
+        UINavigationBar.appearance().compactAppearance = nav
+
+        UITableView.appearance().backgroundColor = .clear
+        UICollectionView.appearance().backgroundColor = .clear
+    }
+}
+
+/// Standard page wrapper: gradient background behind all content screens.
+struct EKitapligimScreen<Content: View>: View {
+    @ViewBuilder private let content: () -> Content
+
+    init(@ViewBuilder content: @escaping () -> Content) {
+        self.content = content
+    }
+
+    var body: some View {
+        ZStack {
+            EKitapligimPageBackground()
+            content()
+        }
+    }
+}
+
+struct EKLoadingState: View {
+    var message: String = L10n.commonLoading
+
+    var body: some View {
+        VStack(spacing: 14) {
+            ProgressView()
+                .tint(EKitapligimPalette.teal)
+            Text(message)
+                .font(.subheadline)
+                .foregroundStyle(EKitapligimPalette.muted)
+        }
+        .frame(maxWidth: .infinity, maxHeight: .infinity)
+    }
+}
+
+struct EKEmptyState: View {
+    let title: String
+    var message: String?
+    var systemImage: String = "tray"
+
+    var body: some View {
+        ContentUnavailableView(title, systemImage: systemImage, description: message.map(Text.init))
+            .frame(maxWidth: .infinity, maxHeight: .infinity)
+    }
+}
+
+struct EKErrorState: View {
+    let title: String
+    var message: String?
+    var retryTitle: String = L10n.commonRetry
+    var retry: (() -> Void)?
+
+    var body: some View {
+        if let retry {
+            EKStateCard(title: title, message: message ?? "", retryTitle: retryTitle, retry: retry)
+                .padding(.horizontal, 18)
+        } else {
+            EKEmptyState(title: title, message: message, systemImage: "exclamationmark.triangle")
+        }
+    }
+}
+
 struct EKitapligimBrandLogo: View {
     var body: some View {
         Image("EKitapligimWideLogo")
@@ -188,6 +265,7 @@ struct EKitapligimSectionHeader: View {
 
 struct EKitapligimRemoteCover: View {
     let urlString: String
+    var accessibilityTitle: String? = nil
 
     var body: some View {
         Group {
@@ -206,6 +284,14 @@ struct EKitapligimRemoteCover: View {
         .frame(maxWidth: .infinity, maxHeight: .infinity)
         .background(EKitapligimPalette.tealSoft)
         .clipped()
+        .accessibilityLabel(coverAccessibilityLabel ?? "")
+        .accessibilityHidden(coverAccessibilityLabel == nil)
+    }
+
+    private var coverAccessibilityLabel: String? {
+        guard let accessibilityTitle, !accessibilityTitle.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty,
+              secureURL != nil else { return nil }
+        return L10n.libraryCoverAccessibility(accessibilityTitle)
     }
 
     private var secureURL: URL? {
@@ -218,6 +304,54 @@ struct EKitapligimRemoteCover: View {
             .font(.title2)
             .foregroundStyle(EKitapligimPalette.teal)
             .frame(maxWidth: .infinity, maxHeight: .infinity)
+    }
+}
+
+enum EKCollapsibleHeroMetrics {
+    static let expandedHeight: CGFloat = 126
+    static let collapsedHeight: CGFloat = 64
+    static let threshold: CGFloat = 120
+}
+
+private struct EKScrollOffsetKey: PreferenceKey {
+    static var defaultValue: CGFloat = 0
+
+    static func reduce(value: inout CGFloat, nextValue: () -> CGFloat) {
+        value = nextValue()
+    }
+}
+
+struct EKScrollOffsetTracker: View {
+    var body: some View {
+        GeometryReader { proxy in
+            Color.clear.preference(
+                key: EKScrollOffsetKey.self,
+                value: proxy.frame(in: .named("ekCollapsibleScroll")).minY
+            )
+        }
+        .frame(height: 0)
+    }
+}
+
+struct EKCollapsibleHero<Expanded: View, Collapsed: View>: View {
+    let progress: CGFloat
+    @ViewBuilder var expanded: () -> Expanded
+    @ViewBuilder var collapsed: () -> Collapsed
+
+    var body: some View {
+        let clamped = min(max(progress, 0), 1)
+        let height = EKCollapsibleHeroMetrics.expandedHeight
+            - ((EKCollapsibleHeroMetrics.expandedHeight - EKCollapsibleHeroMetrics.collapsedHeight) * clamped)
+
+        ZStack(alignment: .top) {
+            expanded()
+                .opacity(1 - clamped)
+            collapsed()
+                .opacity(clamped)
+        }
+        .frame(height: height, alignment: .top)
+        .clipped()
+        .animation(.easeOut(duration: 0.15), value: clamped)
     }
 }
 
@@ -238,5 +372,26 @@ private struct EKitapligimCardModifier: ViewModifier {
 extension View {
     func ekitapligimCard(radius: CGFloat = 18) -> some View {
         modifier(EKitapligimCardModifier(radius: radius))
+    }
+
+    /// Applies the site gradient behind List/Form screens so dark mode never renders a black page.
+    func ekitapligimScreenBackground() -> some View {
+        background {
+            EKitapligimPageBackground()
+        }
+    }
+
+    func ekitapligimListScreen() -> some View {
+        scrollContentBackground(.hidden)
+            .listStyle(.plain)
+            .background(.clear)
+    }
+
+    func ekCollapsibleScrollTracking(_ onProgressChange: @escaping (CGFloat) -> Void) -> some View {
+        coordinateSpace(name: "ekCollapsibleScroll")
+            .onPreferenceChange(EKScrollOffsetKey.self) { offset in
+                let progress = min(max(-offset / EKCollapsibleHeroMetrics.threshold, 0), 1)
+                onProgressChange(progress)
+            }
     }
 }

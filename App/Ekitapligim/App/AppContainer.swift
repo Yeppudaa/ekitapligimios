@@ -22,10 +22,10 @@ final class AppContainer: ObservableObject {
     var isAdmin: Bool { profileState?.isAdmin ?? (subscription?.isAdminTier ?? false) }
     var isPremium: Bool { subscription?.isPremium ?? (profileState?.isPremium ?? false) }
 
-    var currentlyReading: [LibraryItemDTO] { libraryItems.filter { $0.shelfState == "reading" } }
-    var finishedBooks: [LibraryItemDTO] { libraryItems.filter { $0.shelfState == "read" } }
-    var wantToRead: [LibraryItemDTO] { libraryItems.filter { $0.shelfState == "want_to_read" } }
-    var favoriteBooks: [LibraryItemDTO] { libraryItems.filter(\.isFavorite) }
+    var currentlyReading: [LibraryItemDTO] { libraryItems.filter(\.isOnReadingShelf) }
+    var finishedBooks: [LibraryItemDTO] { libraryItems.filter(\.isOnFinishedShelf) }
+    var wantToRead: [LibraryItemDTO] { libraryItems.filter(\.isOnWantToReadShelf) }
+    var favoriteBooks: [LibraryItemDTO] { libraryItems.filter(\.isFavoriteItem) }
     var downloadedBooks: [LibraryItemDTO] { libraryItems.filter(\.isDownloaded) }
 
     /// The most advanced in-progress book, used by the "Kaldığın yerden devam et" cards.
@@ -146,9 +146,24 @@ final class AppContainer: ObservableObject {
         applyCounts(counts)
     }
 
-    func refreshLibrary() async {
-        guard isSignedIn, let page = try? await books.library() else { return }
+    @discardableResult
+    func refreshLibrary() async -> Bool {
+        guard isSignedIn, let page = try? await books.library() else { return false }
         libraryItems = page.items
+        return true
+    }
+
+    func patchLibraryItem(_ bookID: String, transform: (LibraryItemDTO) -> LibraryItemDTO) {
+        guard let index = libraryItems.firstIndex(where: { $0.bookId == bookID }) else { return }
+        libraryItems[index] = transform(libraryItems[index])
+    }
+
+    func upsertLibraryItem(_ item: LibraryItemDTO) {
+        if let index = libraryItems.firstIndex(where: { $0.bookId == item.bookId }) {
+            libraryItems[index] = item
+        } else {
+            libraryItems.insert(item, at: 0)
+        }
     }
 
     func updateProfile(_ updated: ProfileDTO) {

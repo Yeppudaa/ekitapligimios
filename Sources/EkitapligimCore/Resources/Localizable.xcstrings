@@ -1,2274 +1,4446 @@
 {
-  "sourceLanguage" : "tr",
-  "strings" : {
-    "app.name" : {
-      "localizations" : {
-        "tr" : {
-          "stringUnit" : {
-            "state" : "translated",
-            "value" : "Ekitaplığım"
+  "sourceLanguage": "tr",
+  "strings": {
+    "app.name": {
+      "localizations": {
+        "tr": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Ekitaplığım"
           }
         }
       }
     },
-    "account.security.title" : { "localizations" : { "tr" : { "stringUnit" : { "state" : "translated", "value" : "Giriş ve Güvenlik" } } } },
-    "account.security.email.section" : { "localizations" : { "tr" : { "stringUnit" : { "state" : "translated", "value" : "E-posta" } } } },
-    "account.security.email.current" : { "localizations" : { "tr" : { "stringUnit" : { "state" : "translated", "value" : "Mevcut e-posta" } } } },
-    "account.security.email.new" : { "localizations" : { "tr" : { "stringUnit" : { "state" : "translated", "value" : "Yeni e-posta" } } } },
-    "account.security.currentPassword" : { "localizations" : { "tr" : { "stringUnit" : { "state" : "translated", "value" : "Mevcut şifre" } } } },
-    "account.security.email.update" : { "localizations" : { "tr" : { "stringUnit" : { "state" : "translated", "value" : "E-postayı güncelle" } } } },
-    "account.security.email.footer" : { "localizations" : { "tr" : { "stringUnit" : { "state" : "translated", "value" : "Güvenlik için mevcut şifreniz yeniden doğrulanır. Yeni adres için e-posta onayı gerekebilir." } } } },
-    "account.security.email.updated" : { "localizations" : { "tr" : { "stringUnit" : { "state" : "translated", "value" : "E-posta adresiniz güncellendi." } } } },
-    "account.security.email.confirmation" : { "localizations" : { "tr" : { "stringUnit" : { "state" : "translated", "value" : "Yeni adresinize gönderilen doğrulama bağlantısını açın." } } } },
-    "account.security.email.failed" : { "localizations" : { "tr" : { "stringUnit" : { "state" : "translated", "value" : "E-posta güncellenemedi. Mevcut şifrenizi ve adresi kontrol edin." } } } },
-    "account.security.password.section" : { "localizations" : { "tr" : { "stringUnit" : { "state" : "translated", "value" : "Şifre" } } } },
-    "account.security.password.new" : { "localizations" : { "tr" : { "stringUnit" : { "state" : "translated", "value" : "Yeni şifre" } } } },
-    "account.security.password.confirm" : { "localizations" : { "tr" : { "stringUnit" : { "state" : "translated", "value" : "Yeni şifre tekrar" } } } },
-    "account.security.password.update" : { "localizations" : { "tr" : { "stringUnit" : { "state" : "translated", "value" : "Şifreyi güncelle" } } } },
-    "account.security.password.footer" : { "localizations" : { "tr" : { "stringUnit" : { "state" : "translated", "value" : "Şifre değişince diğer mobil oturumlar kapatılır ve bu cihaz için güvenli oturum yenilenir." } } } },
-    "account.security.password.updated" : { "localizations" : { "tr" : { "stringUnit" : { "state" : "translated", "value" : "Şifreniz ve bu cihazdaki güvenli oturum yenilendi." } } } },
-    "account.security.password.failed" : { "localizations" : { "tr" : { "stringUnit" : { "state" : "translated", "value" : "Şifre güncellenemedi. Mevcut şifrenizi ve yeni şifre kurallarını kontrol edin." } } } },
-    "account.security.saving" : { "localizations" : { "tr" : { "stringUnit" : { "state" : "translated", "value" : "Güncelleniyor" } } } },
-    "account.delete.confirmationPlaceholder" : {
-      "localizations" : {
-        "tr" : {
-          "stringUnit" : {
-            "state" : "translated",
-            "value" : "SIL"
+    "account.security.title": {
+      "localizations": {
+        "tr": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Giriş ve Güvenlik"
           }
         }
       }
     },
-    "account.delete.confirmationPrompt" : {
-      "localizations" : {
-        "tr" : {
-          "stringUnit" : {
-            "state" : "translated",
-            "value" : "Devam etmek için SIL yazın."
+    "account.security.email.section": {
+      "localizations": {
+        "tr": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "E-posta"
           }
         }
       }
     },
-    "account.delete.passwordPlaceholder" : {
-      "localizations" : {
-        "tr" : {
-          "stringUnit" : {
-            "state" : "translated",
-            "value" : "Mevcut şifre (Apple hesabında boş bırakın)"
+    "account.security.email.current": {
+      "localizations": {
+        "tr": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Mevcut e-posta"
           }
         }
       }
     },
-    "account.delete.reasonLabel" : {
-      "localizations" : {
-        "tr" : {
-          "stringUnit" : {
-            "state" : "translated",
-            "value" : "Silme nedeni"
+    "account.security.email.new": {
+      "localizations": {
+        "tr": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Yeni e-posta"
           }
         }
       }
     },
-    "account.delete.submit" : {
-      "localizations" : {
-        "tr" : {
-          "stringUnit" : {
-            "state" : "translated",
-            "value" : "Silme talebi gönder"
+    "account.security.currentPassword": {
+      "localizations": {
+        "tr": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Mevcut şifre"
           }
         }
       }
     },
-    "account.delete.submitFailed" : {
-      "localizations" : {
-        "tr" : {
-          "stringUnit" : {
-            "state" : "translated",
-            "value" : "Hesap silme talebi gönderilemedi."
+    "account.security.email.update": {
+      "localizations": {
+        "tr": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "E-postayı güncelle"
           }
         }
       }
     },
-    "account.delete.submitted" : {
-      "localizations" : {
-        "tr" : {
-          "stringUnit" : {
-            "state" : "translated",
-            "value" : "Hesap silme talebiniz alındı. İşlem genellikle 30 gün içinde tamamlanır ve e-postayla bildirilir."
+    "account.security.email.footer": {
+      "localizations": {
+        "tr": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Güvenlik için mevcut şifreniz yeniden doğrulanır. Yeni adres için e-posta onayı gerekebilir."
           }
         }
       }
     },
-    "account.delete.title" : {
-      "localizations" : {
-        "tr" : {
-          "stringUnit" : {
-            "state" : "translated",
-            "value" : "Hesabı Sil"
+    "account.security.email.updated": {
+      "localizations": {
+        "tr": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "E-posta adresiniz güncellendi."
           }
         }
       }
     },
-    "account.delete.warning" : {
-      "localizations" : {
-        "tr" : {
-          "stringUnit" : {
-            "state" : "translated",
-            "value" : "Bu işlem tüm hesabınızın silinmesi sürecini başlatır. Talep genellikle 30 gün içinde tamamlanır ve sonuç kayıtlı e-posta adresinize bildirilir. Profil, kitaplık ve kullanıcı içerikleri silinir veya yasal zorunluluk varsa anonimleştirilir. Apple aboneliğiniz varsa ayrıca App Store aboneliklerinizi yönetin."
+    "account.security.email.confirmation": {
+      "localizations": {
+        "tr": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Yeni adresinize gönderilen doğrulama bağlantısını açın."
           }
         }
       }
     },
-    "book.detail.checkReading" : {
-      "localizations" : {
-        "tr" : {
-          "stringUnit" : {
-            "state" : "translated",
-            "value" : "Okuma durumunu kontrol et"
+    "account.security.email.failed": {
+      "localizations": {
+        "tr": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "E-posta güncellenemedi. Mevcut şifrenizi ve adresi kontrol edin."
           }
         }
       }
     },
-    "book.detail.downloadReady" : {
-      "localizations" : {
-        "tr" : {
-          "stringUnit" : {
-            "state" : "translated",
-            "value" : "Kitap çevrimdışı okuma için indirildi."
+    "account.security.password.section": {
+      "localizations": {
+        "tr": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Şifre"
           }
         }
       }
     },
-    "book.detail.downloadStarted" : {
-      "localizations" : {
-        "tr" : {
-          "stringUnit" : {
-            "state" : "translated",
-            "value" : "İndirme başlatıldı."
+    "account.security.password.new": {
+      "localizations": {
+        "tr": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Yeni şifre"
           }
         }
       }
     },
-    "book.detail.invalidId" : {
-      "localizations" : {
-        "tr" : {
-          "stringUnit" : {
-            "state" : "translated",
-            "value" : "Kitap kimliği geçersiz."
+    "account.security.password.confirm": {
+      "localizations": {
+        "tr": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Yeni şifre tekrar"
           }
         }
       }
     },
-    "book.detail.loadFailed" : {
-      "localizations" : {
-        "tr" : {
-          "stringUnit" : {
-            "state" : "translated",
-            "value" : "Kitap bilgileri alınamadı."
+    "account.security.password.update": {
+      "localizations": {
+        "tr": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Şifreyi güncelle"
           }
         }
       }
     },
-    "book.detail.loading" : {
-      "localizations" : {
-        "tr" : {
-          "stringUnit" : {
-            "state" : "translated",
-            "value" : "Kitap yükleniyor"
+    "account.security.password.footer": {
+      "localizations": {
+        "tr": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Şifre değişince diğer mobil oturumlar kapatılır ve bu cihaz için güvenli oturum yenilenir."
           }
         }
       }
     },
-    "book.detail.missingDescription" : {
-      "localizations" : {
-        "tr" : {
-          "stringUnit" : {
-            "state" : "translated",
-            "value" : "Açıklama bulunmuyor."
+    "account.security.password.updated": {
+      "localizations": {
+        "tr": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Şifreniz ve bu cihazdaki güvenli oturum yenilendi."
           }
         }
       }
     },
-    "book.detail.offlineDownload" : {
-      "localizations" : {
-        "tr" : {
-          "stringUnit" : {
-            "state" : "translated",
-            "value" : "Çevrimdışı indir"
+    "account.security.password.failed": {
+      "localizations": {
+        "tr": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Şifre güncellenemedi. Mevcut şifrenizi ve yeni şifre kurallarını kontrol edin."
           }
         }
       }
     },
-    "book.detail.openFailed" : {
-      "localizations" : {
-        "tr" : {
-          "stringUnit" : {
-            "state" : "translated",
-            "value" : "Kitap açılamadı"
+    "account.security.saving": {
+      "localizations": {
+        "tr": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Güncelleniyor"
           }
         }
       }
     },
-    "book.detail.read" : {
-      "localizations" : {
-        "tr" : {
-          "stringUnit" : {
-            "state" : "translated",
-            "value" : "Oku"
+    "account.delete.confirmationPlaceholder": {
+      "localizations": {
+        "tr": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "SIL"
           }
         }
       }
     },
-    "book.detail.reportIssue" : {
-      "localizations" : {
-        "tr" : {
-          "stringUnit" : {
-            "state" : "translated",
-            "value" : "Sorun bildir"
+    "account.delete.confirmationPrompt": {
+      "localizations": {
+        "tr": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Devam etmek için SIL yazın."
           }
         }
       }
     },
-    "book.detail.secureDownloadMissing" : {
-      "localizations" : {
-        "tr" : {
-          "stringUnit" : {
-            "state" : "translated",
-            "value" : "Güvenli indirme bağlantısı alınamadı."
+    "account.delete.passwordPlaceholder": {
+      "localizations": {
+        "tr": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Mevcut şifre (Apple hesabında boş bırakın)"
           }
         }
       }
     },
-    "book.detail.similarBooks" : {
-      "localizations" : {
-        "tr" : {
-          "stringUnit" : {
-            "state" : "translated",
-            "value" : "Benzer Kitaplar"
+    "account.delete.reasonLabel": {
+      "localizations": {
+        "tr": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Silme nedeni"
           }
         }
       }
     },
-    "book.detail.title" : {
-      "localizations" : {
-        "tr" : {
-          "stringUnit" : {
-            "state" : "translated",
-            "value" : "Kitap Detayı"
+    "account.delete.submit": {
+      "localizations": {
+        "tr": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Silme talebi gönder"
           }
         }
       }
     },
-    "error.authenticationRequired" : {
-      "localizations" : {
-        "tr" : {
-          "stringUnit" : {
-            "state" : "translated",
-            "value" : "Devam etmek için giriş yapmalısınız."
+    "account.delete.submitFailed": {
+      "localizations": {
+        "tr": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Hesap silme talebi gönderilemedi."
           }
         }
       }
     },
-    "common.close" : {
-      "localizations" : {
-        "tr" : {
-          "stringUnit" : {
-            "state" : "translated",
-            "value" : "Kapat"
+    "account.delete.submitted": {
+      "localizations": {
+        "tr": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Hesap silme talebiniz alındı. İşlem genellikle 30 gün içinde tamamlanır ve e-postayla bildirilir."
           }
         }
       }
     },
-    "common.remove" : {
-      "localizations" : {
-        "tr" : {
-          "stringUnit" : {
-            "state" : "translated",
-            "value" : "Sil"
+    "account.delete.title": {
+      "localizations": {
+        "tr": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Hesabı Sil"
           }
         }
       }
     },
-    "common.percent" : {
-      "localizations" : {
-        "tr" : {
-          "stringUnit" : {
-            "state" : "translated",
-            "value" : "%%%d"
+    "account.delete.warning": {
+      "localizations": {
+        "tr": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Bu işlem tüm hesabınızın silinmesi sürecini başlatır. Talep genellikle 30 gün içinde tamamlanır ve sonuç kayıtlı e-posta adresinize bildirilir. Profil, kitaplık ve kullanıcı içerikleri silinir veya yasal zorunluluk varsa anonimleştirilir. Apple aboneliğiniz varsa ayrıca App Store aboneliklerinizi yönetin."
           }
         }
       }
     },
-    "catalog.display.grid" : { "localizations" : { "tr" : { "stringUnit" : { "state" : "translated", "value" : "Izgara görünümüne geç" } } } },
-    "catalog.display.list" : { "localizations" : { "tr" : { "stringUnit" : { "state" : "translated", "value" : "Liste görünümüne geç" } } } },
-    "catalog.emptyDescription" : {
-      "localizations" : {
-        "tr" : {
-          "stringUnit" : {
-            "state" : "translated",
-            "value" : "Aramanızı değiştirip tekrar deneyin."
+    "book.detail.checkReading": {
+      "localizations": {
+        "tr": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Okuma durumunu kontrol et"
           }
         }
       }
     },
-    "catalog.emptyTitle" : {
-      "localizations" : {
-        "tr" : {
-          "stringUnit" : {
-            "state" : "translated",
-            "value" : "Kitap bulunamadı"
+    "book.detail.downloadReady": {
+      "localizations": {
+        "tr": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Kitap çevrimdışı okuma için indirildi."
           }
         }
       }
     },
-    "catalog.loadFailed" : {
-      "localizations" : {
-        "tr" : {
-          "stringUnit" : {
-            "state" : "translated",
-            "value" : "Kitaplar alınamadı. Bağlantınızı kontrol edip tekrar deneyin."
+    "book.detail.downloadStarted": {
+      "localizations": {
+        "tr": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "İndirme başlatıldı."
           }
         }
       }
     },
-    "catalog.loading" : {
-      "localizations" : {
-        "tr" : {
-          "stringUnit" : {
-            "state" : "translated",
-            "value" : "Kitaplar yükleniyor"
+    "book.detail.invalidId": {
+      "localizations": {
+        "tr": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Kitap kimliği geçersiz."
           }
         }
       }
     },
-    "catalog.searchPrompt" : {
-      "localizations" : {
-        "tr" : {
-          "stringUnit" : {
-            "state" : "translated",
-            "value" : "Kitap, yazar veya ISBN"
+    "book.detail.loadFailed": {
+      "localizations": {
+        "tr": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Kitap bilgileri alınamadı."
           }
         }
       }
     },
-    "catalog.filters.allCategories" : {
-      "localizations" : { "tr" : { "stringUnit" : { "state" : "translated", "value" : "Tüm kategoriler" } } }
+    "book.detail.loading": {
+      "localizations": {
+        "tr": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Kitap yükleniyor"
+          }
+        }
+      }
+    },
+    "book.detail.missingDescription": {
+      "localizations": {
+        "tr": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Bu kitap için özet henüz eklenmemiş."
+          }
+        }
+      }
+    },
+    "book.detail.synopsisSubtitle": {
+      "localizations": {
+        "tr": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Açıklama içeriği"
+          }
+        }
+      }
+    },
+    "book.detail.synopsisReadMore": {
+      "localizations": {
+        "tr": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Devamını oku"
+          }
+        }
+      }
+    },
+    "book.detail.synopsisShowLess": {
+      "localizations": {
+        "tr": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Daha az göster"
+          }
+        }
+      }
+    },
+    "book.detail.offlineDownload": {
+      "localizations": {
+        "tr": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "İndir"
+          }
+        }
+      }
+    },
+    "book.detail.openFailed": {
+      "localizations": {
+        "tr": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Kitap açılamadı"
+          }
+        }
+      }
+    },
+    "book.detail.read": {
+      "localizations": {
+        "tr": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Hemen Oku"
+          }
+        }
+      }
+    },
+    "book.detail.reportIssue": {
+      "localizations": {
+        "tr": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Sorun bildir"
+          }
+        }
+      }
+    },
+    "book.detail.issueTitle": {
+      "localizations": {
+        "tr": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Sorun mu var?"
+          }
+        }
+      }
+    },
+    "book.detail.issueSubtitle": {
+      "localizations": {
+        "tr": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Kitap kaydıyla ilgili hızlı bildirim gönderin."
+          }
+        }
+      }
+    },
+    "book.detail.issueBrokenLink": {
+      "localizations": {
+        "tr": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Kırık link"
+          }
+        }
+      }
+    },
+    "book.detail.issueMissingCover": {
+      "localizations": {
+        "tr": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Eksik kapak"
+          }
+        }
+      }
+    },
+    "book.detail.issueLoginRequired": {
+      "localizations": {
+        "tr": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Bildirimde bulunmak için giriş yapmalısınız."
+          }
+        }
+      }
+    },
+    "book.detail.issueCopyrightLoginRequired": {
+      "localizations": {
+        "tr": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Telif bildirimi için giriş yapmalısınız."
+          }
+        }
+      }
+    },
+    "book.detail.issueSubmitted": {
+      "localizations": {
+        "tr": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "%@ bildiriminiz alındı."
+          }
+        }
+      }
+    },
+    "book.detail.issueSubmitFailed": {
+      "localizations": {
+        "tr": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Bildirim gönderilemedi. Lütfen tekrar deneyin."
+          }
+        }
+      }
+    },
+    "book.detail.issueCopyright": {
+      "localizations": {
+        "tr": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Telif"
+          }
+        }
+      }
+    },
+    "book.detail.secureDownloadMissing": {
+      "localizations": {
+        "tr": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Güvenli indirme bağlantısı alınamadı."
+          }
+        }
+      }
+    },
+    "book.detail.similarBooks": {
+      "localizations": {
+        "tr": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Benzer Kitaplar"
+          }
+        }
+      }
+    },
+    "book.detail.title": {
+      "localizations": {
+        "tr": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Kitap Detayı"
+          }
+        }
+      }
+    },
+    "error.authenticationRequired": {
+      "localizations": {
+        "tr": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Devam etmek için giriş yapmalısınız."
+          }
+        }
+      }
+    },
+    "common.close": {
+      "localizations": {
+        "tr": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Kapat"
+          }
+        }
+      }
+    },
+    "common.remove": {
+      "localizations": {
+        "tr": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Sil"
+          }
+        }
+      }
+    },
+    "common.percent": {
+      "localizations": {
+        "tr": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "%%%d"
+          }
+        }
+      }
+    },
+    "catalog.display.grid": {
+      "localizations": {
+        "tr": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Izgara görünümüne geç"
+          }
+        }
+      }
+    },
+    "catalog.display.list": {
+      "localizations": {
+        "tr": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Liste görünümüne geç"
+          }
+        }
+      }
+    },
+    "catalog.emptyDescription": {
+      "localizations": {
+        "tr": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Aramanızı değiştirip tekrar deneyin."
+          }
+        }
+      }
+    },
+    "catalog.emptyTitle": {
+      "localizations": {
+        "tr": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Kitap bulunamadı"
+          }
+        }
+      }
+    },
+    "catalog.loadFailed": {
+      "localizations": {
+        "tr": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Kitaplar alınamadı. Bağlantınızı kontrol edip tekrar deneyin."
+          }
+        }
+      }
+    },
+    "catalog.loading": {
+      "localizations": {
+        "tr": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Kitaplar yükleniyor"
+          }
+        }
+      }
+    },
+    "catalog.searchPrompt": {
+      "localizations": {
+        "tr": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Kitap, yazar veya ISBN"
+          }
+        }
+      }
+    },
+    "catalog.filters.allCategories": {
+      "localizations": {
+        "tr": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Tüm kategoriler"
+          }
+        }
+      }
+    },
+    "catalog.filters.apply": {
+      "localizations": {
+        "tr": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Uygula"
+          }
+        }
+      }
+    },
+    "catalog.filters.author": {
+      "localizations": {
+        "tr": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Yazar"
+          }
+        }
+      }
+    },
+    "catalog.filters.category": {
+      "localizations": {
+        "tr": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Kategori"
+          }
+        }
+      }
+    },
+    "catalog.filters.details": {
+      "localizations": {
+        "tr": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Kitap Bilgileri"
+          }
+        }
+      }
+    },
+    "catalog.filters.isbn": {
+      "localizations": {
+        "tr": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "ISBN"
+          }
+        }
+      }
+    },
+    "catalog.filters.order": {
+      "localizations": {
+        "tr": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Sıralama"
+          }
+        }
+      }
+    },
+    "catalog.filters.premium": {
+      "localizations": {
+        "tr": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Yalnızca premium kitaplar"
+          }
+        }
+      }
+    },
+    "catalog.filters.publisher": {
+      "localizations": {
+        "tr": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Yayınevi"
+          }
+        }
+      }
+    },
+    "catalog.filters.reset": {
+      "localizations": {
+        "tr": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Sıfırla"
+          }
+        }
+      }
+    },
+    "catalog.filters.title": {
+      "localizations": {
+        "tr": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Filtreler"
+          }
+        }
+      }
+    },
+    "catalog.loadMore": {
+      "localizations": {
+        "tr": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Daha fazla yükle"
+          }
+        }
+      }
+    },
+    "catalog.loadingMore": {
+      "localizations": {
+        "tr": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Yükleniyor"
+          }
+        }
+      }
+    },
+    "catalog.order.latest": {
+      "localizations": {
+        "tr": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "En yeni"
+          }
+        }
+      }
+    },
+    "catalog.order.popular": {
+      "localizations": {
+        "tr": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Popüler"
+          }
+        }
+      }
+    },
+    "catalog.order.rated": {
+      "localizations": {
+        "tr": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Puan"
+          }
+        }
+      }
+    },
+    "catalog.title": {
+      "localizations": {
+        "tr": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Kitaplar"
+          }
+        }
+      }
+    },
+    "catalog.unavailableTitle": {
+      "localizations": {
+        "tr": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Katalog açılamadı"
+          }
+        }
+      }
+    },
+    "common.bookNumber": {
+      "localizations": {
+        "tr": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Kitap #%@"
+          }
+        }
+      }
+    },
+    "blockMember.failure": {
+      "localizations": {
+        "tr": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Kullanıcı engellenemedi."
+          }
+        }
+      }
+    },
+    "blockMember.footer": {
+      "localizations": {
+        "tr": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Engellenen kullanıcının içerikleri uygun ekranlarda gizlenir. Kötüye kullanım durumunda ayrıca içerik raporu gönderin."
+          }
+        }
+      }
+    },
+    "blockMember.submit": {
+      "localizations": {
+        "tr": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Kullanıcıyı engelle"
+          }
+        }
+      }
+    },
+    "blockMember.success": {
+      "localizations": {
+        "tr": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Kullanıcı engellendi."
+          }
+        }
+      }
+    },
+    "blockMember.title": {
+      "localizations": {
+        "tr": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Kullanıcı engelle"
+          }
+        }
+      }
+    },
+    "blockMember.userIdPlaceholder": {
+      "localizations": {
+        "tr": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Kullanıcı ID"
+          }
+        }
+      }
+    },
+    "blockedMembers.emptyTitle": {
+      "localizations": {
+        "tr": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Engellenen kullanıcı yok"
+          }
+        }
+      }
+    },
+    "blockedMembers.loadFailed": {
+      "localizations": {
+        "tr": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Engellenen kullanıcılar alınamadı."
+          }
+        }
+      }
+    },
+    "blockedMembers.loading": {
+      "localizations": {
+        "tr": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Engellenenler yükleniyor"
+          }
+        }
+      }
+    },
+    "blockedMembers.remove": {
+      "localizations": {
+        "tr": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Kaldır"
+          }
+        }
+      }
+    },
+    "blockedMembers.title": {
+      "localizations": {
+        "tr": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Engellenenler"
+          }
+        }
+      }
+    },
+    "blockedMembers.unavailableTitle": {
+      "localizations": {
+        "tr": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Liste alınamadı"
+          }
+        }
+      }
+    },
+    "bookComments.empty": {
+      "localizations": {
+        "tr": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Henüz yorum yapılmamış."
+          }
+        }
+      }
+    },
+    "bookComments.guestSubtitle": {
+      "localizations": {
+        "tr": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Yorum yazmak için üye olun veya giriş yapın."
+          }
+        }
+      }
+    },
+    "bookComments.loadFailed": {
+      "localizations": {
+        "tr": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Yorumlar yüklenemedi."
+          }
+        }
+      }
+    },
+    "bookComments.loginRequiredMessage": {
+      "localizations": {
+        "tr": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Yorum yazmak veya bildirmek için giriş yapın."
+          }
+        }
+      }
+    },
+    "bookComments.loginRequiredTitle": {
+      "localizations": {
+        "tr": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Giriş gerekli"
+          }
+        }
+      }
+    },
+    "bookComments.loginToComment": {
+      "localizations": {
+        "tr": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Giriş"
+          }
+        }
+      }
+    },
+    "bookComments.placeholder": {
+      "localizations": {
+        "tr": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Bu kitap hakkındaki düşüncelerinizi paylaşın..."
+          }
+        }
+      }
+    },
+    "bookComments.rating": {
+      "localizations": {
+        "tr": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "%d yıldız"
+          }
+        }
+      }
+    },
+    "bookComments.report": {
+      "localizations": {
+        "tr": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Yorumu bildir"
+          }
+        }
+      }
+    },
+    "bookComments.signedInSubtitle": {
+      "localizations": {
+        "tr": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Kitap hakkındaki düşüncelerinizi paylaşın."
+          }
+        }
+      }
+    },
+    "bookComments.submit": {
+      "localizations": {
+        "tr": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Yorum Gönder"
+          }
+        }
+      }
+    },
+    "bookComments.submitFailed": {
+      "localizations": {
+        "tr": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Yorum gönderilemedi."
+          }
+        }
+      }
+    },
+    "bookComments.title": {
+      "localizations": {
+        "tr": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Kullanıcı Yorumları"
+          }
+        }
+      }
+    },
+    "bookComments.titleCount": {
+      "localizations": {
+        "tr": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Kullanıcı Yorumları (%d)"
+          }
+        }
+      }
+    },
+    "bookComments.yourRating": {
+      "localizations": {
+        "tr": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Puanınız:"
+          }
+        }
+      }
+    },
+    "bookRequests.actionFailedMessage": {
+      "localizations": {
+        "tr": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Lütfen yeniden deneyin."
+          }
+        }
+      }
+    },
+    "bookRequests.actionFailedTitle": {
+      "localizations": {
+        "tr": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "İşlem tamamlanamadı"
+          }
+        }
+      }
+    },
+    "bookRequests.author": {
+      "localizations": {
+        "tr": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Yazar"
+          }
+        }
+      }
+    },
+    "bookRequests.authorLine": {
+      "localizations": {
+        "tr": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Yazar: %@"
+          }
+        }
+      }
+    },
+    "bookRequests.authorMissing": {
+      "localizations": {
+        "tr": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Belirtilmemiş"
+          }
+        }
+      }
+    },
+    "bookRequests.bookTitle": {
+      "localizations": {
+        "tr": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Kitap Adı"
+          }
+        }
+      }
+    },
+    "bookRequests.create": {
+      "localizations": {
+        "tr": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Yeni kitap isteği"
+          }
+        }
+      }
+    },
+    "bookRequests.createDialogTitle": {
+      "localizations": {
+        "tr": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Yeni Kitap İstemi Yap"
+          }
+        }
+      }
+    },
+    "bookRequests.created": {
+      "localizations": {
+        "tr": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Kitap isteğiniz gönderildi."
+          }
+        }
+      }
+    },
+    "bookRequests.createFailed": {
+      "localizations": {
+        "tr": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Kitap isteği gönderilemedi."
+          }
+        }
+      }
+    },
+    "bookRequests.emptyDescription": {
+      "localizations": {
+        "tr": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Aradığınız kitabı ilk siz isteyebilirsiniz."
+          }
+        }
+      }
+    },
+    "bookRequests.emptyTitle": {
+      "localizations": {
+        "tr": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Henüz kitap isteği yapılmamış."
+          }
+        }
+      }
+    },
+    "bookRequests.goToLogin": {
+      "localizations": {
+        "tr": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Girişe git"
+          }
+        }
+      }
+    },
+    "bookRequests.guestCreateHint": {
+      "localizations": {
+        "tr": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "İstek göndermek için önce giriş yapmalısınız."
+          }
+        }
+      }
+    },
+    "bookRequests.heroSubtitle": {
+      "localizations": {
+        "tr": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Ortak okuma gruplarına katıl,\nkütüphaneye yeni kitap iste!"
+          }
+        }
+      }
+    },
+    "bookRequests.heroTitle": {
+      "localizations": {
+        "tr": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Sosyal & Topluluk"
+          }
+        }
+      }
+    },
+    "bookRequests.isbn": {
+      "localizations": {
+        "tr": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "ISBN (Opsiyonel)"
+          }
+        }
+      }
+    },
+    "bookRequests.loadFailed": {
+      "localizations": {
+        "tr": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Kitap istekleri yüklenemedi."
+          }
+        }
+      }
+    },
+    "bookRequests.listSection": {
+      "localizations": {
+        "tr": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Kitap İstek Listesi"
+          }
+        }
+      }
+    },
+    "bookRequests.loading": {
+      "localizations": {
+        "tr": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Kitap istekleri yükleniyor"
+          }
+        }
+      }
+    },
+    "bookRequests.loginRequiredMessage": {
+      "localizations": {
+        "tr": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Kitap isteği göndermek veya oy vermek için giriş yapın."
+          }
+        }
+      }
+    },
+    "bookRequests.loginRequiredTitle": {
+      "localizations": {
+        "tr": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Giriş gerekli"
+          }
+        }
+      }
+    },
+    "bookRequests.requestAction": {
+      "localizations": {
+        "tr": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "İstekte Bulun"
+          }
+        }
+      }
+    },
+    "bookRequests.requestedBy": {
+      "localizations": {
+        "tr": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "İsteyen: %@"
+          }
+        }
+      }
+    },
+    "bookRequests.status.acquired": {
+      "localizations": {
+        "tr": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Temin Edildi"
+          }
+        }
+      }
+    },
+    "bookRequests.status.pending": {
+      "localizations": {
+        "tr": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Oylanıyor"
+          }
+        }
+      }
+    },
+    "bookRequests.status.rejected": {
+      "localizations": {
+        "tr": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Uygun Bulunmadı"
+          }
+        }
+      }
+    },
+    "bookRequests.submitting": {
+      "localizations": {
+        "tr": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Gönderiliyor..."
+          }
+        }
+      }
+    },
+    "bookRequests.title": {
+      "localizations": {
+        "tr": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Kitap İstekleri"
+          }
+        }
+      }
+    },
+    "bookRequests.unavailableTitle": {
+      "localizations": {
+        "tr": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "İstekler alınamadı"
+          }
+        }
+      }
+    },
+    "bookRequests.voteAccessibility": {
+      "localizations": {
+        "tr": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Upvote"
+          }
+        }
+      }
+    },
+    "bookRequests.voteCount": {
+      "localizations": {
+        "tr": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "%d Oy"
+          }
+        }
+      }
+    },
+    "bookRequests.voteSaved": {
+      "localizations": {
+        "tr": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Oyunuz kaydedildi."
+          }
+        }
+      }
+    },
+    "bookRequests.voteFailed": {
+      "localizations": {
+        "tr": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Oy işlemi tamamlanamadı."
+          }
+        }
+      }
+    },
+    "common.cancel": {
+      "localizations": {
+        "tr": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "İptal"
+          }
+        }
+      }
+    },
+    "common.submit": {
+      "localizations": {
+        "tr": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Gönder"
+          }
+        }
+      }
+    },
+    "common.retry": {
+      "localizations": {
+        "tr": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Tekrar dene"
+          }
+        }
+      }
+    },
+    "common.loadMore": {
+      "localizations": {
+        "tr": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Daha fazla yükle"
+          }
+        }
+      }
+    },
+    "conversations.emptyDescription": {
+      "localizations": {
+        "tr": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Yeni bir özel konuşma başlatabilirsiniz."
+          }
+        }
+      }
+    },
+    "conversations.emptyTitle": {
+      "localizations": {
+        "tr": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Henüz mesaj yok"
+          }
+        }
+      }
+    },
+    "conversations.loadFailed": {
+      "localizations": {
+        "tr": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Özel mesajlar yüklenemedi."
+          }
+        }
+      }
+    },
+    "conversations.loading": {
+      "localizations": {
+        "tr": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Mesajlar yükleniyor"
+          }
+        }
+      }
+    },
+    "conversations.messageBody": {
+      "localizations": {
+        "tr": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Mesaj"
+          }
+        }
+      }
+    },
+    "conversations.messageTitle": {
+      "localizations": {
+        "tr": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Mesaj"
+          }
+        }
+      }
+    },
+    "conversations.new": {
+      "localizations": {
+        "tr": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Yeni mesaj"
+          }
+        }
+      }
+    },
+    "conversations.recipient": {
+      "localizations": {
+        "tr": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Alıcı kullanıcı adı"
+          }
+        }
+      }
+    },
+    "conversations.replyCount": {
+      "localizations": {
+        "tr": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "%d yanıt"
+          }
+        }
+      }
+    },
+    "conversations.replyPlaceholder": {
+      "localizations": {
+        "tr": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Yanıt yazın"
+          }
+        }
+      }
+    },
+    "conversations.sendFailed": {
+      "localizations": {
+        "tr": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Mesaj gönderilemedi. Alıcıyı ve izinlerinizi kontrol edip yeniden deneyin."
+          }
+        }
+      }
+    },
+    "conversations.sendFailedTitle": {
+      "localizations": {
+        "tr": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Mesaj gönderilemedi"
+          }
+        }
+      }
+    },
+    "conversations.sending": {
+      "localizations": {
+        "tr": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Gönderiliyor"
+          }
+        }
+      }
+    },
+    "conversations.subject": {
+      "localizations": {
+        "tr": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Konu"
+          }
+        }
+      }
+    },
+    "conversations.title": {
+      "localizations": {
+        "tr": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Mesajlar"
+          }
+        }
+      }
+    },
+    "conversations.unavailableTitle": {
+      "localizations": {
+        "tr": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Mesajlar alınamadı"
+          }
+        }
+      }
+    },
+    "myComments.emptyDescription": {
+      "localizations": {
+        "tr": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Forumlarda yaptığınız yorumlar burada gösterilir."
+          }
+        }
+      }
+    },
+    "myComments.emptyTitle": {
+      "localizations": {
+        "tr": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Henüz yorum yok"
+          }
+        }
+      }
+    },
+    "myComments.forumTitle": {
+      "localizations": {
+        "tr": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Forum konusu"
+          }
+        }
+      }
+    },
+    "myComments.loading": {
+      "localizations": {
+        "tr": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Yorumlar yükleniyor"
+          }
+        }
+      }
+    },
+    "myComments.title": {
+      "localizations": {
+        "tr": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Yorumlarım"
+          }
+        }
+      }
+    },
+    "myComments.unavailableTitle": {
+      "localizations": {
+        "tr": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Yorumlar alınamadı"
+          }
+        }
+      }
+    },
+    "notifications.noDestination": {
+      "localizations": {
+        "tr": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Bu bildirim için açılabilecek bir içerik bulunamadı."
+          }
+        }
+      }
+    },
+    "community.directorySection": {
+      "localizations": {
+        "tr": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Üyeler"
+          }
+        }
+      }
+    },
+    "members.aboutSection": {
+      "localizations": {
+        "tr": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Hakkında"
+          }
+        }
+      }
+    },
+    "members.actionFailed": {
+      "localizations": {
+        "tr": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Üye işlemi tamamlanamadı."
+          }
+        }
+      }
+    },
+    "members.actionsSection": {
+      "localizations": {
+        "tr": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "İşlemler"
+          }
+        }
+      }
+    },
+    "members.block": {
+      "localizations": {
+        "tr": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Üyeyi engelle"
+          }
+        }
+      }
+    },
+    "members.blockCompleted": {
+      "localizations": {
+        "tr": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Üye engellendi"
+          }
+        }
+      }
+    },
+    "members.blockConfirmation": {
+      "localizations": {
+        "tr": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Bu üyeyi engellemek istiyor musunuz?"
+          }
+        }
+      }
+    },
+    "members.emptyDescription": {
+      "localizations": {
+        "tr": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Aramanızı değiştirip yeniden deneyin."
+          }
+        }
+      }
+    },
+    "members.emptyTitle": {
+      "localizations": {
+        "tr": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Üye bulunamadı"
+          }
+        }
+      }
+    },
+    "members.follow": {
+      "localizations": {
+        "tr": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Takip et"
+          }
+        }
+      }
+    },
+    "members.joinedLabel": {
+      "localizations": {
+        "tr": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Katılım"
+          }
+        }
+      }
+    },
+    "members.loadFailed": {
+      "localizations": {
+        "tr": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Üye dizini yüklenemedi."
+          }
+        }
+      }
+    },
+    "members.loading": {
+      "localizations": {
+        "tr": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Üyeler yükleniyor"
+          }
+        }
+      }
+    },
+    "members.locationLabel": {
+      "localizations": {
+        "tr": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Konum"
+          }
+        }
+      }
+    },
+    "members.messageCount": {
+      "localizations": {
+        "tr": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "%d mesaj"
+          }
+        }
+      }
+    },
+    "members.messagesLabel": {
+      "localizations": {
+        "tr": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Mesajlar"
+          }
+        }
+      }
+    },
+    "members.profileLoadFailed": {
+      "localizations": {
+        "tr": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Üye profili yüklenemedi."
+          }
+        }
+      }
+    },
+    "members.profileLoading": {
+      "localizations": {
+        "tr": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Profil yükleniyor"
+          }
+        }
+      }
+    },
+    "members.profileTitle": {
+      "localizations": {
+        "tr": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Üye Profili"
+          }
+        }
+      }
+    },
+    "members.reactionsLabel": {
+      "localizations": {
+        "tr": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Tepki puanı"
+          }
+        }
+      }
+    },
+    "members.searchPrompt": {
+      "localizations": {
+        "tr": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Kullanıcı ara"
+          }
+        }
+      }
+    },
+    "members.sort.active": {
+      "localizations": {
+        "tr": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "En aktif"
+          }
+        }
+      }
+    },
+    "members.sort.alphabetical": {
+      "localizations": {
+        "tr": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Alfabetik"
+          }
+        }
+      }
+    },
+    "members.sort.newest": {
+      "localizations": {
+        "tr": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "En yeni"
+          }
+        }
+      }
+    },
+    "members.sortLabel": {
+      "localizations": {
+        "tr": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Sıralama"
+          }
+        }
+      }
+    },
+    "members.statsSection": {
+      "localizations": {
+        "tr": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "İstatistikler"
+          }
+        }
+      }
+    },
+    "members.title": {
+      "localizations": {
+        "tr": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Üyeler"
+          }
+        }
+      }
+    },
+    "members.totalLabel": {
+      "localizations": {
+        "tr": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Toplam üye"
+          }
+        }
+      }
+    },
+    "members.unavailableTitle": {
+      "localizations": {
+        "tr": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Üyeler alınamadı"
+          }
+        }
+      }
+    },
+    "members.unfollow": {
+      "localizations": {
+        "tr": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Takibi bırak"
+          }
+        }
+      }
+    },
+    "members.verified": {
+      "localizations": {
+        "tr": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Doğrulanmış üye"
+          }
+        }
+      }
+    },
+    "directory.authors.title": {
+      "localizations": {
+        "tr": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Yazarlar"
+          }
+        }
+      }
+    },
+    "directory.bookCount": {
+      "localizations": {
+        "tr": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "%d kitap"
+          }
+        }
+      }
+    },
+    "directory.emptyDescription": {
+      "localizations": {
+        "tr": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Aramanızı değiştirip yeniden deneyin."
+          }
+        }
+      }
+    },
+    "directory.emptyTitle": {
+      "localizations": {
+        "tr": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Sonuç bulunamadı"
+          }
+        }
+      }
+    },
+    "directory.loadFailed": {
+      "localizations": {
+        "tr": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Yazar ve yayınevi bilgileri alınamadı."
+          }
+        }
+      }
+    },
+    "directory.loading": {
+      "localizations": {
+        "tr": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Dizin yükleniyor"
+          }
+        }
+      }
+    },
+    "directory.publishers.title": {
+      "localizations": {
+        "tr": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Yayınevleri"
+          }
+        }
+      }
+    },
+    "directory.searchPrompt": {
+      "localizations": {
+        "tr": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Ara"
+          }
+        }
+      }
+    },
+    "directory.unavailableTitle": {
+      "localizations": {
+        "tr": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Dizin alınamadı"
+          }
+        }
+      }
+    },
+    "download.error.removalFailed": {
+      "localizations": {
+        "tr": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "İndirme silinemedi."
+          }
+        }
+      }
+    },
+    "download.error.secureConnection": {
+      "localizations": {
+        "tr": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Güvenli indirme bağlantısı gerekli."
+          }
+        }
+      }
+    },
+    "download.error.serverRejected": {
+      "localizations": {
+        "tr": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Dosya indirilemedi."
+          }
+        }
+      }
+    },
+    "download.error.validationFailed": {
+      "localizations": {
+        "tr": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Dosya güvenli biçimde doğrulanamadı."
+          }
+        }
+      }
+    },
+    "downloads.downloading": {
+      "localizations": {
+        "tr": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "İndiriliyor %d%%"
+          }
+        }
+      }
+    },
+    "downloads.emptyDescription": {
+      "localizations": {
+        "tr": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Çevrimdışı indirdiğiniz kitaplar burada görünür."
+          }
+        }
+      }
+    },
+    "downloads.emptyTitle": {
+      "localizations": {
+        "tr": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "İndirilen kitap yok"
+          }
+        }
+      }
+    },
+    "downloads.notDownloaded": {
+      "localizations": {
+        "tr": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "İndirilmedi"
+          }
+        }
+      }
+    },
+    "downloads.queued": {
+      "localizations": {
+        "tr": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Sırada"
+          }
+        }
+      }
+    },
+    "downloads.ready": {
+      "localizations": {
+        "tr": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Hazır: %@"
+          }
+        }
+      }
+    },
+    "downloads.title": {
+      "localizations": {
+        "tr": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "İndirilenler"
+          }
+        }
+      }
+    },
+    "community.blockUser": {
+      "localizations": {
+        "tr": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Kullanıcı engelle"
+          }
+        }
+      }
+    },
+    "community.blockedUsers": {
+      "localizations": {
+        "tr": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Engellenen kullanıcılar"
+          }
+        }
+      }
+    },
+    "community.forumsLoadFailed": {
+      "localizations": {
+        "tr": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Forum listesi alınamadı."
+          }
+        }
+      }
+    },
+    "community.forumsSection": {
+      "localizations": {
+        "tr": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Forumlar"
+          }
+        }
+      }
+    },
+    "community.loading": {
+      "localizations": {
+        "tr": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Forumlar yükleniyor"
+          }
+        }
+      }
+    },
+    "community.safetySection": {
+      "localizations": {
+        "tr": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Güvenlik"
+          }
+        }
+      }
+    },
+    "community.title": {
+      "localizations": {
+        "tr": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Topluluk"
+          }
+        }
+      }
+    },
+    "community.unavailableTitle": {
+      "localizations": {
+        "tr": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Forumlar alınamadı"
+          }
+        }
+      }
+    },
+    "home.explore.section": {
+      "localizations": {
+        "tr": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Keşfet"
+          }
+        }
+      }
+    },
+    "home.stats.accessibility": {
+      "localizations": {
+        "tr": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "%@: %d"
+          }
+        }
+      }
+    },
+    "home.stats.authors": {
+      "localizations": {
+        "tr": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Yazar"
+          }
+        }
+      }
+    },
+    "home.stats.books": {
+      "localizations": {
+        "tr": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "E-kitap"
+          }
+        }
+      }
+    },
+    "home.stats.categories": {
+      "localizations": {
+        "tr": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Kategori"
+          }
+        }
+      }
+    },
+    "home.stats.loadFailed": {
+      "localizations": {
+        "tr": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Site istatistikleri alınamadı."
+          }
+        }
+      }
+    },
+    "home.stats.loading": {
+      "localizations": {
+        "tr": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "İstatistikler yükleniyor"
+          }
+        }
+      }
+    },
+    "home.stats.publishers": {
+      "localizations": {
+        "tr": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Yayınevi"
+          }
+        }
+      }
+    },
+    "home.stats.section": {
+      "localizations": {
+        "tr": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Ekitaplığım"
+          }
+        }
+      }
+    },
+    "home.continueReading": {
+      "localizations": {
+        "tr": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Kaldığım yerden devam et"
+          }
+        }
+      }
+    },
+    "home.openCatalog": {
+      "localizations": {
+        "tr": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Kitap kataloğunu aç"
+          }
+        }
+      }
+    },
+    "home.title": {
+      "localizations": {
+        "tr": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Ekitaplığım"
+          }
+        }
+      }
+    },
+    "forumThread.blockUser": {
+      "localizations": {
+        "tr": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Kullanıcıyı engelle"
+          }
+        }
+      }
+    },
+    "forumThread.invalidThread": {
+      "localizations": {
+        "tr": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Konu kimliği geçersiz."
+          }
+        }
+      }
+    },
+    "forumThread.loadFailed": {
+      "localizations": {
+        "tr": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Konu mesajları alınamadı."
+          }
+        }
+      }
+    },
+    "forumThread.loading": {
+      "localizations": {
+        "tr": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Mesajlar yükleniyor"
+          }
+        }
+      }
+    },
+    "forumThread.replyFailed": {
+      "localizations": {
+        "tr": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Cevap gönderilemedi."
+          }
+        }
+      }
+    },
+    "forumThread.replyPublished": {
+      "localizations": {
+        "tr": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Cevabınız yayınlandı."
+          }
+        }
+      }
+    },
+    "forumThread.replySection": {
+      "localizations": {
+        "tr": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Cevap yaz"
+          }
+        }
+      }
+    },
+    "forumThread.replyTextLabel": {
+      "localizations": {
+        "tr": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Cevap metni"
+          }
+        }
+      }
+    },
+    "forumThread.reportPost": {
+      "localizations": {
+        "tr": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Mesajı raporla"
+          }
+        }
+      }
     },
-    "catalog.filters.apply" : {
-      "localizations" : { "tr" : { "stringUnit" : { "state" : "translated", "value" : "Uygula" } } }
+    "forumThread.submitReply": {
+      "localizations": {
+        "tr": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Cevapla"
+          }
+        }
+      }
     },
-    "catalog.filters.author" : {
-      "localizations" : { "tr" : { "stringUnit" : { "state" : "translated", "value" : "Yazar" } } }
+    "forumThread.guestLoginShort": {
+      "localizations": {
+        "tr": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Giriş"
+          }
+        }
+      }
     },
-    "catalog.filters.category" : {
-      "localizations" : { "tr" : { "stringUnit" : { "state" : "translated", "value" : "Kategori" } } }
+    "forumThread.guestReplyMessage": {
+      "localizations": {
+        "tr": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Forum sohbetine katılmak için giriş yapın veya ücretsiz hesap oluşturun."
+          }
+        }
+      }
     },
-    "catalog.filters.details" : {
-      "localizations" : { "tr" : { "stringUnit" : { "state" : "translated", "value" : "Kitap Bilgileri" } } }
+    "forumThread.guestReplyTitle": {
+      "localizations": {
+        "tr": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Cevap yazmak için kayıt olun"
+          }
+        }
+      }
     },
-    "catalog.filters.isbn" : {
-      "localizations" : { "tr" : { "stringUnit" : { "state" : "translated", "value" : "ISBN" } } }
+    "chat.composer.placeholder": {
+      "localizations": {
+        "tr": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Okurlarla paylaş…"
+          }
+        }
+      }
     },
-    "catalog.filters.order" : {
-      "localizations" : { "tr" : { "stringUnit" : { "state" : "translated", "value" : "Sıralama" } } }
+    "forumThreads.emptyTitle": {
+      "localizations": {
+        "tr": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Bu forumda henüz konu yok."
+          }
+        }
+      }
     },
-    "catalog.filters.premium" : {
-      "localizations" : { "tr" : { "stringUnit" : { "state" : "translated", "value" : "Yalnızca premium kitaplar" } } }
+    "forumThreads.invalidForum": {
+      "localizations": {
+        "tr": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Forum kimliği geçersiz."
+          }
+        }
+      }
     },
-    "catalog.filters.publisher" : {
-      "localizations" : { "tr" : { "stringUnit" : { "state" : "translated", "value" : "Yayınevi" } } }
+    "forumThreads.loadFailed": {
+      "localizations": {
+        "tr": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Forum konuları alınamadı."
+          }
+        }
+      }
     },
-    "catalog.filters.reset" : {
-      "localizations" : { "tr" : { "stringUnit" : { "state" : "translated", "value" : "Sıfırla" } } }
+    "forumThreads.loading": {
+      "localizations": {
+        "tr": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Konular yükleniyor"
+          }
+        }
+      }
     },
-    "catalog.filters.title" : {
-      "localizations" : { "tr" : { "stringUnit" : { "state" : "translated", "value" : "Filtreler" } } }
+    "forumThreads.meta": {
+      "localizations": {
+        "tr": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "%@ • %d cevap • %d görüntüleme"
+          }
+        }
+      }
     },
-    "catalog.loadMore" : {
-      "localizations" : { "tr" : { "stringUnit" : { "state" : "translated", "value" : "Daha fazla yükle" } } }
+    "forumThreads.unavailableTitle": {
+      "localizations": {
+        "tr": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Konular alınamadı"
+          }
+        }
+      }
     },
-    "catalog.loadingMore" : {
-      "localizations" : { "tr" : { "stringUnit" : { "state" : "translated", "value" : "Yükleniyor" } } }
+    "login.appleFailed": {
+      "localizations": {
+        "tr": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Apple ile giriş tamamlanamadı."
+          }
+        }
+      }
     },
-    "catalog.order.latest" : {
-      "localizations" : { "tr" : { "stringUnit" : { "state" : "translated", "value" : "En yeni" } } }
+    "login.appleInvalid": {
+      "localizations": {
+        "tr": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Apple ile giriş doğrulanamadı."
+          }
+        }
+      }
     },
-    "catalog.order.popular" : {
-      "localizations" : { "tr" : { "stringUnit" : { "state" : "translated", "value" : "Popüler" } } }
+    "login.acceptLegal": {
+      "localizations": {
+        "tr": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Kullanım şartlarını ve gizlilik politikasını kabul ediyorum"
+          }
+        }
+      }
     },
-    "catalog.order.rated" : {
-      "localizations" : { "tr" : { "stringUnit" : { "state" : "translated", "value" : "Puan" } } }
+    "login.backToLogin": {
+      "localizations": {
+        "tr": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Giriş ekranına dön"
+          }
+        }
+      }
     },
-    "catalog.title" : {
-      "localizations" : {
-        "tr" : {
-          "stringUnit" : {
-            "state" : "translated",
-            "value" : "Kitaplar"
+    "login.emailPlaceholder": {
+      "localizations": {
+        "tr": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "E-posta"
           }
         }
       }
     },
-    "catalog.unavailableTitle" : {
-      "localizations" : {
-        "tr" : {
-          "stringUnit" : {
-            "state" : "translated",
-            "value" : "Katalog açılamadı"
+    "login.forgotPassword": {
+      "localizations": {
+        "tr": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Şifremi unuttum"
           }
         }
       }
     },
-    "common.bookNumber" : {
-      "localizations" : {
-        "tr" : {
-          "stringUnit" : {
-            "state" : "translated",
-            "value" : "Kitap #%@"
+    "login.mode.login": {
+      "localizations": {
+        "tr": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Giriş"
           }
         }
       }
     },
-    "blockMember.failure" : {
-      "localizations" : {
-        "tr" : {
-          "stringUnit" : {
-            "state" : "translated",
-            "value" : "Kullanıcı engellenemedi."
+    "login.mode.register": {
+      "localizations": {
+        "tr": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Kayıt Ol"
           }
         }
       }
     },
-    "blockMember.footer" : {
-      "localizations" : {
-        "tr" : {
-          "stringUnit" : {
-            "state" : "translated",
-            "value" : "Engellenen kullanıcının içerikleri uygun ekranlarda gizlenir. Kötüye kullanım durumunda ayrıca içerik raporu gönderin."
+    "login.modePicker": {
+      "localizations": {
+        "tr": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Hesap işlemi"
           }
         }
       }
     },
-    "blockMember.submit" : {
-      "localizations" : {
-        "tr" : {
-          "stringUnit" : {
-            "state" : "translated",
-            "value" : "Kullanıcıyı engelle"
+    "login.passwordConfirmation": {
+      "localizations": {
+        "tr": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Şifre tekrar"
           }
         }
       }
     },
-    "blockMember.success" : {
-      "localizations" : {
-        "tr" : {
-          "stringUnit" : {
-            "state" : "translated",
-            "value" : "Kullanıcı engellendi."
+    "login.passwordsMismatch": {
+      "localizations": {
+        "tr": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Şifreler eşleşmiyor."
           }
         }
       }
     },
-    "blockMember.title" : {
-      "localizations" : {
-        "tr" : {
-          "stringUnit" : {
-            "state" : "translated",
-            "value" : "Kullanıcı engelle"
+    "login.register.failed": {
+      "localizations": {
+        "tr": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Kayıt tamamlanamadı. Bilgilerinizi kontrol edip yeniden deneyin."
           }
         }
       }
     },
-    "blockMember.userIdPlaceholder" : {
-      "localizations" : {
-        "tr" : {
-          "stringUnit" : {
-            "state" : "translated",
-            "value" : "Kullanıcı ID"
+    "login.register.submit": {
+      "localizations": {
+        "tr": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Kayıt ol"
           }
         }
       }
     },
-    "blockedMembers.emptyTitle" : {
-      "localizations" : {
-        "tr" : {
-          "stringUnit" : {
-            "state" : "translated",
-            "value" : "Engellenen kullanıcı yok"
+    "login.register.title": {
+      "localizations": {
+        "tr": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Hesap Oluştur"
           }
         }
       }
     },
-    "blockedMembers.loadFailed" : {
-      "localizations" : {
-        "tr" : {
-          "stringUnit" : {
-            "state" : "translated",
-            "value" : "Engellenen kullanıcılar alınamadı."
+    "login.reset.failed": {
+      "localizations": {
+        "tr": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Şifre sıfırlama isteği gönderilemedi."
           }
         }
       }
     },
-    "blockedMembers.loading" : {
-      "localizations" : {
-        "tr" : {
-          "stringUnit" : {
-            "state" : "translated",
-            "value" : "Engellenenler yükleniyor"
+    "login.reset.privacyNotice": {
+      "localizations": {
+        "tr": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Güvenlik nedeniyle e-posta adresinin kayıtlı olup olmadığı açıklanmaz."
           }
         }
       }
     },
-    "blockedMembers.remove" : {
-      "localizations" : {
-        "tr" : {
-          "stringUnit" : {
-            "state" : "translated",
-            "value" : "Kaldır"
+    "login.reset.submit": {
+      "localizations": {
+        "tr": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Sıfırlama bağlantısı gönder"
           }
         }
       }
     },
-    "blockedMembers.title" : {
-      "localizations" : {
-        "tr" : {
-          "stringUnit" : {
-            "state" : "translated",
-            "value" : "Engellenenler"
+    "login.reset.submitted": {
+      "localizations": {
+        "tr": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Bu e-posta kayıtlıysa sıfırlama bağlantısı gönderildi."
           }
         }
       }
     },
-    "blockedMembers.unavailableTitle" : {
-      "localizations" : {
-        "tr" : {
-          "stringUnit" : {
-            "state" : "translated",
-            "value" : "Liste alınamadı"
+    "login.reset.title": {
+      "localizations": {
+        "tr": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Şifre Sıfırlama"
           }
         }
       }
     },
-    "bookComments.empty" : { "localizations" : { "tr" : { "stringUnit" : { "state" : "translated", "value" : "Henüz yorum yapılmamış." } } } },
-    "bookComments.loadFailed" : { "localizations" : { "tr" : { "stringUnit" : { "state" : "translated", "value" : "Yorumlar yüklenemedi." } } } },
-    "bookComments.loginRequiredMessage" : { "localizations" : { "tr" : { "stringUnit" : { "state" : "translated", "value" : "Yorum yazmak veya bildirmek için giriş yapın." } } } },
-    "bookComments.loginRequiredTitle" : { "localizations" : { "tr" : { "stringUnit" : { "state" : "translated", "value" : "Giriş gerekli" } } } },
-    "bookComments.loginToComment" : { "localizations" : { "tr" : { "stringUnit" : { "state" : "translated", "value" : "Yorum yapmak için giriş yap" } } } },
-    "bookComments.placeholder" : { "localizations" : { "tr" : { "stringUnit" : { "state" : "translated", "value" : "Bu kitap hakkındaki düşüncelerinizi paylaşın" } } } },
-    "bookComments.rating" : { "localizations" : { "tr" : { "stringUnit" : { "state" : "translated", "value" : "%d yıldız" } } } },
-    "bookComments.report" : { "localizations" : { "tr" : { "stringUnit" : { "state" : "translated", "value" : "Yorumu bildir" } } } },
-    "bookComments.submit" : { "localizations" : { "tr" : { "stringUnit" : { "state" : "translated", "value" : "Yorum gönder" } } } },
-    "bookComments.submitFailed" : { "localizations" : { "tr" : { "stringUnit" : { "state" : "translated", "value" : "Yorum gönderilemedi." } } } },
-    "bookComments.title" : { "localizations" : { "tr" : { "stringUnit" : { "state" : "translated", "value" : "Kullanıcı Yorumları" } } } },
-    "bookRequests.actionFailedMessage" : { "localizations" : { "tr" : { "stringUnit" : { "state" : "translated", "value" : "Lütfen yeniden deneyin." } } } },
-    "bookRequests.actionFailedTitle" : { "localizations" : { "tr" : { "stringUnit" : { "state" : "translated", "value" : "İşlem tamamlanamadı" } } } },
-    "bookRequests.author" : { "localizations" : { "tr" : { "stringUnit" : { "state" : "translated", "value" : "Yazar" } } } },
-    "bookRequests.authorMissing" : { "localizations" : { "tr" : { "stringUnit" : { "state" : "translated", "value" : "Yazar belirtilmemiş" } } } },
-    "bookRequests.bookTitle" : { "localizations" : { "tr" : { "stringUnit" : { "state" : "translated", "value" : "Kitap adı" } } } },
-    "bookRequests.create" : { "localizations" : { "tr" : { "stringUnit" : { "state" : "translated", "value" : "Yeni kitap isteği" } } } },
-    "bookRequests.createFailed" : { "localizations" : { "tr" : { "stringUnit" : { "state" : "translated", "value" : "Kitap isteği gönderilemedi." } } } },
-    "bookRequests.emptyDescription" : { "localizations" : { "tr" : { "stringUnit" : { "state" : "translated", "value" : "Aradığınız kitabı ilk siz isteyebilirsiniz." } } } },
-    "bookRequests.emptyTitle" : { "localizations" : { "tr" : { "stringUnit" : { "state" : "translated", "value" : "Henüz kitap isteği yok" } } } },
-    "bookRequests.goToLogin" : { "localizations" : { "tr" : { "stringUnit" : { "state" : "translated", "value" : "Girişe git" } } } },
-    "bookRequests.isbn" : { "localizations" : { "tr" : { "stringUnit" : { "state" : "translated", "value" : "ISBN (isteğe bağlı)" } } } },
-    "bookRequests.loadFailed" : { "localizations" : { "tr" : { "stringUnit" : { "state" : "translated", "value" : "Kitap istekleri yüklenemedi." } } } },
-    "bookRequests.loading" : { "localizations" : { "tr" : { "stringUnit" : { "state" : "translated", "value" : "Kitap istekleri yükleniyor" } } } },
-    "bookRequests.loginRequiredMessage" : { "localizations" : { "tr" : { "stringUnit" : { "state" : "translated", "value" : "Kitap isteği göndermek veya oy vermek için giriş yapın." } } } },
-    "bookRequests.loginRequiredTitle" : { "localizations" : { "tr" : { "stringUnit" : { "state" : "translated", "value" : "Giriş gerekli" } } } },
-    "bookRequests.requestedBy" : { "localizations" : { "tr" : { "stringUnit" : { "state" : "translated", "value" : "İsteyen: %@" } } } },
-    "bookRequests.status.acquired" : { "localizations" : { "tr" : { "stringUnit" : { "state" : "translated", "value" : "Temin edildi" } } } },
-    "bookRequests.status.pending" : { "localizations" : { "tr" : { "stringUnit" : { "state" : "translated", "value" : "Bekliyor" } } } },
-    "bookRequests.status.rejected" : { "localizations" : { "tr" : { "stringUnit" : { "state" : "translated", "value" : "Reddedildi" } } } },
-    "bookRequests.submitting" : { "localizations" : { "tr" : { "stringUnit" : { "state" : "translated", "value" : "Gönderiliyor" } } } },
-    "bookRequests.title" : { "localizations" : { "tr" : { "stringUnit" : { "state" : "translated", "value" : "Kitap İstekleri" } } } },
-    "bookRequests.unavailableTitle" : { "localizations" : { "tr" : { "stringUnit" : { "state" : "translated", "value" : "İstekler alınamadı" } } } },
-    "bookRequests.voteCount" : { "localizations" : { "tr" : { "stringUnit" : { "state" : "translated", "value" : "%d oy" } } } },
-    "bookRequests.voteFailed" : { "localizations" : { "tr" : { "stringUnit" : { "state" : "translated", "value" : "Oy işlemi tamamlanamadı." } } } },
-    "common.cancel" : { "localizations" : { "tr" : { "stringUnit" : { "state" : "translated", "value" : "İptal" } } } },
-    "common.submit" : { "localizations" : { "tr" : { "stringUnit" : { "state" : "translated", "value" : "Gönder" } } } },
-    "common.retry" : { "localizations" : { "tr" : { "stringUnit" : { "state" : "translated", "value" : "Tekrar dene" } } } },
-    "common.loadMore" : {
-      "localizations" : {
-        "tr" : {
-          "stringUnit" : {
-            "state" : "translated",
-            "value" : "Daha fazla yükle"
+    "login.invalidCredentials": {
+      "localizations": {
+        "tr": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Kullanıcı adı veya şifre doğrulanamadı."
           }
         }
       }
     },
-    "conversations.emptyDescription" : { "localizations" : { "tr" : { "stringUnit" : { "state" : "translated", "value" : "Yeni bir özel konuşma başlatabilirsiniz." } } } },
-    "conversations.emptyTitle" : { "localizations" : { "tr" : { "stringUnit" : { "state" : "translated", "value" : "Henüz mesaj yok" } } } },
-    "conversations.loadFailed" : { "localizations" : { "tr" : { "stringUnit" : { "state" : "translated", "value" : "Özel mesajlar yüklenemedi." } } } },
-    "conversations.loading" : { "localizations" : { "tr" : { "stringUnit" : { "state" : "translated", "value" : "Mesajlar yükleniyor" } } } },
-    "conversations.messageBody" : { "localizations" : { "tr" : { "stringUnit" : { "state" : "translated", "value" : "Mesaj" } } } },
-    "conversations.messageTitle" : { "localizations" : { "tr" : { "stringUnit" : { "state" : "translated", "value" : "Mesaj" } } } },
-    "conversations.new" : { "localizations" : { "tr" : { "stringUnit" : { "state" : "translated", "value" : "Yeni mesaj" } } } },
-    "conversations.recipient" : { "localizations" : { "tr" : { "stringUnit" : { "state" : "translated", "value" : "Alıcı kullanıcı adı" } } } },
-    "conversations.replyCount" : { "localizations" : { "tr" : { "stringUnit" : { "state" : "translated", "value" : "%d yanıt" } } } },
-    "conversations.replyPlaceholder" : { "localizations" : { "tr" : { "stringUnit" : { "state" : "translated", "value" : "Yanıt yazın" } } } },
-    "conversations.sendFailed" : { "localizations" : { "tr" : { "stringUnit" : { "state" : "translated", "value" : "Mesaj gönderilemedi. Alıcıyı ve izinlerinizi kontrol edip yeniden deneyin." } } } },
-    "conversations.sendFailedTitle" : { "localizations" : { "tr" : { "stringUnit" : { "state" : "translated", "value" : "Mesaj gönderilemedi" } } } },
-    "conversations.sending" : { "localizations" : { "tr" : { "stringUnit" : { "state" : "translated", "value" : "Gönderiliyor" } } } },
-    "conversations.subject" : { "localizations" : { "tr" : { "stringUnit" : { "state" : "translated", "value" : "Konu" } } } },
-    "conversations.title" : { "localizations" : { "tr" : { "stringUnit" : { "state" : "translated", "value" : "Mesajlar" } } } },
-    "conversations.unavailableTitle" : { "localizations" : { "tr" : { "stringUnit" : { "state" : "translated", "value" : "Mesajlar alınamadı" } } } },
-    "myComments.emptyDescription" : { "localizations" : { "tr" : { "stringUnit" : { "state" : "translated", "value" : "Forumlarda yaptığınız yorumlar burada gösterilir." } } } },
-    "myComments.emptyTitle" : { "localizations" : { "tr" : { "stringUnit" : { "state" : "translated", "value" : "Henüz yorum yok" } } } },
-    "myComments.forumTitle" : { "localizations" : { "tr" : { "stringUnit" : { "state" : "translated", "value" : "Forum konusu" } } } },
-    "myComments.loading" : { "localizations" : { "tr" : { "stringUnit" : { "state" : "translated", "value" : "Yorumlar yükleniyor" } } } },
-    "myComments.title" : { "localizations" : { "tr" : { "stringUnit" : { "state" : "translated", "value" : "Yorumlarım" } } } },
-    "myComments.unavailableTitle" : { "localizations" : { "tr" : { "stringUnit" : { "state" : "translated", "value" : "Yorumlar alınamadı" } } } },
-    "notifications.noDestination" : { "localizations" : { "tr" : { "stringUnit" : { "state" : "translated", "value" : "Bu bildirim için açılabilecek bir içerik bulunamadı." } } } },
-    "community.directorySection" : { "localizations" : { "tr" : { "stringUnit" : { "state" : "translated", "value" : "Üyeler" } } } },
-    "members.aboutSection" : { "localizations" : { "tr" : { "stringUnit" : { "state" : "translated", "value" : "Hakkında" } } } },
-    "members.actionFailed" : { "localizations" : { "tr" : { "stringUnit" : { "state" : "translated", "value" : "Üye işlemi tamamlanamadı." } } } },
-    "members.actionsSection" : { "localizations" : { "tr" : { "stringUnit" : { "state" : "translated", "value" : "İşlemler" } } } },
-    "members.block" : { "localizations" : { "tr" : { "stringUnit" : { "state" : "translated", "value" : "Üyeyi engelle" } } } },
-    "members.blockCompleted" : { "localizations" : { "tr" : { "stringUnit" : { "state" : "translated", "value" : "Üye engellendi" } } } },
-    "members.blockConfirmation" : { "localizations" : { "tr" : { "stringUnit" : { "state" : "translated", "value" : "Bu üyeyi engellemek istiyor musunuz?" } } } },
-    "members.emptyDescription" : { "localizations" : { "tr" : { "stringUnit" : { "state" : "translated", "value" : "Aramanızı değiştirip yeniden deneyin." } } } },
-    "members.emptyTitle" : { "localizations" : { "tr" : { "stringUnit" : { "state" : "translated", "value" : "Üye bulunamadı" } } } },
-    "members.follow" : { "localizations" : { "tr" : { "stringUnit" : { "state" : "translated", "value" : "Takip et" } } } },
-    "members.joinedLabel" : { "localizations" : { "tr" : { "stringUnit" : { "state" : "translated", "value" : "Katılım" } } } },
-    "members.loadFailed" : { "localizations" : { "tr" : { "stringUnit" : { "state" : "translated", "value" : "Üye dizini yüklenemedi." } } } },
-    "members.loading" : { "localizations" : { "tr" : { "stringUnit" : { "state" : "translated", "value" : "Üyeler yükleniyor" } } } },
-    "members.locationLabel" : { "localizations" : { "tr" : { "stringUnit" : { "state" : "translated", "value" : "Konum" } } } },
-    "members.messageCount" : { "localizations" : { "tr" : { "stringUnit" : { "state" : "translated", "value" : "%d mesaj" } } } },
-    "members.messagesLabel" : { "localizations" : { "tr" : { "stringUnit" : { "state" : "translated", "value" : "Mesajlar" } } } },
-    "members.profileLoadFailed" : { "localizations" : { "tr" : { "stringUnit" : { "state" : "translated", "value" : "Üye profili yüklenemedi." } } } },
-    "members.profileLoading" : { "localizations" : { "tr" : { "stringUnit" : { "state" : "translated", "value" : "Profil yükleniyor" } } } },
-    "members.profileTitle" : { "localizations" : { "tr" : { "stringUnit" : { "state" : "translated", "value" : "Üye Profili" } } } },
-    "members.reactionsLabel" : { "localizations" : { "tr" : { "stringUnit" : { "state" : "translated", "value" : "Tepki puanı" } } } },
-    "members.searchPrompt" : { "localizations" : { "tr" : { "stringUnit" : { "state" : "translated", "value" : "Kullanıcı ara" } } } },
-    "members.sort.active" : { "localizations" : { "tr" : { "stringUnit" : { "state" : "translated", "value" : "En aktif" } } } },
-    "members.sort.alphabetical" : { "localizations" : { "tr" : { "stringUnit" : { "state" : "translated", "value" : "Alfabetik" } } } },
-    "members.sort.newest" : { "localizations" : { "tr" : { "stringUnit" : { "state" : "translated", "value" : "En yeni" } } } },
-    "members.sortLabel" : { "localizations" : { "tr" : { "stringUnit" : { "state" : "translated", "value" : "Sıralama" } } } },
-    "members.statsSection" : { "localizations" : { "tr" : { "stringUnit" : { "state" : "translated", "value" : "İstatistikler" } } } },
-    "members.title" : { "localizations" : { "tr" : { "stringUnit" : { "state" : "translated", "value" : "Üyeler" } } } },
-    "members.totalLabel" : { "localizations" : { "tr" : { "stringUnit" : { "state" : "translated", "value" : "Toplam üye" } } } },
-    "members.unavailableTitle" : { "localizations" : { "tr" : { "stringUnit" : { "state" : "translated", "value" : "Üyeler alınamadı" } } } },
-    "members.unfollow" : { "localizations" : { "tr" : { "stringUnit" : { "state" : "translated", "value" : "Takibi bırak" } } } },
-    "members.verified" : { "localizations" : { "tr" : { "stringUnit" : { "state" : "translated", "value" : "Doğrulanmış üye" } } } },
-    "directory.authors.title" : {
-      "localizations" : {
-        "tr" : {
-          "stringUnit" : {
-            "state" : "translated",
-            "value" : "Yazarlar"
+    "login.passwordPlaceholder": {
+      "localizations": {
+        "tr": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Şifre"
           }
         }
       }
     },
-    "directory.bookCount" : {
-      "localizations" : {
-        "tr" : {
-          "stringUnit" : {
-            "state" : "translated",
-            "value" : "%d kitap"
+    "login.submit": {
+      "localizations": {
+        "tr": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Giriş yap"
           }
         }
       }
     },
-    "directory.emptyDescription" : {
-      "localizations" : {
-        "tr" : {
-          "stringUnit" : {
-            "state" : "translated",
-            "value" : "Aramanızı değiştirip yeniden deneyin."
+    "login.title": {
+      "localizations": {
+        "tr": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Giriş"
           }
         }
       }
     },
-    "directory.emptyTitle" : {
-      "localizations" : {
-        "tr" : {
-          "stringUnit" : {
-            "state" : "translated",
-            "value" : "Sonuç bulunamadı"
+    "login.usernamePlaceholder": {
+      "localizations": {
+        "tr": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Kullanıcı adı veya e-posta"
           }
         }
       }
     },
-    "directory.loadFailed" : {
-      "localizations" : {
-        "tr" : {
-          "stringUnit" : {
-            "state" : "translated",
-            "value" : "Yazar ve yayınevi bilgileri alınamadı."
+    "library.downloadedBadge": {
+      "localizations": {
+        "tr": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "İndirildi"
           }
         }
       }
     },
-    "directory.loading" : {
-      "localizations" : {
-        "tr" : {
-          "stringUnit" : {
-            "state" : "translated",
-            "value" : "Dizin yükleniyor"
+    "library.downloadsLabel": {
+      "localizations": {
+        "tr": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "İndirilenler"
           }
         }
       }
     },
-    "directory.publishers.title" : {
-      "localizations" : {
-        "tr" : {
-          "stringUnit" : {
-            "state" : "translated",
-            "value" : "Yayınevleri"
+    "library.emptyDescription": {
+      "localizations": {
+        "tr": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Kitap eklediğinde burada görünecek."
           }
         }
       }
     },
-    "directory.searchPrompt" : {
-      "localizations" : {
-        "tr" : {
-          "stringUnit" : {
-            "state" : "translated",
-            "value" : "Ara"
+    "library.emptyTitle": {
+      "localizations": {
+        "tr": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Bu rafta henüz kitap yok."
           }
         }
       }
     },
-    "directory.unavailableTitle" : {
-      "localizations" : {
-        "tr" : {
-          "stringUnit" : {
-            "state" : "translated",
-            "value" : "Dizin alınamadı"
+    "library.favoriteBadge": {
+      "localizations": {
+        "tr": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Favori"
           }
         }
       }
     },
-    "download.error.removalFailed" : {
-      "localizations" : {
-        "tr" : {
-          "stringUnit" : {
-            "state" : "translated",
-            "value" : "İndirme silinemedi."
+    "library.loadFailed": {
+      "localizations": {
+        "tr": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Kitaplık bilgileri alınamadı."
           }
         }
       }
     },
-    "download.error.secureConnection" : {
-      "localizations" : {
-        "tr" : {
-          "stringUnit" : {
-            "state" : "translated",
-            "value" : "Güvenli indirme bağlantısı gerekli."
+    "library.loading": {
+      "localizations": {
+        "tr": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Kitaplık yükleniyor"
           }
         }
       }
     },
-    "download.error.serverRejected" : {
-      "localizations" : {
-        "tr" : {
-          "stringUnit" : {
-            "state" : "translated",
-            "value" : "Dosya indirilemedi."
+    "library.readingProgressLabel": {
+      "localizations": {
+        "tr": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Okuma ilerlemesi"
           }
         }
       }
     },
-    "download.error.validationFailed" : {
-      "localizations" : {
-        "tr" : {
-          "stringUnit" : {
-            "state" : "translated",
-            "value" : "Dosya güvenli biçimde doğrulanamadı."
+    "library.shelf.all": {
+      "localizations": {
+        "tr": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Tümü"
           }
         }
       }
     },
-    "downloads.downloading" : {
-      "localizations" : {
-        "tr" : {
-          "stringUnit" : {
-            "state" : "translated",
-            "value" : "İndiriliyor %d%%"
+    "library.shelf.downloads": {
+      "localizations": {
+        "tr": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "İndirilen"
           }
         }
       }
     },
-    "downloads.emptyDescription" : {
-      "localizations" : {
-        "tr" : {
-          "stringUnit" : {
-            "state" : "translated",
-            "value" : "Çevrimdışı indirdiğiniz kitaplar burada görünür."
+    "library.shelf.favorites": {
+      "localizations": {
+        "tr": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Favoriler"
           }
         }
       }
     },
-    "downloads.emptyTitle" : {
-      "localizations" : {
-        "tr" : {
-          "stringUnit" : {
-            "state" : "translated",
-            "value" : "İndirilen kitap yok"
+    "library.shelf.finished": {
+      "localizations": {
+        "tr": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Okudum"
           }
         }
       }
     },
-    "downloads.notDownloaded" : {
-      "localizations" : {
-        "tr" : {
-          "stringUnit" : {
-            "state" : "translated",
-            "value" : "İndirilmedi"
+    "library.shelf.reading": {
+      "localizations": {
+        "tr": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Okuyorum"
           }
         }
       }
     },
-    "downloads.queued" : {
-      "localizations" : {
-        "tr" : {
-          "stringUnit" : {
-            "state" : "translated",
-            "value" : "Sırada"
+    "library.shelfPicker": {
+      "localizations": {
+        "tr": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Raf"
           }
         }
       }
     },
-    "downloads.ready" : {
-      "localizations" : {
-        "tr" : {
-          "stringUnit" : {
-            "state" : "translated",
-            "value" : "Hazır: %@"
+    "library.title": {
+      "localizations": {
+        "tr": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Kitaplığım"
           }
         }
       }
     },
-    "downloads.title" : {
-      "localizations" : {
-        "tr" : {
-          "stringUnit" : {
-            "state" : "translated",
-            "value" : "İndirilenler"
+    "library.unavailableTitle": {
+      "localizations": {
+        "tr": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Kitaplık alınamadı"
           }
         }
       }
     },
-    "community.blockUser" : {
-      "localizations" : {
-        "tr" : {
-          "stringUnit" : {
-            "state" : "translated",
-            "value" : "Kullanıcı engelle"
+    "notifications.emptyTitle": {
+      "localizations": {
+        "tr": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Bildirim yok"
           }
         }
       }
     },
-    "community.blockedUsers" : {
-      "localizations" : {
-        "tr" : {
-          "stringUnit" : {
-            "state" : "translated",
-            "value" : "Engellenen kullanıcılar"
+    "notifications.loadFailed": {
+      "localizations": {
+        "tr": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Bildirimler alınamadı."
           }
         }
       }
     },
-    "community.forumsLoadFailed" : {
-      "localizations" : {
-        "tr" : {
-          "stringUnit" : {
-            "state" : "translated",
-            "value" : "Forum listesi alınamadı."
+    "notifications.loading": {
+      "localizations": {
+        "tr": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Bildirimler yükleniyor"
           }
         }
       }
     },
-    "community.forumsSection" : {
-      "localizations" : {
-        "tr" : {
-          "stringUnit" : {
-            "state" : "translated",
-            "value" : "Forumlar"
+    "notifications.markAllRead": {
+      "localizations": {
+        "tr": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Tümünü oku"
           }
         }
       }
     },
-    "community.loading" : {
-      "localizations" : {
-        "tr" : {
-          "stringUnit" : {
-            "state" : "translated",
-            "value" : "Forumlar yükleniyor"
+    "notifications.new": {
+      "localizations": {
+        "tr": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Yeni"
           }
         }
       }
     },
-    "community.safetySection" : {
-      "localizations" : {
-        "tr" : {
-          "stringUnit" : {
-            "state" : "translated",
-            "value" : "Güvenlik"
+    "notifications.title": {
+      "localizations": {
+        "tr": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Bildirimler"
           }
         }
       }
     },
-    "community.title" : {
-      "localizations" : {
-        "tr" : {
-          "stringUnit" : {
-            "state" : "translated",
-            "value" : "Topluluk"
+    "notifications.unavailableTitle": {
+      "localizations": {
+        "tr": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Bildirimler alınamadı"
           }
         }
       }
     },
-    "community.unavailableTitle" : {
-      "localizations" : {
-        "tr" : {
-          "stringUnit" : {
-            "state" : "translated",
-            "value" : "Forumlar alınamadı"
+    "notifications.unread": {
+      "localizations": {
+        "tr": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Okunmamış"
           }
         }
       }
     },
-    "home.explore.section" : { "localizations" : { "tr" : { "stringUnit" : { "state" : "translated", "value" : "Keşfet" } } } },
-    "home.stats.accessibility" : { "localizations" : { "tr" : { "stringUnit" : { "state" : "translated", "value" : "%@: %d" } } } },
-    "home.stats.authors" : { "localizations" : { "tr" : { "stringUnit" : { "state" : "translated", "value" : "Yazar" } } } },
-    "home.stats.books" : { "localizations" : { "tr" : { "stringUnit" : { "state" : "translated", "value" : "E-kitap" } } } },
-    "home.stats.categories" : { "localizations" : { "tr" : { "stringUnit" : { "state" : "translated", "value" : "Kategori" } } } },
-    "home.stats.loadFailed" : { "localizations" : { "tr" : { "stringUnit" : { "state" : "translated", "value" : "Site istatistikleri alınamadı." } } } },
-    "home.stats.loading" : { "localizations" : { "tr" : { "stringUnit" : { "state" : "translated", "value" : "İstatistikler yükleniyor" } } } },
-    "home.stats.publishers" : { "localizations" : { "tr" : { "stringUnit" : { "state" : "translated", "value" : "Yayınevi" } } } },
-    "home.stats.section" : { "localizations" : { "tr" : { "stringUnit" : { "state" : "translated", "value" : "Ekitaplığım" } } } },
-    "home.continueReading" : {
-      "localizations" : {
-        "tr" : {
-          "stringUnit" : {
-            "state" : "translated",
-            "value" : "Kaldığım yerden devam et"
+    "premium.title": {
+      "localizations": {
+        "tr": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Ekitaplığım Premium"
           }
         }
       }
     },
-    "home.openCatalog" : {
-      "localizations" : {
-        "tr" : {
-          "stringUnit" : {
-            "state" : "translated",
-            "value" : "Kitap kataloğunu aç"
+    "premium.description": {
+      "localizations": {
+        "tr": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Premium üyelik, sunucu tarafından belirlenen daha yüksek veya sınırsız okuma ve indirme hakları sağlar."
           }
         }
       }
     },
-    "home.title" : {
-      "localizations" : {
-        "tr" : {
-          "stringUnit" : {
-            "state" : "translated",
-            "value" : "Ekitaplığım"
+    "premium.plans": {
+      "localizations": {
+        "tr": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Abonelik Planları"
           }
         }
       }
     },
-    "forumThread.blockUser" : {
-      "localizations" : {
-        "tr" : {
-          "stringUnit" : {
-            "state" : "translated",
-            "value" : "Kullanıcıyı engelle"
+    "premium.loading": {
+      "localizations": {
+        "tr": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Apple ürünleri yükleniyor"
           }
         }
       }
     },
-    "forumThread.invalidThread" : {
-      "localizations" : {
-        "tr" : {
-          "stringUnit" : {
-            "state" : "translated",
-            "value" : "Konu kimliği geçersiz."
+    "premium.purchasing": {
+      "localizations": {
+        "tr": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Satın alma doğrulanıyor"
           }
         }
       }
     },
-    "forumThread.loadFailed" : {
-      "localizations" : {
-        "tr" : {
-          "stringUnit" : {
-            "state" : "translated",
-            "value" : "Konu mesajları alınamadı."
+    "premium.purchased": {
+      "localizations": {
+        "tr": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Premium üyeliğiniz etkinleştirildi."
           }
         }
       }
     },
-    "forumThread.loading" : {
-      "localizations" : {
-        "tr" : {
-          "stringUnit" : {
-            "state" : "translated",
-            "value" : "Mesajlar yükleniyor"
+    "premium.restored": {
+      "localizations": {
+        "tr": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Satın almanız geri yüklendi ve doğrulandı."
           }
         }
       }
     },
-    "forumThread.replyFailed" : {
-      "localizations" : {
-        "tr" : {
-          "stringUnit" : {
-            "state" : "translated",
-            "value" : "Cevap gönderilemedi."
+    "premium.pending": {
+      "localizations": {
+        "tr": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Satın alma Apple onayı bekliyor."
           }
         }
       }
     },
-    "forumThread.replyPublished" : {
-      "localizations" : {
-        "tr" : {
-          "stringUnit" : {
-            "state" : "translated",
-            "value" : "Cevabınız yayınlandı."
+    "premium.restore": {
+      "localizations": {
+        "tr": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Satın almaları geri yükle"
           }
         }
       }
     },
-    "forumThread.replySection" : {
-      "localizations" : {
-        "tr" : {
-          "stringUnit" : {
-            "state" : "translated",
-            "value" : "Cevap yaz"
+    "premium.manageSubscriptions": {
+      "localizations": {
+        "tr": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Apple aboneliklerini yönet"
           }
         }
       }
     },
-    "forumThread.replyTextLabel" : {
-      "localizations" : {
-        "tr" : {
-          "stringUnit" : {
-            "state" : "translated",
-            "value" : "Cevap metni"
+    "premium.loginRequired": {
+      "localizations": {
+        "tr": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Satın alma için Ekitaplığım hesabınıza giriş yapın."
           }
         }
       }
     },
-    "forumThread.reportPost" : {
-      "localizations" : {
-        "tr" : {
-          "stringUnit" : {
-            "state" : "translated",
-            "value" : "Mesajı bildir"
+    "premium.renewalDisclosure": {
+      "localizations": {
+        "tr": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Ödeme Apple ID hesabınızdan alınır. Abonelik, geçerli dönemin bitiminden en az 24 saat önce iptal edilmezse otomatik yenilenir. Fiyat ve dönem Apple satın alma ekranında gösterilir; aboneliği App Store hesap ayarlarından yönetebilir veya iptal edebilirsiniz."
           }
         }
       }
     },
-    "forumThread.submitReply" : {
-      "localizations" : {
-        "tr" : {
-          "stringUnit" : {
-            "state" : "translated",
-            "value" : "Cevabı gönder"
+    "premium.error.products": {
+      "localizations": {
+        "tr": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Apple ürün bilgileri alınamadı."
           }
         }
       }
     },
-    "forumThreads.emptyTitle" : {
-      "localizations" : {
-        "tr" : {
-          "stringUnit" : {
-            "state" : "translated",
-            "value" : "Konu yok"
+    "premium.error.productMissing": {
+      "localizations": {
+        "tr": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Seçilen abonelik Apple mağazasında bulunamadı."
           }
         }
       }
     },
-    "forumThreads.invalidForum" : {
-      "localizations" : {
-        "tr" : {
-          "stringUnit" : {
-            "state" : "translated",
-            "value" : "Forum kimliği geçersiz."
+    "premium.error.purchase": {
+      "localizations": {
+        "tr": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Satın alma tamamlanamadı."
           }
         }
       }
     },
-    "forumThreads.loadFailed" : {
-      "localizations" : {
-        "tr" : {
-          "stringUnit" : {
-            "state" : "translated",
-            "value" : "Forum konuları alınamadı."
+    "premium.error.verification": {
+      "localizations": {
+        "tr": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Satın alma güvenli biçimde doğrulanamadı."
           }
         }
       }
     },
-    "forumThreads.loading" : {
-      "localizations" : {
-        "tr" : {
-          "stringUnit" : {
-            "state" : "translated",
-            "value" : "Konular yükleniyor"
+    "premium.error.nothingToRestore": {
+      "localizations": {
+        "tr": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Geri yüklenecek etkin bir premium abonelik bulunamadı."
           }
         }
       }
     },
-    "forumThreads.meta" : {
-      "localizations" : {
-        "tr" : {
-          "stringUnit" : {
-            "state" : "translated",
-            "value" : "%@ • %d cevap • %d görüntüleme"
+    "premium.error.restore": {
+      "localizations": {
+        "tr": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Satın almalar geri yüklenemedi veya sunucuda doğrulanamadı."
           }
         }
       }
     },
-    "forumThreads.unavailableTitle" : {
-      "localizations" : {
-        "tr" : {
-          "stringUnit" : {
-            "state" : "translated",
-            "value" : "Konular alınamadı"
+    "privacy.advertisingLabel": {
+      "localizations": {
+        "tr": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Reklam SDK'sı"
           }
         }
       }
     },
-    "login.appleFailed" : {
-      "localizations" : {
-        "tr" : {
-          "stringUnit" : {
-            "state" : "translated",
-            "value" : "Apple ile giriş tamamlanamadı."
+    "privacy.analyticsLabel": {
+      "localizations": {
+        "tr": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Üçüncü taraf analitik"
           }
         }
       }
     },
-    "login.appleInvalid" : {
-      "localizations" : {
-        "tr" : {
-          "stringUnit" : {
-            "state" : "translated",
-            "value" : "Apple ile giriş doğrulanamadı."
+    "privacy.notUsed": {
+      "localizations": {
+        "tr": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Kullanılmıyor"
           }
         }
       }
     },
-    "login.acceptLegal" : { "localizations" : { "tr" : { "stringUnit" : { "state" : "translated", "value" : "Kullanım şartlarını ve gizlilik politikasını kabul ediyorum" } } } },
-    "login.backToLogin" : { "localizations" : { "tr" : { "stringUnit" : { "state" : "translated", "value" : "Giriş ekranına dön" } } } },
-    "login.emailPlaceholder" : { "localizations" : { "tr" : { "stringUnit" : { "state" : "translated", "value" : "E-posta" } } } },
-    "login.forgotPassword" : { "localizations" : { "tr" : { "stringUnit" : { "state" : "translated", "value" : "Şifremi unuttum" } } } },
-    "login.mode.login" : { "localizations" : { "tr" : { "stringUnit" : { "state" : "translated", "value" : "Giriş" } } } },
-    "login.mode.register" : { "localizations" : { "tr" : { "stringUnit" : { "state" : "translated", "value" : "Kayıt Ol" } } } },
-    "login.modePicker" : { "localizations" : { "tr" : { "stringUnit" : { "state" : "translated", "value" : "Hesap işlemi" } } } },
-    "login.passwordConfirmation" : { "localizations" : { "tr" : { "stringUnit" : { "state" : "translated", "value" : "Şifre tekrar" } } } },
-    "login.passwordsMismatch" : { "localizations" : { "tr" : { "stringUnit" : { "state" : "translated", "value" : "Şifreler eşleşmiyor." } } } },
-    "login.register.failed" : { "localizations" : { "tr" : { "stringUnit" : { "state" : "translated", "value" : "Kayıt tamamlanamadı. Bilgilerinizi kontrol edip yeniden deneyin." } } } },
-    "login.register.submit" : { "localizations" : { "tr" : { "stringUnit" : { "state" : "translated", "value" : "Kayıt ol" } } } },
-    "login.register.title" : { "localizations" : { "tr" : { "stringUnit" : { "state" : "translated", "value" : "Hesap Oluştur" } } } },
-    "login.reset.failed" : { "localizations" : { "tr" : { "stringUnit" : { "state" : "translated", "value" : "Şifre sıfırlama isteği gönderilemedi." } } } },
-    "login.reset.privacyNotice" : { "localizations" : { "tr" : { "stringUnit" : { "state" : "translated", "value" : "Güvenlik nedeniyle e-posta adresinin kayıtlı olup olmadığı açıklanmaz." } } } },
-    "login.reset.submit" : { "localizations" : { "tr" : { "stringUnit" : { "state" : "translated", "value" : "Sıfırlama bağlantısı gönder" } } } },
-    "login.reset.submitted" : { "localizations" : { "tr" : { "stringUnit" : { "state" : "translated", "value" : "Bu e-posta kayıtlıysa sıfırlama bağlantısı gönderildi." } } } },
-    "login.reset.title" : { "localizations" : { "tr" : { "stringUnit" : { "state" : "translated", "value" : "Şifre Sıfırlama" } } } },
-    "login.invalidCredentials" : {
-      "localizations" : {
-        "tr" : {
-          "stringUnit" : {
-            "state" : "translated",
-            "value" : "Kullanıcı adı veya şifre doğrulanamadı."
+    "privacy.offlineNotice": {
+      "localizations": {
+        "tr": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "İndirilen kitaplar yalnızca uygulama alanında tutulur, cihaz yedeğine eklenmez ve siz kaldırana kadar saklanır."
           }
         }
       }
     },
-    "login.passwordPlaceholder" : {
-      "localizations" : {
-        "tr" : {
-          "stringUnit" : {
-            "state" : "translated",
-            "value" : "Şifre"
+    "privacy.summarySection": {
+      "localizations": {
+        "tr": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Gizlilik Özeti"
           }
         }
       }
     },
-    "login.submit" : {
-      "localizations" : {
-        "tr" : {
-          "stringUnit" : {
-            "state" : "translated",
-            "value" : "Giriş yap"
+    "privacy.trackingLabel": {
+      "localizations": {
+        "tr": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Uygulamalar arası takip"
           }
         }
       }
     },
-    "login.title" : {
-      "localizations" : {
-        "tr" : {
-          "stringUnit" : {
-            "state" : "translated",
-            "value" : "Giriş"
+    "privacy.analyticsOptIn": {
+      "localizations": {
+        "tr": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Kullanım analitiğine izin ver"
           }
         }
       }
     },
-    "login.usernamePlaceholder" : {
-      "localizations" : {
-        "tr" : {
-          "stringUnit" : {
-            "state" : "translated",
-            "value" : "Kullanıcı adı veya e-posta"
+    "privacy.dataNotice": {
+      "localizations": {
+        "tr": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Okuma ilerlemesi, kitaplık, yorumlar ve hesap bilgileri Ekitaplığım hesabınızla ilişkilidir. Hesap silme talebi Hesap bölümünden başlatılır."
           }
         }
       }
     },
-    "library.downloadedBadge" : {
-      "localizations" : {
-        "tr" : {
-          "stringUnit" : {
-            "state" : "translated",
-            "value" : "İndirildi"
+    "privacy.dataSection": {
+      "localizations": {
+        "tr": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Veri"
           }
         }
       }
     },
-    "library.downloadsLabel" : {
-      "localizations" : {
-        "tr" : {
-          "stringUnit" : {
-            "state" : "translated",
-            "value" : "İndirilenler"
+    "privacy.notificationPreviews": {
+      "localizations": {
+        "tr": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Bildirim önizlemelerini göster"
           }
         }
       }
     },
-    "library.emptyDescription" : {
-      "localizations" : {
-        "tr" : {
-          "stringUnit" : {
-            "state" : "translated",
-            "value" : "Bu rafta henüz kitap yok."
+    "privacy.title": {
+      "localizations": {
+        "tr": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Gizlilik"
           }
         }
       }
     },
-    "library.emptyTitle" : {
-      "localizations" : {
-        "tr" : {
-          "stringUnit" : {
-            "state" : "translated",
-            "value" : "Kitap bulunamadı"
+    "privacy.trackingNotice": {
+      "localizations": {
+        "tr": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Bu uygulama reklam takibi yapacak şekilde tasarlanmamıştır. Analitik etkinleştirilirse App Store gizlilik etiketleri buna göre güncellenmelidir."
           }
         }
       }
     },
-    "library.favoriteBadge" : {
-      "localizations" : {
-        "tr" : {
-          "stringUnit" : {
-            "state" : "translated",
-            "value" : "Favori"
+    "profile.canEdit": {
+      "localizations": {
+        "tr": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Düzenleme"
           }
         }
       }
     },
-    "library.loadFailed" : {
-      "localizations" : {
-        "tr" : {
-          "stringUnit" : {
-            "state" : "translated",
-            "value" : "Kitaplık bilgileri alınamadı."
+    "profile.closed": {
+      "localizations": {
+        "tr": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Kapalı"
           }
         }
       }
     },
-    "library.loading" : {
-      "localizations" : {
-        "tr" : {
-          "stringUnit" : {
-            "state" : "translated",
-            "value" : "Kitaplık yükleniyor"
+    "profile.emptyTitle": {
+      "localizations": {
+        "tr": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Profil yok"
           }
         }
       }
     },
-    "library.readingProgressLabel" : {
-      "localizations" : {
-        "tr" : {
-          "stringUnit" : {
-            "state" : "translated",
-            "value" : "Okuma ilerlemesi"
+    "profile.loadFailed": {
+      "localizations": {
+        "tr": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Profil bilgileri alınamadı."
           }
         }
       }
     },
-    "library.shelf.all" : {
-      "localizations" : {
-        "tr" : {
-          "stringUnit" : {
-            "state" : "translated",
-            "value" : "Tümü"
+    "profile.loading": {
+      "localizations": {
+        "tr": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Profil yükleniyor"
           }
         }
       }
     },
-    "library.shelf.downloads" : {
-      "localizations" : {
-        "tr" : {
-          "stringUnit" : {
-            "state" : "translated",
-            "value" : "İndirilen"
+    "profile.messageCount": {
+      "localizations": {
+        "tr": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Mesaj"
           }
         }
       }
     },
-    "library.shelf.favorites" : {
-      "localizations" : {
-        "tr" : {
-          "stringUnit" : {
-            "state" : "translated",
-            "value" : "Favoriler"
+    "profile.no": {
+      "localizations": {
+        "tr": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Hayır"
           }
         }
       }
     },
-    "library.shelf.finished" : {
-      "localizations" : {
-        "tr" : {
-          "stringUnit" : {
-            "state" : "translated",
-            "value" : "Okudum"
+    "profile.open": {
+      "localizations": {
+        "tr": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Açık"
           }
         }
       }
     },
-    "library.shelf.reading" : {
-      "localizations" : {
-        "tr" : {
-          "stringUnit" : {
-            "state" : "translated",
-            "value" : "Okuyorum"
+    "profile.permissionsSection": {
+      "localizations": {
+        "tr": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Yetki"
           }
         }
       }
     },
-    "library.shelfPicker" : {
-      "localizations" : {
-        "tr" : {
-          "stringUnit" : {
-            "state" : "translated",
-            "value" : "Raf"
+    "profile.reactionScore": {
+      "localizations": {
+        "tr": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Tepki"
           }
         }
       }
     },
-    "library.title" : {
-      "localizations" : {
-        "tr" : {
-          "stringUnit" : {
-            "state" : "translated",
-            "value" : "Kitaplığım"
+    "profile.registerDate": {
+      "localizations": {
+        "tr": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Kayıt tarihi"
           }
         }
       }
     },
-    "library.unavailableTitle" : {
-      "localizations" : {
-        "tr" : {
-          "stringUnit" : {
-            "state" : "translated",
-            "value" : "Kitaplık alınamadı"
+    "profile.staff": {
+      "localizations": {
+        "tr": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Personel"
           }
         }
       }
     },
-    "notifications.emptyTitle" : {
-      "localizations" : {
-        "tr" : {
-          "stringUnit" : {
-            "state" : "translated",
-            "value" : "Bildirim yok"
+    "profile.statsSection": {
+      "localizations": {
+        "tr": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "İstatistikler"
           }
         }
       }
     },
-    "notifications.loadFailed" : {
-      "localizations" : {
-        "tr" : {
-          "stringUnit" : {
-            "state" : "translated",
-            "value" : "Bildirimler alınamadı."
+    "profile.title": {
+      "localizations": {
+        "tr": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Profilim"
           }
         }
       }
     },
-    "notifications.loading" : {
-      "localizations" : {
-        "tr" : {
-          "stringUnit" : {
-            "state" : "translated",
-            "value" : "Bildirimler yükleniyor"
+    "profile.unavailableTitle": {
+      "localizations": {
+        "tr": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Profil alınamadı"
           }
         }
       }
     },
-    "notifications.markAllRead" : {
-      "localizations" : {
-        "tr" : {
-          "stringUnit" : {
-            "state" : "translated",
-            "value" : "Tümünü oku"
+    "profile.yes": {
+      "localizations": {
+        "tr": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Evet"
           }
         }
       }
     },
-    "notifications.new" : {
-      "localizations" : {
-        "tr" : {
-          "stringUnit" : {
-            "state" : "translated",
-            "value" : "Yeni"
+    "reader.epub.format": {
+      "localizations": {
+        "tr": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "EPUB"
           }
         }
       }
     },
-    "notifications.title" : {
-      "localizations" : {
-        "tr" : {
-          "stringUnit" : {
-            "state" : "translated",
-            "value" : "Bildirimler"
+    "reader.epub.openFailed": {
+      "localizations": {
+        "tr": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "EPUB dosyası güvenli biçimde indirilemedi veya açılamadı."
           }
         }
       }
     },
-    "notifications.unavailableTitle" : {
-      "localizations" : {
-        "tr" : {
-          "stringUnit" : {
-            "state" : "translated",
-            "value" : "Bildirimler alınamadı"
+    "reader.epub.preparing": {
+      "localizations": {
+        "tr": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "EPUB hazırlanıyor"
           }
         }
       }
     },
-    "notifications.unread" : {
-      "localizations" : {
-        "tr" : {
-          "stringUnit" : {
-            "state" : "translated",
-            "value" : "Okunmamış"
+    "reader.epub.unavailable": {
+      "localizations": {
+        "tr": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "EPUB açılamadı"
           }
         }
       }
     },
-    "premium.title" : { "localizations" : { "tr" : { "stringUnit" : { "state" : "translated", "value" : "Ekitaplığım Premium" } } } },
-    "premium.description" : { "localizations" : { "tr" : { "stringUnit" : { "state" : "translated", "value" : "Premium üyelik, sunucu tarafından belirlenen daha yüksek veya sınırsız okuma ve indirme hakları sağlar." } } } },
-    "premium.plans" : { "localizations" : { "tr" : { "stringUnit" : { "state" : "translated", "value" : "Abonelik Planları" } } } },
-    "premium.loading" : { "localizations" : { "tr" : { "stringUnit" : { "state" : "translated", "value" : "Apple ürünleri yükleniyor" } } } },
-    "premium.purchasing" : { "localizations" : { "tr" : { "stringUnit" : { "state" : "translated", "value" : "Satın alma doğrulanıyor" } } } },
-    "premium.purchased" : { "localizations" : { "tr" : { "stringUnit" : { "state" : "translated", "value" : "Premium üyeliğiniz etkinleştirildi." } } } },
-    "premium.restored" : { "localizations" : { "tr" : { "stringUnit" : { "state" : "translated", "value" : "Satın almanız geri yüklendi ve doğrulandı." } } } },
-    "premium.pending" : { "localizations" : { "tr" : { "stringUnit" : { "state" : "translated", "value" : "Satın alma Apple onayı bekliyor." } } } },
-    "premium.restore" : { "localizations" : { "tr" : { "stringUnit" : { "state" : "translated", "value" : "Satın almaları geri yükle" } } } },
-    "premium.manageSubscriptions" : { "localizations" : { "tr" : { "stringUnit" : { "state" : "translated", "value" : "Apple aboneliklerini yönet" } } } },
-    "premium.loginRequired" : { "localizations" : { "tr" : { "stringUnit" : { "state" : "translated", "value" : "Satın alma için Ekitaplığım hesabınıza giriş yapın." } } } },
-    "premium.renewalDisclosure" : { "localizations" : { "tr" : { "stringUnit" : { "state" : "translated", "value" : "Ödeme Apple ID hesabınızdan alınır. Abonelik, geçerli dönemin bitiminden en az 24 saat önce iptal edilmezse otomatik yenilenir. Fiyat ve dönem Apple satın alma ekranında gösterilir; aboneliği App Store hesap ayarlarından yönetebilir veya iptal edebilirsiniz." } } } },
-    "premium.error.products" : { "localizations" : { "tr" : { "stringUnit" : { "state" : "translated", "value" : "Apple ürün bilgileri alınamadı." } } } },
-    "premium.error.productMissing" : { "localizations" : { "tr" : { "stringUnit" : { "state" : "translated", "value" : "Seçilen abonelik Apple mağazasında bulunamadı." } } } },
-    "premium.error.purchase" : { "localizations" : { "tr" : { "stringUnit" : { "state" : "translated", "value" : "Satın alma tamamlanamadı." } } } },
-    "premium.error.verification" : { "localizations" : { "tr" : { "stringUnit" : { "state" : "translated", "value" : "Satın alma güvenli biçimde doğrulanamadı." } } } },
-    "premium.error.nothingToRestore" : { "localizations" : { "tr" : { "stringUnit" : { "state" : "translated", "value" : "Geri yüklenecek etkin bir premium abonelik bulunamadı." } } } },
-    "premium.error.restore" : { "localizations" : { "tr" : { "stringUnit" : { "state" : "translated", "value" : "Satın almalar geri yüklenemedi veya sunucuda doğrulanamadı." } } } },
-    "privacy.advertisingLabel" : { "localizations" : { "tr" : { "stringUnit" : { "state" : "translated", "value" : "Reklam SDK'sı" } } } },
-    "privacy.analyticsLabel" : { "localizations" : { "tr" : { "stringUnit" : { "state" : "translated", "value" : "Üçüncü taraf analitik" } } } },
-    "privacy.notUsed" : { "localizations" : { "tr" : { "stringUnit" : { "state" : "translated", "value" : "Kullanılmıyor" } } } },
-    "privacy.offlineNotice" : { "localizations" : { "tr" : { "stringUnit" : { "state" : "translated", "value" : "İndirilen kitaplar yalnızca uygulama alanında tutulur, cihaz yedeğine eklenmez ve siz kaldırana kadar saklanır." } } } },
-    "privacy.summarySection" : { "localizations" : { "tr" : { "stringUnit" : { "state" : "translated", "value" : "Gizlilik Özeti" } } } },
-    "privacy.trackingLabel" : { "localizations" : { "tr" : { "stringUnit" : { "state" : "translated", "value" : "Uygulamalar arası takip" } } } },
-    "privacy.analyticsOptIn" : {
-      "localizations" : {
-        "tr" : {
-          "stringUnit" : {
-            "state" : "translated",
-            "value" : "Kullanım analitiğine izin ver"
+    "reader.unsupportedFormat": {
+      "localizations": {
+        "tr": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Bu kitap biçimi desteklenmiyor."
           }
         }
       }
     },
-    "privacy.dataNotice" : {
-      "localizations" : {
-        "tr" : {
-          "stringUnit" : {
-            "state" : "translated",
-            "value" : "Okuma ilerlemesi, kitaplık, yorumlar ve hesap bilgileri Ekitaplığım hesabınızla ilişkilidir. Hesap silme talebi Hesap bölümünden başlatılır."
+    "reader.addBookmark": {
+      "localizations": {
+        "tr": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Bu sayfaya yer imi ekle"
           }
         }
       }
     },
-    "privacy.dataSection" : {
-      "localizations" : {
-        "tr" : {
-          "stringUnit" : {
-            "state" : "translated",
-            "value" : "Veri"
+    "reader.atsLinkMissing": {
+      "localizations": {
+        "tr": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "App Store uyumlu güvenli okuma bağlantısı alınamadı."
           }
         }
       }
     },
-    "privacy.notificationPreviews" : {
-      "localizations" : {
-        "tr" : {
-          "stringUnit" : {
-            "state" : "translated",
-            "value" : "Bildirim önizlemelerini göster"
+    "reader.invalidBookId": {
+      "localizations": {
+        "tr": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Kitap kimliği geçersiz."
           }
         }
       }
     },
-    "privacy.title" : {
-      "localizations" : {
-        "tr" : {
-          "stringUnit" : {
-            "state" : "translated",
-            "value" : "Gizlilik"
+    "reader.bookmarks": {
+      "localizations": {
+        "tr": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Yer İmleri"
           }
         }
       }
     },
-    "privacy.trackingNotice" : {
-      "localizations" : {
-        "tr" : {
-          "stringUnit" : {
-            "state" : "translated",
-            "value" : "Bu uygulama reklam takibi yapacak şekilde tasarlanmamıştır. Analitik etkinleştirilirse App Store gizlilik etiketleri buna göre güncellenmelidir."
+    "reader.bookmarks.empty": {
+      "localizations": {
+        "tr": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Yer imi yok"
           }
         }
       }
     },
-    "profile.canEdit" : {
-      "localizations" : {
-        "tr" : {
-          "stringUnit" : {
-            "state" : "translated",
-            "value" : "Düzenleme"
+    "reader.bookmarks.emptyDescription": {
+      "localizations": {
+        "tr": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Kaydetmek istediğiniz sayfada yer imi düğmesine dokunun."
           }
         }
       }
     },
-    "profile.closed" : {
-      "localizations" : {
-        "tr" : {
-          "stringUnit" : {
-            "state" : "translated",
-            "value" : "Kapalı"
+    "reader.page": {
+      "localizations": {
+        "tr": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Sayfa %d / %d"
           }
         }
       }
     },
-    "profile.emptyTitle" : {
-      "localizations" : {
-        "tr" : {
-          "stringUnit" : {
-            "state" : "translated",
-            "value" : "Profil yok"
+    "reader.pageNumber": {
+      "localizations": {
+        "tr": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Sayfa %d"
           }
         }
       }
     },
-    "profile.loadFailed" : {
-      "localizations" : {
-        "tr" : {
-          "stringUnit" : {
-            "state" : "translated",
-            "value" : "Profil bilgileri alınamadı."
+    "reader.preparing": {
+      "localizations": {
+        "tr": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Okuma bağlantısı hazırlanıyor"
           }
         }
       }
     },
-    "profile.loading" : {
-      "localizations" : {
-        "tr" : {
-          "stringUnit" : {
-            "state" : "translated",
-            "value" : "Profil yükleniyor"
+    "reader.secureLinkMissing": {
+      "localizations": {
+        "tr": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Güvenli geçici okuma bağlantısı alınamadı."
           }
         }
       }
     },
-    "profile.messageCount" : {
-      "localizations" : {
-        "tr" : {
-          "stringUnit" : {
-            "state" : "translated",
-            "value" : "Mesaj"
+    "reader.sessionFailed": {
+      "localizations": {
+        "tr": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Okuma oturumu başlatılamadı."
           }
         }
       }
     },
-    "profile.no" : {
-      "localizations" : {
-        "tr" : {
-          "stringUnit" : {
-            "state" : "translated",
-            "value" : "Hayır"
+    "reader.removeBookmark": {
+      "localizations": {
+        "tr": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Bu sayfadaki yer imini kaldır"
           }
         }
       }
     },
-    "profile.open" : {
-      "localizations" : {
-        "tr" : {
-          "stringUnit" : {
-            "state" : "translated",
-            "value" : "Açık"
+    "reader.unavailable": {
+      "localizations": {
+        "tr": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Okuyucu hazır değil"
           }
         }
       }
     },
-    "profile.permissionsSection" : {
-      "localizations" : {
-        "tr" : {
-          "stringUnit" : {
-            "state" : "translated",
-            "value" : "Yetki"
+    "report.footer": {
+      "localizations": {
+        "tr": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Raporlar moderasyon ekibine gönderilir. Kötüye kullanım bildirimleri güvenlik amacıyla incelenir."
           }
         }
       }
     },
-    "profile.reactionScore" : {
-      "localizations" : {
-        "tr" : {
-          "stringUnit" : {
-            "state" : "translated",
-            "value" : "Tepki"
+    "report.messageLabel": {
+      "localizations": {
+        "tr": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Rapor açıklaması"
           }
         }
       }
     },
-    "profile.registerDate" : {
-      "localizations" : {
-        "tr" : {
-          "stringUnit" : {
-            "state" : "translated",
-            "value" : "Kayıt tarihi"
+    "report.reason": {
+      "localizations": {
+        "tr": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Neden"
           }
         }
       }
     },
-    "profile.staff" : {
-      "localizations" : {
-        "tr" : {
-          "stringUnit" : {
-            "state" : "translated",
-            "value" : "Personel"
+    "report.reason.brokenFile": {
+      "localizations": {
+        "tr": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Bozuk dosya"
           }
         }
       }
     },
-    "profile.statsSection" : {
-      "localizations" : {
-        "tr" : {
-          "stringUnit" : {
-            "state" : "translated",
-            "value" : "İstatistikler"
+    "report.reason.copyright": {
+      "localizations": {
+        "tr": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Telif hakkı"
           }
         }
       }
     },
-    "profile.title" : {
-      "localizations" : {
-        "tr" : {
-          "stringUnit" : {
-            "state" : "translated",
-            "value" : "Profilim"
+    "report.reason.objectionable": {
+      "localizations": {
+        "tr": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Uygunsuz içerik"
           }
         }
       }
     },
-    "profile.unavailableTitle" : {
-      "localizations" : {
-        "tr" : {
-          "stringUnit" : {
-            "state" : "translated",
-            "value" : "Profil alınamadı"
+    "report.reason.other": {
+      "localizations": {
+        "tr": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Diğer"
           }
         }
       }
     },
-    "profile.yes" : {
-      "localizations" : {
-        "tr" : {
-          "stringUnit" : {
-            "state" : "translated",
-            "value" : "Evet"
+    "report.submit": {
+      "localizations": {
+        "tr": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Raporu gönder"
           }
         }
       }
     },
-    "reader.epub.format" : { "localizations" : { "tr" : { "stringUnit" : { "state" : "translated", "value" : "EPUB" } } } },
-    "reader.epub.openFailed" : { "localizations" : { "tr" : { "stringUnit" : { "state" : "translated", "value" : "EPUB dosyası güvenli biçimde indirilemedi veya açılamadı." } } } },
-    "reader.epub.preparing" : { "localizations" : { "tr" : { "stringUnit" : { "state" : "translated", "value" : "EPUB hazırlanıyor" } } } },
-    "reader.epub.unavailable" : { "localizations" : { "tr" : { "stringUnit" : { "state" : "translated", "value" : "EPUB açılamadı" } } } },
-    "reader.unsupportedFormat" : { "localizations" : { "tr" : { "stringUnit" : { "state" : "translated", "value" : "Bu kitap biçimi desteklenmiyor." } } } },
-    "reader.addBookmark" : {
-      "localizations" : {
-        "tr" : {
-          "stringUnit" : {
-            "state" : "translated",
-            "value" : "Bu sayfaya yer imi ekle"
+    "report.submitFailed": {
+      "localizations": {
+        "tr": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Rapor gönderilemedi."
           }
         }
       }
     },
-    "reader.atsLinkMissing" : {
-      "localizations" : {
-        "tr" : {
-          "stringUnit" : {
-            "state" : "translated",
-            "value" : "App Store uyumlu güvenli okuma bağlantısı alınamadı."
+    "report.submitted": {
+      "localizations": {
+        "tr": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Raporunuz alındı."
           }
         }
       }
     },
-    "reader.invalidBookId" : {
-      "localizations" : {
-        "tr" : {
-          "stringUnit" : {
-            "state" : "translated",
-            "value" : "Kitap kimliği geçersiz."
+    "report.title": {
+      "localizations": {
+        "tr": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "İçerik bildir"
           }
         }
       }
     },
-    "reader.bookmarks" : {
-      "localizations" : {
-        "tr" : {
-          "stringUnit" : {
-            "state" : "translated",
-            "value" : "Yer İmleri"
+    "settings.accountSection": {
+      "localizations": {
+        "tr": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Hesap"
           }
         }
       }
     },
-    "reader.bookmarks.empty" : {
-      "localizations" : {
-        "tr" : {
-          "stringUnit" : {
-            "state" : "translated",
-            "value" : "Yer imi yok"
+    "settings.legalSection": {
+      "localizations": {
+        "tr": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Yasal"
           }
         }
       }
     },
-    "reader.bookmarks.emptyDescription" : {
-      "localizations" : {
-        "tr" : {
-          "stringUnit" : {
-            "state" : "translated",
-            "value" : "Kaydetmek istediğiniz sayfada yer imi düğmesine dokunun."
+    "settings.notifications": {
+      "localizations": {
+        "tr": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Bildirimler"
           }
         }
       }
     },
-    "reader.page" : {
-      "localizations" : {
-        "tr" : {
-          "stringUnit" : {
-            "state" : "translated",
-            "value" : "Sayfa %d / %d"
+    "settings.privacyPolicy": {
+      "localizations": {
+        "tr": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Gizlilik Politikası"
           }
         }
       }
     },
-    "reader.pageNumber" : {
-      "localizations" : {
-        "tr" : {
-          "stringUnit" : {
-            "state" : "translated",
-            "value" : "Sayfa %d"
+    "settings.privacyPreferences": {
+      "localizations": {
+        "tr": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Gizlilik tercihleri"
           }
         }
       }
     },
-    "reader.preparing" : {
-      "localizations" : {
-        "tr" : {
-          "stringUnit" : {
-            "state" : "translated",
-            "value" : "Okuma bağlantısı hazırlanıyor"
+    "settings.privacySection": {
+      "localizations": {
+        "tr": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Gizlilik"
           }
         }
       }
     },
-    "reader.secureLinkMissing" : {
-      "localizations" : {
-        "tr" : {
-          "stringUnit" : {
-            "state" : "translated",
-            "value" : "Güvenli geçici okuma bağlantısı alınamadı."
+    "settings.profile": {
+      "localizations": {
+        "tr": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Profilim"
           }
         }
       }
     },
-    "reader.sessionFailed" : {
-      "localizations" : {
-        "tr" : {
-          "stringUnit" : {
-            "state" : "translated",
-            "value" : "Okuma oturumu başlatılamadı."
+    "settings.profileSection": {
+      "localizations": {
+        "tr": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Profil"
           }
         }
       }
     },
-    "reader.removeBookmark" : {
-      "localizations" : {
-        "tr" : {
-          "stringUnit" : {
-            "state" : "translated",
-            "value" : "Bu sayfadaki yer imini kaldır"
+    "settings.signIn": {
+      "localizations": {
+        "tr": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Giriş yap"
           }
         }
       }
     },
-    "reader.unavailable" : {
-      "localizations" : {
-        "tr" : {
-          "stringUnit" : {
-            "state" : "translated",
-            "value" : "Okuyucu hazır değil"
+    "settings.signOut": {
+      "localizations": {
+        "tr": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Çıkış yap"
           }
         }
       }
     },
-    "report.footer" : {
-      "localizations" : {
-        "tr" : {
-          "stringUnit" : {
-            "state" : "translated",
-            "value" : "Raporlar moderasyon ekibine gönderilir. Kötüye kullanım bildirimleri güvenlik amacıyla incelenir."
+    "settings.signingIn": {
+      "localizations": {
+        "tr": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Giriş yapılıyor"
           }
         }
       }
     },
-    "report.messageLabel" : {
-      "localizations" : {
-        "tr" : {
-          "stringUnit" : {
-            "state" : "translated",
-            "value" : "Rapor açıklaması"
+    "settings.startAccountDeletion": {
+      "localizations": {
+        "tr": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Hesap silme talebi başlat"
           }
         }
       }
     },
-    "report.reason" : {
-      "localizations" : {
-        "tr" : {
-          "stringUnit" : {
-            "state" : "translated",
-            "value" : "Neden"
+    "settings.support": {
+      "localizations": {
+        "tr": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Destek ve İletişim"
           }
         }
       }
     },
-    "report.reason.brokenFile" : {
-      "localizations" : {
-        "tr" : {
-          "stringUnit" : {
-            "state" : "translated",
-            "value" : "Bozuk dosya"
+    "settings.terms": {
+      "localizations": {
+        "tr": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Kullanım Şartları"
           }
         }
       }
     },
-    "report.reason.copyright" : {
-      "localizations" : {
-        "tr" : {
-          "stringUnit" : {
-            "state" : "translated",
-            "value" : "Telif hakkı"
+    "settings.title": {
+      "localizations": {
+        "tr": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Hesap"
           }
         }
       }
     },
-    "report.reason.objectionable" : {
-      "localizations" : {
-        "tr" : {
-          "stringUnit" : {
-            "state" : "translated",
-            "value" : "Uygunsuz içerik"
+    "settings.user": {
+      "localizations": {
+        "tr": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Kullanıcı"
           }
         }
       }
     },
-    "report.reason.other" : {
-      "localizations" : {
-        "tr" : {
-          "stringUnit" : {
-            "state" : "translated",
-            "value" : "Diğer"
+    "tab.account": {
+      "localizations": {
+        "tr": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Hesap"
           }
         }
       }
     },
-    "report.submit" : {
-      "localizations" : {
-        "tr" : {
-          "stringUnit" : {
-            "state" : "translated",
-            "value" : "Raporu gönder"
+    "tab.catalog": {
+      "localizations": {
+        "tr": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Kitaplar"
           }
         }
       }
     },
-    "report.submitFailed" : {
-      "localizations" : {
-        "tr" : {
-          "stringUnit" : {
-            "state" : "translated",
-            "value" : "Rapor gönderilemedi."
+    "tab.community": {
+      "localizations": {
+        "tr": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Topluluk"
           }
         }
       }
     },
-    "report.submitted" : {
-      "localizations" : {
-        "tr" : {
-          "stringUnit" : {
-            "state" : "translated",
-            "value" : "Raporunuz alındı."
+    "tab.home": {
+      "localizations": {
+        "tr": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Ana Sayfa"
           }
         }
       }
     },
-    "report.title" : {
-      "localizations" : {
-        "tr" : {
-          "stringUnit" : {
-            "state" : "translated",
-            "value" : "İçerik bildir"
+    "tab.library": {
+      "localizations": {
+        "tr": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Kitaplığım"
           }
         }
       }
     },
-    "settings.accountSection" : {
-      "localizations" : {
-        "tr" : {
-          "stringUnit" : {
-            "state" : "translated",
-            "value" : "Hesap"
+    "terms.accept": {
+      "localizations": {
+        "tr": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Kabul et"
           }
         }
       }
     },
-    "settings.legalSection" : {
-      "localizations" : {
-        "tr" : {
-          "stringUnit" : {
-            "state" : "translated",
-            "value" : "Yasal"
+    "terms.acceptFailed": {
+      "localizations": {
+        "tr": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Kabul durumu kaydedilemedi."
           }
         }
       }
     },
-    "settings.notifications" : {
-      "localizations" : {
-        "tr" : {
-          "stringUnit" : {
-            "state" : "translated",
-            "value" : "Bildirimler"
+    "terms.acceptToggle": {
+      "localizations": {
+        "tr": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Topluluk kurallarını kabul ediyorum"
           }
         }
       }
     },
-    "settings.privacyPolicy" : {
-      "localizations" : {
-        "tr" : {
-          "stringUnit" : {
-            "state" : "translated",
-            "value" : "Gizlilik Politikası"
+    "terms.accepted": {
+      "localizations": {
+        "tr": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Topluluk kuralları kabul edildi."
           }
         }
       }
     },
-    "settings.privacyPreferences" : {
-      "localizations" : {
-        "tr" : {
-          "stringUnit" : {
-            "state" : "translated",
-            "value" : "Gizlilik tercihleri"
+    "terms.footer": {
+      "localizations": {
+        "tr": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Uygunsuz içerik, taciz, telif ihlali, spam veya kişisel veri paylaşımı kabul edilmez."
           }
         }
       }
     },
-    "settings.privacySection" : {
-      "localizations" : {
-        "tr" : {
-          "stringUnit" : {
-            "state" : "translated",
-            "value" : "Gizlilik"
+    "terms.intro": {
+      "localizations": {
+        "tr": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Topluluk alanlarında paylaşım yapmadan önce kullanım şartlarını ve topluluk kurallarını kabul etmelisiniz."
           }
         }
       }
     },
-    "settings.profile" : {
-      "localizations" : {
-        "tr" : {
-          "stringUnit" : {
-            "state" : "translated",
-            "value" : "Profilim"
+    "terms.open": {
+      "localizations": {
+        "tr": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Kullanım şartlarını aç"
           }
         }
       }
     },
-    "settings.profileSection" : {
-      "localizations" : {
-        "tr" : {
-          "stringUnit" : {
-            "state" : "translated",
-            "value" : "Profil"
+    "profile.edit.about": {
+      "localizations": {
+        "tr": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Hakkında"
           }
         }
       }
     },
-    "settings.signIn" : {
-      "localizations" : {
-        "tr" : {
-          "stringUnit" : {
-            "state" : "translated",
-            "value" : "Giriş yap"
+    "profile.edit.activityVisible": {
+      "localizations": {
+        "tr": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Çevrimiçi durumumu göster"
           }
         }
       }
     },
-    "settings.signOut" : {
-      "localizations" : {
-        "tr" : {
-          "stringUnit" : {
-            "state" : "translated",
-            "value" : "Çıkış yap"
+    "profile.edit.generalSection": {
+      "localizations": {
+        "tr": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Genel Bilgiler"
           }
         }
       }
     },
-    "settings.signingIn" : {
-      "localizations" : {
-        "tr" : {
-          "stringUnit" : {
-            "state" : "translated",
-            "value" : "Giriş yapılıyor"
+    "profile.edit.location": {
+      "localizations": {
+        "tr": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Konum"
           }
         }
       }
     },
-    "settings.startAccountDeletion" : {
-      "localizations" : {
-        "tr" : {
-          "stringUnit" : {
-            "state" : "translated",
-            "value" : "Hesap silme talebi başlat"
+    "profile.edit.save": {
+      "localizations": {
+        "tr": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Kaydet"
           }
         }
       }
     },
-    "settings.support" : { "localizations" : { "tr" : { "stringUnit" : { "state" : "translated", "value" : "Destek ve İletişim" } } } },
-    "settings.terms" : {
-      "localizations" : {
-        "tr" : {
-          "stringUnit" : {
-            "state" : "translated",
-            "value" : "Kullanım Şartları"
+    "profile.edit.saveFailed": {
+      "localizations": {
+        "tr": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Profil değişiklikleri kaydedilemedi."
           }
         }
       }
     },
-    "settings.title" : {
-      "localizations" : {
-        "tr" : {
-          "stringUnit" : {
-            "state" : "translated",
-            "value" : "Hesap"
+    "profile.edit.saving": {
+      "localizations": {
+        "tr": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Kaydediliyor"
           }
         }
       }
     },
-    "settings.user" : {
-      "localizations" : {
-        "tr" : {
-          "stringUnit" : {
-            "state" : "translated",
-            "value" : "Kullanıcı"
+    "profile.edit.title": {
+      "localizations": {
+        "tr": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Profili Düzenle"
           }
         }
       }
     },
-    "tab.account" : {
-      "localizations" : {
-        "tr" : {
-          "stringUnit" : {
-            "state" : "translated",
-            "value" : "Hesap"
+    "profile.edit.website": {
+      "localizations": {
+        "tr": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Web sitesi"
           }
         }
       }
     },
-    "tab.catalog" : {
-      "localizations" : {
-        "tr" : {
-          "stringUnit" : {
-            "state" : "translated",
-            "value" : "Kitaplar"
+    "home.searchPrompt": {
+      "localizations": {
+        "tr": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Kitap, yazar, yayınevi veya ISBN ara..."
           }
         }
       }
     },
-    "tab.community" : {
-      "localizations" : {
-        "tr" : {
-          "stringUnit" : {
-            "state" : "translated",
-            "value" : "Topluluk"
+    "home.popularBooks": {
+      "localizations": {
+        "tr": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Popüler Kitaplar"
           }
         }
       }
     },
-    "tab.home" : {
-      "localizations" : {
-        "tr" : {
-          "stringUnit" : {
-            "state" : "translated",
-            "value" : "Ana Sayfa"
+    "home.popularBooksSubtitle": {
+      "localizations": {
+        "tr": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Okurların en çok ilgi gösterdiği kitaplar"
           }
         }
       }
     },
-    "tab.library" : {
-      "localizations" : {
-        "tr" : {
-          "stringUnit" : {
-            "state" : "translated",
-            "value" : "Kitaplığım"
+    "home.newestBooks": {
+      "localizations": {
+        "tr": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Yeni Eklenenler"
           }
         }
       }
     },
-    "terms.accept" : {
-      "localizations" : {
-        "tr" : {
-          "stringUnit" : {
-            "state" : "translated",
-            "value" : "Kabul et"
+    "home.newestBooksSubtitle": {
+      "localizations": {
+        "tr": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Kütüphaneye yeni katılan eserler"
           }
         }
       }
     },
-    "terms.acceptFailed" : {
-      "localizations" : {
-        "tr" : {
-          "stringUnit" : {
-            "state" : "translated",
-            "value" : "Kabul durumu kaydedilemedi."
+    "home.seeAll": {
+      "localizations": {
+        "tr": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Tümünü gör"
           }
         }
       }
     },
-    "terms.acceptToggle" : {
-      "localizations" : {
-        "tr" : {
-          "stringUnit" : {
-            "state" : "translated",
-            "value" : "Topluluk kurallarını kabul ediyorum"
+    "home.communitySubtitle": {
+      "localizations": {
+        "tr": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Kitaplar üzerine konuş, paylaş ve keşfet"
           }
         }
       }
     },
-    "terms.accepted" : {
-      "localizations" : {
-        "tr" : {
-          "stringUnit" : {
-            "state" : "translated",
-            "value" : "Topluluk kuralları kabul edildi."
+    "premium.shortTitle": {
+      "localizations": {
+        "tr": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Premium"
           }
         }
       }
     },
-    "terms.footer" : {
-      "localizations" : {
-        "tr" : {
-          "stringUnit" : {
-            "state" : "translated",
-            "value" : "Uygunsuz içerik, taciz, telif ihlali, spam veya kişisel veri paylaşımı kabul edilmez."
+    "library.headerSubtitle": {
+      "localizations": {
+        "tr": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Raflarını düzenle ve okumaya devam et"
           }
         }
       }
     },
-    "terms.intro" : {
-      "localizations" : {
-        "tr" : {
-          "stringUnit" : {
-            "state" : "translated",
-            "value" : "Topluluk alanlarında paylaşım yapmadan önce kullanım şartlarını ve topluluk kurallarını kabul etmelisiniz."
+    "library.bookCountLabel": {
+      "localizations": {
+        "tr": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "kitap"
           }
         }
       }
     },
-    "terms.open" : {
-      "localizations" : {
-        "tr" : {
-          "stringUnit" : {
-            "state" : "translated",
-            "value" : "Kullanım şartlarını aç"
+    "menu.title": {
+      "localizations": {
+        "tr": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Menü"
           }
         }
       }
     },
-    "profile.edit.about" : {
-      "localizations" : { "tr" : { "stringUnit" : { "state" : "translated", "value" : "Hakkında" } } }
+    "menu.subtitle": {
+      "localizations": {
+        "tr": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Kitap, forum ve okuma alanın"
+          }
+        }
+      }
     },
-    "profile.edit.activityVisible" : {
-      "localizations" : { "tr" : { "stringUnit" : { "state" : "translated", "value" : "Çevrimiçi durumumu göster" } } }
+    "menu.authorsSubtitle": {
+      "localizations": {
+        "tr": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Yazar arşivi ve eserleri"
+          }
+        }
+      }
     },
-    "profile.edit.generalSection" : {
-      "localizations" : { "tr" : { "stringUnit" : { "state" : "translated", "value" : "Genel Bilgiler" } } }
+    "menu.publishersSubtitle": {
+      "localizations": {
+        "tr": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Yayınevlerine göre keşfet"
+          }
+        }
+      }
     },
-    "profile.edit.location" : {
-      "localizations" : { "tr" : { "stringUnit" : { "state" : "translated", "value" : "Konum" } } }
+    "menu.requestsSubtitle": {
+      "localizations": {
+        "tr": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "İstekleri incele ve oy ver"
+          }
+        }
+      }
     },
-    "profile.edit.save" : {
-      "localizations" : { "tr" : { "stringUnit" : { "state" : "translated", "value" : "Kaydet" } } }
+    "terms.title": {
+      "localizations": {
+        "tr": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Topluluk Kuralları"
+          }
+        }
+      }
     },
-    "profile.edit.saveFailed" : {
-      "localizations" : { "tr" : { "stringUnit" : { "state" : "translated", "value" : "Profil değişiklikleri kaydedilemedi." } } }
+    "book.detail.infoYear": {
+      "localizations": {
+        "tr": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Yayın Yılı"
+          }
+        }
+      }
     },
-    "profile.edit.saving" : {
-      "localizations" : { "tr" : { "stringUnit" : { "state" : "translated", "value" : "Kaydediliyor" } } }
+    "book.detail.infoFormat": {
+      "localizations": {
+        "tr": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Format"
+          }
+        }
+      }
     },
-    "profile.edit.title" : {
-      "localizations" : { "tr" : { "stringUnit" : { "state" : "translated", "value" : "Profili Düzenle" } } }
+    "book.detail.unknownFormat": {
+      "localizations": {
+        "tr": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "PDF / EPUB"
+          }
+        }
+      }
     },
-    "profile.edit.website" : {
-      "localizations" : { "tr" : { "stringUnit" : { "state" : "translated", "value" : "Web sitesi" } } }
+    "book.detail.synopsisSectionTitle": {
+      "localizations": {
+        "tr": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Özet / Açıklama"
+          }
+        }
+      }
     },
-    "home.searchPrompt" : { "localizations" : { "tr" : { "stringUnit" : { "state" : "translated", "value" : "Kitap, yazar, yayınevi veya ISBN ara..." } } } },
-    "home.popularBooks" : { "localizations" : { "tr" : { "stringUnit" : { "state" : "translated", "value" : "Popüler Kitaplar" } } } },
-    "home.popularBooksSubtitle" : { "localizations" : { "tr" : { "stringUnit" : { "state" : "translated", "value" : "Okurların en çok ilgi gösterdiği kitaplar" } } } },
-    "home.newestBooks" : { "localizations" : { "tr" : { "stringUnit" : { "state" : "translated", "value" : "Yeni Eklenenler" } } } },
-    "home.newestBooksSubtitle" : { "localizations" : { "tr" : { "stringUnit" : { "state" : "translated", "value" : "Kütüphaneye yeni katılan eserler" } } } },
-    "home.seeAll" : { "localizations" : { "tr" : { "stringUnit" : { "state" : "translated", "value" : "Tümünü gör" } } } },
-    "home.communitySubtitle" : { "localizations" : { "tr" : { "stringUnit" : { "state" : "translated", "value" : "Kitaplar üzerine konuş, paylaş ve keşfet" } } } },
-    "premium.shortTitle" : { "localizations" : { "tr" : { "stringUnit" : { "state" : "translated", "value" : "Premium" } } } },
-    "library.headerSubtitle" : { "localizations" : { "tr" : { "stringUnit" : { "state" : "translated", "value" : "Raflarını düzenle ve okumaya devam et" } } } },
-    "library.bookCountLabel" : { "localizations" : { "tr" : { "stringUnit" : { "state" : "translated", "value" : "kitap" } } } },
-    "menu.title" : { "localizations" : { "tr" : { "stringUnit" : { "state" : "translated", "value" : "Menü" } } } },
-    "menu.subtitle" : { "localizations" : { "tr" : { "stringUnit" : { "state" : "translated", "value" : "Kitap, forum ve okuma alanın" } } } },
-    "menu.authorsSubtitle" : { "localizations" : { "tr" : { "stringUnit" : { "state" : "translated", "value" : "Yazar arşivi ve eserleri" } } } },
-    "menu.publishersSubtitle" : { "localizations" : { "tr" : { "stringUnit" : { "state" : "translated", "value" : "Yayınevlerine göre keşfet" } } } },
-    "menu.requestsSubtitle" : { "localizations" : { "tr" : { "stringUnit" : { "state" : "translated", "value" : "İstekleri incele ve oy ver" } } } },
-    "terms.title" : {
-      "localizations" : {
-        "tr" : {
-          "stringUnit" : {
-            "state" : "translated",
-            "value" : "Topluluk Kuralları"
+    "book.detail.addToFavorites": {
+      "localizations": {
+        "tr": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Favorilerime ekle"
           }
         }
       }
     }
   },
-  "version" : "1.0"
+  "version": "1.0"
 }

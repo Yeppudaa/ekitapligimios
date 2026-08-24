@@ -236,7 +236,7 @@ struct ProfileView: View {
             } else {
                 ProfileSectionHeading(title: L10n.profileMyBooks, subtitle: nil)
                 ForEach(container.libraryItems.prefix(6), id: \.bookId) { item in
-                    NavigationLink { BookDetailView(bookID: Int(item.bookId) ?? 0) } label: {
+                    NavigationLink { BookDetailDestination(bookIDString: item.bookId) } label: {
                         ProfileBookRow(item: item)
                     }
                     .buttonStyle(.plain)
@@ -730,7 +730,7 @@ private struct ContinueReadingCard: View {
                 .foregroundStyle(EKitapligimPalette.profileTealDeep)
 
             if let item {
-                NavigationLink { BookDetailView(bookID: Int(item.bookId) ?? 0) } label: {
+                NavigationLink { BookDetailDestination(bookIDString: item.bookId) } label: {
                     HStack(spacing: 13) {
                         EKitapligimRemoteCover(urlString: item.coverUrl)
                             .frame(width: 56, height: 82)

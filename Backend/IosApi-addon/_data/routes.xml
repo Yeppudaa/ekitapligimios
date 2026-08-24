@@ -40,7 +40,7 @@
   <route route_type="public" route_prefix="ios-api" sub_name="conversation-reply" format="v1/conversations/:int&lt;conversation_id&gt;/reply" controller="Ekitapligim\MobileApi:Conversations" action_prefix="reply" />
   <route route_type="public" route_prefix="ios-api" sub_name="conversation-reply-ios" format="v1/conversation-reply/:int&lt;conversation_id&gt;" controller="Ekitapligim\MobileApi:Conversations" action_prefix="reply" />
   <route route_type="public" route_prefix="ios-api" sub_name="conversations" format="v1/conversations" controller="Ekitapligim\MobileApi:Conversations" />
-  <route route_type="public" route_prefix="ios-api" sub_name="forum-threads" format="v1/forums/:int&lt;node_id&gt;/threads" controller="Ekitapligim\MobileApi:ForumThreads" />
+  <route route_type="public" route_prefix="ios-api" sub_name="forum-threads" format="v1/forums/:int&lt;node_id&gt;/threads" controller="Ekitapligim\IosApi:ForumThreads" />
   <route route_type="public" route_prefix="ios-api" sub_name="forums" format="v1/forums" controller="Ekitapligim\MobileApi:Forums" />
   <route route_type="public" route_prefix="ios-api" sub_name="live-activity" format="v1/live-activity" controller="Ekitapligim\MobileApi:LiveActivity" />
   <route route_type="public" route_prefix="ios-api" sub_name="me" format="v1/me" controller="Ekitapligim\MobileApi:Me" />
@@ -73,5 +73,5 @@
   <route route_type="public" route_prefix="ios-api" sub_name="post-report" format="v1/posts/:int&lt;post_id&gt;/report" controller="Ekitapligim\IosApi:PostReport" />
   <route route_type="public" route_prefix="ios-api" sub_name="publisher-books" format="v1/publishers/:str&lt;slug&gt;/books" controller="Ekitapligim\MobileApi:PublisherBooks" />
   <route route_type="public" route_prefix="ios-api" sub_name="publishers" format="v1/publishers" controller="Ekitapligim\MobileApi:Publishers" />
-  <route route_type="public" route_prefix="ios-api" sub_name="thread-posts" format="v1/threads/:int&lt;thread_id&gt;/posts" controller="Ekitapligim\MobileApi:ThreadPosts" />
+  <route route_type="public" route_prefix="ios-api" sub_name="thread-posts" format="v1/threads/:int&lt;thread_id&gt;/posts" controller="Ekitapligim\IosApi:ThreadPosts" />
 </routes>

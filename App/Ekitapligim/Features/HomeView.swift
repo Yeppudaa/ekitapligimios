@@ -62,7 +62,7 @@ struct HomeView: View {
             }
             .toolbar(.hidden, for: .navigationBar)
             .navigationDestination(for: String.self) { id in
-                BookDetailView(bookID: Int(id) ?? 0)
+                BookDetailDestination(bookIDString: id)
             }
             .task {
                 await loadIfNeeded()

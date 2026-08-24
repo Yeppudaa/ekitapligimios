@@ -32,6 +32,8 @@ $iosControllers = @{
     "MemberBlock" = $true
     "PostReport" = $true
     "Terms" = $true
+    "ForumThreads" = $true
+    "ThreadPosts" = $true
 }
 
 [xml]$source = Get-Content -Raw -LiteralPath $MobileApiRoutesPath

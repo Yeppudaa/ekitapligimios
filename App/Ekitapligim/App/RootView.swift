@@ -9,6 +9,7 @@ struct RootView: View {
     @State private var isMenuPresented = false
 
     init() {
+        EKitapligimAppearance.configure()
         let appearance = UITabBarAppearance()
         appearance.configureWithOpaqueBackground()
         appearance.backgroundColor = UIColor(red: 251 / 255, green: 254 / 255, blue: 254 / 255, alpha: 1)
@@ -335,12 +336,17 @@ private struct AppRouteSheet: View {
     @ViewBuilder private var routeDestination: some View {
         switch route {
         case .home, .catalog, .forum, .authors, .requests, .profile:
-            // Bottom-bar routes are handled by `AppContainer.open(route:)` and never reach the sheet.
-            EmptyView()
+            EKEmptyState(
+                title: L10n.commonClose,
+                message: L10n.menuTitle,
+                systemImage: "arrow.left"
+            )
         case .login:
             LoginView()
-        case .bookDetail(let id), .reader(let id):
+        case .bookDetail(let id):
             BookDetailView(bookID: id)
+        case .reader(let id):
+            ReaderLoaderView(bookID: id)
         case .forumDetail(let id):
             ForumThreadsView(forum: ForumDTO(id: String(id), title: L10n.communityForumsSection))
         case .thread(let id):

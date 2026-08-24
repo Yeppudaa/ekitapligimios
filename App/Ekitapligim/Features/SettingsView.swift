@@ -7,12 +7,15 @@ struct SettingsView: View {
     @State private var showingLogin = false
 
     var body: some View {
-        List {
-            authenticationSection
-            profileSection
-            accountSection
-            legalSection
-            privacySection
+        EKitapligimScreen {
+            List {
+                authenticationSection
+                profileSection
+                accountSection
+                legalSection
+                privacySection
+            }
+            .ekitapligimListScreen()
         }
         .navigationTitle(L10n.settingsTitle)
         .navigationBarTitleDisplayMode(.inline)

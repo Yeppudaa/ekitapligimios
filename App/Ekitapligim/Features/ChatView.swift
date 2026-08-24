@@ -15,6 +15,7 @@ struct ChatView: View {
     @State private var newestID: String?
     @State private var hasOlder = false
     @State private var draft = ""
+    @FocusState private var isComposerFocused: Bool
     @State private var isLoadingRooms = false
     @State private var isLoadingMessages = false
     @State private var isLoadingOlder = false
@@ -25,29 +26,41 @@ struct ChatView: View {
     @State private var pollTask: Task<Void, Never>?
 
     private static let pollInterval: Duration = .seconds(5)
+    private static let draftCharacterLimit = 1_000
 
     private var selectedRoom: ChatRoomDTO? {
         rooms.first { $0.id == selectedRoomID }
     }
 
     private var canSend: Bool {
-        container.isSignedIn && (selectedRoom?.canSend ?? false) && !(selectedRoom?.isReadOnly ?? false)
+        container.isSignedIn
+            && capabilities.authenticated
+            && capabilities.canUse
+            && (selectedRoom?.canSend ?? false)
+    }
+
+    private var sessionReady: Bool {
+        container.isSignedIn && capabilities.authenticated
     }
 
     var body: some View {
         ZStack {
-            EKitapligimPageBackground()
+            Color(hex: 0xF5F8F9).ignoresSafeArea()
+            LinearGradient(
+                colors: [Color(hex: 0xF9FCFC), Color(hex: 0xF2F8F8), Color(hex: 0xFFFCF5)],
+                startPoint: .top,
+                endPoint: .bottom
+            )
+            .ignoresSafeArea()
             VStack(spacing: 0) {
-                header
-                if !rooms.isEmpty {
-                    roomTabs
-                }
-                Divider().overlay(EKitapligimPalette.chatBorder)
                 transcript
-                composer
             }
         }
+        .safeAreaInset(edge: .bottom, spacing: 0) {
+            composer
+        }
         .navigationTitle(L10n.chatTitle)
+        .navigationSubtitle(L10n.chatSubtitle)
         .navigationBarTitleDisplayMode(.inline)
         .toolbar {
             ToolbarItem(placement: .topBarTrailing) {
@@ -62,79 +75,202 @@ struct ChatView: View {
         .sheet(isPresented: $showingLogin) { LoginView() }
         .task { await loadRooms() }
         .onDisappear { stopPolling() }
+        .onChange(of: draft) { _, newValue in
+            if newValue.count > Self.draftCharacterLimit {
+                draft = String(newValue.prefix(Self.draftCharacterLimit))
+            }
+        }
     }
 
-    // MARK: Başlık
+    // MARK: Hero + odalar
 
-    private var header: some View {
-        HStack(alignment: .center, spacing: 12) {
-            Image(systemName: "bubble.left.and.text.bubble.right.fill")
-                .font(.headline)
-                .foregroundStyle(.white)
-                .frame(width: 40, height: 40)
-                .background(.white.opacity(0.18))
-                .clipShape(RoundedRectangle(cornerRadius: 12, style: .continuous))
-
-            VStack(alignment: .leading, spacing: 2) {
-                Text(selectedRoom?.name ?? L10n.chatTitle)
-                    .font(.subheadline.weight(.heavy))
+    private var chatHero: some View {
+        VStack(alignment: .leading, spacing: 13) {
+            HStack(alignment: .center, spacing: 13) {
+                Image(systemName: "bubble.left.and.bubble.right.fill")
+                    .font(.title3)
                     .foregroundStyle(.white)
-                    .lineLimit(1)
-                Text(statusText)
-                    .font(.caption2)
-                    .foregroundStyle(.white.opacity(0.85))
-                    .lineLimit(1)
+                    .frame(width: 52, height: 52)
+                    .background(
+                        LinearGradient(
+                            colors: [EKitapligimPalette.chatTeal, Color(hex: 0x046B70)],
+                            startPoint: .topLeading,
+                            endPoint: .bottomTrailing
+                        ),
+                        in: RoundedRectangle(cornerRadius: 17, style: .continuous)
+                    )
+
+                VStack(alignment: .leading, spacing: 3) {
+                    Text(L10n.chatHeroTitle)
+                        .font(.headline.weight(.heavy))
+                        .foregroundStyle(EKitapligimPalette.chatInk)
+                    Text(L10n.chatHeroSubtitle)
+                        .font(.caption)
+                        .foregroundStyle(EKitapligimPalette.chatMuted)
+                        .fixedSize(horizontal: false, vertical: true)
+                }
+
+                Spacer(minLength: 0)
+
+                HStack(spacing: 5) {
+                    Circle()
+                        .fill(Color(hex: 0x1CB879))
+                        .frame(width: 7, height: 7)
+                    Text(L10n.chatLiveBadge)
+                        .font(.system(size: 10, weight: .heavy))
+                        .foregroundStyle(Color(hex: 0x08734E))
+                }
+                .padding(.horizontal, 10)
+                .padding(.vertical, 7)
+                .background(Color(hex: 0xE5FAF1), in: Capsule())
             }
 
-            Spacer(minLength: 0)
+            HStack(spacing: 8) {
+                HStack(spacing: 6) {
+                    Image(systemName: sessionReady ? "checkmark.shield.fill" : "eye.fill")
+                        .font(.caption2)
+                        .foregroundStyle(EKitapligimPalette.chatTeal)
+                    Text(chatHeroStatusText)
+                        .font(.system(size: 10, weight: .semibold))
+                        .foregroundStyle(EKitapligimPalette.chatInk)
+                }
+                .padding(.horizontal, 10)
+                .padding(.vertical, 7)
+                .background(.white.opacity(0.72), in: Capsule())
+                .overlay(Capsule().stroke(Color(hex: 0xD5E8E7)))
 
-            HStack(spacing: 5) {
-                Circle()
-                    .fill(EKitapligimPalette.liveDot)
-                    .frame(width: 7, height: 7)
-                Text(L10n.chatLiveBadge)
-                    .font(.system(size: 9, weight: .heavy))
-                    .foregroundStyle(.white)
+                Text(L10n.chatHeroLiveUpdate)
+                    .font(.system(size: 10))
+                    .foregroundStyle(EKitapligimPalette.chatMuted)
+                    .lineLimit(1)
             }
-            .padding(.horizontal, 9)
-            .padding(.vertical, 5)
-            .background(.white.opacity(0.16), in: Capsule())
         }
-        .padding(14)
+        .padding(17)
         .background(
             LinearGradient(
-                colors: [EKitapligimPalette.chatTeal, Color(hex: 0x0B4F55)],
-                startPoint: .leading,
-                endPoint: .trailing
+                colors: [.white, Color(hex: 0xEAF8F7), Color(hex: 0xFFF6E5)],
+                startPoint: .topLeading,
+                endPoint: .bottomTrailing
             )
         )
-    }
-
-    private var statusText: String {
-        if !container.isSignedIn { return L10n.chatStatusGuest }
-        if canSend { return L10n.chatStatusMember }
-        return L10n.chatStatusSecureRead
+        .clipShape(RoundedRectangle(cornerRadius: 22, style: .continuous))
+        .overlay {
+            RoundedRectangle(cornerRadius: 22, style: .continuous)
+                .stroke(Color(hex: 0xCFE8E8))
+        }
     }
 
     private var roomTabs: some View {
-        ScrollView(.horizontal, showsIndicators: false) {
-            HStack(spacing: 8) {
-                ForEach(rooms) { room in
-                    EKChip(
-                        title: room.name,
-                        isSelected: selectedRoomID == room.id,
-                        selectedBackground: EKitapligimPalette.chatTeal
-                    ) {
-                        guard selectedRoomID != room.id else { return }
-                        selectedRoomID = room.id
-                        Task { await loadMessages(reset: true) }
+        Group {
+            if rooms.count == 1, let room = rooms.first {
+                chatRoomTab(room, expanded: true)
+            } else {
+                ScrollView(.horizontal, showsIndicators: false) {
+                    HStack(spacing: 8) {
+                        ForEach(rooms) { room in
+                            chatRoomTab(room, expanded: false)
+                        }
                     }
+                    .padding(.horizontal, 9)
+                    .padding(.vertical, 9)
+                }
+                .background(.white.opacity(0.94), in: RoundedRectangle(cornerRadius: 18, style: .continuous))
+                .overlay {
+                    RoundedRectangle(cornerRadius: 18, style: .continuous)
+                        .stroke(EKitapligimPalette.chatBorder)
                 }
             }
-            .padding(.horizontal, 14)
-            .padding(.vertical, 9)
         }
-        .background(.white)
+    }
+
+    private func chatRoomTab(_ room: ChatRoomDTO, expanded: Bool) -> some View {
+        let selected = selectedRoomID == room.id
+        return Button {
+            guard selectedRoomID != room.id else { return }
+            selectedRoomID = room.id
+            Task { await loadMessages(reset: true) }
+        } label: {
+            HStack(spacing: expanded ? 10 : 6) {
+                Image(systemName: room.isPrivate ? "lock.fill" : "person.3.fill")
+                    .font(expanded ? .body : .caption)
+                    .accessibilityHidden(true)
+                    .foregroundStyle(!expanded && selected ? .white : EKitapligimPalette.chatTeal)
+                    .frame(width: expanded ? 39 : 24, height: expanded ? 39 : 24)
+                    .background(
+                        (!expanded && selected ? Color.white.opacity(0.16) : EKitapligimPalette.chatTealSoft),
+                        in: RoundedRectangle(cornerRadius: expanded ? 12 : 8, style: .continuous)
+                    )
+
+                VStack(alignment: .leading, spacing: 2) {
+                    Text(room.name)
+                        .font(expanded ? .subheadline.weight(.bold) : .caption.weight(.bold))
+                        .foregroundStyle(!expanded && selected ? .white : EKitapligimPalette.chatInk)
+                        .lineLimit(1)
+                    if expanded {
+                        Text(roomDescription(room))
+                            .font(.system(size: 10))
+                            .foregroundStyle(EKitapligimPalette.chatMuted)
+                            .lineLimit(1)
+                    }
+                }
+                .frame(maxWidth: expanded ? .infinity : nil, alignment: .leading)
+
+                onlinePill(for: room, selected: !expanded && selected)
+            }
+            .padding(.horizontal, expanded ? 14 : 12)
+            .padding(.vertical, expanded ? 12 : 9)
+            .frame(maxWidth: expanded ? .infinity : nil, alignment: .leading)
+            .background {
+                if expanded {
+                    LinearGradient(
+                        colors: [.white, Color(hex: 0xF0FAF9), Color(hex: 0xFFFAEF)],
+                        startPoint: .leading,
+                        endPoint: .trailing
+                    )
+                } else if selected {
+                    EKitapligimPalette.chatTeal
+                } else {
+                    Color(hex: 0xF3F7F7)
+                }
+            }
+            .clipShape(RoundedRectangle(cornerRadius: expanded ? 18 : 13, style: .continuous))
+            .overlay {
+                if expanded || !selected {
+                    RoundedRectangle(cornerRadius: expanded ? 18 : 13, style: .continuous)
+                        .stroke(EKitapligimPalette.chatBorder)
+                }
+            }
+        }
+        .accessibilityLabel(room.name)
+        .buttonStyle(.plain)
+    }
+
+    private func onlinePill(for room: ChatRoomDTO, selected: Bool) -> some View {
+        HStack(spacing: 5) {
+            Circle()
+                .fill(selected ? Color.white : Color(hex: 0x1CB879))
+                .frame(width: 6, height: 6)
+            Text(room.userCount > 0 ? L10n.chatOnlineCount(room.userCount) : L10n.chatRoomOpen)
+                .font(.system(size: 9, weight: .bold))
+                .foregroundStyle(selected ? .white : Color(hex: 0x08734E))
+        }
+        .padding(.horizontal, 8)
+        .padding(.vertical, 6)
+        .background(
+            selected ? Color.white.opacity(0.16) : Color(hex: 0xE5FAF1),
+            in: Capsule()
+        )
+    }
+
+    private func roomDescription(_ room: ChatRoomDTO) -> String {
+        let trimmed = room.description.trimmingCharacters(in: .whitespacesAndNewlines)
+        return trimmed.isEmpty ? L10n.chatRoomFallbackDescription : trimmed
+    }
+
+    private var chatHeroStatusText: String {
+        if sessionReady { return L10n.chatStatusMember }
+        if container.isSignedIn { return L10n.chatStatusSecureRead }
+        return L10n.chatStatusGuest
     }
 
     // MARK: Mesaj listesi
@@ -143,41 +279,64 @@ struct ChatView: View {
         ScrollViewReader { proxy in
             ScrollView {
                 LazyVStack(alignment: .leading, spacing: 10) {
-                    welcomeCard
+                    if isLoadingRooms && rooms.isEmpty {
+                        chatLoadingCard(title: L10n.chatRoomsLoading)
+                    } else if rooms.isEmpty {
+                        if let errorMessage {
+                            chatReconnectCard(message: errorMessage) {
+                                Task { await loadRooms() }
+                            }
+                        } else {
+                            chatEmptyCard(message: L10n.chatRoomsEmpty)
+                        }
+                    } else {
+                        chatHero
 
-                    if hasOlder {
-                        Button {
-                            Task { await loadOlder() }
-                        } label: {
-                            Text(isLoadingOlder ? L10n.commonLoading : L10n.chatLoadOlder)
+                        roomTabs
+
+                        welcomeCard
+
+                        if hasOlder {
+                            Button {
+                                Task { await loadOlder() }
+                            } label: {
+                                HStack(spacing: 7) {
+                                    if isLoadingOlder {
+                                        ProgressView()
+                                            .controlSize(.small)
+                                            .tint(EKitapligimPalette.chatTeal)
+                                    } else {
+                                        Image(systemName: "clock.arrow.circlepath")
+                                            .font(.system(size: 17, weight: .semibold))
+                                            .accessibilityHidden(true)
+                                    }
+                                    Text(isLoadingOlder ? L10n.commonLoading : L10n.chatLoadOlder)
+                                }
                                 .font(.caption.weight(.bold))
                                 .foregroundStyle(EKitapligimPalette.chatTeal)
                                 .frame(maxWidth: .infinity)
                                 .padding(.vertical, 9)
                                 .background(EKitapligimPalette.chatTealSoft)
-                                .clipShape(Capsule())
+                                .clipShape(RoundedRectangle(cornerRadius: 12, style: .continuous))
+                            }
+                            .accessibilityLabel(L10n.chatLoadOlder)
+                            .buttonStyle(.plain)
+                            .disabled(isLoadingOlder)
                         }
-                        .buttonStyle(.plain)
-                        .disabled(isLoadingOlder)
-                    }
 
-                    if isLoadingMessages && messages.isEmpty {
-                        EKSkeletonCard(height: 52)
-                        EKSkeletonCard(height: 52)
-                    } else if let errorMessage, messages.isEmpty {
-                        EKStateCard(
-                            title: L10n.chatReconnectTitle,
-                            message: errorMessage,
-                            retryTitle: L10n.chatReconnect
-                        ) {
-                            Task { await loadRooms() }
-                        }
-                    } else if messages.isEmpty {
-                        EKStateCard(title: L10n.chatMessagesEmpty)
-                    } else {
-                        ForEach(messages) { message in
-                            ChatMessageBubble(message: message)
-                                .id(message.id)
+                        if isLoadingMessages && messages.isEmpty {
+                            chatLoadingCard(title: L10n.chatMessagesLoading)
+                        } else if let errorMessage, messages.isEmpty {
+                            chatReconnectCard(message: errorMessage) {
+                                Task { await loadRooms() }
+                            }
+                        } else if messages.isEmpty {
+                            chatEmptyCard(message: L10n.chatMessagesEmpty)
+                        } else {
+                            ForEach(messages) { message in
+                                ChatMessageBubble(message: message)
+                                    .id(message.id)
+                            }
                         }
                     }
                 }
@@ -192,24 +351,43 @@ struct ChatView: View {
     }
 
     private var welcomeCard: some View {
-        VStack(alignment: .leading, spacing: 4) {
-            Text(welcomeTitle)
-                .font(.caption.weight(.bold))
-                .foregroundStyle(EKitapligimPalette.chatInk)
-            Text(L10n.chatWelcomeRules)
-                .font(.caption2)
-                .foregroundStyle(EKitapligimPalette.chatMuted)
-                .fixedSize(horizontal: false, vertical: true)
+        HStack(alignment: .center, spacing: 10) {
+            Image(systemName: sessionReady ? "checkmark.shield.fill" : "eye.fill")
+                .font(.body)
+                .foregroundStyle(sessionReady ? EKitapligimPalette.chatTeal : EKitapligimPalette.chatAmber)
+            VStack(alignment: .leading, spacing: 3) {
+                Text(welcomeTitle)
+                    .font(.caption.weight(.bold))
+                    .foregroundStyle(EKitapligimPalette.chatInk)
+                Text(welcomeBody)
+                    .font(.caption2)
+                    .foregroundStyle(EKitapligimPalette.chatMuted)
+                    .fixedSize(horizontal: false, vertical: true)
+            }
         }
         .frame(maxWidth: .infinity, alignment: .leading)
-        .padding(12)
-        .background(EKitapligimPalette.chatTealSoft)
-        .clipShape(RoundedRectangle(cornerRadius: 13, style: .continuous))
+        .padding(.horizontal, 13)
+        .padding(.vertical, 11)
+        .background(sessionReady ? Color(hex: 0xEAF8F7) : Color(hex: 0xFFF8EA))
+        .clipShape(RoundedRectangle(cornerRadius: 15, style: .continuous))
+        .overlay {
+            RoundedRectangle(cornerRadius: 15, style: .continuous)
+                .stroke(sessionReady ? Color(hex: 0xC8E7E4) : Color(hex: 0xF0DFC0))
+        }
     }
 
     private var welcomeTitle: String {
-        if !container.isSignedIn { return L10n.chatWelcomeGuest }
-        return canSend ? L10n.chatWelcomeReady : L10n.chatWelcomeSecure
+        if sessionReady { return L10n.chatWelcomeReady }
+        if container.isSignedIn { return L10n.chatWelcomeSecure }
+        return L10n.chatWelcomeGuest
+    }
+
+    private var welcomeBody: String {
+        if let room = selectedRoom {
+            let trimmed = room.description.trimmingCharacters(in: .whitespacesAndNewlines)
+            if !trimmed.isEmpty { return trimmed }
+        }
+        return L10n.chatWelcomeRules
     }
 
     // MARK: Mesaj yazma
@@ -224,38 +402,80 @@ struct ChatView: View {
             }
 
             if !container.isSignedIn {
-                guestPrompt(title: L10n.chatComposerGuestTitle, subtitle: L10n.chatComposerGuestSubtitle) {
+                chatAccessCallToAction(
+                    icon: "arrow.right.circle.fill",
+                    title: L10n.chatComposerGuestTitle,
+                    subtitle: L10n.chatComposerGuestSubtitle,
+                    buttonTitle: L10n.commonLogin
+                ) {
                     showingLogin = true
                 }
-            } else if selectedRoom?.isReadOnly == true {
-                readOnlyNotice(title: L10n.chatComposerReadOnlyTitle, subtitle: L10n.chatComposerReadOnlySubtitle)
-            } else if !canSend {
+            } else if container.isSignedIn && isLoadingRooms {
+                chatSessionPreparing
+            } else if container.isSignedIn && !capabilities.authenticated {
+                chatAccessCallToAction(
+                    icon: "wifi.slash",
+                    title: L10n.chatComposerSessionTitle,
+                    subtitle: L10n.chatComposerSessionSubtitle,
+                    buttonTitle: L10n.chatSessionRefresh
+                ) {
+                    Task {
+                        await container.refreshSessionData()
+                        await loadRooms()
+                    }
+                }
+            } else if !capabilities.canUse || selectedRoom?.isReadOnly == true {
                 readOnlyNotice(
-                    title: capabilities.canUse ? L10n.chatComposerNoPermission : L10n.chatComposerDisabled,
-                    subtitle: L10n.chatComposerReadOnlySubtitle
+                    title: L10n.chatComposerReadOnlyTitle,
+                    subtitle: selectedRoom?.isReadOnly == true
+                        ? L10n.chatComposerReadOnlySubtitle
+                        : L10n.chatComposerNoPermission
                 )
             } else {
-                HStack(spacing: 10) {
-                    TextField(L10n.chatComposerPlaceholder, text: $draft, axis: .vertical)
-                        .lineLimit(1...4)
-                        .padding(.horizontal, 13)
-                        .padding(.vertical, 10)
-                        .background(EKitapligimPalette.chatSurface)
-                        .clipShape(RoundedRectangle(cornerRadius: 20, style: .continuous))
+                HStack(alignment: .bottom, spacing: 9) {
+                    HStack(spacing: 8) {
+                        Image(systemName: "person.fill")
+                            .font(.subheadline)
+                            .foregroundStyle(EKitapligimPalette.chatTeal)
+                            .accessibilityHidden(true)
+                        TextField(L10n.chatComposerPlaceholder, text: $draft, axis: .vertical)
+                            .focused($isComposerFocused)
+                            .lineLimit(1...4)
+                    }
+                    .padding(.horizontal, 12)
+                    .padding(.vertical, 10)
+                    .background(Color(hex: 0xF8FCFC))
+                    .clipShape(RoundedRectangle(cornerRadius: 18, style: .continuous))
+                    .overlay {
+                        RoundedRectangle(cornerRadius: 18, style: .continuous)
+                            .stroke(
+                                isComposerFocused ? EKitapligimPalette.chatTeal : Color(hex: 0xD8E3E4),
+                                lineWidth: 1
+                            )
+                    }
 
                     Button {
                         Task { await send() }
                     } label: {
-                        Image(systemName: "paperplane.fill")
-                            .font(.subheadline)
-                            .foregroundStyle(.white)
-                            .frame(width: 42, height: 42)
-                            .background(EKitapligimPalette.chatTeal)
-                            .clipShape(Circle())
+                        Group {
+                            if isSending {
+                                ProgressView().tint(.white)
+                            } else {
+                                Image(systemName: "paperplane.fill")
+                                    .font(.subheadline)
+                                    .accessibilityHidden(true)
+                                    .foregroundStyle(.white)
+                            }
+                        }
+                        .frame(width: 50, height: 50)
+                        .background(
+                            canSend ? EKitapligimPalette.chatTeal : Color(hex: 0xCCD6D9),
+                            in: RoundedRectangle(cornerRadius: 17, style: .continuous)
+                        )
                     }
-                    .buttonStyle(.plain)
-                    .disabled(isSending || draft.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty)
                     .accessibilityLabel(L10n.chatComposerSend)
+                    .buttonStyle(.plain)
+                    .disabled(!canSend || isSending || draft.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty)
                 }
             }
         }
@@ -263,54 +483,186 @@ struct ChatView: View {
         .padding(.top, 10)
         .padding(.bottom, 12)
         .background(.white)
-        .overlay(alignment: .top) {
-            Rectangle().fill(EKitapligimPalette.chatBorder).frame(height: 1)
+        .clipShape(
+            UnevenRoundedRectangle(
+                topLeadingRadius: 22,
+                bottomLeadingRadius: 0,
+                bottomTrailingRadius: 0,
+                topTrailingRadius: 22,
+                style: .continuous
+            )
+        )
+        .overlay {
+            UnevenRoundedRectangle(
+                topLeadingRadius: 22,
+                bottomLeadingRadius: 0,
+                bottomTrailingRadius: 0,
+                topTrailingRadius: 22,
+                style: .continuous
+            )
+            .stroke(EKitapligimPalette.chatBorder, lineWidth: 1)
         }
     }
 
-    private func guestPrompt(title: String, subtitle: String, action: @escaping () -> Void) -> some View {
-        Button(action: action) {
-            HStack(spacing: 11) {
-                Image(systemName: "person.crop.circle.badge.plus")
-                    .foregroundStyle(EKitapligimPalette.chatTeal)
-                VStack(alignment: .leading, spacing: 2) {
-                    Text(title)
-                        .font(.caption.weight(.bold))
-                        .foregroundStyle(EKitapligimPalette.chatInk)
-                    Text(subtitle)
-                        .font(.caption2)
-                        .foregroundStyle(EKitapligimPalette.chatMuted)
-                        .multilineTextAlignment(.leading)
-                }
-                Spacer(minLength: 0)
-                Image(systemName: "chevron.right")
+    private var chatSessionPreparing: some View {
+        HStack(spacing: 12) {
+            ProgressView()
+                .tint(EKitapligimPalette.chatTeal)
+            VStack(alignment: .leading, spacing: 2) {
+                Text(L10n.chatSessionPreparingTitle)
+                    .font(.subheadline.weight(.bold))
+                    .foregroundStyle(EKitapligimPalette.chatInk)
+                Text(L10n.chatSessionPreparingSubtitle)
                     .font(.caption2)
-                    .foregroundStyle(EKitapligimPalette.chatTeal)
+                    .foregroundStyle(EKitapligimPalette.chatMuted)
             }
-            .padding(13)
-            .background(EKitapligimPalette.chatTealSoft)
-            .clipShape(RoundedRectangle(cornerRadius: 14, style: .continuous))
+            Spacer(minLength: 0)
         }
-        .buttonStyle(.plain)
+        .accessibilityElement(children: .combine)
+    }
+
+    private func chatLoadingCard(title: String) -> some View {
+        VStack(spacing: 12) {
+            ProgressView()
+                .tint(EKitapligimPalette.chatTeal)
+            Text(title)
+                .font(.subheadline.weight(.semibold))
+                .foregroundStyle(EKitapligimPalette.chatInk)
+                .multilineTextAlignment(.center)
+            Text(L10n.chatRoomsLoadingSubtitle)
+                .font(.system(size: 11))
+                .foregroundStyle(EKitapligimPalette.chatMuted)
+                .multilineTextAlignment(.center)
+        }
+        .frame(maxWidth: .infinity)
+        .padding(.horizontal, 34)
+        .padding(.vertical, 28)
+        .background(.white, in: RoundedRectangle(cornerRadius: 20, style: .continuous))
+        .overlay {
+            RoundedRectangle(cornerRadius: 20, style: .continuous)
+                .stroke(EKitapligimPalette.chatBorder, lineWidth: 1)
+        }
+    }
+
+    private func chatEmptyCard(message: String) -> some View {
+        VStack(spacing: 8) {
+            Image(systemName: "bubble.left.and.bubble.right.fill")
+                .font(.title)
+                .foregroundStyle(EKitapligimPalette.chatTeal)
+            Text(message)
+                .font(.subheadline)
+                .foregroundStyle(EKitapligimPalette.chatMuted)
+                .multilineTextAlignment(.center)
+        }
+        .frame(maxWidth: .infinity)
+        .padding(24)
+        .background(.white, in: RoundedRectangle(cornerRadius: 16, style: .continuous))
+        .overlay {
+            RoundedRectangle(cornerRadius: 16, style: .continuous)
+                .stroke(EKitapligimPalette.chatBorder, lineWidth: 1)
+        }
+    }
+
+    private func chatReconnectCard(message: String, retry: @escaping () -> Void) -> some View {
+        VStack(spacing: 11) {
+            Image(systemName: "wifi.slash")
+                .font(.title2)
+                .foregroundStyle(EKitapligimPalette.chatTeal)
+                .frame(width: 58, height: 58)
+                .background(EKitapligimPalette.chatTealSoft, in: RoundedRectangle(cornerRadius: 18, style: .continuous))
+            Text(L10n.chatReconnectTitle)
+                .font(.headline.weight(.heavy))
+                .foregroundStyle(EKitapligimPalette.chatInk)
+                .multilineTextAlignment(.center)
+            Text(message)
+                .font(.caption)
+                .foregroundStyle(EKitapligimPalette.chatMuted)
+                .multilineTextAlignment(.center)
+            Button(action: retry) {
+                Label(L10n.chatReconnect, systemImage: "arrow.clockwise")
+                    .font(.subheadline.weight(.bold))
+                    .foregroundStyle(.white)
+                    .padding(.horizontal, 16)
+                    .padding(.vertical, 10)
+                    .background(EKitapligimPalette.chatTeal, in: RoundedRectangle(cornerRadius: 14, style: .continuous))
+            }
+            .buttonStyle(.plain)
+        }
+        .padding(26)
+        .frame(maxWidth: .infinity)
+        .background(
+            LinearGradient(colors: [.white, Color(hex: 0xFFFAF0)], startPoint: .top, endPoint: .bottom),
+            in: RoundedRectangle(cornerRadius: 22, style: .continuous)
+        )
+        .overlay {
+            RoundedRectangle(cornerRadius: 22, style: .continuous)
+                .stroke(Color(hex: 0xE2D7C5), lineWidth: 1)
+        }
+    }
+
+    private func chatAccessCallToAction(
+        icon: String,
+        title: String,
+        subtitle: String,
+        buttonTitle: String,
+        action: @escaping () -> Void
+    ) -> some View {
+        HStack(spacing: 10) {
+            Image(systemName: icon)
+                .font(.title3)
+                .foregroundStyle(EKitapligimPalette.chatTeal)
+                .frame(width: 44, height: 44)
+                .background(
+                    LinearGradient(
+                        colors: [EKitapligimPalette.chatTealSoft, Color(hex: 0xFFF4DD)],
+                        startPoint: .topLeading,
+                        endPoint: .bottomTrailing
+                    ),
+                    in: RoundedRectangle(cornerRadius: 14, style: .continuous)
+                )
+
+            VStack(alignment: .leading, spacing: 2) {
+                Text(title)
+                    .font(.caption.weight(.bold))
+                    .foregroundStyle(EKitapligimPalette.chatInk)
+                Text(subtitle)
+                    .font(.caption2)
+                    .foregroundStyle(EKitapligimPalette.chatMuted)
+                    .multilineTextAlignment(.leading)
+            }
+
+            Spacer(minLength: 0)
+
+            Button(action: action) {
+                Text(buttonTitle)
+                    .font(.caption.weight(.bold))
+                    .foregroundStyle(.white)
+                    .padding(.horizontal, 13)
+                    .padding(.vertical, 9)
+                    .background(EKitapligimPalette.chatTeal, in: RoundedRectangle(cornerRadius: 13, style: .continuous))
+            }
+            .buttonStyle(.plain)
+        }
     }
 
     private func readOnlyNotice(title: String, subtitle: String) -> some View {
-        VStack(alignment: .leading, spacing: 3) {
-            Text(title)
-                .font(.caption.weight(.bold))
-                .foregroundStyle(EKitapligimPalette.chatAnnouncementInk)
-            Text(subtitle)
-                .font(.caption2)
-                .foregroundStyle(EKitapligimPalette.chatAnnouncementInk.opacity(0.85))
-                .multilineTextAlignment(.leading)
-        }
-        .frame(maxWidth: .infinity, alignment: .leading)
-        .padding(13)
-        .background(EKitapligimPalette.chatAnnouncement)
-        .clipShape(RoundedRectangle(cornerRadius: 14, style: .continuous))
-        .overlay {
-            RoundedRectangle(cornerRadius: 14, style: .continuous)
-                .stroke(EKitapligimPalette.chatAnnouncementBorder)
+        HStack(alignment: .center, spacing: 11) {
+            Image(systemName: "eye.fill")
+                .font(.body)
+                .foregroundStyle(EKitapligimPalette.chatTeal)
+                .frame(width: 42, height: 42)
+                .background(EKitapligimPalette.chatTealSoft, in: RoundedRectangle(cornerRadius: 13, style: .continuous))
+                .accessibilityHidden(true)
+            VStack(alignment: .leading, spacing: 2) {
+                Text(title)
+                    .font(.caption.weight(.bold))
+                    .foregroundStyle(EKitapligimPalette.chatInk)
+                Text(subtitle)
+                    .font(.caption2)
+                    .foregroundStyle(EKitapligimPalette.chatMuted)
+                    .multilineTextAlignment(.leading)
+            }
+            Spacer(minLength: 0)
         }
     }
 
@@ -329,9 +681,7 @@ struct ChatView: View {
             if selectedRoomID == nil {
                 selectedRoomID = initialRoomID.flatMap { id in rooms.first { $0.id == id }?.id } ?? rooms.first?.id
             }
-            if rooms.isEmpty {
-                errorMessage = L10n.chatRoomsEmpty
-            } else {
+            if !rooms.isEmpty {
                 await loadMessages(reset: true)
             }
         } catch {
@@ -360,7 +710,7 @@ struct ChatView: View {
             errorMessage = nil
             startPolling()
         } catch {
-            errorMessage = L10n.chatRoomsFailed
+            errorMessage = L10n.chatMessagesFailed
         }
     }
 
@@ -387,7 +737,7 @@ struct ChatView: View {
 
     private func send() async {
         let text = draft.trimmingCharacters(in: .whitespacesAndNewlines)
-        guard !text.isEmpty, let roomID = selectedRoomID else { return }
+        guard canSend, selectedRoom?.isReadOnly != true, !text.isEmpty, let roomID = selectedRoomID else { return }
         isSending = true
         sendError = nil
         defer { isSending = false }
@@ -435,30 +785,22 @@ private struct ChatMessageBubble: View {
     }
 
     private var announcement: some View {
-        VStack(alignment: .leading, spacing: 4) {
-            HStack(spacing: 6) {
-                Image(systemName: "megaphone.fill")
-                    .font(.caption2)
-                Text(message.username)
-                    .font(.caption2.weight(.heavy))
-                Spacer(minLength: 0)
-                Text(EKitapligimFormat.clockTime(message.messageDate))
-                    .font(.system(size: 9))
-            }
-            .foregroundStyle(EKitapligimPalette.chatAnnouncementInk)
-
+        HStack(alignment: .top, spacing: 8) {
+            Image(systemName: "sparkles")
+                .font(.body.weight(.semibold))
+                .foregroundStyle(EKitapligimPalette.chatAmber)
             Text(EKitapligimFormat.plainText(message.message))
                 .font(.subheadline)
                 .foregroundStyle(EKitapligimPalette.chatAnnouncementInk)
                 .multilineTextAlignment(.leading)
+                .frame(maxWidth: .infinity, alignment: .leading)
         }
-        .frame(maxWidth: .infinity, alignment: .leading)
         .padding(12)
-        .background(EKitapligimPalette.chatAnnouncement)
-        .clipShape(RoundedRectangle(cornerRadius: 14, style: .continuous))
+        .frame(maxWidth: .infinity, alignment: .leading)
+        .background(EKitapligimPalette.chatAnnouncement, in: RoundedRectangle(cornerRadius: 12, style: .continuous))
         .overlay {
-            RoundedRectangle(cornerRadius: 14, style: .continuous)
-                .stroke(EKitapligimPalette.chatAnnouncementBorder)
+            RoundedRectangle(cornerRadius: 12, style: .continuous)
+                .stroke(EKitapligimPalette.chatAnnouncementBorder, lineWidth: 1)
         }
     }
 
@@ -467,22 +809,19 @@ private struct ChatMessageBubble: View {
             if message.isMine { Spacer(minLength: 40) }
 
             if !message.isMine {
-                EKAvatar(urlString: message.avatarUrl, username: message.username, size: 30)
+                EKAvatar(urlString: message.avatarUrl, username: message.username, size: 35)
             }
 
-            VStack(alignment: message.isMine ? .trailing : .leading, spacing: 4) {
+            VStack(alignment: message.isMine ? .trailing : .leading, spacing: 3) {
                 if !message.isMine {
-                    HStack(spacing: 5) {
+                    HStack(spacing: 6) {
                         Text(message.username)
-                            .font(.caption2.weight(.bold))
-                            .foregroundStyle(EKitapligimPalette.chatInk)
+                            .font(.system(size: 12, weight: .bold))
+                            .foregroundStyle(message.isBot ? Color(hex: 0x95610A) : EKitapligimPalette.chatTeal)
                         if let roleBadge {
                             Text(roleBadge)
                                 .font(.system(size: 8, weight: .heavy))
-                                .foregroundStyle(.white)
-                                .padding(.horizontal, 5)
-                                .padding(.vertical, 2)
-                                .background(EKitapligimPalette.chatAmber, in: Capsule())
+                                .foregroundStyle(EKitapligimPalette.chatAmber)
                         }
                     }
                 }
@@ -491,14 +830,21 @@ private struct ChatMessageBubble: View {
                     .font(.subheadline)
                     .foregroundStyle(message.isMine ? .white : EKitapligimPalette.chatInk)
                     .multilineTextAlignment(.leading)
-                    .padding(.horizontal, 13)
-                    .padding(.vertical, 9)
-                    .background(bubbleBackground)
-                    .clipShape(RoundedRectangle(cornerRadius: 15, style: .continuous))
 
                 Text(EKitapligimFormat.clockTime(message.messageDate) + (message.isEdited ? L10n.chatEdited : ""))
-                    .font(.system(size: 9))
-                    .foregroundStyle(EKitapligimPalette.chatMuted)
+                    .font(.system(size: 10))
+                    .foregroundStyle(message.isMine ? Color.white.opacity(0.72) : EKitapligimPalette.chatMuted)
+                    .frame(maxWidth: .infinity, alignment: .trailing)
+            }
+            .padding(.horizontal, 13)
+            .padding(.vertical, 10)
+            .frame(maxWidth: 310, alignment: message.isMine ? .trailing : .leading)
+            .background(bubbleBackground)
+            .clipShape(chatBubbleShape)
+            .overlay {
+                if !message.isMine {
+                    chatBubbleShape.stroke(EKitapligimPalette.chatBorder, lineWidth: 1)
+                }
             }
 
             if !message.isMine { Spacer(minLength: 40) }
@@ -510,12 +856,23 @@ private struct ChatMessageBubble: View {
     private var bubbleBackground: Color {
         if message.isMine { return EKitapligimPalette.chatTeal }
         if message.isBot { return EKitapligimPalette.chatBotBubble }
-        return EKitapligimPalette.chatSurface
+        return .white
+    }
+
+    private var chatBubbleShape: UnevenRoundedRectangle {
+        UnevenRoundedRectangle(
+            topLeadingRadius: 16,
+            bottomLeadingRadius: message.isMine ? 16 : 5,
+            bottomTrailingRadius: message.isMine ? 5 : 16,
+            topTrailingRadius: 16,
+            style: .continuous
+        )
     }
 
     private var roleBadge: String? {
         if message.isAdmin { return L10n.chatRoleAdmin }
-        if message.isModerator { return L10n.chatRoleModerator }
+        if message.isModerator || message.isStaff { return L10n.chatRoleModerator }
         return nil
     }
+
 }

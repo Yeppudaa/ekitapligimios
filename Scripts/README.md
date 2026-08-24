@@ -69,7 +69,7 @@ Usage:
 
 ## `api-smoke-test.ps1`
 
-Checks that a staging or production Mobile API is reachable. The public checks include books, forums, a forum thread list, a thread post list, and book stats:
+Checks that a staging or production Mobile API is reachable. The public checks include books, forums, a forum thread list, a thread post list, book stats, and **UGC write-route probes** (unauthenticated POST/PUT to book-requests, book-agenda, comments, library, chat, forum reply, and forum create — expect HTTP 401/403; forum create returns 404 until IosApi v1.0.4 is deployed):
 
 ```powershell
 .\Scripts\api-smoke-test.ps1 -BaseUrl "https://staging.ekitapligim.com/ios-api/v1/"
@@ -121,7 +121,7 @@ Alternatively, set `EKITAPLIGIM_SMOKE_LOGIN` and `EKITAPLIGIM_SMOKE_PASSWORD` fo
 .\Scripts\api-smoke-test.ps1 -BaseUrl "http://localhost/ekitapligim/ios-api/v1/" -AllowInsecure
 ```
 
-Use `-ExerciseMutations` only with a disposable demo account. It writes a low-impact reader progress and library update for the selected or first visible book, and verifies separately authorized read and (when entitled) download reader sessions:
+Use `-ExerciseMutations` only with a disposable demo account. It writes reader progress, shelf sync (`OKUYORUM`), book-request create, book comment, book-agenda post, chat message (when a room exists), and forum thread create (when the deployed IosApi add-on exposes `POST forums/:id/threads`):
 
 ```powershell
 .\Scripts\api-smoke-test.ps1 -BaseUrl "http://localhost/ekitapligim/ios-api/v1/" -BearerToken $env:EKITAPLIGIM_SMOKE_ACCESS_TOKEN -AllowInsecure -ExerciseMutations
@@ -185,6 +185,57 @@ Transforms public `mobile-api` routes from the Android MobileApi reference into 
 
 ```powershell
 .\Scripts\apply-mobileapi-ios-patch.ps1 -AddonPath "C:\path\to\MobileApi-addon" -ForceDeprecated -CreateZip
+```
+
+## `verify-ios-api-deploy.ps1`
+
+Validates the local `release-archive/Ekitapligim-IosApi.zip` artifact (version, `ForumThreads::actionPost`, Pub bearer wrapper, route mapping) and probes production `POST forums/{id}/threads`. Exit code `2` means the zip is ready but production still returns HTTP 404/405.
+
+```powershell
+.\Scripts\build-ios-api-addon.ps1 -CreateZip
+.\Scripts\verify-ios-api-deploy.ps1 -BaseUrl "https://ekitapligim.com/ios-api/v1/"
+```
+
+## `load-smoke-env.ps1`
+
+Loads `EKITAPLIGIM_SMOKE_*` variables from a gitignored `.env` file at the repo root. Used automatically by `parity-audit.ps1`, `parity-completion-report.ps1`, and `api-smoke-test.ps1`.
+
+```powershell
+Copy-Item .env.example .env
+# edit .env with disposable reviewer credentials
+.\Scripts\parity-completion-report.ps1
+```
+
+## `parity-completion-report.ps1`
+
+Single command for the parity goal completion audit. Prints env credential status, runs `verify-ios-api-deploy.ps1`, then `parity-audit.ps1`, and ends with `GOAL STATUS: INCOMPLETE` (exit 2) until deploy + auth mutations pass. Mac visual checklist remains manual.
+
+```powershell
+.\Scripts\parity-completion-report.ps1
+.\Scripts\parity-completion-report.ps1 -BaseUrl "https://ekitapligim.com/ios-api/v1/"
+```
+
+Set `EKITAPLIGIM_SMOKE_LOGIN` and `EKITAPLIGIM_SMOKE_PASSWORD` before running if you want authenticated UGC mutation smoke included in the audit. Copy `.env.example` to `.env` at the repo root (gitignored); parity scripts load it automatically.
+
+## `parity-audit.ps1`
+
+Runs the Android/iOS parity gate used by the current goal: static code wiring checks for UGC/library flows, Swift tests, route contract audit, public API smoke, live forum-create route probe, and IosApi zip verification.
+
+```powershell
+.\Scripts\parity-audit.ps1
+.\Scripts\parity-audit.ps1 -BaseUrl "https://ekitapligim.com/ios-api/v1/"
+.\Scripts\parity-audit.ps1 -SkipNetwork
+```
+
+Exit code is non-zero when any check fails. WARN rows document deploy/auth/Mac screenshot blockers that still prevent claiming full parity.
+
+## `visual-parity-checklist.ps1`
+
+Prints (or writes) the scoped Mac vs Android screenshot checklist for the seven UGC/library flows:
+
+```powershell
+.\Scripts\visual-parity-checklist.ps1
+.\Scripts\visual-parity-checklist.ps1 -OutputPath ".\visual-parity-checklist.md"
 ```
 
 ## `api-route-contract-audit.ps1`

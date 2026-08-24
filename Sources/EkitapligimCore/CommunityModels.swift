@@ -447,6 +447,102 @@ public struct BookAgendaPostDTO: Decodable, Equatable, Identifiable, Sendable {
         case targetUrl
         case comments
     }
+
+    public init(
+        id: String,
+        type: String,
+        message: String,
+        createdAt: Int,
+        editedAt: Int,
+        visibility: String,
+        isPinned: Bool,
+        isFeatured: Bool,
+        isSensitive: Bool,
+        reviewTitle: String,
+        rating: Int,
+        pageNumber: Int,
+        progressCurrent: Int,
+        progressTotal: Int,
+        progressPercent: Int,
+        commentCount: Int,
+        reactionScore: Int,
+        repostCount: Int,
+        bookmarkCount: Int,
+        viewCount: Int,
+        actor: BookAgendaActorDTO,
+        book: BookAgendaBookDTO?,
+        attachments: [BookAgendaAttachmentDTO],
+        quotedPost: BookAgendaQuotedPostDTO?,
+        viewer: BookAgendaViewerDTO,
+        appRoute: String?,
+        targetUrl: String?,
+        comments: [BookAgendaCommentDTO]
+    ) {
+        self.id = id
+        self.type = type
+        self.message = message
+        self.createdAt = createdAt
+        self.editedAt = editedAt
+        self.visibility = visibility
+        self.isPinned = isPinned
+        self.isFeatured = isFeatured
+        self.isSensitive = isSensitive
+        self.reviewTitle = reviewTitle
+        self.rating = rating
+        self.pageNumber = pageNumber
+        self.progressCurrent = progressCurrent
+        self.progressTotal = progressTotal
+        self.progressPercent = progressPercent
+        self.commentCount = commentCount
+        self.reactionScore = reactionScore
+        self.repostCount = repostCount
+        self.bookmarkCount = bookmarkCount
+        self.viewCount = viewCount
+        self.actor = actor
+        self.book = book
+        self.attachments = attachments
+        self.quotedPost = quotedPost
+        self.viewer = viewer
+        self.appRoute = appRoute
+        self.targetUrl = targetUrl
+        self.comments = comments
+    }
+
+    public func updating(
+        commentCount: Int? = nil,
+        comments: [BookAgendaCommentDTO]? = nil
+    ) -> BookAgendaPostDTO {
+        BookAgendaPostDTO(
+            id: id,
+            type: type,
+            message: message,
+            createdAt: createdAt,
+            editedAt: editedAt,
+            visibility: visibility,
+            isPinned: isPinned,
+            isFeatured: isFeatured,
+            isSensitive: isSensitive,
+            reviewTitle: reviewTitle,
+            rating: rating,
+            pageNumber: pageNumber,
+            progressCurrent: progressCurrent,
+            progressTotal: progressTotal,
+            progressPercent: progressPercent,
+            commentCount: commentCount ?? self.commentCount,
+            reactionScore: reactionScore,
+            repostCount: repostCount,
+            bookmarkCount: bookmarkCount,
+            viewCount: viewCount,
+            actor: actor,
+            book: book,
+            attachments: attachments,
+            quotedPost: quotedPost,
+            viewer: viewer,
+            appRoute: appRoute,
+            targetUrl: targetUrl,
+            comments: comments ?? self.comments
+        )
+    }
 }
 
 public struct BookAgendaCommentDTO: Decodable, Equatable, Identifiable, Sendable {

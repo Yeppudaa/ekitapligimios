@@ -584,6 +584,13 @@ public struct CommunityRepository: Sendable {
         try await apiClient.request(.forumThreads(forumID: forumID, page: page), as: ForumThreadsPageDTO.self)
     }
 
+    public func createThread(forumID: Int, title: String, message: String) async throws -> ForumThreadDTO {
+        try await apiClient.request(
+            .createForumThread(forumID: forumID, title: title, message: message),
+            as: ForumThreadEnvelope.self
+        ).thread
+    }
+
     public func posts(threadID: Int, page: Int = 1) async throws -> ForumPostsPageDTO {
         try await apiClient.request(.threadPosts(threadID: threadID, page: page), as: ForumPostsPageDTO.self)
     }
@@ -680,6 +687,10 @@ public struct MyCommentsPageDTO: Decodable, Equatable, Sendable {
 
 public struct ForumPostEnvelope: Decodable, Equatable, Sendable {
     public let post: ForumPostDTO
+}
+
+public struct ForumThreadEnvelope: Decodable, Equatable, Sendable {
+    public let thread: ForumThreadDTO
 }
 
 private struct PaginationDTO: Decodable, Equatable, Sendable {
