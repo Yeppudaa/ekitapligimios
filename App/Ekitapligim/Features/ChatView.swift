@@ -60,7 +60,6 @@ struct ChatView: View {
             composer
         }
         .navigationTitle(L10n.chatTitle)
-        .navigationSubtitle(L10n.chatSubtitle)
         .navigationBarTitleDisplayMode(.inline)
         .toolbar {
             ToolbarItem(placement: .topBarTrailing) {
