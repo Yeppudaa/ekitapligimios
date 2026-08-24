@@ -324,10 +324,9 @@ struct BookAgendaView: View {
                 title: L10n.agendaFeedErrorTitle,
                 message: errorMessage,
                 retryTitle: L10n.commonRetry,
+                retry: { Task { await load(reset: true) } },
                 systemImage: "books.vertical.fill"
-            ) {
-                Task { await load(reset: true) }
-            }
+            )
         } else if posts.isEmpty {
             EKStateCard(title: L10n.agendaFeedEmptyTitle, message: L10n.agendaFeedEmptySubtitle, systemImage: "books.vertical.fill")
         } else {
@@ -914,10 +913,9 @@ struct BookAgendaDetailView: View {
                             title: L10n.agendaDetailErrorTitle,
                             message: errorMessage ?? L10n.agendaDetailErrorMessage,
                             retryTitle: L10n.commonRetry,
+                            retry: { Task { await load() } },
                             systemImage: "books.vertical.fill"
-                        ) {
-                            Task { await load() }
-                        }
+                        )
                     }
                 }
                 .padding(.horizontal, 18)
