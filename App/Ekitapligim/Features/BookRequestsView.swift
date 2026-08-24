@@ -69,7 +69,7 @@ struct BookRequestsView: View {
         } message: {
             Text(L10n.bookRequestsLoginRequiredMessage)
         }
-                .sheet(isPresented: $showCreateSheet) {
+        .sheet(isPresented: $showCreateSheet) {
             VStack(alignment: .leading, spacing: 12) {
                 Text(L10n.bookRequestsCreateDialogTitle)
                     .font(.title3.weight(.bold))
@@ -99,6 +99,7 @@ struct BookRequestsView: View {
             .presentationDetents([.medium])
             .presentationDragIndicator(.hidden)
         }
+    }
 
     private var requestList: some View {
         ScrollView {
