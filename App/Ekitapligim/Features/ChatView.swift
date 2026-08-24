@@ -60,6 +60,7 @@ struct ChatView: View {
             composer
         }
         .navigationTitle(L10n.chatTitle)
+        .modifier(ChatNavigationSubtitleModifier(subtitle: L10n.chatSubtitle))
         .navigationBarTitleDisplayMode(.inline)
         .toolbar {
             ToolbarItem(placement: .topBarTrailing) {
@@ -767,6 +768,19 @@ struct ChatView: View {
     private func stopPolling() {
         pollTask?.cancel()
         pollTask = nil
+    }
+}
+
+private struct ChatNavigationSubtitleModifier: ViewModifier {
+    let subtitle: String
+
+    @ViewBuilder
+    func body(content: Content) -> some View {
+        if #available(iOS 26.0, *) {
+            content.navigationSubtitle(subtitle)
+        } else {
+            content
+        }
     }
 }
 
