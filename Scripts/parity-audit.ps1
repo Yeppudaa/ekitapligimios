@@ -41,6 +41,7 @@ $codeChecks = @(
     @{ Name = "Book requests hero card"; Pattern = "bookRequestsHeroTitle|heroCard"; Path = "App/Ekitapligim/Features/BookRequestsView.swift" }
     @{ Name = "Book request status pills"; Pattern = "BookRequestStatusPill"; Path = "App/Ekitapligim/Features/BookRequestsView.swift" }
     @{ Name = "Book request Android status labels"; Pattern = "Uygun Bulunmadı|Temin Edildi"; Path = "Sources/EkitapligimCore/Localization.swift" }
+    @{ Name = "Catalog cover always shows favorite glyph"; Pattern = "heart.fill\" : \"heart"; Path = "App/Ekitapligim/Features/CatalogView.swift" }
     @{ Name = "Book request author line"; Pattern = "bookRequestsAuthorLine"; Path = "App/Ekitapligim/Features/BookRequestsView.swift" }
     @{ Name = "Members initial load"; Pattern = "guard !isLoading else \{ return \}"; Path = "App/Ekitapligim/Features/MembersView.swift"; ShouldNotMatch = $true; PassDetail = "Initial load guard removed" }
     @{ Name = "Forum topic create UI"; Pattern = "createThread|forumThreadsCreate"; Path = "App/Ekitapligim/Features/ForumThreadsView.swift" }

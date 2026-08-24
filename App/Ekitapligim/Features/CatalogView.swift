@@ -407,16 +407,16 @@ private struct CatalogBookCover: View {
         ZStack {
             BookCover(book: book)
 
-            if isFavorite {
-                Image(systemName: "heart.fill")
-                    .font(.caption2.weight(.bold))
-                    .foregroundStyle(.white)
-                    .padding(6)
-                    .background(Color.black.opacity(0.46), in: Circle())
-                    .frame(maxWidth: .infinity, maxHeight: .infinity, alignment: .topTrailing)
-                    .padding(6)
-                    .accessibilityLabel(L10n.libraryFavoriteBadge)
-            }
+            Image(systemName: isFavorite ? "heart.fill" : "heart")
+                .font(.system(size: 14, weight: .semibold))
+                .foregroundStyle(.white)
+                .frame(width: 34, height: 34)
+                .background(Color.black.opacity(0.46), in: Circle())
+                .frame(maxWidth: .infinity, maxHeight: .infinity, alignment: .topTrailing)
+                .padding(7)
+                .accessibilityLabel(L10n.libraryFavoriteBadge)
+                .accessibilityHidden(!isFavorite)
+
 
             if book.isPremiumOnly {
                 HStack(spacing: 3) {
