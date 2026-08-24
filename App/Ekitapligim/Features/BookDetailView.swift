@@ -975,7 +975,7 @@ struct BookDetailView: View {
             return message
         }
         if let quota = access?.dailyDownload, !quota.isAllowed, quota.limit > 0 {
-            return L10n.quotaDownloadSubtitle(quota.used, quota.limit)
+            return L10n.quotaDownloadSubtitle(used: quota.used, limit: quota.limit)
         }
         if let code = access?.denialCode?.uppercased() {
             switch code {
