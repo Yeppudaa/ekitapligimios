@@ -115,15 +115,42 @@ final class EkitapligimUITests: XCTestCase {
     }
 
     private func selectPrimaryDestination(_ app: XCUIApplication, titled title: String) {
+        let identifiers = [
+            "Ana Sayfa": "primary-tab-home",
+            "Katalog": "primary-tab-catalog",
+            "Yazarlar": "primary-tab-authors",
+            "İstekler": "primary-tab-requests",
+            "Forum": "primary-tab-forum",
+            "Profilim": "primary-tab-profile"
+        ]
+        if let identifier = identifiers[title] {
+            let identifiedButton = app.buttons[identifier]
+            if identifiedButton.waitForExistence(timeout: 2) {
+                identifiedButton.tap()
+                return
+            }
+        }
+
         let tabBarButton = app.tabBars.firstMatch.buttons[title]
         if tabBarButton.waitForExistence(timeout: 2) {
             tabBarButton.tap()
             return
         }
 
-        let adaptiveTabButton = app.buttons[title].firstMatch
-        XCTAssertTrue(adaptiveTabButton.waitForExistence(timeout: 8))
-        adaptiveTabButton.tap()
+        let adaptiveTabButtons = app.buttons.matching(identifier: title)
+        let adaptiveButtonCount = adaptiveTabButtons.count
+        guard adaptiveButtonCount > 0 else {
+            XCTFail("No primary destination named \(title)")
+            return
+        }
+        for index in stride(from: adaptiveButtonCount - 1, through: 0, by: -1) {
+            let candidate = adaptiveTabButtons.element(boundBy: index)
+            if candidate.isHittable {
+                candidate.tap()
+                return
+            }
+        }
+        XCTFail("No hittable primary destination named \(title)")
     }
 
     private func tapDrawerItem(_ app: XCUIApplication, titled title: String) {

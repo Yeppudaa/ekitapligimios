@@ -39,27 +39,45 @@ struct RootView: View {
     private var tabs: some View {
         TabView(selection: $container.selectedTab) {
             HomeView()
-                .tabItem { Label(AppTab.home.title, systemImage: AppTab.home.systemImage) }
+                .tabItem {
+                    Label(AppTab.home.title, systemImage: AppTab.home.systemImage)
+                        .accessibilityIdentifier("primary-tab-home")
+                }
                 .tag(AppTab.home)
 
             CatalogView()
-                .tabItem { Label(AppTab.catalog.title, systemImage: AppTab.catalog.systemImage) }
+                .tabItem {
+                    Label(AppTab.catalog.title, systemImage: AppTab.catalog.systemImage)
+                        .accessibilityIdentifier("primary-tab-catalog")
+                }
                 .tag(AppTab.catalog)
 
             NavigationStack { DirectoryView(kind: .author) }
-                .tabItem { Label(AppTab.authors.title, systemImage: AppTab.authors.systemImage) }
+                .tabItem {
+                    Label(AppTab.authors.title, systemImage: AppTab.authors.systemImage)
+                        .accessibilityIdentifier("primary-tab-authors")
+                }
                 .tag(AppTab.authors)
 
             NavigationStack { BookRequestsView() }
-                .tabItem { Label(AppTab.requests.title, systemImage: AppTab.requests.systemImage) }
+                .tabItem {
+                    Label(AppTab.requests.title, systemImage: AppTab.requests.systemImage)
+                        .accessibilityIdentifier("primary-tab-requests")
+                }
                 .tag(AppTab.requests)
 
             CommunityView()
-                .tabItem { Label(AppTab.forum.title, systemImage: AppTab.forum.systemImage) }
+                .tabItem {
+                    Label(AppTab.forum.title, systemImage: AppTab.forum.systemImage)
+                        .accessibilityIdentifier("primary-tab-forum")
+                }
                 .tag(AppTab.forum)
 
             NavigationStack { ProfileView() }
-                .tabItem { Label(AppTab.profile.title, systemImage: AppTab.profile.systemImage) }
+                .tabItem {
+                    Label(AppTab.profile.title, systemImage: AppTab.profile.systemImage)
+                        .accessibilityIdentifier("primary-tab-profile")
+                }
                 .badge(container.totalUnread)
                 .tag(AppTab.profile)
         }
