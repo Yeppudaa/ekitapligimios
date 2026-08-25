@@ -8,11 +8,11 @@ final class ReaderContentLoader {
     private let baseDirectory: URL?
 
     init(
-        transfer: ValidatedBookFileTransfer = ValidatedBookFileTransfer(),
+        transfer: ValidatedBookFileTransfer? = nil,
         fileManager: FileManager = .default,
         baseDirectory: URL? = nil
     ) {
-        self.transfer = transfer
+        self.transfer = transfer ?? ValidatedBookFileTransfer(fileManager: fileManager)
         self.fileManager = fileManager
         self.baseDirectory = baseDirectory
     }
