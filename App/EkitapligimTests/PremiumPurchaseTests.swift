@@ -63,7 +63,9 @@ final class PremiumPurchaseTests: XCTestCase {
 
         let transaction = try XCTUnwrap(session.allTransactions().last)
         try session.disableAutoRenewForTransaction(identifier: transaction.identifier)
-        await service.refreshEntitlements()
+        await waitForEntitlement(service) {
+            $0.renewalState == .cancelled && !$0.willAutoRenew
+        }
 
         XCTAssertEqual(service.entitlement.renewalState, .cancelled)
         XCTAssertTrue(service.entitlement.isActive)
@@ -76,7 +78,7 @@ final class PremiumPurchaseTests: XCTestCase {
         await service.purchase(productID: "ekitapligim.premium.monthly")
 
         try session.expireSubscription(productIdentifier: "ekitapligim.premium.monthly")
-        await service.refreshEntitlements()
+        await waitForEntitlement(service) { $0 == .none }
 
         XCTAssertEqual(service.entitlement, .none)
     }
@@ -104,6 +106,20 @@ final class PremiumPurchaseTests: XCTestCase {
             return XCTFail("Expected restore without entitlement to fail")
         }
         XCTAssertEqual(message, L10n.premiumNothingToRestore)
+    }
+
+    private func waitForEntitlement(
+        _ service: StoreKitPurchaseService,
+        until predicate: (PremiumEntitlement) -> Bool
+    ) async {
+        let clock = ContinuousClock()
+        let deadline = clock.now.advanced(by: .seconds(5))
+
+        repeat {
+            await service.refreshEntitlements()
+            if predicate(service.entitlement) { return }
+            try? await Task.sleep(for: .milliseconds(100))
+        } while clock.now < deadline
     }
 }
 
