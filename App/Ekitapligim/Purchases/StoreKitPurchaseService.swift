@@ -177,7 +177,7 @@ final class StoreKitPurchaseService: ObservableObject {
         } else {
             signedRenewalInfo = nil
         }
-        try await purchaseRepository.verifyAppStorePurchase(
+        return try await purchaseRepository.verifyAppStorePurchase(
             signedTransaction: verification.jwsRepresentation,
             productID: transaction.productID,
             originalTransactionID: String(transaction.originalID),
