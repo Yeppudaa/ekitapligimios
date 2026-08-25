@@ -124,10 +124,16 @@ final class EkitapligimUITests: XCTestCase {
             "Profilim": "primary-tab-profile"
         ]
         if let identifier = identifiers[title] {
-            let identifiedButton = app.buttons[identifier]
-            if identifiedButton.waitForExistence(timeout: 2) {
-                identifiedButton.tap()
-                return
+            let identifiedButtons = app.buttons.matching(identifier: identifier)
+            if identifiedButtons.firstMatch.waitForExistence(timeout: 2) {
+                let identifiedButtonCount = identifiedButtons.count
+                for index in stride(from: identifiedButtonCount - 1, through: 0, by: -1) {
+                    let candidate = identifiedButtons.element(boundBy: index)
+                    if candidate.isHittable {
+                        candidate.tap()
+                        return
+                    }
+                }
             }
         }
 
