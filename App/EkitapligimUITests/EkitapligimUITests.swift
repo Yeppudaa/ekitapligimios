@@ -78,10 +78,6 @@ final class EkitapligimUITests: XCTestCase {
     }
 
     func testCaptureAppStoreScreenshots() throws {
-        guard ProcessInfo.processInfo.environment["CAPTURE_APP_STORE_SCREENSHOTS"] == "1" else {
-            throw XCTSkip("App Store screenshot capture is enabled only by the dedicated CI job.")
-        }
-
         let app = launchApp()
         XCTAssertTrue(app.buttons["Menü"].waitForExistence(timeout: 15))
         sleep(8)
