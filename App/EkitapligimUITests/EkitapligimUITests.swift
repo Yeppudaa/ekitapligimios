@@ -77,6 +77,33 @@ final class EkitapligimUITests: XCTestCase {
         XCTAssertFalse(app.otherElements["EmptyView"].exists)
     }
 
+    func testCaptureAppStoreScreenshots() throws {
+        guard ProcessInfo.processInfo.environment["CAPTURE_APP_STORE_SCREENSHOTS"] == "1" else {
+            throw XCTSkip("App Store screenshot capture is enabled only by the dedicated CI job.")
+        }
+
+        let app = launchApp()
+        XCTAssertTrue(app.buttons["Menü"].waitForExistence(timeout: 15))
+        sleep(8)
+        keepScreenshot(named: "01-home")
+
+        selectPrimaryDestination(app, titled: "Katalog")
+        XCTAssertTrue(app.navigationBars["Kitaplar"].waitForExistence(timeout: 10))
+        sleep(4)
+        keepScreenshot(named: "02-catalog")
+
+        selectPrimaryDestination(app, titled: "Yazarlar")
+        XCTAssertTrue(app.navigationBars["Yazarlar"].waitForExistence(timeout: 10))
+        sleep(4)
+        keepScreenshot(named: "03-authors")
+
+        app.buttons["Menü"].tap()
+        tapDrawerItem(app, titled: "Forum")
+        XCTAssertTrue(app.navigationBars["Topluluk"].waitForExistence(timeout: 10))
+        sleep(4)
+        keepScreenshot(named: "04-forum")
+    }
+
     private func selectPrimaryDestination(_ app: XCUIApplication, titled title: String) {
         let tabBarButton = app.tabBars.firstMatch.buttons[title]
         if tabBarButton.waitForExistence(timeout: 2) {
@@ -100,5 +127,12 @@ final class EkitapligimUITests: XCTestCase {
         if close.waitForExistence(timeout: 3) {
             close.tap()
         }
+    }
+
+    private func keepScreenshot(named name: String) {
+        let attachment = XCTAttachment(screenshot: XCUIScreen.main.screenshot())
+        attachment.name = name
+        attachment.lifetime = .keepAlways
+        add(attachment)
     }
 }

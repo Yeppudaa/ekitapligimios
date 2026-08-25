@@ -94,6 +94,36 @@ jobs:
           -clonedSourcePackagesDirPath .build/xcode-packages
           -disableAutomaticPackageResolution
           CODE_SIGNING_ALLOWED=NO
+      - name: Capture App Store iPhone screenshots
+        run: >-
+          CAPTURE_APP_STORE_SCREENSHOTS=1 xcodebuild test
+          -project Ekitapligim.xcodeproj
+          -scheme Ekitapligim
+          -configuration Development
+          -destination 'platform=iOS Simulator,name=iPhone 16 Pro Max,OS=latest'
+          -only-testing:EkitapligimUITests/EkitapligimUITests/testCaptureAppStoreScreenshots
+          -resultBundlePath AppStoreScreenshots-iPhone.xcresult
+          -clonedSourcePackagesDirPath .build/xcode-packages
+          -disableAutomaticPackageResolution
+          CODE_SIGNING_ALLOWED=NO
+      - name: Capture App Store iPad screenshots
+        run: >-
+          CAPTURE_APP_STORE_SCREENSHOTS=1 xcodebuild test
+          -project Ekitapligim.xcodeproj
+          -scheme Ekitapligim
+          -configuration Development
+          -destination 'platform=iOS Simulator,name=iPad Pro 13-inch (M4),OS=latest'
+          -only-testing:EkitapligimUITests/EkitapligimUITests/testCaptureAppStoreScreenshots
+          -resultBundlePath AppStoreScreenshots-iPad.xcresult
+          -clonedSourcePackagesDirPath .build/xcode-packages
+          -disableAutomaticPackageResolution
+          CODE_SIGNING_ALLOWED=NO
+      - name: Export App Store screenshot attachments
+        if: always()
+        run: |
+          mkdir -p AppStoreScreenshots/iPhone AppStoreScreenshots/iPad
+          xcrun xcresulttool export attachments --path AppStoreScreenshots-iPhone.xcresult --output-path AppStoreScreenshots/iPhone
+          xcrun xcresulttool export attachments --path AppStoreScreenshots-iPad.xcresult --output-path AppStoreScreenshots/iPad
       - name: Upload XCTest result bundle
         if: always()
         uses: actions/upload-artifact@v4
@@ -116,5 +146,13 @@ jobs:
         with:
           name: swift-package-resolution
           path: Ekitapligim.xcodeproj/project.xcworkspace/xcshareddata/swiftpm/Package.resolved
+          if-no-files-found: error
+          retention-days: 14
+      - name: Upload App Store screenshots
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: app-store-screenshots
+          path: AppStoreScreenshots
           if-no-files-found: error
           retention-days: 14
