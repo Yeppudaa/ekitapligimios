@@ -15,7 +15,7 @@ final class PremiumPurchaseTests: XCTestCase {
     }
 
     override func tearDownWithError() throws {
-        session.clearTransactions()
+        session?.clearTransactions()
         session = nil
     }
 

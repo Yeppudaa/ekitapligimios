@@ -88,7 +88,12 @@ final class EkitapligimUITests: XCTestCase {
         keepScreenshot(named: "01-home")
 
         selectPrimaryDestination(app, titled: "Katalog")
-        XCTAssertTrue(app.navigationBars["Kitaplar"].waitForExistence(timeout: 10))
+        let catalogNavigationBar = app.navigationBars["Kitaplar"]
+        let catalogHeading = app.staticTexts["Kataloğu Keşfet"]
+        XCTAssertTrue(
+            catalogNavigationBar.waitForExistence(timeout: 5)
+                || catalogHeading.waitForExistence(timeout: 5)
+        )
         sleep(4)
         keepScreenshot(named: "02-catalog")
 

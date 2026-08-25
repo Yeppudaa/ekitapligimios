@@ -73,6 +73,8 @@ targets:
     deploymentTarget: "17.0"
     sources:
       - path: App/EkitapligimTests
+    resources:
+      - path: App/Ekitapligim/StoreKit/Ekitapligim.storekit
     dependencies:
       - target: Ekitapligim
     settings:
