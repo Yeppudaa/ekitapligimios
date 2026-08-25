@@ -32,7 +32,7 @@ final class ValidatedBookFileTransfer {
             }
 
             do {
-                try validateFile(at: temporaryURL, fileExtension: fileExtension)
+                try validateFile(at: temporaryURL, fileType: fileExtension)
                 try installFile(from: temporaryURL, to: destinationURL)
                 return
             } catch {
