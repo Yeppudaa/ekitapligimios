@@ -8,7 +8,12 @@ final class PremiumPurchaseTests: XCTestCase {
     private var session: SKTestSession!
 
     override func setUpWithError() throws {
-        session = try SKTestSession(configurationFileNamed: "Ekitapligim")
+        let testBundle = Bundle(for: Self.self)
+        let configurationURL = try XCTUnwrap(
+            testBundle.url(forResource: "Ekitapligim", withExtension: "storekit"),
+            "The StoreKit test configuration must be bundled with EkitapligimTests."
+        )
+        session = try SKTestSession(contentsOf: configurationURL)
         session.resetToDefaultState()
         session.clearTransactions()
         session.disableDialogs = true
