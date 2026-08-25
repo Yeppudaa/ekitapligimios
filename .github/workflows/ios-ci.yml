@@ -73,6 +73,17 @@ jobs:
           -clonedSourcePackagesDirPath .build/xcode-packages
           -disableAutomaticPackageResolution
           CODE_SIGNING_ALLOWED=NO
+      - name: iPad simulator unit and UI tests
+        run: >-
+          xcodebuild test
+          -project Ekitapligim.xcodeproj
+          -scheme Ekitapligim
+          -configuration Development
+          -destination 'platform=iOS Simulator,name=iPad Air 11-inch (M3),OS=latest'
+          -resultBundlePath TestResults-iPad.xcresult
+          -clonedSourcePackagesDirPath .build/xcode-packages
+          -disableAutomaticPackageResolution
+          CODE_SIGNING_ALLOWED=NO
       - name: Production unsigned build
         run: >-
           xcodebuild clean build
@@ -89,6 +100,14 @@ jobs:
         with:
           name: ios-test-results
           path: TestResults.xcresult
+          if-no-files-found: warn
+          retention-days: 14
+      - name: Upload iPad XCTest result bundle
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: ios-ipad-test-results
+          path: TestResults-iPad.xcresult
           if-no-files-found: warn
           retention-days: 14
       - name: Upload resolved package evidence
