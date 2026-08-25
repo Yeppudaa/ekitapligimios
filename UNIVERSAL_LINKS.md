@@ -7,7 +7,7 @@ applinks:ekitapligim.com
 applinks:www.ekitapligim.com
 ```
 
-Template file in this repo:
+Production file in this repo:
 
 ```text
 Web/.well-known/apple-app-site-association
@@ -20,7 +20,7 @@ https://ekitapligim.com/.well-known/apple-app-site-association
 https://www.ekitapligim.com/.well-known/apple-app-site-association
 ```
 
-Replace `TEAMID` with the Apple Developer Team ID before deployment.
+The production Team ID is `QA67383767`; keep the deployed file synchronized with this source.
 
 ```json
 {
@@ -29,7 +29,7 @@ Replace `TEAMID` with the Apple Developer Team ID before deployment.
     "details": [
       {
         "appIDs": [
-          "TEAMID.com.ekitapligim.app"
+          "QA67383767.com.ekitapligim.app"
         ],
         "components": [
           { "/": "/books/*", "comment": "Book details" },

@@ -45,16 +45,16 @@ ekitap,kitap,pdf,epub,okuyucu,kütüphane,yazar,yayınevi,forum,türkçe
 Ekitaplığım is a native SwiftUI iOS/iPadOS app, not a website wrapper. The catalog, PDF/EPUB reader, library, downloads, account, StoreKit, forum, messaging, reporting, blocking, and account-deletion surfaces are native.
 
 Reviewer account:
-- Username/email: [CREATE_REVIEWER_ACCOUNT]
-- Password: [STORE_IN_APP_STORE_CONNECT_ONLY]
-- Environment: [PUBLIC_HTTPS_REVIEW_ENVIRONMENT]
-- Safe member to follow/block: [REVIEW_SAFE_MEMBER]
-- Safe conversation recipient: [REVIEW_SAFE_RECIPIENT]
-- Rights-cleared PDF book ID: [REVIEW_PDF_BOOK_ID]
-- Rights-cleared EPUB book ID: [REVIEW_EPUB_BOOK_ID]
+- Username/email: stored only in the App Store Connect Sign-In Information fields.
+- Password: stored only in the App Store Connect Sign-In Information fields.
+- Environment: production public HTTPS API at `https://ekitapligim.com/ios-api/v1/`.
+- Safe member to follow/block: supplied in the prepared reviewer account's demo data.
+- Safe conversation recipient: supplied in the prepared reviewer account's demo data.
+- Rights-cleared PDF book: supplied in the prepared reviewer account's library.
+- Rights-cleared EPUB book: supplied in the prepared reviewer account's library.
 
 Suggested review flow:
-1. Log in with the reviewer account or use Sign in with Apple.
+1. Log in with the reviewer account using the username/email and password supplied only in App Store Connect.
 2. Open Kitaplar, search/filter, switch list/grid, and open book details plus a related book.
 3. Read the provided PDF and EPUB; verify progress and a PDF bookmark.
 4. Download the rights-cleared book and verify it under Kitaplığım > İndirilenler.
@@ -66,7 +66,7 @@ Suggested review flow:
 10. Open Hesap > Ekitaplığım Premium, purchase or restore with Apple Sandbox if IAP is submitted.
 11. Open Hesap > Hesap silme talebi başlat and verify the 30-day disclosure and confirmation UI. Do not submit unless a disposable reviewer account is provided.
 
-Account deletion is initiated entirely in-app. Manual processing is expected within 30 days and completion is sent to the account email. Deletion operations must remove/anonymize associated user content as legally permitted and revoke Sign in with Apple tokens where applicable.
+Account deletion is initiated entirely in-app. Manual processing is expected within 30 days and completion is sent to the account email. Deletion operations must remove/anonymize associated user content as legally permitted.
 
 Do not submit until every placeholder is replaced, MobileApi `1.0.84` or newer is on the public HTTPS environment, and the reviewer flow has been executed there.
 

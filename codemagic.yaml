@@ -77,6 +77,25 @@ workflows:
             exit 65
           fi
 
+      - name: Run iPad app tests
+        script: |
+          set -o pipefail
+          if ! xcodebuild test \
+            -quiet \
+            -project "$XCODE_PROJECT" \
+            -scheme "$XCODE_SCHEME" \
+            -configuration Development \
+            -destination "platform=iOS Simulator,name=iPad Air 11-inch (M3),OS=latest" \
+            -resultBundlePath "$CM_BUILD_DIR/build/EkitapligimTests-iPad.xcresult" \
+            CODE_SIGNING_ALLOWED=NO \
+            SWIFT_COMPILATION_MODE=singlefile \
+            SWIFT_ENABLE_BATCH_MODE=NO 2>&1 | tee "$CM_BUILD_DIR/build/run-ipad-tests.log"; then
+            echo "iPad xcodebuild test failed"
+            grep -nEi "error:|fatal error|testing failed|test failed|no such module|cannot find|could not|unable to|codesign|provision" "$CM_BUILD_DIR/build/run-ipad-tests.log" || true
+            tail -n 200 "$CM_BUILD_DIR/build/run-ipad-tests.log"
+            exit 65
+          fi
+
       - name: Increment App Store build number
         script: |
           set -euo pipefail
@@ -107,5 +126,5 @@ workflows:
           - acarsamsung37@gmail.com
       app_store_connect:
         auth: integration
-        submit_to_testflight: false
+        submit_to_testflight: true
         submit_to_app_store: false

@@ -1,7 +1,4 @@
 import SwiftUI
-import AuthenticationServices
-import CryptoKit
-import Security
 import EkitapligimCore
 
 @MainActor
@@ -18,7 +15,6 @@ struct LoginView: View {
     @State private var errorMessage: String?
     @State private var successMessage: String?
     @State private var isSubmitting = false
-    @State private var appleNonce: String?
 
     var body: some View {
         NavigationStack {
@@ -110,19 +106,6 @@ struct LoginView: View {
 
     private var actionsSection: some View {
         Section {
-            if mode != .passwordReset {
-                SignInWithAppleButton(mode == .register ? .signUp : .signIn) { request in
-                    let nonce = Self.makeAppleNonce()
-                    appleNonce = nonce
-                    request.nonce = Self.sha256(nonce)
-                    request.requestedScopes = [.email]
-                } onCompletion: { result in
-                    Task { await handleAppleResult(result) }
-                }
-                .frame(height: 48)
-                .disabled(isSubmitting || (mode == .register && !acceptsLegalTerms))
-            }
-
             Button {
                 Task { await submit() }
             } label: {
@@ -202,50 +185,9 @@ struct LoginView: View {
         }
     }
 
-    private func handleAppleResult(_ result: Result<ASAuthorization, Error>) async {
-        isSubmitting = true
-        clearMessages()
-        defer {
-            isSubmitting = false
-            appleNonce = nil
-        }
-        do {
-            let authorization = try result.get()
-            guard let credential = authorization.credential as? ASAuthorizationAppleIDCredential,
-                  let identityTokenData = credential.identityToken,
-                  let authorizationCodeData = credential.authorizationCode,
-                  let identityToken = String(data: identityTokenData, encoding: .utf8),
-                  let authorizationCode = String(data: authorizationCodeData, encoding: .utf8),
-                  let nonce = appleNonce
-            else {
-                errorMessage = L10n.loginAppleInvalid
-                return
-            }
-            try await container.signInWithApple(identityToken: identityToken, authorizationCode: authorizationCode, nonce: nonce)
-            dismiss()
-        } catch {
-            errorMessage = L10n.loginAppleFailed
-        }
-    }
-
     private func clearMessages() {
         errorMessage = nil
         successMessage = nil
-    }
-
-    private static func makeAppleNonce() -> String {
-        var bytes = [UInt8](repeating: 0, count: 32)
-        guard SecRandomCopyBytes(kSecRandomDefault, bytes.count, &bytes) == errSecSuccess else {
-            return UUID().uuidString + UUID().uuidString
-        }
-        return Data(bytes).base64EncodedString()
-            .replacingOccurrences(of: "+", with: "-")
-            .replacingOccurrences(of: "/", with: "_")
-            .replacingOccurrences(of: "=", with: "")
-    }
-
-    private static func sha256(_ value: String) -> String {
-        SHA256.hash(data: Data(value.utf8)).map { String(format: "%02x", $0) }.joined()
     }
 
 }

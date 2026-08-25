@@ -4,11 +4,11 @@
     "details": [
       {
         "appIDs": [
-          "TEAMID.com.ekitapligim.app"
+          "QA67383767.com.ekitapligim.app"
         ],
         "components": [
           { "/": "/books/*", "comment": "Book details" },
-          { "/": "/konular/*", "comment": "Turkish book/thread URLs" },
+          { "/": "/konular/*", "comment": "Turkish book and thread URLs" },
           { "/": "/threads/*", "comment": "Forum threads" },
           { "/": "/forum/*", "comment": "Forums" },
           { "/": "/forums/*", "comment": "Forums" },

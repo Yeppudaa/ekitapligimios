@@ -12,9 +12,9 @@ This plan is for the account and environment provided to Apple App Review.
 - A reviewer-safe conversation containing no real user private data, plus a demo recipient who can receive a test message.
 
 ## Account
-- Username/email: `[CREATE_REVIEWER_ACCOUNT]`
+- Username/email: store only in App Store Connect review information.
 - Password: store only in App Store Connect review notes.
-- Role: normal member or premium member, depending on features submitted.
+- Role: a member whose previous premium entitlement is expired, so the reviewer can exercise the complete StoreKit purchase and restore flow.
 - The account must not require SMS, VPN, private email inbox access, or developer intervention.
 - Registration mode requires matching passwords and acceptance of the Terms of Service and Privacy Policy. Review should use the prepared account instead of creating another account unless Apple specifically needs to test registration.
 - Password reset always displays a generic confirmation and does not reveal whether an email address is registered.
@@ -34,8 +34,7 @@ This plan is for the account and environment provided to Apple App Review.
 12. With a disposable reviewer account, change email using the current password and complete confirmation if required. Change password, verify the current device remains signed in with rotated tokens, and verify an older mobile session is rejected.
 13. Open Messages, view the demo conversation, send a reply, and create a message to the demo recipient.
 14. With a disposable password account, start account deletion and verify the request is accepted once and repeated submission returns the same pending request.
-15. With a disposable Sign in with Apple account, start account deletion and verify Apple authorization plus all mobile sessions are revoked before the request is accepted.
-16. Purchase and restore premium in StoreKit sandbox, if premium is submitted.
+15. Purchase and restore premium in StoreKit sandbox using the expired-entitlement reviewer account.
 
 ## Evidence To Capture Before Submission
 - Clean Debug build result.

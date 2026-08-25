@@ -3,7 +3,7 @@
 ## Release Blockers
 - Public HTTPS staging API is required.
 - StoreKit backend verification is required for iOS premium/digital purchases.
-- Sign in with Apple is required if Google login is a primary login option. Client surface, backend JWKS/RS256 validation, authorization-code exchange, encrypted refresh-token storage, and deletion-time revocation now exist; real Apple sandbox/device sign-in and deletion must still be tested on a signed iOS build.
+- The review build uses first-party username/email and password authentication only. The incomplete Sign in with Apple client surface and entitlement were removed after App Review reproduced a failure; re-enable it only after a Developer key, server token exchange, signed-device login, and deletion-time revocation are proven end to end.
 - User blocking must exist for UGC/community features. Client surface and backend scaffold now exist; staging install/test still required.
 - Reviewer account must be created on public staging/production.
 - Xcode project generation, signing team, bundle ID, screenshots, and TestFlight validation must be completed on macOS. A branded opaque AppIcon set is generated from the Android brand source; rights-holder visual approval remains required.
