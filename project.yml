@@ -26,9 +26,10 @@ targets:
           - Config
           - Support
           - StoreKit
-    resources:
       - path: App/Ekitapligim/Support/PrivacyInfo.xcprivacy
+        buildPhase: resources
       - path: App/Ekitapligim/StoreKit/Ekitapligim.storekit
+        buildPhase: resources
     dependencies:
       - package: EkitapligimCore
         product: EkitapligimCore
@@ -73,8 +74,8 @@ targets:
     deploymentTarget: "17.0"
     sources:
       - path: App/EkitapligimTests
-    resources:
       - path: App/Ekitapligim/StoreKit/Ekitapligim.storekit
+        buildPhase: resources
     dependencies:
       - target: Ekitapligim
     settings:
