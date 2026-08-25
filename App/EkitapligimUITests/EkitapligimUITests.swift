@@ -15,28 +15,39 @@ final class EkitapligimUITests: XCTestCase {
     func testPrimaryNavigationIsAvailableOffline() throws {
         let app = launchApp()
         let tabBar = app.tabBars.firstMatch
-        XCTAssertTrue(tabBar.waitForExistence(timeout: 10))
-        XCTAssertTrue(tabBar.buttons["Ana Sayfa"].exists)
-        XCTAssertTrue(tabBar.buttons["Katalog"].exists)
-        XCTAssertTrue(tabBar.buttons["Yazarlar"].exists)
-        XCTAssertTrue(tabBar.buttons["İstekler"].exists)
+        let usesCompactTabBar = tabBar.waitForExistence(timeout: 5)
+        let primaryNavigation = usesCompactTabBar ? tabBar.buttons : app.buttons
+        XCTAssertTrue(primaryNavigation["Ana Sayfa"].waitForExistence(timeout: 10))
+        XCTAssertTrue(primaryNavigation["Katalog"].exists)
+        XCTAssertTrue(primaryNavigation["Yazarlar"].exists)
+        XCTAssertTrue(primaryNavigation["İstekler"].exists)
 
-        tabBar.buttons["Katalog"].tap()
+        selectPrimaryDestination(app, titled: "Katalog")
         XCTAssertTrue(app.navigationBars["Kitaplar"].waitForExistence(timeout: 5))
         XCTAssertTrue(app.staticTexts["Kataloğu Keşfet"].waitForExistence(timeout: 5))
 
-        tabBar.buttons["Yazarlar"].tap()
+        selectPrimaryDestination(app, titled: "Yazarlar")
         XCTAssertTrue(app.navigationBars["Yazarlar"].waitForExistence(timeout: 5))
 
-        let overflowTab = tabBar.buttons.element(boundBy: 4)
-        XCTAssertTrue(overflowTab.exists)
-        overflowTab.tap()
-        XCTAssertTrue(app.staticTexts["Forum"].waitForExistence(timeout: 5))
-        let profileDestination = app.staticTexts["Profilim"]
-        XCTAssertTrue(profileDestination.exists)
-        profileDestination.tap()
-        XCTAssertTrue(app.navigationBars["Profilim"].waitForExistence(timeout: 5))
-        XCTAssertTrue(app.buttons["Giriş yap"].exists)
+        if usesCompactTabBar {
+            let overflowTab = tabBar.buttons.element(boundBy: 4)
+            XCTAssertTrue(overflowTab.exists)
+            overflowTab.tap()
+            XCTAssertTrue(app.staticTexts["Forum"].waitForExistence(timeout: 5))
+            let profileDestination = app.staticTexts["Profilim"]
+            XCTAssertTrue(profileDestination.exists)
+            profileDestination.tap()
+            XCTAssertTrue(app.navigationBars["Profilim"].waitForExistence(timeout: 5))
+            XCTAssertTrue(app.buttons["Giriş yap"].exists)
+        } else {
+            let menuButton = app.buttons["Menü"]
+            XCTAssertTrue(menuButton.waitForExistence(timeout: 5))
+            menuButton.tap()
+            let login = app.buttons["Giriş yap"]
+            XCTAssertTrue(login.waitForExistence(timeout: 5))
+            login.tap()
+            XCTAssertTrue(app.navigationBars["Giriş"].waitForExistence(timeout: 5))
+        }
     }
 
     func testDrawerRoutesPresentContentShells() throws {
@@ -57,14 +68,25 @@ final class EkitapligimUITests: XCTestCase {
 
     func testCatalogAndAuthorsScreensAreNotBlank() throws {
         let app = launchApp()
-        let tabBar = app.tabBars.firstMatch
 
-        tabBar.buttons["Katalog"].tap()
+        selectPrimaryDestination(app, titled: "Katalog")
         XCTAssertTrue(app.staticTexts["Kataloğu Keşfet"].waitForExistence(timeout: 5))
 
-        tabBar.buttons["Yazarlar"].tap()
+        selectPrimaryDestination(app, titled: "Yazarlar")
         XCTAssertTrue(app.navigationBars["Yazarlar"].waitForExistence(timeout: 5))
         XCTAssertFalse(app.otherElements["EmptyView"].exists)
+    }
+
+    private func selectPrimaryDestination(_ app: XCUIApplication, titled title: String) {
+        let tabBarButton = app.tabBars.firstMatch.buttons[title]
+        if tabBarButton.waitForExistence(timeout: 2) {
+            tabBarButton.tap()
+            return
+        }
+
+        let adaptiveTabButton = app.buttons[title].firstMatch
+        XCTAssertTrue(adaptiveTabButton.waitForExistence(timeout: 8))
+        adaptiveTabButton.tap()
     }
 
     private func tapDrawerItem(_ app: XCUIApplication, titled title: String) {
