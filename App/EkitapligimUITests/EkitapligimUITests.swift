@@ -7,7 +7,11 @@ final class EkitapligimUITests: XCTestCase {
 
     private func launchApp() -> XCUIApplication {
         let app = XCUIApplication()
-        app.launchArguments += ["-ui-testing"]
+        app.launchArguments += [
+            "-ui-testing",
+            "-AppleLanguages", "(tr)",
+            "-AppleLocale", "tr_TR"
+        ]
         app.launch()
         return app
     }
@@ -93,11 +97,16 @@ final class EkitapligimUITests: XCTestCase {
         sleep(4)
         keepScreenshot(named: "03-authors")
 
+        selectPrimaryDestination(app, titled: "İstekler")
+        XCTAssertTrue(app.navigationBars["Kitap İstekleri"].waitForExistence(timeout: 10))
+        sleep(4)
+        keepScreenshot(named: "04-requests")
+
         app.buttons["Menü"].tap()
         tapDrawerItem(app, titled: "Forum")
         XCTAssertTrue(app.navigationBars["Topluluk"].waitForExistence(timeout: 10))
         sleep(4)
-        keepScreenshot(named: "04-forum")
+        keepScreenshot(named: "05-forum")
     }
 
     private func selectPrimaryDestination(_ app: XCUIApplication, titled title: String) {
