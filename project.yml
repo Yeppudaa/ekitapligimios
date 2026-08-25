@@ -58,7 +58,7 @@ targets:
       configs:
         Development:
           base:
-            PRODUCT_BUNDLE_IDENTIFIER: com.ekitapligim.app.dev
+            PRODUCT_BUNDLE_IDENTIFIER: com.ekitapligim.app
           xcconfig: App/Ekitapligim/Config/Development.xcconfig
         Staging:
           base:

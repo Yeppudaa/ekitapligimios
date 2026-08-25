@@ -17,6 +17,8 @@ final class StoreKitPurchaseService: ObservableObject {
     private var storeProducts: [Product] = []
     private var updatesTask: Task<Void, Never>?
     private var statusUpdatesTask: Task<Void, Never>?
+    private var storefrontUpdatesTask: Task<Void, Never>?
+    private var isLoadingProducts = false
 
     init(purchaseRepository: any PurchaseVerifying) {
         self.purchaseRepository = purchaseRepository
@@ -25,6 +27,7 @@ final class StoreKitPurchaseService: ObservableObject {
     deinit {
         updatesTask?.cancel()
         statusUpdatesTask?.cancel()
+        storefrontUpdatesTask?.cancel()
     }
 
     func startObservingTransactions() {
@@ -41,13 +44,21 @@ final class StoreKitPurchaseService: ObservableObject {
                 await self?.refreshEntitlements()
             }
         }
+        storefrontUpdatesTask = Task { [weak self] in
+            for await _ in Storefront.updates {
+                guard !Task.isCancelled else { break }
+                await self?.loadProducts(force: true)
+            }
+        }
     }
 
     func stopObservingTransactions() {
         updatesTask?.cancel()
         statusUpdatesTask?.cancel()
+        storefrontUpdatesTask?.cancel()
         updatesTask = nil
         statusUpdatesTask = nil
+        storefrontUpdatesTask = nil
         entitlement = .none
         state = products.isEmpty ? .notLoaded : .available(products: products)
     }
@@ -57,10 +68,18 @@ final class StoreKitPurchaseService: ObservableObject {
         await refreshEntitlements()
     }
 
-    func loadProducts() async {
+    func loadProducts(force: Bool = false) async {
+        if !force, !storeProducts.isEmpty {
+            state = .available(products: products)
+            return
+        }
+        guard !isLoadingProducts else { return }
+        isLoadingProducts = true
+        defer { isLoadingProducts = false }
+
         state = .loading
         do {
-            let loaded = try await Product.products(for: Self.productIDs)
+            let loaded = try await loadProductsWithRetry()
             guard !loaded.isEmpty else {
                 state = .failed(message: L10n.premiumProductMissing)
                 return
@@ -73,9 +92,31 @@ final class StoreKitPurchaseService: ObservableObject {
                 StoreProduct(id: $0.id, displayName: $0.displayName, displayPrice: $0.displayPrice)
             }
             state = .available(products: products)
+        } catch is CancellationError {
+            return
         } catch {
             state = .failed(message: L10n.premiumProductsFailed)
         }
+    }
+
+    private func loadProductsWithRetry() async throws -> [Product] {
+        // StoreKit may briefly return an empty catalog while TestFlight/Sandbox
+        // establishes the storefront. Retry before presenting a permanent error.
+        let retryDelays: [UInt64] = [0, 1_000_000_000, 3_000_000_000, 6_000_000_000]
+        var lastLoaded: [Product] = []
+
+        for delay in retryDelays {
+            if delay > 0 {
+                try await Task.sleep(nanoseconds: delay)
+            }
+            let loaded = try await Product.products(for: Self.productIDs)
+            if !loaded.isEmpty {
+                return loaded
+            }
+            lastLoaded = loaded
+        }
+
+        return lastLoaded
     }
 
     func purchase(productID: String) async {
