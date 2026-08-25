@@ -128,6 +128,13 @@ final class APIEndpointTests: XCTestCase {
         XCTAssertEqual(download.body, .form(["purpose": "download"]))
     }
 
+    func testReaderAccessCarriesAuthenticationForMemberQuota() {
+        let access = APIEndpoint.readerAccess(bookID: 15582)
+
+        XCTAssertTrue(access.requiresAuthentication)
+        XCTAssertEqual(access.path, "books/15582/reader/access")
+    }
+
     func testBookDetailUsesDedicatedMobileRoute() {
         let endpoint = APIEndpoint.book(id: 15585)
 
@@ -157,12 +164,17 @@ final class APIEndpointTests: XCTestCase {
         let endpoint = APIEndpoint.verifyAppStorePurchase(
             signedTransaction: "signed",
             productID: "ekitapligim.premium.monthly",
-            originalTransactionID: "1000001"
+            originalTransactionID: "1000001",
+            signedRenewalInfo: "renewal"
         )
 
         XCTAssertEqual(endpoint.path, "billing/app-store/verify")
         XCTAssertEqual(endpoint.method, .post)
         XCTAssertTrue(endpoint.requiresAuthentication)
+        guard case .form(let fields) = endpoint.body else {
+            return XCTFail("Expected StoreKit verification form body")
+        }
+        XCTAssertEqual(fields["signed_renewal_info"], "renewal")
     }
 
     func testForumEndpoints() {

@@ -226,7 +226,7 @@ public extension APIEndpoint {
     }
 
     static func readerAccess(bookID: Int) -> APIEndpoint {
-        APIEndpoint(method: .get, path: "books/\(bookID)/reader/access")
+        APIEndpoint(method: .get, path: "books/\(bookID)/reader/access", requiresAuthentication: true)
     }
 
     static func readerSession(bookID: Int, purpose: ReaderSessionPurpose) -> APIEndpoint {
@@ -463,7 +463,8 @@ public extension APIEndpoint {
     static func verifyAppStorePurchase(
         signedTransaction: String,
         productID: String,
-        originalTransactionID: String?
+        originalTransactionID: String?,
+        signedRenewalInfo: String? = nil
     ) -> APIEndpoint {
         var fields = [
             "signed_transaction": signedTransaction,
@@ -471,6 +472,9 @@ public extension APIEndpoint {
         ]
         if let originalTransactionID, !originalTransactionID.isEmpty {
             fields["original_transaction_id"] = originalTransactionID
+        }
+        if let signedRenewalInfo, !signedRenewalInfo.isEmpty {
+            fields["signed_renewal_info"] = signedRenewalInfo
         }
         return APIEndpoint(
             method: .post,

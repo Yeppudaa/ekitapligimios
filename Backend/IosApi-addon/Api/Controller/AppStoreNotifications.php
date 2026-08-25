@@ -2,6 +2,8 @@
 
 namespace Ekitapligim\IosApi\Api\Controller;
 
+use Ekitapligim\IosApi\Service\AppStoreEntitlementPolicy;
+
 class AppStoreNotifications extends AppStoreVerify
 {
 	public function actionPost()
@@ -23,13 +25,18 @@ class AppStoreNotifications extends AppStoreVerify
 			$notification = $this->decodeAndVerifyJws($signedPayload)['payload'];
 			$data = is_array($notification['data'] ?? null) ? $notification['data'] : [];
 			$transaction = [];
+			$renewalInfo = [];
 
 			if (!empty($data['signedTransactionInfo']))
 			{
 				$transaction = $this->decodeAndVerifyJws((string) $data['signedTransactionInfo'])['payload'];
 			}
+			if (!empty($data['signedRenewalInfo']))
+			{
+				$renewalInfo = $this->decodeAndVerifyJws((string) $data['signedRenewalInfo'])['payload'];
+			}
 
-			$this->validateNotificationPayload($data, $transaction);
+			$this->validateNotificationPayload($data, $transaction, $renewalInfo);
 
 			$db = \XF::db();
 			$db->beginTransaction();
@@ -38,7 +45,7 @@ class AppStoreNotifications extends AppStoreVerify
 				$this->recordNotification($notification, $transaction, $signedPayload);
 				if ($transaction)
 				{
-					$this->updateEntitlementFromNotification($transaction, $signedPayload);
+					$this->updateEntitlementFromNotification($transaction, $renewalInfo, $signedPayload);
 				}
 				$db->commit();
 			}
@@ -60,7 +67,7 @@ class AppStoreNotifications extends AppStoreVerify
 		]);
 	}
 
-	protected function validateNotificationPayload(array $data, array $transaction): void
+	protected function validateNotificationPayload(array $data, array $transaction, array $renewalInfo): void
 	{
 		$expectedBundleId = (string) (getenv('EKITAPLIGIM_IOS_BUNDLE_ID') ?: 'com.ekitapligim.app');
 		$dataBundleId = (string) ($data['bundleId'] ?? '');
@@ -101,16 +108,27 @@ class AppStoreNotifications extends AppStoreVerify
 		{
 			throw new \RuntimeException('Notification transaction identifiers are missing.');
 		}
+		if ($renewalInfo)
+		{
+			$renewalOriginalId = (string) ($renewalInfo['originalTransactionId'] ?? '');
+			$renewalProductId = (string) ($renewalInfo['autoRenewProductId'] ?? '');
+			$renewalEnvironment = (string) ($renewalInfo['environment'] ?? '');
+			if (($renewalOriginalId !== '' && $renewalOriginalId !== $originalTransactionId)
+				|| ($renewalProductId !== '' && !$this->isAllowedProductId($renewalProductId))
+				|| ($renewalEnvironment !== '' && strcasecmp($renewalEnvironment, $environment) !== 0))
+			{
+				throw new \RuntimeException('Notification renewal information mismatch.');
+			}
+		}
 	}
 
-	protected function updateEntitlementFromNotification(array $transaction, string $signedPayload): void
+	protected function updateEntitlementFromNotification(array $transaction, array $renewalInfo, string $signedPayload): void
 	{
 		$this->ensureEntitlementTable();
 		$originalTransactionId = (string) $transaction['originalTransactionId'];
 		$transactionId = (string) $transaction['transactionId'];
-		$expiresDate = (int) ($transaction['expiresDate'] ?? 0);
-		$revocationDate = (int) ($transaction['revocationDate'] ?? 0);
-		$isActive = $revocationDate <= 0 && ($expiresDate <= 0 || $expiresDate > (\XF::$time * 1000));
+		$isActive = AppStoreEntitlementPolicy::isActive($transaction, $renewalInfo, \XF::$time * 1000);
+		$effectiveExpirationSeconds = AppStoreEntitlementPolicy::effectiveExpirationSeconds($transaction, $renewalInfo);
 		$entitlementId = (int) \XF::db()->fetchOne(
 			"SELECT entitlement_id
 			FROM xf_ekitapligim_mobile_appstore_entitlement
@@ -138,7 +156,7 @@ class AppStoreNotifications extends AppStoreVerify
 				(string) $transaction['productId'],
 				$transactionId,
 				(string) $transaction['environment'],
-				(int) floor($expiresDate / 1000),
+				$effectiveExpirationSeconds,
 				$isActive ? 1 : 0,
 				hash('sha256', $signedPayload),
 				\XF::$time,

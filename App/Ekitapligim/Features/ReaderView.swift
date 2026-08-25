@@ -10,6 +10,7 @@ struct ReaderView: View {
 
     @State private var progress: ReadingProgress
     @State private var readerURL: URL?
+    @State private var temporaryReaderURL: URL?
     @State private var readerFileType = "pdf"
     @State private var epubProgressPercent: Double = 0
     @State private var epubPosition = 1
@@ -17,6 +18,8 @@ struct ReaderView: View {
     @State private var isLoading = true
     @State private var errorMessage: String?
     @State private var showsBookmarks = false
+    @State private var showsPagePicker = false
+    @State private var pdfLayout: PDFReadingLayout = .continuous
     @State private var bookmarks: [ReaderBookmark] = []
 
     init(book: BookDTO) {
@@ -44,12 +47,27 @@ struct ReaderView: View {
             )
             .presentationDetents([.medium, .large])
         }
+        .sheet(isPresented: $showsPagePicker) {
+            if let readerURL, readerFileType == "pdf" {
+                PDFPagePickerView(
+                    url: readerURL,
+                    selectedPage: progress.currentPage,
+                    onSelect: { page in
+                        requestedPage = page
+                        showsPagePicker = false
+                    }
+                )
+            }
+        }
         .task {
             refreshBookmarks()
-            await promoteReadingShelfIfNeeded()
             await loadReaderSession()
         }
-        .onDisappear { saveProgress() }
+        .onDisappear {
+            saveProgress()
+            container.readerContentLoader.removePreparedFile(at: temporaryReaderURL)
+            temporaryReaderURL = nil
+        }
     }
 
     @ViewBuilder
@@ -62,7 +80,8 @@ struct ReaderView: View {
             bookmarkCount: bookmarks.count,
             supportsBookmarks: readerFileType != "epub",
             onToggleBookmark: toggleCurrentBookmark,
-            onShowBookmarks: { showsBookmarks = true }
+            onShowBookmarks: { showsBookmarks = true },
+            onShowPages: { showsPagePicker = true }
         )
     }
 
@@ -76,7 +95,20 @@ struct ReaderView: View {
         } else if let url = readerURL, readerFileType == "epub" {
             EPUBReaderView(sourceURL: url, progressPercent: $epubProgressPercent, position: $epubPosition)
         } else if let url = readerURL {
-            PDFReader(url: url, progress: $progress, requestedPage: $requestedPage)
+            VStack(spacing: 0) {
+                PDFReader(
+                    url: url,
+                    progress: $progress,
+                    requestedPage: $requestedPage,
+                    layout: pdfLayout
+                )
+                Divider()
+                PDFReaderControls(
+                    progress: progress,
+                    layout: $pdfLayout,
+                    onRequestPage: { requestedPage = $0 }
+                )
+            }
         } else {
             ContentUnavailableView(L10n.readerUnavailable, systemImage: "lock.shield", description: Text(L10n.readerSecureLinkMissing))
         }
@@ -112,7 +144,7 @@ struct ReaderView: View {
     }
 
     private func saveProgress() {
-        guard let bookID else { return }
+        guard let bookID, readerURL != nil else { return }
         let latestPage = readerFileType == "epub" ? epubPosition : progress.currentPage
         let latestPercent = displayedProgressPercent
         let percentInt = Int(latestPercent.rounded())
@@ -153,26 +185,62 @@ struct ReaderView: View {
 
         isLoading = true
         defer { isLoading = false }
-        if let localFile = container.downloadManager.localFile(for: book.id) {
-            readerFileType = localFile.fileType
-            readerURL = localFile.url
-            return
-        }
         do {
-            let session = try await container.books.createReaderSession(bookID: bookID, purpose: .read)
-            guard let url = URL(string: session.sourceUrl), url.scheme == "https" else {
-                errorMessage = L10n.readerAtsLinkMissing
+            let access = try await container.books.readerAccess(bookID: bookID)
+            guard access.canReadOnline else {
+                errorMessage = readerDenialMessage(from: access)
                 return
             }
+
+            // The server creates/counts the read session atomically. This must happen even
+            // when an offline copy exists so daily read limits cannot be bypassed.
+            let session = try await container.books.createReaderSession(bookID: bookID, purpose: .read)
             guard let fileType = try? DownloadFilePolicy.fileExtension(for: session.fileType) else {
                 errorMessage = L10n.readerUnsupportedFormat
                 return
             }
+
+            if let localFile = container.downloadManager.localFile(for: book.id) {
+                readerFileType = localFile.fileType
+                readerURL = localFile.url
+                restorePDFPositionIfAvailable(fileType: localFile.fileType)
+                await promoteReadingShelfIfNeeded()
+                return
+            }
+            guard let url = URL(string: session.sourceUrl), url.scheme?.lowercased() == "https" else {
+                errorMessage = L10n.readerAtsLinkMissing
+                return
+            }
             readerFileType = fileType
-            readerURL = url
+            let localURL = try await container.readerContentLoader.prepare(
+                bookID: book.id,
+                sourceURL: url,
+                fileType: fileType
+            )
+            temporaryReaderURL = localURL
+            readerURL = localURL
+            restorePDFPositionIfAvailable(fileType: fileType)
+            await promoteReadingShelfIfNeeded()
         } catch {
-            errorMessage = L10n.readerSessionFailed
+            errorMessage = (error as? APIClientError)?.serverMessage ?? L10n.readerSessionFailed
         }
+    }
+
+    private func readerDenialMessage(from access: ReaderAccessDTO) -> String {
+        if let message = access.denialMessage?.trimmingCharacters(in: .whitespacesAndNewlines), !message.isEmpty {
+            return message
+        }
+        if let quota = access.dailyRead, !quota.isAllowed, quota.limit > 0 {
+            return L10n.quotaReadSubtitle(used: quota.used, limit: quota.limit)
+        }
+        return L10n.readerSessionFailed
+    }
+
+    private func restorePDFPositionIfAvailable(fileType: String) {
+        guard fileType == "pdf",
+              let lastPage = container.libraryItems.first(where: { $0.bookId == book.id })?.lastReadPage,
+              lastPage > 1 else { return }
+        requestedPage = lastPage
     }
 }
 
@@ -186,6 +254,7 @@ private struct ReaderToolbar: View {
     let supportsBookmarks: Bool
     let onToggleBookmark: () -> Void
     let onShowBookmarks: () -> Void
+    let onShowPages: () -> Void
 
     var body: some View {
         HStack(spacing: 12) {
@@ -202,6 +271,10 @@ private struct ReaderToolbar: View {
                 .font(.subheadline.monospacedDigit())
                 .foregroundStyle(.secondary)
             if supportsBookmarks {
+                Button(action: onShowPages) {
+                    Image(systemName: "square.grid.2x2")
+                }
+                .accessibilityLabel(L10n.readerPages)
                 Button(action: onToggleBookmark) {
                     Image(systemName: isBookmarked ? "bookmark.fill" : "bookmark")
                 }
@@ -223,6 +296,117 @@ private struct ReaderToolbar: View {
             }
         }
         .padding()
+    }
+}
+
+private enum PDFReadingLayout {
+    case continuous
+    case paged
+}
+
+private struct PDFReaderControls: View {
+    let progress: ReadingProgress
+    @Binding var layout: PDFReadingLayout
+    let onRequestPage: (Int) -> Void
+
+    var body: some View {
+        HStack(spacing: 12) {
+            Button {
+                onRequestPage(max(1, progress.currentPage - 1))
+            } label: {
+                Image(systemName: "chevron.left")
+            }
+            .disabled(progress.currentPage <= 1)
+            .accessibilityLabel(L10n.readerPreviousPage)
+
+            Slider(
+                value: Binding(
+                    get: { Double(progress.currentPage) },
+                    set: { onRequestPage(Int($0.rounded())) }
+                ),
+                in: 1...Double(max(1, progress.totalPages)),
+                step: 1
+            )
+            .accessibilityLabel(L10n.readerPageSlider)
+            .accessibilityValue(L10n.readerPage(progress.currentPage, progress.totalPages))
+
+            Button {
+                onRequestPage(min(progress.totalPages, progress.currentPage + 1))
+            } label: {
+                Image(systemName: "chevron.right")
+            }
+            .disabled(progress.currentPage >= progress.totalPages)
+            .accessibilityLabel(L10n.readerNextPage)
+
+            Menu {
+                Button(L10n.readerContinuousLayout) { layout = .continuous }
+                Button(L10n.readerPagedLayout) { layout = .paged }
+            } label: {
+                Image(systemName: layout == .continuous ? "arrow.down.doc" : "rectangle.portrait.on.rectangle.portrait")
+            }
+            .accessibilityLabel(L10n.readerLayout)
+        }
+        .buttonStyle(.borderless)
+        .padding(.horizontal, 16)
+        .frame(height: 52)
+        .background(.bar)
+    }
+}
+
+@MainActor
+private struct PDFPagePickerView: View {
+    @Environment(\.dismiss) private var dismiss
+    let url: URL
+    let selectedPage: Int
+    let onSelect: (Int) -> Void
+
+    private let columns = [GridItem(.adaptive(minimum: 92), spacing: 16)]
+
+    var body: some View {
+        NavigationStack {
+            Group {
+                if let document = PDFDocument(url: url) {
+                    ScrollViewReader { proxy in
+                        ScrollView {
+                            LazyVGrid(columns: columns, spacing: 20) {
+                                ForEach(0..<document.pageCount, id: \.self) { index in
+                                    Button {
+                                        onSelect(index + 1)
+                                    } label: {
+                                        VStack(spacing: 6) {
+                                            if let page = document.page(at: index) {
+                                                Image(uiImage: page.thumbnail(of: CGSize(width: 160, height: 220), for: .cropBox))
+                                                    .resizable()
+                                                    .scaledToFit()
+                                                    .background(.white)
+                                                    .clipShape(RoundedRectangle(cornerRadius: 5))
+                                                    .shadow(color: .black.opacity(0.12), radius: 3, y: 2)
+                                            }
+                                            Text(L10n.readerPageNumber(index + 1))
+                                                .font(.caption.monospacedDigit())
+                                                .foregroundStyle(index + 1 == selectedPage ? Color.accentColor : Color.secondary)
+                                        }
+                                    }
+                                    .buttonStyle(.plain)
+                                    .id(index + 1)
+                                }
+                            }
+                            .padding()
+                        }
+                        .onAppear { proxy.scrollTo(selectedPage, anchor: .center) }
+                    }
+                } else {
+                    ContentUnavailableView(L10n.readerUnavailable, systemImage: "doc.questionmark")
+                }
+            }
+            .navigationTitle(L10n.readerPages)
+            .navigationBarTitleDisplayMode(.inline)
+            .toolbar {
+                ToolbarItem(placement: .confirmationAction) {
+                    Button(L10n.commonClose) { dismiss() }
+                }
+            }
+        }
     }
 }
 
@@ -269,6 +453,7 @@ private struct PDFReader: UIViewRepresentable {
     let url: URL
     @Binding var progress: ReadingProgress
     @Binding var requestedPage: Int?
+    let layout: PDFReadingLayout
 
     func makeCoordinator() -> Coordinator {
         Coordinator(progress: $progress, requestedPage: $requestedPage)
@@ -277,8 +462,7 @@ private struct PDFReader: UIViewRepresentable {
     func makeUIView(context: Context) -> PDFView {
         let view = PDFView()
         view.autoScales = true
-        view.displayMode = .singlePageContinuous
-        view.displayDirection = .vertical
+        applyLayout(to: view)
         view.document = PDFDocument(url: url)
         context.coordinator.observe(view)
         context.coordinator.updateProgress(from: view)
@@ -286,6 +470,7 @@ private struct PDFReader: UIViewRepresentable {
     }
 
     func updateUIView(_ uiView: PDFView, context: Context) {
+        applyLayout(to: uiView)
         if uiView.document?.documentURL != url {
             uiView.document = PDFDocument(url: url)
             context.coordinator.updateProgress(from: uiView)
@@ -299,6 +484,19 @@ private struct PDFReader: UIViewRepresentable {
 
     static func dismantleUIView(_ uiView: PDFView, coordinator: Coordinator) {
         coordinator.stopObserving()
+    }
+
+    private func applyLayout(to view: PDFView) {
+        switch layout {
+        case .continuous:
+            view.displayMode = .singlePageContinuous
+            view.displayDirection = .vertical
+        case .paged:
+            view.displayMode = .singlePage
+            view.displayDirection = .horizontal
+        }
+        view.displaysPageBreaks = true
+        view.autoScales = true
     }
 
     final class Coordinator: NSObject {

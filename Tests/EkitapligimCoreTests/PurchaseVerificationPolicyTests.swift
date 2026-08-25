@@ -39,4 +39,19 @@ final class PurchaseVerificationPolicyTests: XCTestCase {
             XCTAssertEqual(error as? PurchaseVerificationError, .expiredEntitlement)
         }
     }
+
+    func testAcceptsAppleBillingGracePeriodAsActiveEntitlement() throws {
+        let now = Date(timeIntervalSince1970: 1_700_000_000)
+        let response = BillingResponseDTO(
+            success: true,
+            isPremium: true,
+            expirationTime: 1_699_999_000,
+            gracePeriodExpirationTime: 1_700_086_400
+        )
+
+        XCTAssertEqual(
+            try PurchaseVerificationPolicy.requireActive(response, now: now),
+            Date(timeIntervalSince1970: 1_700_086_400)
+        )
+    }
 }

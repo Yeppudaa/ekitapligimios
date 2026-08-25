@@ -3,6 +3,7 @@
 namespace Ekitapligim\MobileApi\Api\Controller;
 
 use XF\Mvc\ParameterBag;
+use XF\Service\FloodCheckService;
 
 class ForumThreads extends AbstractMobileController
 {
@@ -48,6 +49,96 @@ class ForumThreads extends AbstractMobileController
 			'total' => $total,
 			'pagination' => $this->paginationMeta($page, $perPage, $total)
 		]);
+	}
+
+	public function actionPost(ParameterBag $params)
+	{
+		$visitor = $this->assertRegisteredApiUser();
+		$forumNode = $this->assertViewableForum((int) $params->node_id);
+		$forum = $this->em()->find('XF:Forum', (int) $forumNode->node_id);
+		if (!$forum)
+		{
+			throw $this->exception($this->apiError('Forum not found.', 'forum_not_found', null, 404));
+		}
+
+		if (!$this->hasAcceptedCurrentTerms((int) $visitor->user_id))
+		{
+			return $this->apiError('Topluluk kurallarını kabul etmeden konu açamazsınız.', 'terms_acceptance_required', [
+				'required_version' => Terms::CURRENT_VERSION,
+				'requiredVersion' => Terms::CURRENT_VERSION
+			], 403);
+		}
+
+		if (!$forum->canCreateThread($error))
+		{
+			throw $this->exception($this->apiError($error ?: 'You cannot create a thread in this forum.', 'cannot_create_thread', null, 403));
+		}
+
+		$title = trim((string) $this->filter('title', 'str'));
+		$message = trim((string) $this->filter('message', 'str'));
+		if (mb_strlen($title) < 3)
+		{
+			return $this->apiError('Thread title is too short.', 'title_too_short');
+		}
+		if (mb_strlen($message) < 2)
+		{
+			return $this->apiError('Thread message is too short.', 'message_too_short');
+		}
+
+		if (!$visitor->hasPermission('general', 'bypassFloodCheck'))
+		{
+			$floodChecker = $this->service(FloodCheckService::class);
+			$timeRemaining = $floodChecker->checkFlooding('post', (int) $visitor->user_id);
+			if ($timeRemaining)
+			{
+				return $this->apiError(
+					(string) \XF::phrase('must_wait_x_seconds_before_performing_this_action', [
+						'count' => $timeRemaining
+					]),
+					'thread_flooding',
+					[
+						'retry_after' => (int) $timeRemaining,
+						'retryAfter' => (int) $timeRemaining
+					],
+					429
+				);
+			}
+		}
+
+		$creator = $this->service('XF:Thread\Creator', $forum);
+		$creator->setContent($title, $message);
+		$creator->checkForSpam();
+
+		if (!$creator->validate($errors))
+		{
+			return $this->apiError(implode(' ', array_map('strval', $errors)), 'thread_invalid');
+		}
+
+		$thread = $creator->save();
+		$creator->sendNotifications();
+		$thread = $this->em()->find('XF:Thread', (int) $thread->thread_id, ['User', 'Forum']);
+
+		return $this->apiResult([
+			'success' => true,
+			'thread' => $this->serializeThread($thread)
+		]);
+	}
+
+	protected function hasAcceptedCurrentTerms(int $userId): bool
+	{
+		\XF::db()->query(
+			'CREATE TABLE IF NOT EXISTS xf_ekitapligim_mobile_terms_acceptance (
+				user_id INT UNSIGNED NOT NULL,
+				terms_version VARCHAR(32) NOT NULL,
+				accept_date INT UNSIGNED NOT NULL,
+				PRIMARY KEY (user_id)
+			) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4'
+		);
+
+		return (bool) \XF::db()->fetchOne(
+			'SELECT 1 FROM xf_ekitapligim_mobile_terms_acceptance WHERE user_id = ? AND terms_version = ? LIMIT 1',
+			[$userId, Terms::CURRENT_VERSION]
+		);
 	}
 
 	protected function assertViewableForum(int $nodeId)

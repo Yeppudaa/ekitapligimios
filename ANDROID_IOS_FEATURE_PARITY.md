@@ -102,6 +102,6 @@ Public smoke probes every scoped write route without credentials. Expected: **HT
 | Terms acceptance | XenForo terms expected for UGC | Native terms acceptance before posting | iOS UI + backend scaffold added |
 
 ## Assumptions
-- Main e-book file format is PDF, with possible EPUB support based on Android reader code.
+- PDF and EPUB reader sources are quota-authorized through the existing Android-compatible reader session API, downloaded to protected temporary storage, signature-validated, and opened natively with PDFKit/Readium. Google Drive preview/share URLs are resolved to binary downloads. PDF supports continuous/paged layouts, page scrubbing, thumbnails, bookmarks, and saved-position restore.
 - Ekitapligim includes user-generated forum content through XenForo.
 - Premium affects online reading/download quotas and may be a digital subscription on iOS.

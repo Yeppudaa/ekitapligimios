@@ -61,7 +61,7 @@ targets:
           xcconfig: App/Ekitapligim/Config/Development.xcconfig
         Staging:
           base:
-            PRODUCT_BUNDLE_IDENTIFIER: com.ekitapligim.app.staging
+            PRODUCT_BUNDLE_IDENTIFIER: com.ekitapligim.app
           xcconfig: App/Ekitapligim/Config/Staging.xcconfig
         Production:
           base:
@@ -107,6 +107,7 @@ schemes:
         Ekitapligim: all
     run:
       config: Development
+      storeKitConfiguration: App/Ekitapligim/StoreKit/Ekitapligim.storekit
       commandLineArguments:
         "-FIRDebugDisabled": true
     test:

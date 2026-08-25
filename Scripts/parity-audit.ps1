@@ -41,7 +41,7 @@ $codeChecks = @(
     @{ Name = "Book requests hero card"; Pattern = "bookRequestsHeroTitle|heroCard"; Path = "App/Ekitapligim/Features/BookRequestsView.swift" }
     @{ Name = "Book request status pills"; Pattern = "BookRequestStatusPill"; Path = "App/Ekitapligim/Features/BookRequestsView.swift" }
     @{ Name = "Book request Android status labels"; Pattern = "Uygun Bulunmadı|Temin Edildi"; Path = "Sources/EkitapligimCore/Localization.swift" }
-    @{ Name = "Catalog cover always shows favorite glyph"; Pattern = "heart.fill\" : \"heart"; Path = "App/Ekitapligim/Features/CatalogView.swift" }
+    @{ Name = "Catalog cover always shows favorite glyph"; Pattern = 'heart.fill" : "heart'; Path = "App/Ekitapligim/Features/CatalogView.swift" }
     @{ Name = "Book request author line"; Pattern = "bookRequestsAuthorLine"; Path = "App/Ekitapligim/Features/BookRequestsView.swift" }
     @{ Name = "Members initial load"; Pattern = "guard !isLoading else \{ return \}"; Path = "App/Ekitapligim/Features/MembersView.swift"; ShouldNotMatch = $true; PassDetail = "Initial load guard removed" }
     @{ Name = "Forum topic create UI"; Pattern = "createThread|forumThreadsCreate"; Path = "App/Ekitapligim/Features/ForumThreadsView.swift" }
@@ -133,7 +133,7 @@ $codeChecks = @(
     @{ Name = "Forum reply placeholder copy"; Pattern = "forumThreadReplyPlaceholder"; Path = "App/Ekitapligim/Features/ForumThreadDetailView.swift" }
     @{ Name = "Forum report Raporla label"; Pattern = "forumThreadReportAction"; Path = "App/Ekitapligim/Features/ForumThreadDetailView.swift" }
     @{ Name = "Forum premium post badge"; Pattern = "chatRolePremium"; Path = "App/Ekitapligim/Features/ForumThreadDetailView.swift" }
-    @{ Name = "Chat nav subtitle"; Pattern = "navigationSubtitle\(L10n\.chatSubtitle\)"; Path = "App/Ekitapligim/Features/ChatView.swift" }
+    @{ Name = "Chat nav subtitle"; Pattern = "ChatNavigationSubtitleModifier\(subtitle: L10n\.chatSubtitle\)"; Path = "App/Ekitapligim/Features/ChatView.swift" }
     @{ Name = "Agenda load-more Android copy"; Pattern = "commonLoadMoreItems"; Path = "App/Ekitapligim/Features/BookAgendaView.swift" }
     @{ Name = "Library meta Devam et fallback"; Pattern = "libraryMetaContinue"; Path = "Sources/EkitapligimCore/Models.swift" }
     @{ Name = "Library meta Indirildi label"; Pattern = "libraryMetaDownloaded"; Path = "Sources/EkitapligimCore/Models.swift" }

@@ -13,11 +13,15 @@ public enum PurchaseVerificationPolicy {
         guard response.success, response.isPremium else {
             throw PurchaseVerificationError.inactiveEntitlement
         }
-        guard let expirationTime = response.expirationTime else {
+        let effectiveExpirationTime = max(
+            response.expirationTime ?? 0,
+            response.gracePeriodExpirationTime ?? 0
+        )
+        guard effectiveExpirationTime > 0 else {
             return nil
         }
 
-        let expiration = Date(timeIntervalSince1970: TimeInterval(expirationTime))
+        let expiration = Date(timeIntervalSince1970: TimeInterval(effectiveExpirationTime))
         guard expiration > now else {
             throw PurchaseVerificationError.expiredEntitlement
         }

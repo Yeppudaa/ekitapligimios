@@ -82,6 +82,10 @@ xcodebuild test -scheme Ekitapligim -destination 'platform=iOS Simulator,name=iP
 ```
 
 ## Current Workspace Verification
+
+- 2026-08-25 production IosApi 1.0.6 probe: empty App Store notification returned HTTP 400 `signedPayload is required`; the 1.0.6 `signed_payload` alias reached JWS verification and rejected a malformed token with HTTP 400 `Notification could not be verified`; unauthenticated purchase verification returned HTTP 401 `Login required`.
+- 2026-08-25 Apple Sandbox signed-notification probe: Apple's `Request a Test Notification` API returned HTTP 200 and delivered a `TEST` JWS for `com.ekitapligim.app` in `Sandbox`; Apple recorded `UNSUCCESSFUL_HTTP_RESPONSE_CODE`, and direct replay returned HTTP 400. The JWS chain terminates at Apple Root CA - G3. IosApi 1.0.7 now bundles and fingerprint-audits that official root; rerun this probe after deployment.
+- 2026-08-25 IosApi 1.0.7 post-deployment probe: Apple accepted a new Sandbox test request with HTTP 200, delivered the signed `TEST` JWS to the configured public endpoint, and reported `firstSendAttemptResult=SUCCESS` with a successful send attempt. Production and Sandbox Billing Grace Period was then enabled in App Store Connect for Apple's minimum 3-day duration and all renewals.
 - `Localizable.xcstrings` JSON validation passed in this Windows workspace.
 - Swift 6.3.3 and Visual Studio Build Tools are installed in this workspace. `Scripts/swift-test-windows.ps1` built the portable core package and passed all 72 tests on `x86_64-unknown-windows-msvc`.
 - `xcodebuild` is not installed in this workspace, so simulator, archive, and UI tests were not executed here.
@@ -119,6 +123,9 @@ xcodebuild test -scheme Ekitapligim -destination 'platform=iOS Simulator,name=iP
 - `Scripts/apply-mobileapi-ios-patch.ps1` executed successfully against the local XenForo `Ekitapligim/MobileApi` addon, upgraded it to `1.0.74`, imported route and CLI data, passed PHP syntax checks, and created `Backend/packages/Ekitapligim-MobileApi-iOS-1.0.74.zip`.
 - Disposable account deletion runtime test: local registration created user 32, the app API created request 2, dry-run changed no data, guarded execution deleted the user, revoked all active sessions, scrubbed request username/email/reason/password evidence, marked it completed, and drained the XenForo cleanup job. Local SMTP was unavailable, so completion-mail delivery remains a staging test.
 - Premium UI tests must cover StoreKit product loading, localized price display, purchase pending/cancel/success, backend rejection, no-entitlement restore, verified restore, Manage Subscriptions, and Terms/Privacy links.
+- `PremiumPurchaseTests` automates StoreKit Test product loading, verified purchase, Ask to Buy,
+  backend rejection, empty restore, disabled auto-renew, and expiration. The portable policy suite also
+  verifies cancellation-through-period-end and Apple billing grace-period entitlement behavior.
 - Purchase verification policy tests reject backend-inactive and expired entitlements while accepting active renewable/lifetime responses. MobileApi `1.0.82` defaults to the exact shipped product allowlist; disposable user `55` proved an unlisted product is rejected with HTTP 400 before JWS verification and no test account/session/PII remains.
 - The StoreKit service starts `Transaction.updates` observation only for an authenticated app session and cancels it on logout. Verified supported updates are synchronized with XenForo before `finish()`; inactive server-verified updates are recorded and finished, while signature/network/backend failures remain unfinished for StoreKit redelivery. Ask to Buy and background-completion execution still require Apple sandbox.
 - MobileApi `1.0.83` notification tests exercise entitlement mutation below the already-audited JWS layer: a matching revoke transaction deactivated a temporary entitlement, an unlisted product was rejected, exact/newest-row targeting avoided duplicate transaction IDs, and cleanup left zero test entitlement rows. Real signed Apple Server Notification delivery remains required on sandbox staging.

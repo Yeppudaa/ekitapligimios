@@ -546,7 +546,16 @@ public struct SafetyRepository: Sendable {
     }
 }
 
-public struct PurchaseRepository: Sendable {
+public protocol PurchaseVerifying: Sendable {
+    func verifyAppStorePurchase(
+        signedTransaction: String,
+        productID: String,
+        originalTransactionID: String?,
+        signedRenewalInfo: String?
+    ) async throws -> BillingResponseDTO
+}
+
+public struct PurchaseRepository: PurchaseVerifying, Sendable {
     private let apiClient: APIClient
 
     public init(apiClient: APIClient) {
@@ -556,13 +565,15 @@ public struct PurchaseRepository: Sendable {
     public func verifyAppStorePurchase(
         signedTransaction: String,
         productID: String,
-        originalTransactionID: String?
+        originalTransactionID: String?,
+        signedRenewalInfo: String? = nil
     ) async throws -> BillingResponseDTO {
         try await apiClient.request(
             .verifyAppStorePurchase(
                 signedTransaction: signedTransaction,
                 productID: productID,
-                originalTransactionID: originalTransactionID
+                originalTransactionID: originalTransactionID,
+                signedRenewalInfo: signedRenewalInfo
             ),
             as: BillingResponseDTO.self
         )
@@ -744,6 +755,7 @@ public struct BillingResponseDTO: Decodable, Equatable, Sendable {
     public let success: Bool
     public let isPremium: Bool
     public let expirationTime: Int?
+    public let gracePeriodExpirationTime: Int?
     public let remainingDays: Int?
     public let planName: String?
     public let userTier: String?
@@ -752,6 +764,7 @@ public struct BillingResponseDTO: Decodable, Equatable, Sendable {
         success: Bool,
         isPremium: Bool,
         expirationTime: Int? = nil,
+        gracePeriodExpirationTime: Int? = nil,
         remainingDays: Int? = nil,
         planName: String? = nil,
         userTier: String? = nil
@@ -759,6 +772,7 @@ public struct BillingResponseDTO: Decodable, Equatable, Sendable {
         self.success = success
         self.isPremium = isPremium
         self.expirationTime = expirationTime
+        self.gracePeriodExpirationTime = gracePeriodExpirationTime
         self.remainingDays = remainingDays
         self.planName = planName
         self.userTier = userTier

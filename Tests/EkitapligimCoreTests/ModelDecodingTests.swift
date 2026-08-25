@@ -653,6 +653,7 @@ final class ModelDecodingTests: XCTestCase {
           "status": "verified_active",
           "is_premium": true,
           "expiration_time": 1786281936,
+          "grace_period_expiration_time": 1786886736,
           "product_id": "ekitapligim.premium.monthly",
           "transaction_id": "1000001",
           "original_transaction_id": "1000000",
@@ -665,6 +666,7 @@ final class ModelDecodingTests: XCTestCase {
         XCTAssertTrue(response.success)
         XCTAssertTrue(response.isPremium)
         XCTAssertEqual(response.expirationTime, 1786281936)
+        XCTAssertEqual(response.gracePeriodExpirationTime, 1786886736)
     }
 
     func testBlockedMembersDecodesBackendShape() throws {

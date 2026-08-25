@@ -79,10 +79,14 @@ Response: empty success.
 Auth: optional.
 Response: read/download permission and quota status.
 
+The signed-in iOS reader sends its bearer token on this request so the response reflects the member tier and current daily quotas.
+
 ### POST `/books/{thread_id}/reader/session`
 Auth: login required.
 Body: `purpose`.
 Response: temporary reader token, source URL, file type.
+
+The client must create a purpose-specific session before opening content, including when a validated offline copy exists. This keeps read/download quota enforcement on the server. Remote PDF/EPUB responses are downloaded to protected local storage and validated by file signature before native rendering; Google Drive sharing URLs are converted to binary download URLs without exposing the underlying URL to the reader UI.
 
 ### POST `/books/{thread_id}/reader/progress`
 Auth: login required.
@@ -226,19 +230,22 @@ Completion behavior: operations must delete/anonymize associated account/user co
 
 ## Billing
 
-Android has `POST /billing/google-play/verify`. iOS must add:
+Android uses Google Play verification; iOS uses the following StoreKit 2 endpoints:
 
 ### POST `/billing/app-store/verify`
 Auth: login required.
-Body: App Store signed transaction/JWS, product ID, original transaction ID.
-Response: subscription entitlement and expiration.
+Body: `signed_transaction`, `product_id`, `original_transaction_id`, and optional
+`signed_renewal_info`. Renewal JWS is required to preserve access during an Apple billing grace period.
+Response: subscription entitlement, transaction expiration, and optional grace-period expiration.
+Security: both JWS chains are anchored to a configured Apple root, bundle/product/environment are
+allowlisted, and each `originalTransactionId` is atomically bound to its first Ekitapligim account.
 
 ### POST `/billing/app-store/notifications`
 Auth: server-to-server from Apple.
 Response: 200 after verification and entitlement update.
-Current backend behavior: verifies the outer and nested Apple JWS certificate chains, rejects bundle/product/environment mismatches, records the verified notification hash, and atomically updates the matching existing entitlement by transaction/original transaction ID. Public sandbox verification is still required.
+Current backend behavior: verifies the outer, transaction, and renewal JWS certificate chains; rejects bundle/product/environment mismatches; records the verified notification hash; preserves Apple billing grace periods; and atomically updates the matching existing entitlement by transaction/original transaction ID. Public sandbox verification is still required.
 
 ## Required Deployment Work Before iOS Release
-- Deploy MobileApi `1.0.84` or newer to public HTTPS staging and production.
+- Deploy IosApi `1.0.6` or newer (with its declared MobileApi dependency) to public HTTPS staging and production.
 - Configure the Apple root CA and verify StoreKit sandbox transactions and App Store Server Notifications.
 - Exercise Apple login, identity changes, blocking, reporting, terms acceptance, account deletion, reader access, and subscription state with the App Review account.

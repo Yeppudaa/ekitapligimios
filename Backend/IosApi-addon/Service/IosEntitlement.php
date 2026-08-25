@@ -20,10 +20,17 @@ class IosEntitlement
 		{
 			return (int) \XF::db()->fetchOne(
 				"SELECT MAX(expires_date)
-				FROM xf_ekitapligim_mobile_appstore_entitlement
-				WHERE user_id = ?
-					AND active = 1
-					AND (expires_date = 0 OR expires_date > ?)",
+				FROM xf_ekitapligim_mobile_appstore_entitlement entitlement
+				WHERE entitlement.user_id = ?
+					AND entitlement.active = 1
+					AND (entitlement.expires_date = 0 OR entitlement.expires_date > ?)
+					AND entitlement.user_id = (
+						SELECT owner.user_id
+						FROM xf_ekitapligim_mobile_appstore_entitlement owner
+						WHERE owner.original_transaction_id = entitlement.original_transaction_id
+						ORDER BY owner.entitlement_id ASC
+						LIMIT 1
+					)",
 				[(int) $user->user_id, \XF::$time]
 			);
 		}
@@ -44,10 +51,17 @@ class IosEntitlement
 		{
 			return (bool) \XF::db()->fetchOne(
 				"SELECT 1
-				FROM xf_ekitapligim_mobile_appstore_entitlement
-				WHERE user_id = ?
-					AND active = 1
-					AND expires_date = 0
+				FROM xf_ekitapligim_mobile_appstore_entitlement entitlement
+				WHERE entitlement.user_id = ?
+					AND entitlement.active = 1
+					AND entitlement.expires_date = 0
+					AND entitlement.user_id = (
+						SELECT owner.user_id
+						FROM xf_ekitapligim_mobile_appstore_entitlement owner
+						WHERE owner.original_transaction_id = entitlement.original_transaction_id
+						ORDER BY owner.entitlement_id ASC
+						LIMIT 1
+					)
 				LIMIT 1",
 				[(int) $user->user_id]
 			);

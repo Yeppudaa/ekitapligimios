@@ -1,6 +1,8 @@
 param(
     [switch]$CreateZip,
 
+    [switch]$SkipRouteRegeneration,
+
     [string]$OutputDirectory = ""
 )
 
@@ -22,12 +24,16 @@ Assert-Path (Join-Path $addonRoot "addon.json")
 Assert-Path (Join-Path $addonRoot "_data\routes.xml")
 Assert-Path (Join-Path $addonRoot "public-route-contract.txt")
 
-Write-Step "Regenerating ios-api routes from MobileApi reference"
-$mobileApiRoutes = "C:\Users\Monster\Downloads\startdesign (1)\MobileApi-addon\_data\routes.xml"
-if (-not (Test-Path -LiteralPath $mobileApiRoutes)) {
-    Write-Warning "MobileApi reference routes not found at $mobileApiRoutes; using existing IosApi routes.xml"
+if ($SkipRouteRegeneration) {
+    Write-Step "Using the reviewed IosApi routes.xml"
 } else {
-    & (Join-Path $PSScriptRoot "generate-ios-api-routes.ps1") -MobileApiRoutesPath $mobileApiRoutes
+    Write-Step "Regenerating ios-api routes from MobileApi reference"
+    $mobileApiRoutes = "C:\Users\Monster\Downloads\startdesign (1)\MobileApi-addon\_data\routes.xml"
+    if (-not (Test-Path -LiteralPath $mobileApiRoutes)) {
+        Write-Warning "MobileApi reference routes not found at $mobileApiRoutes; using existing IosApi routes.xml"
+    } else {
+        & (Join-Path $PSScriptRoot "generate-ios-api-routes.ps1") -MobileApiRoutesPath $mobileApiRoutes
+    }
 }
 
 Write-Step "Running API route contract audit"

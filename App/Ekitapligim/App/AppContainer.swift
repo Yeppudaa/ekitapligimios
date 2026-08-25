@@ -39,7 +39,8 @@ final class AppContainer: ObservableObject {
     private var unreadPollTask: Task<Void, Never>?
     private static let unreadPollInterval: Duration = .seconds(60)
 
-    let downloadManager = DownloadManager()
+    let downloadManager: DownloadManager
+    let readerContentLoader: ReaderContentLoader
     let readerBookmarks = ReaderBookmarkStore()
     let config: AppConfig
     let tokenStore: TokenStore
@@ -74,10 +75,13 @@ final class AppContainer: ObservableObject {
         let config = AppConfig(environment: environment, apiBaseURL: apiURL, webBaseURL: webURL)
         let tokenStore = KeychainTokenStore(service: "com.ekitapligim.app")
         let apiClient = APIClient(config: config, tokenProvider: tokenStore)
+        let fileTransfer = ValidatedBookFileTransfer()
 
         self.config = config
         self.tokenStore = tokenStore
         self.apiClient = apiClient
+        self.downloadManager = DownloadManager(transfer: fileTransfer)
+        self.readerContentLoader = ReaderContentLoader(transfer: fileTransfer)
         self.books = BookRepository(apiClient: apiClient)
         self.site = SiteRepository(apiClient: apiClient)
         self.directories = DirectoryRepository(apiClient: apiClient)
@@ -98,6 +102,9 @@ final class AppContainer: ObservableObject {
         self.bookAgenda = BookAgendaRepository(apiClient: apiClient)
         self.chat = ChatRepository(apiClient: apiClient)
         self.liveActivity = LiveActivityRepository(apiClient: apiClient)
+        self.storeKit.entitlementDidChange = { [weak self] in
+            await self?.refreshPremiumStatus()
+        }
     }
 
     func bootstrap() async {
@@ -108,6 +115,7 @@ final class AppContainer: ObservableObject {
                 downloadManager.restoreDownloads()
                 storeKit.startObservingTransactions()
                 await refreshSessionData()
+                await storeKit.refreshEntitlements()
                 startUnreadPolling()
             }
         } catch {
@@ -144,6 +152,11 @@ final class AppContainer: ObservableObject {
     func refreshUnreadCounts() async {
         guard isSignedIn, let counts = try? await notifications.counts() else { return }
         applyCounts(counts)
+    }
+
+    func refreshPremiumStatus() async {
+        guard isSignedIn, let updated = try? await subscriptions.subscription() else { return }
+        subscription = updated
     }
 
     @discardableResult
@@ -271,6 +284,7 @@ final class AppContainer: ObservableObject {
         authState = .signedIn(session)
         storeKit.startObservingTransactions()
         await refreshSessionData()
+        await storeKit.refreshEntitlements()
         startUnreadPolling()
     }
 

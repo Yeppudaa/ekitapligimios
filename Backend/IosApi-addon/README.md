@@ -62,8 +62,16 @@ All other iOS app endpoints are registered under `/ios-api/v1/` but delegate to 
 Set these environment/config values on the server (never commit secrets):
 
 - `EKITAPLIGIM_IOS_BUNDLE_ID` — iOS app bundle identifier
+- `EKITAPLIGIM_IOS_PRODUCT_IDS` — comma-separated App Store product allowlist; defaults fail-closed to the shipped monthly/yearly IDs
+- `EKITAPLIGIM_APPSTORE_ENVIRONMENT` — use `Production` in production, `Sandbox` in staging, and `Xcode` only for local StoreKit testing
+- `EKITAPLIGIM_APPLE_ROOT_CA_FILE` or `EKITAPLIGIM_APPLE_ROOT_CA_PEM` — optional trusted Apple root override. IosApi 1.0.7+ falls back to the bundled official Apple Root CA - G3 certificate used by current App Store JWS chains.
 - `EKITAPLIGIM_APPLE_CLIENT_SECRET` — valid Apple client-secret JWT (rotate before expiry)
 - `EKITAPLIGIM_APPLE_TOKEN_ENCRYPTION_KEY` — base64-encoded 32-byte key for refresh-token encryption
+
+Configure App Store Server Notifications V2 in App Store Connect as
+`https://ekitapligim.com/ios-api/v1/billing/app-store/notifications` (and the staging URL for Sandbox).
+The verifier binds an Apple `originalTransactionId` to the first Ekitapligim account that verifies it;
+a different account cannot claim the same subscription during restore.
 
 Sign in with Apple returns a service error when this configuration is incomplete.
 

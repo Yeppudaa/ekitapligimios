@@ -3111,6 +3111,48 @@
         }
       }
     },
+    "premium.benefit.reading": {
+      "localizations": { "tr": { "stringUnit": { "state": "translated", "value": "Premium kitaplara ve geniş okuma haklarına erişim" } } }
+    },
+    "premium.benefit.downloads": {
+      "localizations": { "tr": { "stringUnit": { "state": "translated", "value": "Daha yüksek veya sınırsız indirme hakları" } } }
+    },
+    "premium.membershipStatus": {
+      "localizations": { "tr": { "stringUnit": { "state": "translated", "value": "Üyelik Durumu" } } }
+    },
+    "premium.plan": {
+      "localizations": { "tr": { "stringUnit": { "state": "translated", "value": "Plan" } } }
+    },
+    "premium.period.monthly": {
+      "localizations": { "tr": { "stringUnit": { "state": "translated", "value": "Her ay otomatik yenilenir" } } }
+    },
+    "premium.period.yearly": {
+      "localizations": { "tr": { "stringUnit": { "state": "translated", "value": "Her yıl otomatik yenilenir" } } }
+    },
+    "premium.status.active": {
+      "localizations": { "tr": { "stringUnit": { "state": "translated", "value": "Premium aboneliğiniz aktif" } } }
+    },
+    "premium.status.cancelled": {
+      "localizations": { "tr": { "stringUnit": { "state": "translated", "value": "Otomatik yenileme kapalı; erişiminiz dönem sonuna kadar aktif" } } }
+    },
+    "premium.status.gracePeriod": {
+      "localizations": { "tr": { "stringUnit": { "state": "translated", "value": "Ödeme ek süresi içinde; Premium erişiminiz devam ediyor" } } }
+    },
+    "premium.status.billingRetry": {
+      "localizations": { "tr": { "stringUnit": { "state": "translated", "value": "Apple ödemeyi yeniden deniyor" } } }
+    },
+    "premium.status.expired": {
+      "localizations": { "tr": { "stringUnit": { "state": "translated", "value": "Premium aboneliğiniz sona erdi" } } }
+    },
+    "premium.status.revoked": {
+      "localizations": { "tr": { "stringUnit": { "state": "translated", "value": "Premium erişiminiz Apple tarafından geri alındı" } } }
+    },
+    "premium.validUntil": {
+      "localizations": { "tr": { "stringUnit": { "state": "translated", "value": "%@ tarihine kadar geçerli" } } }
+    },
+    "premium.cancellationNote": {
+      "localizations": { "tr": { "stringUnit": { "state": "translated", "value": "İptal Apple abonelik yönetim ekranından yapılır. İptal, mevcut dönemin sonuna kadar erişiminizi kapatmaz." } } }
+    },
     "premium.title": {
       "localizations": {
         "tr": {
@@ -3570,6 +3612,27 @@
           }
         }
       }
+    },
+    "reader.layout": {
+      "localizations": { "tr": { "stringUnit": { "state": "translated", "value": "Okuma düzeni" } } }
+    },
+    "reader.layout.continuous": {
+      "localizations": { "tr": { "stringUnit": { "state": "translated", "value": "Dikey sürekli" } } }
+    },
+    "reader.layout.paged": {
+      "localizations": { "tr": { "stringUnit": { "state": "translated", "value": "Sayfa sayfa" } } }
+    },
+    "reader.nextPage": {
+      "localizations": { "tr": { "stringUnit": { "state": "translated", "value": "Sonraki sayfa" } } }
+    },
+    "reader.pages": {
+      "localizations": { "tr": { "stringUnit": { "state": "translated", "value": "Sayfalar" } } }
+    },
+    "reader.pageSlider": {
+      "localizations": { "tr": { "stringUnit": { "state": "translated", "value": "Sayfa seçici" } } }
+    },
+    "reader.previousPage": {
+      "localizations": { "tr": { "stringUnit": { "state": "translated", "value": "Önceki sayfa" } } }
     },
     "reader.epub.format": {
       "localizations": {

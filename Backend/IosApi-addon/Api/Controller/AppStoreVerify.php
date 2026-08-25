@@ -2,6 +2,8 @@
 
 namespace Ekitapligim\IosApi\Api\Controller;
 
+use Ekitapligim\IosApi\Service\AppStoreEntitlementPolicy;
+
 class AppStoreVerify extends \Ekitapligim\MobileApi\Api\Controller\AbstractMobileController
 {
 	public function actionPost()
@@ -12,6 +14,7 @@ class AppStoreVerify extends \Ekitapligim\MobileApi\Api\Controller\AbstractMobil
 		$signedTransaction = trim($this->filter('signed_transaction', 'str'));
 		$productId = trim($this->filter('product_id', 'str'));
 		$originalTransactionId = trim($this->filter('original_transaction_id', 'str'));
+		$signedRenewalInfo = trim($this->filter('signed_renewal_info', 'str'));
 
 		if ($signedTransaction === '' || $productId === '')
 		{
@@ -37,6 +40,18 @@ class AppStoreVerify extends \Ekitapligim\MobileApi\Api\Controller\AbstractMobil
 		$environment = (string) ($transaction['environment'] ?? '');
 		$expiresDate = (int) ($transaction['expiresDate'] ?? 0);
 		$revocationDate = (int) ($transaction['revocationDate'] ?? 0);
+		$renewalInfo = [];
+		if ($signedRenewalInfo !== '')
+		{
+			try
+			{
+				$renewalInfo = $this->decodeAndVerifyJws($signedRenewalInfo)['payload'];
+			}
+			catch (\Throwable $e)
+			{
+				return $this->apiError('Renewal information could not be verified.', 'renewal_verification_failed');
+			}
+		}
 
 		$expectedBundleId = (string) (getenv('EKITAPLIGIM_IOS_BUNDLE_ID') ?: 'com.ekitapligim.app');
 		if ($bundleId !== $expectedBundleId)
@@ -59,9 +74,37 @@ class AppStoreVerify extends \Ekitapligim\MobileApi\Api\Controller\AbstractMobil
 		{
 			return $this->apiError('Transaction environment is not allowed for this server.', 'environment_mismatch');
 		}
+		if ($renewalInfo)
+		{
+			$renewalOriginalId = (string) ($renewalInfo['originalTransactionId'] ?? '');
+			$renewalProductId = (string) ($renewalInfo['autoRenewProductId'] ?? '');
+			$renewalEnvironment = (string) ($renewalInfo['environment'] ?? '');
+			if (($renewalOriginalId !== '' && $renewalOriginalId !== $payloadOriginalTransactionId)
+				|| ($renewalProductId !== '' && !$this->isAllowedProductId($renewalProductId))
+				|| ($renewalEnvironment !== '' && strcasecmp($renewalEnvironment, $environment) !== 0))
+			{
+				return $this->apiError('Renewal information does not match the transaction.', 'renewal_mismatch');
+			}
+		}
 
-		$isActive = $revocationDate <= 0 && ($expiresDate <= 0 || $expiresDate > (\XF::$time * 1000));
-		$this->recordEntitlement($visitor, $transaction, $signedTransaction, $isActive);
+		$existingOwnerId = $this->existingOriginalTransactionOwnerId($payloadOriginalTransactionId);
+		if ($existingOwnerId > 0 && $existingOwnerId !== (int) $visitor->user_id)
+		{
+			return $this->apiError(
+				'This App Store subscription is already linked to another Ekitapligim account.',
+				'original_transaction_already_linked'
+			);
+		}
+
+		$gracePeriodExpiresDate = (int) ($renewalInfo['gracePeriodExpiresDate'] ?? 0);
+		$isActive = AppStoreEntitlementPolicy::isActive($transaction, $renewalInfo, \XF::$time * 1000);
+		if (!$this->recordEntitlement($visitor, $transaction, $renewalInfo, $signedTransaction, $isActive))
+		{
+			return $this->apiError(
+				'This App Store subscription is already linked to another Ekitapligim account.',
+				'original_transaction_already_linked'
+			);
+		}
 
 		return $this->apiResult([
 			'success' => $isActive,
@@ -78,6 +121,7 @@ class AppStoreVerify extends \Ekitapligim\MobileApi\Api\Controller\AbstractMobil
 			'environment' => $environment,
 			'expiration_time' => $expiresDate > 0 ? (int) floor($expiresDate / 1000) : null,
 			'expirationTime' => $expiresDate > 0 ? (int) floor($expiresDate / 1000) : null,
+			'grace_period_expiration_time' => $gracePeriodExpiresDate > 0 ? (int) floor($gracePeriodExpiresDate / 1000) : null,
 		]);
 	}
 
@@ -206,6 +250,12 @@ class AppStoreVerify extends \Ekitapligim\MobileApi\Api\Controller\AbstractMobil
 			return (string) file_get_contents($file);
 		}
 
+		$bundledRoot = dirname(__DIR__, 2) . '/Resources/AppleRootCA-G3.pem';
+		if (is_readable($bundledRoot))
+		{
+			return (string) file_get_contents($bundledRoot);
+		}
+
 		return '';
 	}
 
@@ -233,15 +283,47 @@ class AppStoreVerify extends \Ekitapligim\MobileApi\Api\Controller\AbstractMobil
 		return in_array($productId, $this->allowedProductIds(), true);
 	}
 
-	protected function recordEntitlement(\XF\Entity\User $user, array $transaction, string $signedTransaction, bool $active): void
+	protected function existingOriginalTransactionOwnerId(string $originalTransactionId): int
+	{
+		if ($originalTransactionId === '')
+		{
+			return 0;
+		}
+
+		$this->ensureEntitlementTable();
+		return (int) \XF::db()->fetchOne(
+			"SELECT user_id
+			FROM xf_ekitapligim_mobile_appstore_entitlement
+			WHERE original_transaction_id = ?
+			ORDER BY entitlement_id ASC
+			LIMIT 1",
+			[$originalTransactionId]
+		);
+	}
+
+	protected function recordEntitlement(\XF\Entity\User $user, array $transaction, array $renewalInfo, string $signedTransaction, bool $active): bool
 	{
 		$this->ensureEntitlementTable();
-		\XF::db()->query(
+		$originalTransactionId = (string) ($transaction['originalTransactionId'] ?? '');
+		$lockName = 'ekitapligim_appstore_' . sha1($originalTransactionId);
+		if ((int) \XF::db()->fetchOne('SELECT GET_LOCK(?, 5)', [$lockName]) !== 1)
+		{
+			return false;
+		}
+
+		try
+		{
+			$ownerId = $this->existingOriginalTransactionOwnerId($originalTransactionId);
+			if ($ownerId > 0 && $ownerId !== (int) $user->user_id)
+			{
+				return false;
+			}
+
+			\XF::db()->query(
 			"INSERT INTO xf_ekitapligim_mobile_appstore_entitlement
 				(user_id, product_id, transaction_id, original_transaction_id, environment, expires_date, active, signed_transaction_hash, last_verified)
 			VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?)
 			ON DUPLICATE KEY UPDATE
-				user_id = VALUES(user_id),
 				product_id = VALUES(product_id),
 				environment = VALUES(environment),
 				expires_date = VALUES(expires_date),
@@ -254,12 +336,19 @@ class AppStoreVerify extends \Ekitapligim\MobileApi\Api\Controller\AbstractMobil
 				(string) ($transaction['transactionId'] ?? ''),
 				(string) ($transaction['originalTransactionId'] ?? ''),
 				(string) ($transaction['environment'] ?? ''),
-				(int) floor(((int) ($transaction['expiresDate'] ?? 0)) / 1000),
+				AppStoreEntitlementPolicy::effectiveExpirationSeconds($transaction, $renewalInfo),
 				$active ? 1 : 0,
 				hash('sha256', $signedTransaction),
 				\XF::$time
-			]
-		);
+				]
+			);
+
+			return $this->existingOriginalTransactionOwnerId($originalTransactionId) === (int) $user->user_id;
+		}
+		finally
+		{
+			\XF::db()->fetchOne('SELECT RELEASE_LOCK(?)', [$lockName]);
+		}
 	}
 
 	protected function ensureEntitlementTable(): void

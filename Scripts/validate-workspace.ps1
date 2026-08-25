@@ -255,7 +255,7 @@ foreach ($requiredObserverLifecycleControl in @(
         throw "StoreKit transaction observer is not tied to auth lifecycle: $requiredObserverLifecycleControl"
     }
 }
-if ($storeKitService -notmatch "catch\s*\{\s*// Leave unverified or unsynced transactions unfinished") {
+if ($storeKitService -notmatch "catch\s*\{\s*// (Leave )?[A-Za-z -]*(remain )?unfinished for redelivery") {
     throw "StoreKit transaction updates must remain unfinished when backend synchronization fails"
 }
 

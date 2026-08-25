@@ -6,16 +6,17 @@ import EkitapligimCore
 final class DownloadManager: ObservableObject {
     @Published private(set) var states: [String: DownloadState] = [:]
 
-    private let session: URLSession
+    private let transfer: ValidatedBookFileTransfer
     private let fileManager: FileManager
     private let baseDirectory: URL?
 
     init(
         session: URLSession = .shared,
         fileManager: FileManager = .default,
-        baseDirectory: URL? = nil
+        baseDirectory: URL? = nil,
+        transfer: ValidatedBookFileTransfer? = nil
     ) {
-        self.session = session
+        self.transfer = transfer ?? ValidatedBookFileTransfer(session: session, fileManager: fileManager)
         self.fileManager = fileManager
         self.baseDirectory = baseDirectory
     }
@@ -77,20 +78,16 @@ final class DownloadManager: ObservableObject {
         var destination: URL?
         do {
             let fileExtension = try DownloadFilePolicy.fileExtension(for: expectedFileType)
-            let (temporaryURL, response) = try await session.download(from: sourceURL)
-            guard let http = response as? HTTPURLResponse, (200..<300).contains(http.statusCode) else {
-                states[bookID] = .failed(message: L10n.downloadServerRejected)
-                return
-            }
-            try validateDownloadedFile(at: temporaryURL, fileExtension: fileExtension)
             let targetURL = try localURL(for: bookID, fileExtension: fileExtension)
             destination = targetURL
-            if fileManager.fileExists(atPath: targetURL.path) {
-                try fileManager.removeItem(at: targetURL)
-            }
-            try fileManager.moveItem(at: temporaryURL, to: targetURL)
+            try await transfer.download(from: sourceURL, fileType: fileExtension, to: targetURL)
             try protectDownloadedFile(targetURL)
             states[bookID] = .downloaded(localFileName: targetURL.lastPathComponent)
+        } catch BookFileTransferError.serverRejected {
+            if let destination, fileManager.fileExists(atPath: destination.path) {
+                try? fileManager.removeItem(at: destination)
+            }
+            states[bookID] = .failed(message: L10n.downloadServerRejected)
         } catch {
             if let destination, fileManager.fileExists(atPath: destination.path) {
                 try? fileManager.removeItem(at: destination)
@@ -154,10 +151,7 @@ final class DownloadManager: ObservableObject {
     }
 
     private func validateDownloadedFile(at url: URL, fileExtension: String) throws {
-        let handle = try FileHandle(forReadingFrom: url)
-        defer { try? handle.close() }
-        let header = try handle.read(upToCount: 1_024) ?? Data()
-        try DownloadFilePolicy.validateHeader(header, fileExtension: fileExtension)
+        try transfer.validateFile(at: url, fileType: fileExtension)
     }
 
     private func isValidLocalFile(at url: URL, fileType: String) -> Bool {

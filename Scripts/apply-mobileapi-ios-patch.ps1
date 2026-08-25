@@ -6,8 +6,19 @@ param(
 
     [switch]$BumpVersion,
 
-    [string]$OutputDirectory = ""
+    [string]$OutputDirectory = "",
+
+    [switch]$ForceDeprecated
 )
+
+Write-Warning @"
+DEPRECATED: apply-mobileapi-ios-patch.ps1 merges iOS backend changes into the shared MobileApi add-on.
+Use Backend/IosApi-addon and Scripts/build-ios-api-addon.ps1 instead so iOS and Android APIs stay separated.
+Pass -ForceDeprecated to continue anyway.
+"@
+if (-not $ForceDeprecated) {
+    throw "Aborted. Build the standalone IosApi add-on with: .\Scripts\build-ios-api-addon.ps1 -CreateZip"
+}
 
 $ErrorActionPreference = "Stop"
 $repoRoot = Resolve-Path (Join-Path $PSScriptRoot "..")

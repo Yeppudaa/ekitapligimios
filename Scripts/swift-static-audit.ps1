@@ -129,7 +129,6 @@ Write-Step "Checking offline download storage controls"
 $downloadManager = Get-Content -Raw -LiteralPath "App/Ekitapligim/Downloads/DownloadManager.swift"
 foreach ($requiredDownloadControl in @(
     "DownloadFilePolicy.fileName",
-    "DownloadFilePolicy.validateHeader",
     "func restoreDownloads()",
     "func localFile(for bookID: String)",
     "func removeAllDownloads()",
@@ -139,6 +138,17 @@ foreach ($requiredDownloadControl in @(
 )) {
     if ($downloadManager -notmatch [regex]::Escape($requiredDownloadControl)) {
         Fail "DownloadManager missing offline storage control: $requiredDownloadControl"
+    }
+}
+$validatedTransfer = Get-Content -Raw -LiteralPath "App/Ekitapligim/Reader/ValidatedBookFileTransfer.swift"
+foreach ($requiredTransferControl in @(
+    "ReaderSourcePolicy.downloadableURL",
+    "DownloadFilePolicy.validateHeader",
+    "reloadIgnoringLocalCacheData",
+    "FileProtectionType.completeUntilFirstUserAuthentication"
+)) {
+    if ($validatedTransfer -notmatch [regex]::Escape($requiredTransferControl)) {
+        Fail "Validated reader/download transfer missing security control: $requiredTransferControl"
     }
 }
 $appContainer = Get-Content -Raw -LiteralPath "App/Ekitapligim/App/AppContainer.swift"
@@ -152,7 +162,10 @@ foreach ($requiredOfflineLifecycleControl in @(
 }
 $readerView = Get-Content -Raw -LiteralPath "App/Ekitapligim/Features/ReaderView.swift"
 if ($readerView -notmatch [regex]::Escape("container.downloadManager.localFile(for: book.id)")) {
-    Fail "Reader must prefer a validated local download before creating a network reader session"
+    Fail "Reader must reuse a validated local download after obtaining an authorized read session"
+}
+if ($readerView.IndexOf("purpose: .read") -gt $readerView.IndexOf("container.downloadManager.localFile(for: book.id)")) {
+    Fail "Reader must obtain its quota-enforced read session before opening a local download"
 }
 $downloadPolicy = Get-Content -Raw -LiteralPath "Sources/EkitapligimCore/DownloadFilePolicy.swift"
 if ($downloadPolicy -notmatch "invalidBookIdentifier" -or $downloadPolicy -notmatch "%PDF-" -or $downloadPolicy -notmatch "0x50, 0x4B") {

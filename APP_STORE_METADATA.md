@@ -55,15 +55,15 @@ Reviewer account:
 
 Suggested review flow:
 1. Log in with the reviewer account using the username/email and password supplied only in App Store Connect.
-2. Open Kitaplar, search/filter, switch list/grid, and open book details plus a related book.
-3. Read the provided PDF and EPUB; verify progress and a PDF bookmark.
-4. Download the rights-cleared book and verify it under Kitaplığım > İndirilenler.
-5. Create/vote on the reviewer-safe book request.
-6. Open Topluluk, view a forum/thread, accept community terms if prompted, and post the supplied reviewer-safe reply.
-7. Report the supplied post/comment and block/unblock the supplied member.
-8. Open Mesajlar, reply to the safe conversation, and create a message to the safe recipient.
-9. Open Hesap > Profilim, edit safe profile fields, then inspect Giriş ve Güvenlik without changing the shared reviewer password.
-10. Open Hesap > Ekitaplığım Premium, purchase or restore with Apple Sandbox if IAP is submitted.
+2. Open Hesap > Ekitaplığım Premium and purchase or restore either submitted subscription with Apple Sandbox. The prepared account intentionally starts without an active Premium entitlement, so this step must precede reader and download testing.
+3. Open Kitaplar, search/filter, switch list/grid, and open book details plus a related book.
+4. Read the provided rights-cleared PDF and EPUB after the Sandbox entitlement becomes active; verify progress and a PDF bookmark.
+5. Download the rights-cleared book and verify it under Kitaplığım > İndirilenler.
+6. Create/vote on the reviewer-safe book request.
+7. Open Topluluk, view a forum/thread, accept community terms if prompted, and post the supplied reviewer-safe reply.
+8. Report the supplied post/comment and block/unblock the supplied member.
+9. Open Mesajlar, reply to the safe conversation, and create a message to the safe recipient.
+10. Open Hesap > Profilim, edit safe profile fields, then inspect Giriş ve Güvenlik without changing the shared reviewer password.
 11. Open Hesap > Hesap silme talebi başlat and verify the 30-day disclosure and confirmation UI. Do not submit unless a disposable reviewer account is provided.
 
 Account deletion is initiated entirely in-app. Manual processing is expected within 30 days and completion is sent to the account email. Deletion operations must remove/anonymize associated user content as legally permitted.

@@ -5,15 +5,26 @@ import EkitapligimCore
 
 @MainActor
 final class StoreKitPurchaseService: ObservableObject {
+    static let productIDs = ["ekitapligim.premium.monthly", "ekitapligim.premium.yearly"]
+
     @Published private(set) var state: PurchaseState = .notLoaded
+    @Published private(set) var products: [StoreProduct] = []
+    @Published private(set) var entitlement: PremiumEntitlement = .none
 
-    private let productIDs = ["ekitapligim.premium.monthly", "ekitapligim.premium.yearly"]
-    private let purchaseRepository: PurchaseRepository
-    private var loadedProducts: [StoreProduct] = []
+    var entitlementDidChange: (@MainActor @Sendable () async -> Void)?
+
+    private let purchaseRepository: any PurchaseVerifying
+    private var storeProducts: [Product] = []
     private var updatesTask: Task<Void, Never>?
+    private var statusUpdatesTask: Task<Void, Never>?
 
-    init(purchaseRepository: PurchaseRepository) {
+    init(purchaseRepository: any PurchaseVerifying) {
         self.purchaseRepository = purchaseRepository
+    }
+
+    deinit {
+        updatesTask?.cancel()
+        statusUpdatesTask?.cancel()
     }
 
     func startObservingTransactions() {
@@ -24,52 +35,82 @@ final class StoreKitPurchaseService: ObservableObject {
                 await self?.processTransactionUpdate(update)
             }
         }
+        statusUpdatesTask = Task { [weak self] in
+            for await _ in Product.SubscriptionInfo.Status.updates {
+                guard !Task.isCancelled else { break }
+                await self?.refreshEntitlements()
+            }
+        }
     }
 
     func stopObservingTransactions() {
         updatesTask?.cancel()
+        statusUpdatesTask?.cancel()
         updatesTask = nil
+        statusUpdatesTask = nil
+        entitlement = .none
+        state = products.isEmpty ? .notLoaded : .available(products: products)
+    }
+
+    func prepare() async {
+        await loadProducts()
+        await refreshEntitlements()
     }
 
     func loadProducts() async {
         state = .loading
         do {
-            let products = try await Product.products(for: productIDs)
-            loadedProducts = products.map {
+            let loaded = try await Product.products(for: Self.productIDs)
+            guard !loaded.isEmpty else {
+                state = .failed(message: L10n.premiumProductMissing)
+                return
+            }
+            storeProducts = loaded.sorted { lhs, rhs in
+                (Self.productIDs.firstIndex(of: lhs.id) ?? .max)
+                    < (Self.productIDs.firstIndex(of: rhs.id) ?? .max)
+            }
+            products = storeProducts.map {
                 StoreProduct(id: $0.id, displayName: $0.displayName, displayPrice: $0.displayPrice)
             }
-            state = .available(products: loadedProducts)
+            state = .available(products: products)
         } catch {
             state = .failed(message: L10n.premiumProductsFailed)
         }
     }
 
     func purchase(productID: String) async {
+        guard Self.productIDs.contains(productID) else {
+            state = .failed(message: L10n.premiumProductMissing)
+            return
+        }
+
         do {
-            guard let product = try await Product.products(for: [productID]).first else {
+            let product: Product
+            if let cached = storeProducts.first(where: { $0.id == productID }) {
+                product = cached
+            } else if let loaded = try await Product.products(for: [productID]).first {
+                product = loaded
+            } else {
                 state = .failed(message: L10n.premiumProductMissing)
                 return
             }
+
             state = .purchasing(productID: productID)
             let result = try await product.purchase()
             switch result {
             case .success(let verification):
                 let transaction = try checkVerified(verification)
-                let response = try await purchaseRepository.verifyAppStorePurchase(
-                    signedTransaction: verification.jwsRepresentation,
-                    productID: transaction.productID,
-                    originalTransactionID: String(transaction.originalID)
-                )
+                let response = try await verifyWithServer(verification, transaction: transaction)
                 let serverExpiration = try PurchaseVerificationPolicy.requireActive(response)
+                let updated = await entitlementSnapshot(for: transaction, serverExpiration: serverExpiration)
                 await transaction.finish()
-                state = .purchased(
-                    productID: transaction.productID,
-                    expiration: serverExpiration ?? transaction.expirationDate
-                )
+                entitlement = updated
+                state = .purchased(productID: transaction.productID, expiration: updated.expiration)
+                await entitlementDidChange?()
             case .pending:
                 state = .pending
             case .userCancelled:
-                state = .available(products: loadedProducts)
+                state = .available(products: products)
             @unknown default:
                 state = .failed(message: L10n.premiumPurchaseFailed)
             }
@@ -79,65 +120,136 @@ final class StoreKitPurchaseService: ObservableObject {
     }
 
     func restore() async {
+        state = .loading
         do {
             try await AppStore.sync()
-            var restoredProductID: String?
-            for await entitlement in Transaction.currentEntitlements {
-                let transaction = try checkVerified(entitlement)
-                guard productIDs.contains(transaction.productID), transaction.revocationDate == nil else { continue }
-                if let expiration = transaction.expirationDate, expiration <= Date() { continue }
-                let response = try await purchaseRepository.verifyAppStorePurchase(
-                    signedTransaction: entitlement.jwsRepresentation,
-                    productID: transaction.productID,
-                    originalTransactionID: String(transaction.originalID)
-                )
-                _ = try PurchaseVerificationPolicy.requireActive(response)
-                restoredProductID = transaction.productID
-            }
-            guard restoredProductID != nil else {
+            guard let restored = try await synchronizeCurrentEntitlements() else {
                 state = .failed(message: L10n.premiumNothingToRestore)
                 return
             }
+            entitlement = restored
             state = .restored
+            await entitlementDidChange?()
         } catch {
             state = .failed(message: L10n.premiumRestoreFailed)
         }
     }
 
+    func refreshEntitlements() async {
+        do {
+            let previous = entitlement
+            entitlement = try await synchronizeCurrentEntitlements() ?? .none
+            if state == .notLoaded, !products.isEmpty {
+                state = .available(products: products)
+            }
+            if previous != entitlement {
+                await entitlementDidChange?()
+            }
+        } catch {
+            // Keep the last server-backed state during transient network failures.
+        }
+    }
+
+    private func synchronizeCurrentEntitlements() async throws -> PremiumEntitlement? {
+        var best: PremiumEntitlement?
+        for await result in Transaction.currentEntitlements {
+            let transaction = try checkVerified(result)
+            guard Self.productIDs.contains(transaction.productID),
+                  transaction.revocationDate == nil,
+                  !transaction.isUpgraded else { continue }
+
+            let response = try await verifyWithServer(result, transaction: transaction)
+            let serverExpiration = try PurchaseVerificationPolicy.requireActive(response)
+            let candidate = await entitlementSnapshot(for: transaction, serverExpiration: serverExpiration)
+            if isLater(candidate, than: best) { best = candidate }
+        }
+        return best
+    }
+
+    private func verifyWithServer(
+        _ verification: VerificationResult<Transaction>,
+        transaction: Transaction
+    ) async throws -> BillingResponseDTO {
+        let signedRenewalInfo: String?
+        if let status = await transaction.subscriptionStatus,
+           case .verified = status.renewalInfo {
+            signedRenewalInfo = status.renewalInfo.jwsRepresentation
+        } else {
+            signedRenewalInfo = nil
+        }
+        try await purchaseRepository.verifyAppStorePurchase(
+            signedTransaction: verification.jwsRepresentation,
+            productID: transaction.productID,
+            originalTransactionID: String(transaction.originalID),
+            signedRenewalInfo: signedRenewalInfo
+        )
+    }
+
+    private func entitlementSnapshot(
+        for transaction: Transaction,
+        serverExpiration: Date?
+    ) async -> PremiumEntitlement {
+        var renewalState: PremiumRenewalState = .active
+        var willAutoRenew = true
+
+        if let status = await transaction.subscriptionStatus {
+            switch status.state {
+            case .subscribed: renewalState = .active
+            case .inGracePeriod: renewalState = .gracePeriod
+            case .inBillingRetryPeriod: renewalState = .billingRetry
+            case .expired: renewalState = .expired
+            case .revoked: renewalState = .revoked
+            default: renewalState = .active
+            }
+            if case .verified(let renewalInfo) = status.renewalInfo {
+                willAutoRenew = renewalInfo.willAutoRenew
+                if renewalState == .active, !willAutoRenew { renewalState = .cancelled }
+            }
+        }
+
+        return PremiumEntitlement(
+            productID: transaction.productID,
+            expiration: serverExpiration ?? transaction.expirationDate,
+            renewalState: renewalState,
+            willAutoRenew: willAutoRenew
+        )
+    }
+
     private func checkVerified<T>(_ result: VerificationResult<T>) throws -> T {
         switch result {
-        case .verified(let value):
-            return value
-        case .unverified:
-            throw StoreKitError.notAvailableInStorefront
+        case .verified(let value): return value
+        case .unverified: throw StoreKitError.notAvailableInStorefront
         }
     }
 
     private func processTransactionUpdate(_ result: VerificationResult<Transaction>) async {
         do {
             let transaction = try checkVerified(result)
-            guard productIDs.contains(transaction.productID) else { return }
-
-            let response = try await purchaseRepository.verifyAppStorePurchase(
-                signedTransaction: result.jwsRepresentation,
-                productID: transaction.productID,
-                originalTransactionID: String(transaction.originalID)
-            )
-
+            guard Self.productIDs.contains(transaction.productID) else { return }
+            let response = try await verifyWithServer(result, transaction: transaction)
             do {
-                let serverExpiration = try PurchaseVerificationPolicy.requireActive(response)
+                let expiration = try PurchaseVerificationPolicy.requireActive(response)
+                entitlement = await entitlementSnapshot(for: transaction, serverExpiration: expiration)
                 await transaction.finish()
-                state = .purchased(
-                    productID: transaction.productID,
-                    expiration: serverExpiration ?? transaction.expirationDate
-                )
+                state = .purchased(productID: transaction.productID, expiration: entitlement.expiration)
             } catch is PurchaseVerificationError {
-                // The server verified and recorded the inactive transaction.
                 await transaction.finish()
-                state = loadedProducts.isEmpty ? .notLoaded : .available(products: loadedProducts)
+                entitlement = PremiumEntitlement(
+                    productID: transaction.productID,
+                    expiration: transaction.expirationDate,
+                    renewalState: transaction.revocationDate == nil ? .expired : .revoked,
+                    willAutoRenew: false
+                )
+                state = products.isEmpty ? .notLoaded : .available(products: products)
             }
+            await entitlementDidChange?()
         } catch {
-            // Leave unverified or unsynced transactions unfinished so StoreKit can redeliver them.
+            // Unverified or server-unsynchronized transactions remain unfinished for redelivery.
         }
+    }
+
+    private func isLater(_ candidate: PremiumEntitlement, than current: PremiumEntitlement?) -> Bool {
+        guard let current else { return true }
+        return (candidate.expiration ?? .distantFuture) > (current.expiration ?? .distantFuture)
     }
 }
