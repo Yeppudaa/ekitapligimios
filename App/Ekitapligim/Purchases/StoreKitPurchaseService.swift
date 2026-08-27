@@ -102,20 +102,33 @@ final class StoreKitPurchaseService: ObservableObject {
     private func loadProductsWithRetry() async throws -> [Product] {
         // StoreKit may briefly return an empty catalog while TestFlight/Sandbox
         // establishes the storefront. Retry before presenting a permanent error.
-        let retryDelays: [UInt64] = [0, 1_000_000_000, 3_000_000_000, 6_000_000_000]
+        let retryDelays: [UInt64] = [0, 2_000_000_000, 5_000_000_000, 10_000_000_000, 20_000_000_000]
         var lastLoaded: [Product] = []
+        var lastError: Error?
 
         for delay in retryDelays {
             if delay > 0 {
                 try await Task.sleep(nanoseconds: delay)
             }
-            let loaded = try await Product.products(for: Self.productIDs)
-            if !loaded.isEmpty {
-                return loaded
+            do {
+                let loaded = try await Product.products(for: Self.productIDs)
+                if loaded.count == Self.productIDs.count {
+                    return loaded
+                }
+                lastLoaded = loaded
+            } catch is CancellationError {
+                throw CancellationError()
+            } catch {
+                // StoreKit can throw while the sandbox storefront is still
+                // becoming available. Keep retrying instead of failing on the
+                // first transient storefront/network error.
+                lastError = error
             }
-            lastLoaded = loaded
         }
 
+        if let lastError, lastLoaded.isEmpty {
+            throw lastError
+        }
         return lastLoaded
     }
 
