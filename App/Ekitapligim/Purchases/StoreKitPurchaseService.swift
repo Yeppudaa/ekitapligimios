@@ -81,6 +81,8 @@ final class StoreKitPurchaseService: ObservableObject {
         do {
             let loaded = try await loadProductsWithRetry()
             guard Set(loaded.map(\.id)) == Set(Self.productIDs) else {
+                storeProducts = []
+                products = []
                 state = .failed(message: L10n.premiumProductMissing)
                 return
             }
@@ -95,6 +97,8 @@ final class StoreKitPurchaseService: ObservableObject {
         } catch is CancellationError {
             return
         } catch {
+            storeProducts = []
+            products = []
             state = .failed(message: L10n.premiumProductsFailed)
         }
     }
@@ -103,7 +107,7 @@ final class StoreKitPurchaseService: ObservableObject {
         // StoreKit may briefly return an empty catalog while TestFlight/Sandbox
         // establishes the storefront. Retry before presenting a permanent error.
         let retryDelays: [UInt64] = [0, 2_000_000_000, 5_000_000_000, 10_000_000_000, 20_000_000_000]
-        var lastLoaded: [Product] = []
+        var loadedByID: [String: Product] = [:]
         var lastError: Error?
 
         for delay in retryDelays {
@@ -112,10 +116,9 @@ final class StoreKitPurchaseService: ObservableObject {
             }
             do {
                 let loaded = try await Product.products(for: Self.productIDs)
-                if loaded.count == Self.productIDs.count {
-                    return loaded
+                for product in loaded where Self.productIDs.contains(product.id) {
+                    loadedByID[product.id] = product
                 }
-                lastLoaded = loaded
             } catch is CancellationError {
                 throw CancellationError()
             } catch {
@@ -124,12 +127,32 @@ final class StoreKitPurchaseService: ObservableObject {
                 // first transient storefront/network error.
                 lastError = error
             }
+
+            // A sandbox storefront can transiently return only part of a
+            // catalog. Query the missing identifiers individually and merge
+            // successful responses across retries instead of discarding them.
+            for productID in Self.productIDs where loadedByID[productID] == nil {
+                do {
+                    if let product = try await Product.products(for: [productID]).first,
+                       product.id == productID {
+                        loadedByID[productID] = product
+                    }
+                } catch is CancellationError {
+                    throw CancellationError()
+                } catch {
+                    lastError = error
+                }
+            }
+
+            if loadedByID.count == Self.productIDs.count {
+                return Array(loadedByID.values)
+            }
         }
 
-        if let lastError, lastLoaded.isEmpty {
+        if let lastError, loadedByID.isEmpty {
             throw lastError
         }
-        return lastLoaded
+        return Array(loadedByID.values)
     }
 
     func purchase(productID: String) async {
