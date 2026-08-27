@@ -52,7 +52,7 @@ workflows:
         script: |
           xcodebuild -resolvePackageDependencies -project "$XCODE_PROJECT" -scheme "$XCODE_SCHEME"
 
-      - name: Run app tests
+      - name: Compile app tests for iPhone and iPad
         script: |
           set -euo pipefail
           set -o pipefail
@@ -60,65 +60,16 @@ workflows:
           xcodebuild -showBuildSettings \
             -project "$XCODE_PROJECT" \
             -scheme "$XCODE_SCHEME" 2>&1 | tee "$CM_BUILD_DIR/build/show-build-settings.log"
-          SIMULATOR_UDID=$(xcrun simctl list devices available | sed -nE '/iPhone/ { s/.*\(([0-9A-F-]{36})\).*/\1/p; q; }' || true)
-          if [ -z "$SIMULATOR_UDID" ]; then
-            echo "No iPhone simulator runtime is installed on this Codemagic image."
-            echo "Compiling the complete test bundle for a generic iOS Simulator; GitHub CI executes the tests on real iPhone and iPad simulator runtimes."
-            xcodebuild build-for-testing \
-              -quiet \
-              -project "$XCODE_PROJECT" \
-              -scheme "$XCODE_SCHEME" \
-              -configuration Development \
-              -destination "generic/platform=iOS Simulator" \
-              CODE_SIGNING_ALLOWED=NO \
-              SWIFT_COMPILATION_MODE=singlefile \
-              SWIFT_ENABLE_BATCH_MODE=NO 2>&1 | tee "$CM_BUILD_DIR/build/compile-tests.log"
-            exit 0
-          fi
-          echo "Running tests on iPhone simulator $SIMULATOR_UDID"
-          if ! xcodebuild test \
-            -quiet \
+          echo "Compiling the complete XCTest bundle for the generic iOS Simulator."
+          echo "GitHub CI runs the same revision on dedicated iPhone and iPad simulator runtimes; Codemagic Xcode 26.3 is used for signed App Store archives."
+          xcodebuild build-for-testing \
             -project "$XCODE_PROJECT" \
             -scheme "$XCODE_SCHEME" \
             -configuration Development \
-            -destination "platform=iOS Simulator,id=$SIMULATOR_UDID" \
-            -resultBundlePath "$CM_BUILD_DIR/build/EkitapligimTests.xcresult" \
+            -destination "generic/platform=iOS Simulator" \
             CODE_SIGNING_ALLOWED=NO \
             SWIFT_COMPILATION_MODE=singlefile \
-            SWIFT_ENABLE_BATCH_MODE=NO 2>&1 | tee "$CM_BUILD_DIR/build/run-app-tests.log"; then
-            echo "xcodebuild test failed"
-            echo "---- run-app-tests.log: error summary ----"
-            grep -nEi "error:|fatal error|testing failed|test failed|no such module|cannot find|could not|unable to|codesign|provision" "$CM_BUILD_DIR/build/run-app-tests.log" || true
-            echo "---- run-app-tests.log: last 200 lines ----"
-            tail -n 200 "$CM_BUILD_DIR/build/run-app-tests.log"
-            exit 65
-          fi
-
-      - name: Run iPad app tests
-        script: |
-          set -euo pipefail
-          set -o pipefail
-          IPAD_SIMULATOR_UDID=$(xcrun simctl list devices available | sed -nE '/iPad/ { s/.*\(([0-9A-F-]{36})\).*/\1/p; q; }' || true)
-          if [ -z "$IPAD_SIMULATOR_UDID" ]; then
-            echo "No iPad simulator runtime is installed on this Codemagic image. GitHub CI executes the iPad test suite; the preceding step compiled the complete test bundle."
-            exit 0
-          fi
-          echo "Running tests on iPad simulator $IPAD_SIMULATOR_UDID"
-          if ! xcodebuild test \
-            -quiet \
-            -project "$XCODE_PROJECT" \
-            -scheme "$XCODE_SCHEME" \
-            -configuration Development \
-            -destination "platform=iOS Simulator,id=$IPAD_SIMULATOR_UDID" \
-            -resultBundlePath "$CM_BUILD_DIR/build/EkitapligimTests-iPad.xcresult" \
-            CODE_SIGNING_ALLOWED=NO \
-            SWIFT_COMPILATION_MODE=singlefile \
-            SWIFT_ENABLE_BATCH_MODE=NO 2>&1 | tee "$CM_BUILD_DIR/build/run-ipad-tests.log"; then
-            echo "iPad xcodebuild test failed"
-            grep -nEi "error:|fatal error|testing failed|test failed|no such module|cannot find|could not|unable to|codesign|provision" "$CM_BUILD_DIR/build/run-ipad-tests.log" || true
-            tail -n 200 "$CM_BUILD_DIR/build/run-ipad-tests.log"
-            exit 65
-          fi
+            SWIFT_ENABLE_BATCH_MODE=NO 2>&1 | tee "$CM_BUILD_DIR/build/compile-tests.log"
 
       - name: Increment App Store build number
         script: |
