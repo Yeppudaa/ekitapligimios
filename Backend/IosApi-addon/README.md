@@ -65,6 +65,8 @@ Set these environment/config values on the server (never commit secrets):
 - `EKITAPLIGIM_IOS_PRODUCT_IDS` — comma-separated App Store product allowlist. Set it to
   `com.ekitapligim.app.premium.monthly,com.ekitapligim.app.premium.yearly,ekitapligim.premium.monthly,ekitapligim.premium.yearly`.
   The bundle-prefixed IDs are used for new purchases; the original IDs remain accepted only for restoration.
+  IosApi 1.0.9+ always retains these source-controlled shipped IDs and merges any configured IDs into the list,
+  so an outdated server value cannot reject an active App Store product.
 - `EKITAPLIGIM_APPSTORE_ENVIRONMENT` — use `Production` in production, `Sandbox` in staging, and `Xcode` only for local StoreKit testing
 - `EKITAPLIGIM_APPLE_ROOT_CA_FILE` or `EKITAPLIGIM_APPLE_ROOT_CA_PEM` — optional trusted Apple root override. IosApi 1.0.7+ falls back to the bundled official Apple Root CA - G3 certificate used by current App Store JWS chains.
 - `EKITAPLIGIM_APPLE_CLIENT_SECRET` — valid Apple client-secret JWT (rotate before expiry)

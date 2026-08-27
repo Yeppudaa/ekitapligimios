@@ -31,6 +31,11 @@ foreach ($product in $legacyProducts) {
     Require-Text "Backend/IosApi-addon/Api/Controller/AppStoreVerify.php" $product
 }
 
+foreach ($control in @('$shippedProducts', 'array_unique', 'array_merge')) {
+    Require-Text "Backend/IosApi-addon/Api/Controller/AppStoreVerify.php" $control
+    Require-Text "Backend/MobileApi-addon/Api/Controller/AppStoreVerify.php" $control
+}
+
 foreach ($control in @(
     "Transaction.currentEntitlements",
     "Transaction.updates",
