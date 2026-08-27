@@ -104,8 +104,9 @@ final class StoreKitPurchaseService: ObservableObject {
     }
 
     private func loadProductsWithRetry() async throws -> [Product] {
-        // StoreKit may briefly return an empty catalog while TestFlight/Sandbox
-        // establishes the storefront. Retry before presenting a permanent error.
+        // StoreKit may briefly return an empty or partial catalog while
+        // TestFlight/Sandbox establishes the storefront. Keep successful
+        // products across retries before presenting a permanent error.
         let retryDelays: [UInt64] = [0, 2_000_000_000, 5_000_000_000, 10_000_000_000, 20_000_000_000]
         var loadedByID: [String: Product] = [:]
         var lastError: Error?
