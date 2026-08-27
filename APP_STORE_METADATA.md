@@ -74,8 +74,8 @@ Do not submit until every placeholder is replaced, MobileApi `1.0.84` or newer i
 Subscription group: `ekitapligim.premium`
 
 Product IDs:
-- `ekitapligim.premium.monthly`
-- `ekitapligim.premium.yearly`
+- `com.ekitapligim.app.premium.monthly`
+- `com.ekitapligim.app.premium.yearly`
 
 The app displays localized names and prices returned by StoreKit. It provides purchase, restore, Manage Subscriptions, Terms, Privacy Policy, and auto-renewal disclosure. A verified Apple transaction JWS is sent to the backend; premium is not granted for unverified or server-rejected transactions.
 

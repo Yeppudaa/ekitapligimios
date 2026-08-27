@@ -5,7 +5,15 @@ import EkitapligimCore
 
 @MainActor
 final class StoreKitPurchaseService: ObservableObject {
-    static let productIDs = ["ekitapligim.premium.monthly", "ekitapligim.premium.yearly"]
+    static let productIDs = [
+        "com.ekitapligim.app.premium.monthly",
+        "com.ekitapligim.app.premium.yearly"
+    ]
+    static let legacyProductIDs = [
+        "ekitapligim.premium.monthly",
+        "ekitapligim.premium.yearly"
+    ]
+    static let recognizedProductIDs = Set(productIDs + legacyProductIDs)
 
     @Published private(set) var state: PurchaseState = .notLoaded
     @Published private(set) var products: [StoreProduct] = []
@@ -232,7 +240,7 @@ final class StoreKitPurchaseService: ObservableObject {
         var best: PremiumEntitlement?
         for await result in Transaction.currentEntitlements {
             let transaction = try checkVerified(result)
-            guard Self.productIDs.contains(transaction.productID),
+            guard Self.recognizedProductIDs.contains(transaction.productID),
                   transaction.revocationDate == nil,
                   !transaction.isUpgraded else { continue }
 
@@ -303,7 +311,7 @@ final class StoreKitPurchaseService: ObservableObject {
     private func processTransactionUpdate(_ result: VerificationResult<Transaction>) async {
         do {
             let transaction = try checkVerified(result)
-            guard Self.productIDs.contains(transaction.productID) else { return }
+            guard Self.recognizedProductIDs.contains(transaction.productID) else { return }
             let response = try await verifyWithServer(result, transaction: transaction)
             do {
                 let expiration = try PurchaseVerificationPolicy.requireActive(response)

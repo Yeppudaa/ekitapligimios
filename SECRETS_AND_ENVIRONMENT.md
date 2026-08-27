@@ -9,7 +9,8 @@ Do not commit secret values.
 
 ## Backend Environment
 - `EKITAPLIGIM_IOS_BUNDLE_ID`: `com.ekitapligim.app`.
-- `EKITAPLIGIM_IOS_PRODUCT_IDS`: comma-separated StoreKit product IDs.
+- `EKITAPLIGIM_IOS_PRODUCT_IDS`: comma-separated StoreKit allowlist. Production value:
+  `com.ekitapligim.app.premium.monthly,com.ekitapligim.app.premium.yearly,ekitapligim.premium.monthly,ekitapligim.premium.yearly`.
 - `EKITAPLIGIM_APPSTORE_ENVIRONMENT`: `Production`, `Sandbox`, `Xcode`, or `Both`; production servers should use `Production`.
 - `EKITAPLIGIM_APPLE_ROOT_CA_FILE` or `EKITAPLIGIM_APPLE_ROOT_CA_PEM`: Apple root certificate used to anchor App Store JWS certificate-chain verification. Keep the PEM file outside the web root.
 - App Store Server API issuer ID, key ID, bundle ID, and private key must live only on the server secret store.

@@ -33,7 +33,7 @@
           "displayPrice" : "₺99,99",
           "familyShareable" : false,
           "groupNumber" : 1,
-          "internalID" : "ekitapligim.premium.monthly",
+          "internalID" : "com.ekitapligim.app.premium.monthly",
           "introductoryOffer" : null,
           "localizations" : [
             {
@@ -42,7 +42,7 @@
               "locale" : "tr_TR"
             }
           ],
-          "productID" : "ekitapligim.premium.monthly",
+          "productID" : "com.ekitapligim.app.premium.monthly",
           "recurringSubscriptionPeriod" : "P1M",
           "referenceName" : "Monthly Premium",
           "subscriptionGroupID" : "ekitapligim.premium",
@@ -58,7 +58,7 @@
           "displayPrice" : "₺999,99",
           "familyShareable" : false,
           "groupNumber" : 1,
-          "internalID" : "ekitapligim.premium.yearly",
+          "internalID" : "com.ekitapligim.app.premium.yearly",
           "introductoryOffer" : null,
           "localizations" : [
             {
@@ -67,7 +67,7 @@
               "locale" : "tr_TR"
             }
           ],
-          "productID" : "ekitapligim.premium.yearly",
+          "productID" : "com.ekitapligim.app.premium.yearly",
           "recurringSubscriptionPeriod" : "P1Y",
           "referenceName" : "Yearly Premium",
           "subscriptionGroupID" : "ekitapligim.premium",

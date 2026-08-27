@@ -225,7 +225,12 @@ class AppStoreVerify extends AbstractMobileController
 		$configuredProducts = trim((string) getenv('EKITAPLIGIM_IOS_PRODUCT_IDS'));
 		return $configuredProducts !== ''
 			? array_values(array_filter(array_map('trim', explode(',', $configuredProducts))))
-			: ['ekitapligim.premium.monthly', 'ekitapligim.premium.yearly'];
+			: [
+				'com.ekitapligim.app.premium.monthly',
+				'com.ekitapligim.app.premium.yearly',
+				'ekitapligim.premium.monthly',
+				'ekitapligim.premium.yearly'
+			];
 	}
 
 	protected function isAllowedProductId(string $productId): bool

@@ -9,7 +9,8 @@ function Require-Text([string]$Path, [string]$Text) {
     }
 }
 
-$expectedProducts = @("ekitapligim.premium.monthly", "ekitapligim.premium.yearly")
+$expectedProducts = @("com.ekitapligim.app.premium.monthly", "com.ekitapligim.app.premium.yearly")
+$legacyProducts = @("ekitapligim.premium.monthly", "ekitapligim.premium.yearly")
 $configuration = Get-Content -Raw -LiteralPath "App/Ekitapligim/StoreKit/Ekitapligim.storekit" | ConvertFrom-Json
 $subscriptions = @($configuration.subscriptionGroups.subscriptions)
 $configuredProducts = @($subscriptions.productID | Sort-Object)
@@ -21,6 +22,11 @@ if (@($subscriptions.groupNumber | Sort-Object -Unique).Count -ne 1) {
 }
 
 foreach ($product in $expectedProducts) {
+    Require-Text "App/Ekitapligim/Purchases/StoreKitPurchaseService.swift" $product
+    Require-Text "Backend/IosApi-addon/Api/Controller/AppStoreVerify.php" $product
+}
+
+foreach ($product in $legacyProducts) {
     Require-Text "App/Ekitapligim/Purchases/StoreKitPurchaseService.swift" $product
     Require-Text "Backend/IosApi-addon/Api/Controller/AppStoreVerify.php" $product
 }

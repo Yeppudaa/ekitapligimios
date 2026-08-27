@@ -266,7 +266,7 @@ if ($forbiddenBillingFindings) {
 
 $storeKitConfig = Get-Content -Raw -LiteralPath "App/Ekitapligim/StoreKit/Ekitapligim.storekit" | ConvertFrom-Json
 $configuredProductIds = @($storeKitConfig.subscriptionGroups.subscriptions.productID | Sort-Object -Unique)
-$expectedProductIds = @("ekitapligim.premium.monthly", "ekitapligim.premium.yearly")
+$expectedProductIds = @("com.ekitapligim.app.premium.monthly", "com.ekitapligim.app.premium.yearly")
 if (Compare-Object $expectedProductIds $configuredProductIds) {
     throw "StoreKit configuration product IDs do not match the native purchase service"
 }
@@ -458,8 +458,8 @@ foreach ($requiredAppleControl in @(
 }
 $appStoreVerifySource = Get-Content -Raw -LiteralPath "Backend/MobileApi-addon/Api/Controller/AppStoreVerify.php"
 foreach ($requiredProductAllowlistControl in @(
-    "ekitapligim.premium.monthly",
-    "ekitapligim.premium.yearly",
+    "com.ekitapligim.app.premium.monthly",
+    "com.ekitapligim.app.premium.yearly",
     "if (!`$this->isAllowedProductId(`$productId))",
     "return in_array(`$productId, `$this->allowedProductIds(), true);"
 )) {

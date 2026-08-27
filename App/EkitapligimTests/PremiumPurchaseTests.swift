@@ -31,12 +31,12 @@ final class PremiumPurchaseTests: XCTestCase {
         await service.prepare()
         XCTAssertEqual(Set(service.products.map(\.id)), Set(StoreKitPurchaseService.productIDs))
 
-        await service.purchase(productID: "ekitapligim.premium.monthly")
+        await service.purchase(productID: "com.ekitapligim.app.premium.monthly")
 
         guard case .purchased(let productID, _) = service.state else {
             return XCTFail("Expected a verified purchase, got \(service.state)")
         }
-        XCTAssertEqual(productID, "ekitapligim.premium.monthly")
+        XCTAssertEqual(productID, "com.ekitapligim.app.premium.monthly")
         XCTAssertTrue(service.entitlement.isActive)
         let verificationCount = await verifier.verificationCount
         XCTAssertEqual(verificationCount, 1)
@@ -48,7 +48,7 @@ final class PremiumPurchaseTests: XCTestCase {
         let service = StoreKitPurchaseService(purchaseRepository: verifier)
         await service.loadProducts()
 
-        await service.purchase(productID: "ekitapligim.premium.monthly")
+        await service.purchase(productID: "com.ekitapligim.app.premium.monthly")
 
         XCTAssertEqual(service.state, .pending)
         let verificationCount = await verifier.verificationCount
@@ -59,7 +59,7 @@ final class PremiumPurchaseTests: XCTestCase {
         let verifier = SuccessfulPurchaseVerifier()
         let service = StoreKitPurchaseService(purchaseRepository: verifier)
         await service.loadProducts()
-        await service.purchase(productID: "ekitapligim.premium.monthly")
+        await service.purchase(productID: "com.ekitapligim.app.premium.monthly")
 
         let transaction = try XCTUnwrap(session.allTransactions().last)
         try session.disableAutoRenewForTransaction(identifier: transaction.identifier)
@@ -75,9 +75,9 @@ final class PremiumPurchaseTests: XCTestCase {
     func testExpirationRemovesLocalEntitlement() async throws {
         let service = StoreKitPurchaseService(purchaseRepository: SuccessfulPurchaseVerifier())
         await service.loadProducts()
-        await service.purchase(productID: "ekitapligim.premium.monthly")
+        await service.purchase(productID: "com.ekitapligim.app.premium.monthly")
 
-        try session.expireSubscription(productIdentifier: "ekitapligim.premium.monthly")
+        try session.expireSubscription(productIdentifier: "com.ekitapligim.app.premium.monthly")
         await waitForEntitlement(service) { $0 == .none }
 
         XCTAssertEqual(service.entitlement, .none)
@@ -87,7 +87,7 @@ final class PremiumPurchaseTests: XCTestCase {
         let service = StoreKitPurchaseService(purchaseRepository: RejectingPurchaseVerifier())
         await service.loadProducts()
 
-        await service.purchase(productID: "ekitapligim.premium.monthly")
+        await service.purchase(productID: "com.ekitapligim.app.premium.monthly")
 
         guard case .failed = service.state else {
             return XCTFail("A rejected backend verification must fail the purchase")

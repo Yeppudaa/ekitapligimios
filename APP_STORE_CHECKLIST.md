@@ -19,10 +19,10 @@
 - UGC terms acceptance is enforced client-side and server-side before forum replies. Staging install/test is still required before enabling posting in review builds.
 - Payments: StoreKit 2 for digital subscriptions/access. Authenticated `Transaction.updates` observation handles pending/out-of-app completions; unverified or backend-unsynced transactions remain unfinished for redelivery.
 - App Store Connect must contain subscription group `ekitapligim.premium` with monthly
-  `ekitapligim.premium.monthly` and yearly `ekitapligim.premium.yearly` products at the same service level.
-- App Store Connect was reconciled on 2026-08-25: both products are at Level 1, the previous review
-  submission was removed so the corrected build can replace it, and both products currently show
-  `Developer Rejected` until they are added to the replacement submission.
+  `com.ekitapligim.app.premium.monthly` and yearly `com.ekitapligim.app.premium.yearly` products at the same service level.
+- The original unprefixed product records remained unavailable to StoreKit in TestFlight Sandbox through build 14.
+  New bundle-prefixed records are used for new purchases; the client and backend retain the original IDs only for
+  transaction restoration and entitlement verification.
 - App Store Server Notifications V2 must target `/ios-api/v1/billing/app-store/notifications` for both
   production and sandbox. Production must allow only `Production`; staging must allow only `Sandbox`.
 - App Store Connect production and sandbox notification URLs are currently configured to

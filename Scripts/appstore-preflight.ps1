@@ -94,8 +94,8 @@ Write-Step "Checking metadata matches shipped features"
 foreach ($requiredMetadataText in @(
     "PDF ve EPUB Kitap Okuyucu",
     "30 gün",
-    "ekitapligim.premium.monthly",
-    "ekitapligim.premium.yearly",
+    "com.ekitapligim.app.premium.monthly",
+    "com.ekitapligim.app.premium.yearly",
     'MobileApi `1.0.84`',
     "Other User Contact Info",
     "Coarse Location"
