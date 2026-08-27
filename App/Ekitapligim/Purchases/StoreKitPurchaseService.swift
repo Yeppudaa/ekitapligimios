@@ -80,7 +80,7 @@ final class StoreKitPurchaseService: ObservableObject {
         state = .loading
         do {
             let loaded = try await loadProductsWithRetry()
-            guard !loaded.isEmpty else {
+            guard Set(loaded.map(\.id)) == Set(Self.productIDs) else {
                 state = .failed(message: L10n.premiumProductMissing)
                 return
             }
