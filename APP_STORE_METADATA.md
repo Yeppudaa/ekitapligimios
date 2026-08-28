@@ -29,6 +29,10 @@ Premium abonelikler daha yüksek veya sınırsız okuma ve indirme hakları sağ
 
 Uygulama içinden hesap oluşturabilir, şifrenizi sıfırlayabilir, profil ve güvenlik bilgilerinizi yönetebilir ve tüm hesabınızın silinmesini başlatabilirsiniz. Hesap silme talepleri genellikle 30 gün içinde tamamlanır ve sonuç kayıtlı e-posta adresine bildirilir.
 
+Kullanım Koşulları (EULA): https://www.apple.com/legal/internet-services/itunes/dev/stdeula/
+
+Gizlilik Politikası: https://ekitapligim.com/yardim/gizlilik-politikasi/
+
 ## Keywords
 ekitap,kitap,pdf,epub,okuyucu,kütüphane,yazar,yayınevi,forum,türkçe
 
@@ -42,6 +46,15 @@ ekitap,kitap,pdf,epub,okuyucu,kütüphane,yazar,yayınevi,forum,türkçe
 © Ekitapligim.com. All rights reserved.
 
 ## Review Notes Draft
+GUIDELINE 2.1(b) AND 3.1.2(c) RESUBMISSION UPDATE
+
+- Build 1.0.0 (15) is the validated binary for the subscription fix. It loads the bundle-prefixed StoreKit identifiers, while the production backend continues to accept the legacy identifiers only for restoration and entitlement verification. The bundle-prefixed products still require Review Information screenshots before they can be added to this submission.
+- The prepared reviewer account has no active Premium entitlement. Sign in, then open Account > Ekitaplığım Premium to test the monthly or yearly purchase and Restore Purchases.
+- The Premium screen displays the StoreKit product title, localized price, monthly or yearly duration, automatic-renewal disclosure, Restore Purchases, Manage Subscriptions, Terms, and Privacy links.
+- The Turkish App Description now includes the functional Apple Standard EULA link: https://www.apple.com/legal/internet-services/itunes/dev/stdeula/
+- The App Store Privacy Policy field and App Description include the functional privacy-policy link: https://ekitapligim.com/yardim/gizlilik-politikasi/
+- A real-device TestFlight recording is required before resubmission; no such recording is present in the current workspace, so it must be captured from TestFlight on a physical iPhone or iPad.
+
 Ekitaplığım is a native SwiftUI iOS/iPadOS app, not a website wrapper. The catalog, PDF/EPUB reader, library, downloads, account, StoreKit, forum, messaging, reporting, blocking, and account-deletion surfaces are native.
 
 Reviewer account:
@@ -55,7 +68,7 @@ Reviewer account:
 
 Suggested review flow:
 1. Log in with the reviewer account using the username/email and password supplied only in App Store Connect.
-2. Open Hesap > Ekitaplığım Premium and purchase or restore either submitted subscription with Apple Sandbox. The prepared account intentionally starts without an active Premium entitlement, so this step must precede reader and download testing.
+2. Open Hesap > Ekitaplığım Premium and purchase or restore either bundle-prefixed subscription with Apple Sandbox after the products have been added to the submission. The prepared account intentionally starts without an active Premium entitlement, so this step must precede reader and download testing.
 3. Open Kitaplar, search/filter, switch list/grid, and open book details plus a related book.
 4. Read the provided rights-cleared PDF and EPUB after the Sandbox entitlement becomes active; verify progress and a PDF bookmark.
 5. Download the rights-cleared book and verify it under Kitaplığım > İndirilenler.
@@ -78,6 +91,23 @@ Product IDs:
 - `com.ekitapligim.app.premium.yearly`
 
 The app displays localized names and prices returned by StoreKit. It provides purchase, restore, Manage Subscriptions, Terms, Privacy Policy, and auto-renewal disclosure. A verified Apple transaction JWS is sent to the backend; premium is not granted for unverified or server-rejected transactions.
+
+## App Review Reply Draft
+Hello App Review Team,
+
+Thank you for your review. We addressed both subscription-related issues in this submission.
+
+For Guideline 2.1(b), build 1.0.0 (15) loads both submitted auto-renewable subscriptions from StoreKit. A real-device TestFlight recording should be attached showing the monthly and yearly products, localized StoreKit prices, subscription durations, automatic-renewal disclosure, purchase/restore controls, and the functional Terms and Privacy links.
+
+For Guideline 3.1.2(c), we updated the Turkish App Description to include the functional Apple Standard EULA link:
+https://www.apple.com/legal/internet-services/itunes/dev/stdeula/
+
+The functional Privacy Policy link is also present in the App Store Privacy Policy field and App Description:
+https://ekitapligim.com/yardim/gizlilik-politikasi/
+
+No additional binary change was required for the metadata issue. Please review version 1.0.0, build 15, together with the real-device recording once it is captured.
+
+Thank you.
 
 ## Screenshot Checklist
 - Home with live catalog statistics.
