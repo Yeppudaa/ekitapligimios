@@ -108,6 +108,31 @@ final class PremiumPurchaseTests: XCTestCase {
         XCTAssertEqual(message, L10n.premiumNothingToRestore)
     }
 
+    func testRestoreKeepsVerifiedEntitlementWhenAnotherVerificationFails() throws {
+        let expected = PremiumEntitlement(
+            productID: "com.ekitapligim.app.premium.monthly",
+            expiration: Date().addingTimeInterval(86_400),
+            renewalState: .active,
+            willAutoRenew: true
+        )
+
+        let restored = try StoreKitPurchaseService.resolveSynchronizedEntitlement(
+            best: expected,
+            lastFailure: RestoreFailure.rejectedStaleTransaction
+        )
+
+        XCTAssertEqual(restored, expected)
+    }
+
+    func testRestoreStillFailsWhenEveryVerificationFails() {
+        XCTAssertThrowsError(
+            try StoreKitPurchaseService.resolveSynchronizedEntitlement(
+                best: nil,
+                lastFailure: RestoreFailure.rejectedStaleTransaction
+            )
+        )
+    }
+
     private func waitForEntitlement(
         _ service: StoreKitPurchaseService,
         until predicate: (PremiumEntitlement) -> Bool
@@ -121,6 +146,10 @@ final class PremiumPurchaseTests: XCTestCase {
             try? await Task.sleep(for: .milliseconds(100))
         } while clock.now < deadline
     }
+}
+
+private enum RestoreFailure: Error {
+    case rejectedStaleTransaction
 }
 
 private actor SuccessfulPurchaseVerifier: PurchaseVerifying {

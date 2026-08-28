@@ -238,18 +238,40 @@ final class StoreKitPurchaseService: ObservableObject {
 
     private func synchronizeCurrentEntitlements() async throws -> PremiumEntitlement? {
         var best: PremiumEntitlement?
-        for await result in Transaction.currentEntitlements {
-            let transaction = try checkVerified(result)
-            guard Self.recognizedProductIDs.contains(transaction.productID),
-                  transaction.revocationDate == nil,
-                  !transaction.isUpgraded else { continue }
+        var lastFailure: Error?
 
-            let response = try await verifyWithServer(result, transaction: transaction)
-            let serverExpiration = try PurchaseVerificationPolicy.requireActive(response)
-            let candidate = await entitlementSnapshot(for: transaction, serverExpiration: serverExpiration)
-            if isLater(candidate, than: best) { best = candidate }
+        for await result in Transaction.currentEntitlements {
+            do {
+                let transaction = try checkVerified(result)
+                guard Self.recognizedProductIDs.contains(transaction.productID),
+                      transaction.revocationDate == nil,
+                      !transaction.isUpgraded else { continue }
+
+                let response = try await verifyWithServer(result, transaction: transaction)
+                let serverExpiration = try PurchaseVerificationPolicy.requireActive(response)
+                let candidate = await entitlementSnapshot(for: transaction, serverExpiration: serverExpiration)
+                if isLater(candidate, than: best) { best = candidate }
+            } catch is CancellationError {
+                throw CancellationError()
+            } catch {
+                // Sandbox accounts can expose more than one current subscription
+                // while an upgrade, downgrade, or accelerated renewal settles.
+                // One rejected/stale transaction must not hide another entitlement
+                // that StoreKit and the server both verified as active.
+                lastFailure = error
+            }
         }
-        return best
+
+        return try Self.resolveSynchronizedEntitlement(best: best, lastFailure: lastFailure)
+    }
+
+    static func resolveSynchronizedEntitlement(
+        best: PremiumEntitlement?,
+        lastFailure: Error?
+    ) throws -> PremiumEntitlement? {
+        if let best { return best }
+        if let lastFailure { throw lastFailure }
+        return nil
     }
 
     private func verifyWithServer(
