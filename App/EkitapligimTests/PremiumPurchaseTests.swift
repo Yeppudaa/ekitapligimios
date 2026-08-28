@@ -108,6 +108,47 @@ final class PremiumPurchaseTests: XCTestCase {
         XCTAssertEqual(message, L10n.premiumNothingToRestore)
     }
 
+    func testRestoreUsesCurrentVerifiedEntitlementBeforeAppStoreSync() async throws {
+        let syncRecorder = AppStoreSyncRecorder()
+        let service = StoreKitPurchaseService(
+            purchaseRepository: SuccessfulPurchaseVerifier(),
+            appStoreSynchronizer: {
+                await syncRecorder.recordCall()
+                throw RestoreFailure.appStoreSyncFailed
+            }
+        )
+        await service.loadProducts()
+        await service.purchase(productID: "com.ekitapligim.app.premium.monthly")
+
+        await service.restore()
+
+        XCTAssertEqual(service.state, .restored)
+        XCTAssertTrue(service.entitlement.isActive)
+        let syncCallCount = await syncRecorder.callCount
+        XCTAssertEqual(syncCallCount, 0)
+    }
+
+    func testRestoreRechecksEntitlementsWhenAppStoreSyncFails() async throws {
+        let syncRecorder = AppStoreSyncRecorder()
+        let service = StoreKitPurchaseService(
+            purchaseRepository: SuccessfulPurchaseVerifier(),
+            appStoreSynchronizer: {
+                await syncRecorder.recordCall()
+                throw RestoreFailure.appStoreSyncFailed
+            }
+        )
+        await service.loadProducts()
+
+        await service.restore()
+
+        guard case .failed(let message) = service.state else {
+            return XCTFail("Expected failed App Store synchronization to be reported")
+        }
+        XCTAssertEqual(message, L10n.premiumRestoreFailed)
+        let syncCallCount = await syncRecorder.callCount
+        XCTAssertEqual(syncCallCount, 1)
+    }
+
     func testRestoreKeepsVerifiedEntitlementWhenAnotherVerificationFails() throws {
         let expected = PremiumEntitlement(
             productID: "com.ekitapligim.app.premium.monthly",
@@ -150,6 +191,15 @@ final class PremiumPurchaseTests: XCTestCase {
 
 private enum RestoreFailure: Error {
     case rejectedStaleTransaction
+    case appStoreSyncFailed
+}
+
+private actor AppStoreSyncRecorder {
+    private(set) var callCount = 0
+
+    func recordCall() {
+        callCount += 1
+    }
 }
 
 private actor SuccessfulPurchaseVerifier: PurchaseVerifying {

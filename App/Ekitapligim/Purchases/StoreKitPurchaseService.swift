@@ -22,14 +22,21 @@ final class StoreKitPurchaseService: ObservableObject {
     var entitlementDidChange: (@MainActor @Sendable () async -> Void)?
 
     private let purchaseRepository: any PurchaseVerifying
+    private let appStoreSynchronizer: @Sendable () async throws -> Void
     private var storeProducts: [Product] = []
     private var updatesTask: Task<Void, Never>?
     private var statusUpdatesTask: Task<Void, Never>?
     private var storefrontUpdatesTask: Task<Void, Never>?
     private var isLoadingProducts = false
 
-    init(purchaseRepository: any PurchaseVerifying) {
+    init(
+        purchaseRepository: any PurchaseVerifying,
+        appStoreSynchronizer: @escaping @Sendable () async throws -> Void = {
+            try await AppStore.sync()
+        }
+    ) {
         self.purchaseRepository = purchaseRepository
+        self.appStoreSynchronizer = appStoreSynchronizer
     }
 
     deinit {
@@ -207,18 +214,56 @@ final class StoreKitPurchaseService: ObservableObject {
 
     func restore() async {
         state = .loading
+
+        var lastFailure: Error?
+
+        // An active StoreKit entitlement may already be available and verified
+        // server-side. Do not make that successful restore depend on the
+        // account-dialog based AppStore.sync() call, which can fail or be
+        // cancelled even though the entitlement itself is valid.
         do {
-            try await AppStore.sync()
-            guard let restored = try await synchronizeCurrentEntitlements() else {
-                state = .failed(message: L10n.premiumNothingToRestore)
+            if let restored = try await synchronizeCurrentEntitlements() {
+                await completeRestore(restored)
                 return
             }
-            entitlement = restored
-            state = .restored
-            await entitlementDidChange?()
+        } catch is CancellationError {
+            return
         } catch {
-            state = .failed(message: L10n.premiumRestoreFailed)
+            lastFailure = error
         }
+
+        do {
+            try await appStoreSynchronizer()
+        } catch is CancellationError {
+            return
+        } catch {
+            lastFailure = error
+        }
+
+        // Re-read entitlements even when AppStore.sync() failed. StoreKit can
+        // refresh its transaction cache before the sync call reports an error.
+        do {
+            if let restored = try await synchronizeCurrentEntitlements() {
+                await completeRestore(restored)
+                return
+            }
+        } catch is CancellationError {
+            return
+        } catch {
+            lastFailure = error
+        }
+
+        state = .failed(
+            message: lastFailure == nil
+                ? L10n.premiumNothingToRestore
+                : L10n.premiumRestoreFailed
+        )
+    }
+
+    private func completeRestore(_ restored: PremiumEntitlement) async {
+        entitlement = restored
+        state = .restored
+        await entitlementDidChange?()
     }
 
     func refreshEntitlements() async {
