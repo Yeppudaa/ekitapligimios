@@ -33,6 +33,14 @@ trait PublicEndpointTrait
 				'innerContent' => $this->renderMobileApiValue($reply->getApiResult())
 			]);
 			$reply->setViewOption('skipDefaultJsonParams', true);
+			$reply->setResponseType('json');
+			return;
+		}
+
+		if ($reply->getResponseType() === 'raw' || $this->responseType() === 'raw')
+		{
+			$reply->setResponseType('raw');
+			return;
 		}
 
 		$reply->setResponseType('json');

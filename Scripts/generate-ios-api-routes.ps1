@@ -41,6 +41,7 @@ $iosControllers = @{
     "BookAgendaComments" = $true
     "BookAgendaComment" = $true
     "BookComments" = $true
+    "BookReaderSource" = $true
     "ChatMessages" = $true
     "Conversations" = $true
 }

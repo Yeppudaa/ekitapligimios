@@ -27,7 +27,7 @@
   <route route_type="public" route_prefix="ios-api" sub_name="book-reader-access" format="v1/books/:int&lt;thread_id&gt;/reader/access" controller="Ekitapligim\MobileApi:BookReaderAccess" />
   <route route_type="public" route_prefix="ios-api" sub_name="book-reader-progress" format="v1/books/:int&lt;thread_id&gt;/reader/progress" controller="Ekitapligim\MobileApi:BookReaderProgress" />
   <route route_type="public" route_prefix="ios-api" sub_name="book-reader-session" format="v1/books/:int&lt;thread_id&gt;/reader/session" controller="Ekitapligim\MobileApi:BookReaderSession" />
-  <route route_type="public" route_prefix="ios-api" sub_name="book-reader-source" format="v1/books/:int&lt;thread_id&gt;/reader/source" controller="Ekitapligim\MobileApi:BookReaderSource" />
+  <route route_type="public" route_prefix="ios-api" sub_name="book-reader-source" format="v1/books/:int&lt;thread_id&gt;/reader/source" controller="Ekitapligim\IosApi:BookReaderSource" />
   <route route_type="public" route_prefix="ios-api" sub_name="book-request-vote" format="v1/book-requests/:int&lt;request_id&gt;/vote" controller="Ekitapligim\MobileApi:BookRequestVote" />
   <route route_type="public" route_prefix="ios-api" sub_name="book-requests" format="v1/book-requests" controller="Ekitapligim\MobileApi:BookRequests" />
   <route route_type="public" route_prefix="ios-api" sub_name="book-stats" format="v1/book-stats" controller="Ekitapligim\MobileApi:Stats" />

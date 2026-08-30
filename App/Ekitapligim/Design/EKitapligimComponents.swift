@@ -416,6 +416,16 @@ extension View {
                 .stroke(Color(hex: 0xE4C184), lineWidth: 1)
         }
     }
+
+    /// Caps `TextEditor` so a bottom `safeAreaInset` cannot eat the thread/message list.
+    func ekPinnedReplyEditor() -> some View {
+        frame(minHeight: 76, maxHeight: 128)
+    }
+
+    /// Sizes the pinned reply bar to its content instead of the remaining screen.
+    func ekPinnedReplyBar() -> some View {
+        fixedSize(horizontal: false, vertical: true)
+    }
 }
 
 /// The feeds page with an explicit button rather than scroll-edge loading, mirroring Android.

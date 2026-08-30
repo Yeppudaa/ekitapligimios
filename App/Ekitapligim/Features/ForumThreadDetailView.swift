@@ -91,6 +91,7 @@ struct ForumThreadDetailView: View {
                         .overlay(alignment: .top) {
                             Rectangle().fill(EKitapligimPalette.border).frame(height: 1)
                         }
+                        .ekPinnedReplyBar()
                 }
             }
             .background(
@@ -280,7 +281,7 @@ struct ForumThreadDetailView: View {
             TextEditor(text: $replyText)
                 .focused($isReplyFocused)
                 .accessibilityLabel(L10n.forumThreadReplyPlaceholder)
-                .frame(minHeight: 72)
+                .ekPinnedReplyEditor()
                 .padding(10)
                 .background(.white, in: RoundedRectangle(cornerRadius: 16, style: .continuous))
                 .overlay {
@@ -359,6 +360,7 @@ struct ForumThreadDetailView: View {
 
             ForumMessageBody(message: post.message)
             postImages(post)
+            postOwnActions(post)
 
         }
         .padding(16)
@@ -416,9 +418,54 @@ struct ForumThreadDetailView: View {
         }
     }
 
+    private func isOwnPost(_ post: ForumPostDTO) -> Bool {
+        post.userId != nil && post.userId == Int(container.profileState?.id ?? "")
+    }
+
+    @ViewBuilder
+    private func postOwnActions(_ post: ForumPostDTO) -> some View {
+        let isOwn = isOwnPost(post)
+        let canEdit = post.canEdit || isOwn
+        let canDelete = post.canDelete || isOwn
+        if canEdit || canDelete {
+            HStack(spacing: 10) {
+                if canEdit {
+                    Button {
+                        editingPost = post
+                    } label: {
+                        Label(L10n.commonEdit, systemImage: "pencil")
+                            .font(.caption.weight(.bold))
+                            .foregroundStyle(EKitapligimPalette.tealDark)
+                            .padding(.horizontal, 10)
+                            .padding(.vertical, 7)
+                            .background(EKitapligimPalette.tealSoft, in: Capsule())
+                    }
+                    .buttonStyle(.plain)
+                    .accessibilityLabel(L10n.commonEdit)
+                }
+                if canDelete {
+                    Button(role: .destructive) {
+                        pendingDelete = post
+                    } label: {
+                        Label(L10n.commonDelete, systemImage: "trash")
+                            .font(.caption.weight(.bold))
+                            .foregroundStyle(EKitapligimPalette.danger)
+                            .padding(.horizontal, 10)
+                            .padding(.vertical, 7)
+                            .background(Color(hex: 0xFCECEA), in: Capsule())
+                    }
+                    .buttonStyle(.plain)
+                    .accessibilityLabel(L10n.commonDelete)
+                }
+                Spacer(minLength: 0)
+            }
+            .padding(.top, 14)
+        }
+    }
+
     @ViewBuilder
     private func postActions(_ post: ForumPostDTO) -> some View {
-        let isOwn = post.userId != nil && post.userId == Int(container.profileState?.id ?? "")
+        let isOwn = isOwnPost(post)
         let canEdit = post.canEdit || isOwn
         let canDelete = post.canDelete || isOwn
         if let contentID = Int(post.id), canEdit || canDelete || !isOwn {

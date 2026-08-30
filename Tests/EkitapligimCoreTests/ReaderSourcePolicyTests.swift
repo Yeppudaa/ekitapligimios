@@ -63,9 +63,29 @@ final class ReaderSourcePolicyTests: XCTestCase {
         let result = try XCTUnwrap(ReaderSourcePolicy.nativeContentURL(session: session, bookID: 15585, apiBaseURL: apiBase))
 
         XCTAssertEqual(result.scheme, "https")
+        XCTAssertTrue(result.path.contains("/ios-api/"))
         XCTAssertFalse(result.path.contains("read-source"))
+        XCTAssertFalse(result.path.contains("/api/books/"))
         XCTAssertTrue(result.path.contains("/reader/source"))
         XCTAssertTrue(result.path.contains("/books/15585/"))
+        XCTAssertEqual(
+            URLComponents(url: result, resolvingAgainstBaseURL: false)?.queryItems?.first(where: { $0.name == "t" })?.value,
+            "reader-token"
+        )
+    }
+
+    func testIgnoresXenForoRestApiReaderSource() throws {
+        let session = ReaderSessionDTO(
+            token: "reader-token",
+            sourceUrl: "https://ekitapligim.com/books/kitap.15585/read-source?t=reader-token",
+            fileType: "pdf",
+            apiSourceUrl: "https://ekitapligim.com/api/books/15585/reader/source?t=reader-token"
+        )
+        let apiBase = try XCTUnwrap(URL(string: "https://ekitapligim.com/ios-api/v1/"))
+        let result = try XCTUnwrap(ReaderSourcePolicy.nativeContentURL(session: session, bookID: 15585, apiBaseURL: apiBase))
+
+        XCTAssertEqual(result.path, "/ios-api/v1/books/15585/reader/source")
+        XCTAssertFalse(result.path.contains("/api/books/"))
         XCTAssertEqual(
             URLComponents(url: result, resolvingAgainstBaseURL: false)?.queryItems?.first(where: { $0.name == "t" })?.value,
             "reader-token"
@@ -121,5 +141,26 @@ final class ReaderSourcePolicyTests: XCTestCase {
 
         XCTAssertTrue(ReaderSourcePolicy.shouldAttachAccessToken(to: source, apiBaseURL: apiBase))
         XCTAssertFalse(ReaderSourcePolicy.shouldAttachAccessToken(to: drive, apiBaseURL: apiBase))
+
+        let xenforoAPI = try XCTUnwrap(URL(string: "https://ekitapligim.com/api/books/1/reader/source?t=x"))
+        XCTAssertFalse(ReaderSourcePolicy.shouldAttachAccessToken(to: xenforoAPI, apiBaseURL: apiBase))
+    }
+
+    func testUnpacksBase64JSONEbookEnvelope() {
+        let pdf = Data("%PDF-1.7 test".utf8)
+        let payload = """
+        {"fileName":"book.pdf","mimeType":"application/pdf","data":"\(pdf.base64EncodedString())"}
+        """.data(using: .utf8)!
+        let wrapped = """
+        {"innerContent":{"data":"\(pdf.base64EncodedString())"}}
+        """.data(using: .utf8)!
+
+        XCTAssertEqual(ReaderSourcePolicy.unpackedBookFileData(from: pdf), pdf)
+        XCTAssertEqual(ReaderSourcePolicy.unpackedBookFileData(from: payload), pdf)
+        XCTAssertEqual(ReaderSourcePolicy.unpackedBookFileData(from: wrapped), pdf)
+        XCTAssertEqual(
+            ReaderSourcePolicy.unpackedBookFileData(from: Data("{\"errors\":[{\"message\":\"nope\"}]}".utf8)),
+            Data("{\"errors\":[{\"message\":\"nope\"}]}".utf8)
+        )
     }
 }

@@ -249,6 +249,7 @@ struct ConversationDetailView: View {
                     .safeAreaInset(edge: .bottom, spacing: 0) {
                         if detail.conversation.canReply {
                             replyComposer
+                                .ekPinnedReplyBar()
                         }
                     }
                 }
@@ -316,7 +317,7 @@ struct ConversationDetailView: View {
             TextEditor(text: $replyText)
                 .focused($isReplyFocused)
                 .accessibilityLabel(L10n.conversationsReplyPlaceholder)
-                .frame(minHeight: 72)
+                .ekPinnedReplyEditor()
                 .padding(10)
                 .scrollContentBackground(.hidden)
                 .background(.white, in: RoundedRectangle(cornerRadius: 16, style: .continuous))

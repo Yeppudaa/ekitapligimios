@@ -56,6 +56,7 @@ final class ValidatedBookFileTransfer {
             }
 
             do {
+                try unwrapJSONEnvelopeIfNeeded(at: temporaryURL)
                 try validateFile(at: temporaryURL, fileType: fileExtension)
                 try installFile(from: temporaryURL, to: destinationURL)
                 return
@@ -102,6 +103,21 @@ final class ValidatedBookFileTransfer {
             request.setValue("Bearer \(token)", forHTTPHeaderField: "Authorization")
         }
         return request
+    }
+
+    private func unwrapJSONEnvelopeIfNeeded(at url: URL) throws {
+        guard looksLikeJSONObject(filePrefix(url)) else { return }
+        let full = try Data(contentsOf: url, options: [.mappedIfSafe])
+        let unpacked = ReaderSourcePolicy.unpackedBookFileData(from: full)
+        guard unpacked != full else { return }
+        try unpacked.write(to: url, options: .atomic)
+    }
+
+    private func looksLikeJSONObject(_ data: Data) -> Bool {
+        guard let first = data.first(where: {
+            $0 != 0x20 && $0 != 0x09 && $0 != 0x0A && $0 != 0x0D
+        }) else { return false }
+        return first == 0x7B
     }
 
     private func filePrefix(_ url: URL) -> Data {
