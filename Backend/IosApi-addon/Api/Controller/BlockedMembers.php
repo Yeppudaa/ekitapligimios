@@ -21,12 +21,14 @@ class BlockedMembers extends \Ekitapligim\MobileApi\Api\Controller\AbstractMobil
 		$members = [];
 		foreach ($rows AS $row)
 		{
+			$user = $this->em()->find('XF:User', (int) $row['ignored_user_id']);
+			$avatar = $user ? (string) $user->getAvatarUrl('m', null, true) : '';
 			$members[] = [
 				'id' => (string) $row['ignored_user_id'],
 				'user_id' => (int) $row['ignored_user_id'],
 				'username' => (string) $row['username'],
-				'avatar_url' => '',
-				'avatarUrl' => '',
+				'avatar_url' => $avatar,
+				'avatarUrl' => $avatar,
 				'blocked_at' => null,
 				'blockedAt' => null,
 			];

@@ -145,6 +145,15 @@ final class APIEndpointTests: XCTestCase {
         XCTAssertEqual(access.path, "books/15582/reader/access")
     }
 
+    func testReaderSourceUsesSessionTokenQuery() {
+        let source = APIEndpoint.readerSource(bookID: 15582, token: "reader-token")
+
+        XCTAssertEqual(source.method, .get)
+        XCTAssertEqual(source.path, "books/15582/reader/source")
+        XCTAssertTrue(source.requiresAuthentication)
+        XCTAssertEqual(source.queryItems.first(where: { $0.name == "t" })?.value, "reader-token")
+    }
+
     func testBookDetailUsesDedicatedMobileRoute() {
         let endpoint = APIEndpoint.book(id: 15585)
 
@@ -212,6 +221,16 @@ final class APIEndpointTests: XCTestCase {
         XCTAssertEqual(reply.path, "threads/99/posts")
         XCTAssertEqual(reply.method, .post)
         XCTAssertTrue(reply.requiresAuthentication)
+
+        let edit = APIEndpoint.editForumPost(postID: 44, message: "Güncel")
+        XCTAssertEqual(edit.path, "posts/44")
+        XCTAssertEqual(edit.method, .post)
+        XCTAssertTrue(edit.requiresAuthentication)
+
+        let delete = APIEndpoint.deleteForumPost(postID: 44)
+        XCTAssertEqual(delete.path, "posts/44")
+        XCTAssertEqual(delete.method, .delete)
+        XCTAssertTrue(delete.requiresAuthentication)
 
         let create = APIEndpoint.createForumThread(forumID: 12, title: "Başlık", message: "Mesaj")
         XCTAssertEqual(create.path, "forums/12/threads")

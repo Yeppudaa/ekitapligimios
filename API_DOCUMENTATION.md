@@ -141,6 +141,8 @@ Behavior: toggles the current user's support vote and returns `voted` plus the c
 - `GET /forums/{forum_id}/threads`
 - `GET /threads/{thread_id}/posts`
 - `POST /threads/{thread_id}/posts`
+- `POST /posts/{post_id}` (edit own/permitted post)
+- `DELETE /posts/{post_id}` (soft-delete own/permitted post)
 - `GET /members`
 - `GET /members/{user_id}`
 - `POST /members/{user_id}/follow`
@@ -264,6 +266,6 @@ Response: 200 after verification and entitlement update.
 Current backend behavior: verifies the outer, transaction, and renewal JWS certificate chains; rejects bundle/product/environment mismatches; records the verified notification hash; preserves Apple billing grace periods; and atomically updates the matching existing entitlement by transaction/original transaction ID. Public sandbox verification is still required.
 
 ## Required Deployment Work Before iOS Release
-- Deploy standalone IosApi `1.0.12` (SHA-256 verified; MobileApi 1.0.136 unchanged) to public HTTPS staging, configure moderator emails and managed filter terms, run `php cmd.php ekitapligim-ios:release-audit`, then promote the identical ZIP to production.
+- Deploy standalone IosApi `1.0.13` (SHA-256 verified; MobileApi 1.0.136 unchanged) to public HTTPS staging, configure moderator emails and managed filter terms, run `php cmd.php ekitapligim-ios:release-audit`, then promote the identical ZIP to production.
 - Configure the Apple root CA and verify StoreKit sandbox transactions and App Store Server Notifications.
 - Exercise Apple login, identity changes, blocking, reporting, terms acceptance, account deletion, reader access, and subscription state with the App Review account.

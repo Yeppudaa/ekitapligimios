@@ -41,8 +41,21 @@ public extension L10n {
     static var tabAuthors: String { tr("tab.authors", "Yazarlar") }
     static var tabRequests: String { tr("tab.requests", "İstekler") }
     static var tabForum: String { tr("tab.forum", "Forum") }
-    static var tabProfile: String { tr("tab.profile", "Profilim") }
+    static var tabProfile: String { tr("tab.profile", "Profil") }
     static var tabCatalogShort: String { tr("tab.catalogShort", "Katalog") }
+    static var libraryGuestTitle: String { tr("library.guest.title", "Kütüphaneni gör") }
+    static var libraryGuestSubtitle: String { tr("library.guest.subtitle", "Raflarını ve indirmelerini görmek için giriş yap.") }
+    static var membersUnblock: String { tr("members.unblock", "Engeli kaldır") }
+    static var membersUnblockConfirmation: String { tr("members.unblockConfirmation", "Bu üyenin engelini kaldırmak istiyor musunuz?") }
+    static var membersUnblockCompleted: String { tr("members.unblockCompleted", "Engel kaldırıldı") }
+    static var membersBlockAndReport: String { tr("members.blockAndReport", "Engelle ve bildir") }
+    static var forumThreadEditTitle: String { tr("forumThread.editTitle", "Mesajı düzenle") }
+    static var forumThreadEditFailed: String { tr("forumThread.editFailed", "Mesaj güncellenemedi.") }
+    static var forumThreadDeleteFailed: String { tr("forumThread.deleteFailed", "Mesaj silinemedi.") }
+    static var forumThreadDeleteConfirm: String { tr("forumThread.deleteConfirm", "Bu mesajı silmek istiyor musunuz?") }
+    static var forumThreadEdited: String { tr("forumThread.edited", "Mesaj güncellendi.") }
+    static var forumThreadDeleted: String { tr("forumThread.deleted", "Mesaj silindi.") }
+    static var forumThreadReplyCountLabel: String { tr("forumThread.replyCountLabel", "karakter") }
 
     // MARK: - Yan menü
 
@@ -216,12 +229,30 @@ public extension L10n {
 
     static var profileGuestTitle: String { tr("profile.guest.title", "Kütüphanene hoş geldin") }
     static var profileGuestSubtitle: String {
-        tr("profile.guest.subtitle", "Raflarını senkronla, okuma limitlerini takip et ve favorilerini sakla.")
+        tr(
+            "profile.guest.subtitle",
+            "Raflarını, favorilerini, yorumlarını ve okuma geçmişini tek dokunuşla yanında taşı."
+        )
+    }
+    static var profileGuestManageSubtitle: String {
+        tr("profile.guest.manageSubtitle", "Hesabını yönet, kütüphaneni senkronize et.")
     }
     static var profileGuestShelfSync: String { tr("profile.guest.shelfSync", "Raf senkronu") }
+    static var profileGuestShelfSyncSubtitle: String {
+        tr("profile.guest.shelfSync.subtitle", "Kitapların hep hazır,\nher cihazında seninle.")
+    }
     static var profileGuestLimits: String { tr("profile.guest.limits", "Limit takibi") }
+    static var profileGuestLimitsSubtitle: String {
+        tr("profile.guest.limits.subtitle", "Okuma limitlerini takip et,\nhaklarını kontrol altında tut.")
+    }
     static var profileGuestFavorites: String { tr("profile.guest.favorites", "Favoriler") }
+    static var profileGuestFavoritesSubtitle: String {
+        tr("profile.guest.favorites.subtitle", "Seçtiklerini kaydet,\nkolayca yeniden ulaş.")
+    }
     static var profileGuestSecure: String { tr("profile.guest.secure", "Güvenli erişim") }
+    static var profileGuestSecureSubtitle: String {
+        tr("profile.guest.secure.subtitle", "Hesabın güvende,\nverilerin koruma altında.")
+    }
     static var profileGuestFooter: String { tr("profile.guest.footer", "Güvenli bağlantı ile verileriniz korunur.") }
 
     static var profileLibrarySectionTitle: String { tr("profile.librarySection.title", "Kişisel Kütüphanem") }

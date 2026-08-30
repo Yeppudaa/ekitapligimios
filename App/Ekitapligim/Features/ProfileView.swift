@@ -12,6 +12,7 @@ struct ProfileView: View {
     @State private var errorMessage: String?
     @State private var statusMessage: String?
     @State private var showingLogin = false
+    @State private var loginInitialMode: AuthFormMode = .login
     @State private var showingDeleteConfirmation = false
     @State private var isSubmittingDeletion = false
     @State private var route: ProfileRoute?
@@ -26,7 +27,16 @@ struct ProfileView: View {
             if container.isSignedIn {
                 signedInContent
             } else {
-                GuestProfilePrompt { showingLogin = true }
+                GuestProfilePrompt(
+                    onLogin: {
+                        loginInitialMode = .login
+                        showingLogin = true
+                    },
+                    onRegister: {
+                        loginInitialMode = .register
+                        showingLogin = true
+                    }
+                )
             }
         }
         .navigationTitle(L10n.profileScreenTitle)
@@ -45,7 +55,7 @@ struct ProfileView: View {
                 }
             }
         }
-        .sheet(isPresented: $showingLogin) { LoginView() }
+        .sheet(isPresented: $showingLogin) { LoginView(initialMode: loginInitialMode) }
         .navigationDestination(item: $route) { destination in
             switch destination {
             case .edit: ProfileEditView()
@@ -1140,66 +1150,288 @@ private struct ProfileActivityList: View {
 
 private struct GuestProfilePrompt: View {
     let onLogin: () -> Void
-
-    private let benefits: [(String, String)] = [
-        (L10n.profileGuestShelfSync, "arrow.triangle.2.circlepath"),
-        (L10n.profileGuestLimits, "gauge.with.needle"),
-        (L10n.profileGuestFavorites, "heart.fill"),
-        (L10n.profileGuestSecure, "lock.shield.fill")
-    ]
+    let onRegister: () -> Void
 
     var body: some View {
         ScrollView {
-            VStack(spacing: 18) {
-                VStack(spacing: 12) {
-                    EKitapligimBrandLogo().frame(width: 190, height: 78)
+            ZStack {
+                Color(hex: 0xFCFEFE)
+                RadialGradient(
+                    colors: [Color(hex: 0x0F9AA1).opacity(0.17), .clear],
+                    center: UnitPoint(x: 0.08, y: 0.05),
+                    startRadius: 0,
+                    endRadius: 260
+                )
+                RadialGradient(
+                    colors: [Color(hex: 0xE0A02B).opacity(0.14), .clear],
+                    center: UnitPoint(x: 0.92, y: 0.9),
+                    startRadius: 0,
+                    endRadius: 280
+                )
+
+                VStack(spacing: 0) {
+                    guestHeader
+                    GuestLogoShowcase()
+                        .padding(.top, 18)
                     Text(L10n.profileGuestTitle)
-                        .font(.title3.weight(.heavy))
-                        .foregroundStyle(.white)
-                    Text(L10n.profileGuestSubtitle)
-                        .font(.subheadline)
-                        .foregroundStyle(.white.opacity(0.85))
+                        .font(.system(size: 27, weight: .heavy))
+                        .foregroundStyle(Color(hex: 0x0E1B2B))
                         .multilineTextAlignment(.center)
-                }
-                .frame(maxWidth: .infinity)
-                .padding(24)
-                .background(EKitapligimPalette.profileHeroGradient)
-                .clipShape(RoundedRectangle(cornerRadius: 22, style: .continuous))
+                        .padding(.top, 24)
+                    Text(L10n.profileGuestSubtitle)
+                        .font(.system(size: 15))
+                        .foregroundStyle(Color(hex: 0x687385))
+                        .multilineTextAlignment(.center)
+                        .padding(.horizontal, 8)
+                        .padding(.top, 10)
 
-                LazyVGrid(columns: [GridItem(.flexible(), spacing: 10), GridItem(.flexible(), spacing: 10)], spacing: 10) {
-                    ForEach(benefits, id: \.0) { benefit in
-                        VStack(spacing: 7) {
-                            Image(systemName: benefit.1)
-                                .font(.subheadline)
-                                .foregroundStyle(EKitapligimPalette.profileTeal)
-                            Text(benefit.0)
-                                .font(.caption.weight(.semibold))
-                                .foregroundStyle(EKitapligimPalette.profileInk)
-                                .multilineTextAlignment(.center)
-                        }
-                        .frame(maxWidth: .infinity)
-                        .padding(.vertical, 18)
-                        .ekitapligimCard(radius: 15)
+                    LazyVGrid(
+                        columns: [GridItem(.flexible(), spacing: 12), GridItem(.flexible(), spacing: 12)],
+                        spacing: 12
+                    ) {
+                        GuestBenefitTile(
+                            title: L10n.profileGuestShelfSync,
+                            subtitle: L10n.profileGuestShelfSyncSubtitle,
+                            systemImage: "books.vertical.fill",
+                            accent: Color(hex: 0x07888B),
+                            background: Color(hex: 0xF0FBFB),
+                            border: Color(hex: 0xCDEEEE)
+                        )
+                        GuestBenefitTile(
+                            title: L10n.profileGuestLimits,
+                            subtitle: L10n.profileGuestLimitsSubtitle,
+                            systemImage: "chart.line.uptrend.xyaxis",
+                            accent: Color(hex: 0xD99500),
+                            background: Color(hex: 0xFFFAED),
+                            border: Color(hex: 0xF6E1AC)
+                        )
+                        GuestBenefitTile(
+                            title: L10n.profileGuestFavorites,
+                            subtitle: L10n.profileGuestFavoritesSubtitle,
+                            systemImage: "heart",
+                            accent: Color(hex: 0xF05268),
+                            background: Color(hex: 0xFFF3F5),
+                            border: Color(hex: 0xFFD4DA)
+                        )
+                        GuestBenefitTile(
+                            title: L10n.profileGuestSecure,
+                            subtitle: L10n.profileGuestSecureSubtitle,
+                            systemImage: "lock.shield.fill",
+                            accent: Color(hex: 0x3F63D8),
+                            background: Color(hex: 0xF2F5FF),
+                            border: Color(hex: 0xD5DEFF)
+                        )
                     }
-                }
+                    .padding(.top, 22)
 
-                Button(action: onLogin) {
-                    Text(L10n.commonLogin)
-                        .font(.subheadline.weight(.bold))
+                    Button(action: onLogin) {
+                        HStack(spacing: 10) {
+                            Image(systemName: "rectangle.portrait.and.arrow.right")
+                                .font(.system(size: 20, weight: .semibold))
+                            Text(L10n.commonLogin)
+                                .font(.system(size: 17, weight: .bold))
+                                .lineLimit(1)
+                        }
                         .foregroundStyle(.white)
                         .frame(maxWidth: .infinity)
-                        .padding(.vertical, 14)
-                        .background(EKitapligimPalette.profileTealDeep)
-                        .clipShape(RoundedRectangle(cornerRadius: 14, style: .continuous))
-                }
-                .buttonStyle(.plain)
+                        .frame(height: 60)
+                        .background(
+                            LinearGradient(
+                                colors: [Color(hex: 0x108D92), Color(hex: 0x056970)],
+                                startPoint: .leading,
+                                endPoint: .trailing
+                            ),
+                            in: RoundedRectangle(cornerRadius: 10, style: .continuous)
+                        )
+                    }
+                    .buttonStyle(.plain)
+                    .padding(.top, 22)
 
-                Text(L10n.profileGuestFooter)
-                    .font(.caption2)
-                    .foregroundStyle(EKitapligimPalette.profileMuted)
+                    Button(action: onRegister) {
+                        HStack(spacing: 9) {
+                            Image(systemName: "person.badge.plus")
+                                .font(.system(size: 20, weight: .semibold))
+                            Text(L10n.loginModeRegister)
+                                .font(.system(size: 17, weight: .bold))
+                                .lineLimit(1)
+                        }
+                        .foregroundStyle(Color(hex: 0x05646A))
+                        .frame(maxWidth: .infinity)
+                        .frame(height: 58)
+                        .background(
+                            Color.white.opacity(0.62),
+                            in: RoundedRectangle(cornerRadius: 10, style: .continuous)
+                        )
+                        .overlay {
+                            RoundedRectangle(cornerRadius: 10, style: .continuous)
+                                .stroke(Color(hex: 0x05646A), lineWidth: 1.5)
+                        }
+                    }
+                    .buttonStyle(.plain)
+                    .padding(.top, 12)
+
+                    HStack(spacing: 6) {
+                        Image(systemName: "lock")
+                            .font(.system(size: 12, weight: .medium))
+                        Text(L10n.profileGuestFooter)
+                            .font(.system(size: 12))
+                            .multilineTextAlignment(.center)
+                    }
+                    .foregroundStyle(Color(hex: 0x687385).opacity(0.86))
+                    .padding(.top, 16)
+                }
+                .padding(.horizontal, 18)
+                .padding(.vertical, 20)
+            }
+            .clipShape(RoundedRectangle(cornerRadius: 12, style: .continuous))
+            .overlay {
+                RoundedRectangle(cornerRadius: 12, style: .continuous)
+                    .stroke(Color(hex: 0xE0EAEB), lineWidth: 1)
             }
             .padding(.horizontal, 18)
             .padding(.vertical, 14)
         }
+    }
+
+    private var guestHeader: some View {
+        VStack(spacing: 10) {
+            HStack(alignment: .center, spacing: 12) {
+                VStack(alignment: .leading, spacing: 3) {
+                    Text(L10n.profileScreenTitle)
+                        .font(.system(size: 30, weight: .heavy))
+                        .foregroundStyle(Color(hex: 0x0E1B2B))
+                    Text(L10n.profileGuestManageSubtitle)
+                        .font(.system(size: 15))
+                        .foregroundStyle(Color(hex: 0x687385))
+                }
+                Spacer(minLength: 0)
+                Image(systemName: "person.crop.circle.fill")
+                    .font(.system(size: 31))
+                    .foregroundStyle(.white)
+                    .frame(width: 58, height: 58)
+                    .background(Color(hex: 0x087A80), in: Circle())
+            }
+            .padding(.horizontal, 4)
+
+            GuestHeaderWave()
+                .frame(height: 34)
+        }
+    }
+}
+
+private struct GuestHeaderWave: View {
+    var body: some View {
+        Canvas { context, size in
+            var path = Path()
+            path.move(to: CGPoint(x: 0, y: size.height * 0.20))
+            path.addCurve(
+                to: CGPoint(x: size.width, y: size.height * 0.20),
+                control1: CGPoint(x: size.width * 0.22, y: size.height * 1.10),
+                control2: CGPoint(x: size.width * 0.62, y: size.height * 0.02)
+            )
+            context.stroke(path, with: .color(Color(hex: 0x087A80).opacity(0.62)), lineWidth: 2)
+        }
+        .accessibilityHidden(true)
+    }
+}
+
+private struct GuestLogoShowcase: View {
+    var body: some View {
+        VStack(spacing: 8) {
+            Image("EKitapligimWideLogo")
+                .resizable()
+                .scaledToFit()
+                .frame(maxWidth: 360, maxHeight: 74)
+                .accessibilityLabel("Ekitaplığım")
+            GuestLogoBars()
+        }
+        .padding(.horizontal, 24)
+        .padding(.vertical, 18)
+        .frame(maxWidth: .infinity)
+        .frame(height: 132)
+        .background(
+            LinearGradient(
+                colors: [.white, Color(hex: 0xFAFDFD), Color(hex: 0xF7FBFB)],
+                startPoint: .topLeading,
+                endPoint: .bottomTrailing
+            ),
+            in: RoundedRectangle(cornerRadius: 12, style: .continuous)
+        )
+        .overlay {
+            RoundedRectangle(cornerRadius: 12, style: .continuous)
+                .stroke(Color(hex: 0xE6EBEC), lineWidth: 1)
+        }
+        .overlay(alignment: .topLeading) {
+            RadialGradient(
+                colors: [Color(hex: 0x087A80).opacity(0.09), .clear],
+                center: UnitPoint(x: 0.12, y: 0.18),
+                startRadius: 0,
+                endRadius: 130
+            )
+            .clipShape(RoundedRectangle(cornerRadius: 12, style: .continuous))
+            .allowsHitTesting(false)
+        }
+    }
+}
+
+private struct GuestLogoBars: View {
+    private let colors: [UInt32] = [0x07888B, 0x4F9EA0, 0x6D5078, 0xE67E15, 0xE3A900]
+
+    var body: some View {
+        HStack(spacing: 10) {
+            ForEach(colors, id: \.self) { hex in
+                Capsule()
+                    .fill(
+                        LinearGradient(
+                            colors: [Color(hex: hex).opacity(0.86), Color(hex: hex)],
+                            startPoint: .leading,
+                            endPoint: .trailing
+                        )
+                    )
+                    .frame(width: 26, height: 8)
+            }
+        }
+        .accessibilityHidden(true)
+    }
+}
+
+private struct GuestBenefitTile: View {
+    let title: String
+    let subtitle: String
+    let systemImage: String
+    let accent: Color
+    let background: Color
+    let border: Color
+
+    var body: some View {
+        VStack(spacing: 0) {
+            Image(systemName: systemImage)
+                .font(.system(size: 22, weight: .semibold))
+                .foregroundStyle(accent)
+                .frame(width: 54, height: 54)
+                .background(Color.white.opacity(0.88), in: Circle())
+            Text(title)
+                .font(.system(size: 16, weight: .bold))
+                .foregroundStyle(Color(hex: 0x0E1B2B))
+                .multilineTextAlignment(.center)
+                .lineLimit(1)
+                .padding(.top, 12)
+            Text(subtitle)
+                .font(.system(size: 12))
+                .foregroundStyle(Color(hex: 0x687385))
+                .multilineTextAlignment(.center)
+                .lineLimit(2)
+                .padding(.top, 7)
+        }
+        .padding(.horizontal, 12)
+        .padding(.vertical, 17)
+        .frame(maxWidth: .infinity)
+        .frame(minHeight: 178)
+        .background(background, in: RoundedRectangle(cornerRadius: 12, style: .continuous))
+        .overlay {
+            RoundedRectangle(cornerRadius: 12, style: .continuous)
+                .stroke(border, lineWidth: 1)
+        }
+        .accessibilityElement(children: .combine)
     }
 }

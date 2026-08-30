@@ -154,6 +154,8 @@ class ThreadPosts extends \Ekitapligim\MobileApi\Api\Controller\AbstractMobileCo
 			'postDate' => (int) $post->post_date,
 			'can_edit' => (bool) $post->canEdit(),
 			'canEdit' => (bool) $post->canEdit(),
+			'can_delete' => (bool) $post->canDelete('soft'),
+			'canDelete' => (bool) $post->canDelete('soft'),
 			'can_reply' => (bool) $thread->canReply(),
 			'canReply' => (bool) $thread->canReply(),
 			'is_admin' => (bool) ($user && $user->is_admin),

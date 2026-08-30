@@ -21,11 +21,16 @@ class BookAgendaPost extends \Ekitapligim\MobileApi\Api\Controller\BookAgendaPos
 		{
 			return $this->apiError('Post not found.', 'content_not_found', null, 404);
 		}
-		return $reply;
+		return $this->applyAgendaViewerFlags($reply, []);
 	}
 	public function actionPatch(\XF\Mvc\ParameterBag $params)
 	{
 		if ($error = $this->validateUgcWrite([(string) $this->filter('message', 'str')])) return $error;
 		return parent::actionPatch($params);
+	}
+
+	public function actionPost(\XF\Mvc\ParameterBag $params)
+	{
+		return $this->actionPatch($params);
 	}
 }

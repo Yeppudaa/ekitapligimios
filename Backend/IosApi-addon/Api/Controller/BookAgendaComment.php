@@ -10,4 +10,9 @@ class BookAgendaComment extends \Ekitapligim\MobileApi\Api\Controller\BookAgenda
 		if ($error = $this->validateUgcWrite([(string) $this->filter('message', 'str')])) return $error;
 		return parent::actionPatch($params);
 	}
+
+	public function actionPost(\XF\Mvc\ParameterBag $params)
+	{
+		return $this->actionPatch($params);
+	}
 }

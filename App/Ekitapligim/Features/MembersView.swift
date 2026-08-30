@@ -33,8 +33,6 @@ struct MembersView: View {
                                     MemberProfileView(memberID: member.id)
                                 } label: {
                                     MemberRow(member: member)
-                                        .padding(14)
-                                        .ekitapligimCard(radius: 14)
                                 }
                                 .buttonStyle(.plain)
                             }
@@ -57,13 +55,23 @@ struct MembersView: View {
     }
 
     private var membersHeader: some View {
-        VStack(alignment: .leading, spacing: 10) {
-            HStack {
-                Text(L10n.membersTotalLabel)
-                    .font(.caption.weight(.bold))
-                    .foregroundStyle(EKitapligimPalette.muted)
+        VStack(alignment: .leading, spacing: 12) {
+            HStack(alignment: .firstTextBaseline) {
+                VStack(alignment: .leading, spacing: 4) {
+                    Text(L10n.membersTitle)
+                        .font(.title3.weight(.heavy))
+                        .foregroundStyle(EKitapligimPalette.ink)
+                    Text(L10n.membersTotalLabel)
+                        .font(.caption)
+                        .foregroundStyle(EKitapligimPalette.muted)
+                }
                 Spacer()
-                Text("\(total)").font(.headline.weight(.heavy)).foregroundStyle(EKitapligimPalette.tealDark)
+                Text("\(total)")
+                    .font(.title2.weight(.heavy))
+                    .foregroundStyle(EKitapligimPalette.tealDark)
+                    .padding(.horizontal, 12)
+                    .padding(.vertical, 8)
+                    .background(EKitapligimPalette.tealSoft, in: RoundedRectangle(cornerRadius: 12, style: .continuous))
             }
             Picker(L10n.membersSortLabel, selection: $sort) {
                 Text(L10n.membersSortAlphabetical).tag("alphabetical")
@@ -73,8 +81,8 @@ struct MembersView: View {
             .pickerStyle(.segmented)
             .onChange(of: sort) { _, _ in Task { await load(reset: true) } }
         }
-        .padding(14)
-        .ekitapligimCard(radius: 14)
+        .padding(16)
+        .ekitapligimCard(radius: 16)
     }
 
     private func load(reset: Bool) async {
@@ -90,6 +98,10 @@ struct MembersView: View {
             members = reset ? result.members : members + result.members.filter { item in
                 !members.contains(where: { $0.id == item.id })
             }
+            members = members.filter { member in
+                guard let id = Int(member.id) else { return true }
+                return !container.blockedUserIDs.contains(id)
+            }
             currentPage = result.currentPage
             lastPage = result.lastPage
             total = result.total
@@ -104,36 +116,55 @@ private struct MemberRow: View {
     let member: MemberDTO
 
     var body: some View {
-        HStack(spacing: 12) {
-            AsyncImage(url: URL(string: member.avatarUrl)) { image in
-                image.resizable().scaledToFill()
-            } placeholder: {
-                Image(systemName: "person.crop.circle.fill")
-                    .resizable()
-                    .foregroundStyle(.secondary)
-            }
-            .frame(width: 46, height: 46)
-            .clipShape(Circle())
-            .accessibilityHidden(true)
-
-            VStack(alignment: .leading, spacing: 3) {
-                HStack(spacing: 4) {
-                    Text(member.username).font(.headline)
-                    if member.showVerifiedBadge {
-                        Image(systemName: "checkmark.seal.fill")
-                            .foregroundStyle(.blue)
-                            .accessibilityLabel(L10n.membersVerified)
-                    }
+        HStack(spacing: 14) {
+            ZStack(alignment: .bottomTrailing) {
+                AsyncImage(url: URL(string: member.avatarUrl)) { image in
+                    image.resizable().scaledToFill()
+                } placeholder: {
+                    Image(systemName: "person.crop.circle.fill")
+                        .resizable()
+                        .foregroundStyle(EKitapligimPalette.muted)
                 }
-                Text(member.roleLabel.isEmpty ? member.userTitle : member.roleLabel)
-                    .font(.caption)
-                    .foregroundStyle(.secondary)
-                Text(L10n.membersMessageCount(member.messageCount))
-                    .font(.caption2)
-                    .foregroundStyle(.secondary)
+                .frame(width: 56, height: 56)
+                .clipShape(Circle())
+                .overlay(Circle().stroke(Color(hex: 0xE0EAEB), lineWidth: 1))
+                .accessibilityHidden(true)
+
+                if member.showVerifiedBadge {
+                    Image(systemName: "checkmark.seal.fill")
+                        .font(.caption)
+                        .foregroundStyle(EKitapligimPalette.teal)
+                        .background(Circle().fill(.white).padding(-2))
+                        .accessibilityLabel(L10n.membersVerified)
+                }
             }
+
+            VStack(alignment: .leading, spacing: 5) {
+                Text(member.username)
+                    .font(.headline.weight(.semibold))
+                    .foregroundStyle(EKitapligimPalette.ink)
+                    .lineLimit(1)
+                Text(member.roleLabel.isEmpty ? member.userTitle : member.roleLabel)
+                    .font(.caption.weight(.semibold))
+                    .foregroundStyle(EKitapligimPalette.tealDark)
+                    .lineLimit(1)
+                if !member.about.isEmpty {
+                    Text(member.about)
+                        .font(.caption)
+                        .foregroundStyle(EKitapligimPalette.muted)
+                        .lineLimit(2)
+                }
+                Text(L10n.membersMessageCount(member.messageCount))
+                    .font(.caption2.weight(.semibold))
+                    .foregroundStyle(EKitapligimPalette.muted)
+            }
+            Spacer(minLength: 0)
+            Image(systemName: "chevron.right")
+                .font(.caption.weight(.bold))
+                .foregroundStyle(EKitapligimPalette.muted)
         }
-        .padding(.vertical, 3)
+        .padding(14)
+        .ekitapligimCard(radius: 16)
     }
 }
 
@@ -148,7 +179,10 @@ struct MemberProfileView: View {
     @State private var errorMessage: String?
     @State private var operationError: String?
     @State private var showBlockConfirmation = false
+    @State private var showUnblockConfirmation = false
+    @State private var showBlockAndReport = false
     @State private var blockCompleted = false
+    @State private var unblockCompleted = false
 
     private var isSignedIn: Bool {
         if case .signedIn = container.authState { return true }
@@ -193,7 +227,21 @@ struct MemberProfileView: View {
             Button(L10n.membersBlock, role: .destructive) { Task { await block() } }
             Button(L10n.commonCancel, role: .cancel) {}
         }
+        .confirmationDialog(L10n.membersUnblockConfirmation, isPresented: $showUnblockConfirmation, titleVisibility: .visible) {
+            Button(L10n.membersUnblock) { Task { await unblock() } }
+            Button(L10n.commonCancel, role: .cancel) {}
+        }
+        .sheet(isPresented: $showBlockAndReport) {
+            if let userID = Int(memberID) {
+                ReportContentView(kind: .memberBlock(userID: userID)) { success in
+                    if success { blockCompleted = true }
+                }
+            }
+        }
         .alert(L10n.membersBlockCompleted, isPresented: $blockCompleted) {
+            Button(L10n.commonClose) {}
+        }
+        .alert(L10n.membersUnblockCompleted, isPresented: $unblockCompleted) {
             Button(L10n.commonClose) {}
         }
         .alert(
@@ -208,37 +256,71 @@ struct MemberProfileView: View {
     }
 
     private func memberHero(_ member: MemberDTO) -> some View {
-        HStack(spacing: 14) {
+        VStack(spacing: 14) {
             AsyncImage(url: URL(string: member.avatarUrl)) { image in
                 image.resizable().scaledToFill()
             } placeholder: {
-                Image(systemName: "person.crop.circle.fill").resizable().foregroundStyle(EKitapligimPalette.muted)
-            }
-            .frame(width: 72, height: 72)
-            .clipShape(Circle())
-            .accessibilityHidden(true)
-            VStack(alignment: .leading, spacing: 4) {
-                Text(member.username).font(.title3.weight(.semibold)).foregroundStyle(EKitapligimPalette.ink)
-                Text(member.roleLabel.isEmpty ? member.userTitle : member.roleLabel)
+                Image(systemName: "person.crop.circle.fill")
+                    .resizable()
                     .foregroundStyle(EKitapligimPalette.muted)
             }
-            Spacer(minLength: 0)
+            .frame(width: 96, height: 96)
+            .clipShape(Circle())
+            .overlay(Circle().stroke(Color(hex: 0xDDE8EA), lineWidth: 2))
+            .accessibilityHidden(true)
+
+            VStack(spacing: 6) {
+                HStack(spacing: 6) {
+                    Text(member.username)
+                        .font(.title2.weight(.heavy))
+                        .foregroundStyle(EKitapligimPalette.ink)
+                    if member.showVerifiedBadge {
+                        Image(systemName: "checkmark.seal.fill")
+                            .foregroundStyle(EKitapligimPalette.teal)
+                    }
+                }
+                Text(member.roleLabel.isEmpty ? member.userTitle : member.roleLabel)
+                    .font(.subheadline.weight(.semibold))
+                    .foregroundStyle(EKitapligimPalette.tealDark)
+                    .padding(.horizontal, 12)
+                    .padding(.vertical, 6)
+                    .background(EKitapligimPalette.tealSoft, in: Capsule())
+            }
         }
-        .padding(16)
-        .ekitapligimCard()
+        .frame(maxWidth: .infinity)
+        .padding(20)
+        .ekitapligimCard(radius: 18)
     }
 
     private func statsCard(_ member: MemberDTO) -> some View {
-        VStack(spacing: 10) {
-            LabeledContent(L10n.membersMessagesLabel, value: "\(member.messageCount)")
-            LabeledContent(L10n.membersReactionsLabel, value: "\(member.reactionScore)")
+        HStack(spacing: 10) {
+            memberStat(title: L10n.membersMessagesLabel, value: "\(member.messageCount)")
+            memberStat(title: L10n.membersReactionsLabel, value: "\(member.reactionScore)")
             if member.registerDate > 0 {
-                LabeledContent(L10n.membersJoinedLabel) {
-                    Text(Date(timeIntervalSince1970: TimeInterval(member.registerDate)), format: .dateTime.day().month().year())
-                }
+                memberStat(
+                    title: L10n.membersJoinedLabel,
+                    value: Date(timeIntervalSince1970: TimeInterval(member.registerDate))
+                        .formatted(.dateTime.year().month(.abbreviated))
+                )
             }
         }
-        .padding(16)
+    }
+
+    private func memberStat(title: String, value: String) -> some View {
+        VStack(spacing: 6) {
+            Text(value)
+                .font(.subheadline.weight(.heavy))
+                .foregroundStyle(EKitapligimPalette.ink)
+                .lineLimit(1)
+                .minimumScaleFactor(0.7)
+            Text(title)
+                .font(.caption2)
+                .foregroundStyle(EKitapligimPalette.muted)
+                .multilineTextAlignment(.center)
+        }
+        .frame(maxWidth: .infinity)
+        .padding(.vertical, 14)
+        .padding(.horizontal, 8)
         .ekitapligimCard(radius: 14)
     }
 
@@ -247,12 +329,18 @@ struct MemberProfileView: View {
             Text(L10n.membersAboutSection).font(.headline).foregroundStyle(EKitapligimPalette.ink)
             if !member.about.isEmpty { Text(member.about).foregroundStyle(EKitapligimPalette.profileInk) }
             if !member.location.isEmpty {
-                LabeledContent(L10n.membersLocationLabel, value: member.location)
+                Label(member.location, systemImage: "mappin.and.ellipse")
+                    .font(.subheadline)
+                    .foregroundStyle(EKitapligimPalette.muted)
             }
         }
         .padding(16)
         .frame(maxWidth: .infinity, alignment: .leading)
         .ekitapligimCard(radius: 14)
+    }
+
+    private var isBlocked: Bool {
+        Int(memberID).map(container.blockedUserIDs.contains) == true
     }
 
     private func actionsCard(_ member: MemberDTO) -> some View {
@@ -264,14 +352,41 @@ struct MemberProfileView: View {
                 .font(.subheadline.weight(.bold))
                 .foregroundStyle(.white)
                 .frame(maxWidth: .infinity)
-                .padding(.vertical, 12)
+                .padding(.vertical, 13)
                 .background(EKitapligimPalette.teal, in: RoundedRectangle(cornerRadius: 12))
                 .disabled(isActing)
             }
-            Button(L10n.membersBlock, role: .destructive) {
-                showBlockConfirmation = true
+
+            if isBlocked {
+                Button(L10n.membersUnblock) {
+                    showUnblockConfirmation = true
+                }
+                .font(.subheadline.weight(.bold))
+                .foregroundStyle(EKitapligimPalette.tealDark)
+                .frame(maxWidth: .infinity)
+                .padding(.vertical, 13)
+                .background(EKitapligimPalette.tealSoft, in: RoundedRectangle(cornerRadius: 12))
+                .disabled(isActing || Int(member.id) == nil)
+            } else {
+                Button(L10n.membersBlockAndReport) {
+                    showBlockAndReport = true
+                }
+                .font(.subheadline.weight(.bold))
+                .foregroundStyle(.white)
+                .frame(maxWidth: .infinity)
+                .padding(.vertical, 13)
+                .background(EKitapligimPalette.danger, in: RoundedRectangle(cornerRadius: 12))
+                .disabled(isActing || Int(member.id) == nil)
+
+                Button(L10n.membersBlock) {
+                    showBlockConfirmation = true
+                }
+                .font(.subheadline.weight(.semibold))
+                .foregroundStyle(EKitapligimPalette.danger)
+                .frame(maxWidth: .infinity)
+                .padding(.vertical, 10)
+                .disabled(isActing || Int(member.id) == nil)
             }
-            .disabled(isActing || Int(member.id) == nil)
         }
         .padding(16)
         .ekitapligimCard(radius: 14)
@@ -310,6 +425,19 @@ struct MemberProfileView: View {
             _ = try await container.safety.blockMember(userID: userID)
             container.rememberBlockedUser(userID)
             blockCompleted = true
+        } catch {
+            operationError = L10n.membersActionFailed
+        }
+    }
+
+    private func unblock() async {
+        guard let userID = Int(memberID), !isActing else { return }
+        isActing = true
+        defer { isActing = false }
+        do {
+            _ = try await container.safety.unblockMember(userID: userID)
+            container.forgetBlockedUser(userID)
+            unblockCompleted = true
         } catch {
             operationError = L10n.membersActionFailed
         }

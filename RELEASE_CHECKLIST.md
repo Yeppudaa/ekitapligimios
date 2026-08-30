@@ -18,7 +18,7 @@
 - [ ] Backend App Store JWS verification installed and tested with real Apple sandbox transactions.
 - [ ] Ask to Buy/pending approval and out-of-app completion were delivered through `Transaction.updates`, synchronized to the backend, and finished only after verification.
 - [ ] Backend user blocking/reporting installed and tested on staging.
-- [ ] Standalone IosApi 1.0.12 installed on staging; MobileApi 1.0.136 and `/mobile-api/v1/` checksum/behavior unchanged.
+- [ ] Standalone IosApi 1.0.13 installed on staging; MobileApi 1.0.136 and `/mobile-api/v1/` checksum/behavior unchanged.
 - [ ] `ekIosUgcBlockedTerms` and `ekIosUgcModeratorEmails` configured; `php cmd.php ekitapligim-ios:release-audit` passed.
 - [ ] Backend terms acceptance is mandatory on both login and registration and tested before UGC posting is enabled.
 - [ ] Every UGC create/edit endpoint rejects configured normalized variants with `422 content_policy_violation` and no database row.

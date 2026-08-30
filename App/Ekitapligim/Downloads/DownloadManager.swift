@@ -77,12 +77,21 @@ final class DownloadManager: ObservableObject {
         states[bookID] = .downloading(progress: 0)
         var destination: URL?
         do {
-            let fileExtension = try DownloadFilePolicy.fileExtension(for: expectedFileType)
+            let fileExtension = DownloadFilePolicy.resolvedFileExtension(for: expectedFileType)
             let targetURL = try localURL(for: bookID, fileExtension: fileExtension)
             destination = targetURL
             try await transfer.download(from: sourceURL, fileType: fileExtension, to: targetURL)
-            try protectDownloadedFile(targetURL)
-            states[bookID] = .downloaded(localFileName: targetURL.lastPathComponent)
+            var storedURL = targetURL
+            if let sniffed = DownloadFilePolicy.sniffedFileExtension(at: targetURL), sniffed != fileExtension {
+                let renamed = try localURL(for: bookID, fileExtension: sniffed)
+                if fileManager.fileExists(atPath: renamed.path) {
+                    try fileManager.removeItem(at: renamed)
+                }
+                try fileManager.moveItem(at: targetURL, to: renamed)
+                storedURL = renamed
+            }
+            try protectDownloadedFile(storedURL)
+            states[bookID] = .downloaded(localFileName: storedURL.lastPathComponent)
         } catch BookFileTransferError.serverRejected {
             if let destination, fileManager.fileExists(atPath: destination.path) {
                 try? fileManager.removeItem(at: destination)

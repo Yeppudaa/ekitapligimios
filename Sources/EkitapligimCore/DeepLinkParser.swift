@@ -4,6 +4,7 @@ import Foundation
 public enum AppRoute: Hashable, Identifiable, Sendable {
     case home
     case login
+    case register
     case catalog
     case bookDetail(Int)
     case reader(Int)
@@ -37,6 +38,7 @@ public enum AppRoute: Hashable, Identifiable, Sendable {
         switch self {
         case .home: "home"
         case .login: "login"
+        case .register: "register"
         case .catalog: "catalog"
         case .bookDetail(let id): "detail/\(id)"
         case .reader(let id): "reader/\(id)"
@@ -132,6 +134,7 @@ public struct DeepLinkParser: Sendable {
         switch first {
         case "home": return .home
         case "login": return .login
+        case "register": return .register
         case "catalog": return .catalog
         case "detail": return id.map(AppRoute.bookDetail)
         case "reader": return id.map(AppRoute.reader)

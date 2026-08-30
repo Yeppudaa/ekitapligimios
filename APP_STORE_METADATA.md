@@ -49,9 +49,10 @@ ekitap,kitap,pdf,epub,okuyucu,kütüphane,yazar,yayınevi,forum,türkçe
 GUIDELINE 1.2 RESUBMISSION — BUILD 1.0.0 (18)
 
 - The reviewer must accept the Apple Standard EULA and our community rules before login or registration can continue. The acceptance version is recorded by the server with the successful authentication transaction.
-- Every user-generated-content surface has a visible ellipsis safety button: forum topic lists and posts, book comments, Book Agenda posts/comments, chat messages, and private-conversation messages.
-- “Report Content” sends the selected content and reason to the XenForo moderation queue. “Block User and Report” creates the report, blocks the author, and removes that author’s content from the current screen immediately.
-- The authenticated user’s ignore list is also enforced server-side on forum, book-comment, Book Agenda, chat, and private-message responses. A blocked member cannot start or continue a one-to-one conversation; group conversations remain available while the blocked member’s messages are hidden.
+- Every user-generated-content surface has a visible ellipsis safety button: forum topic lists and individual posts, book comments, Book Agenda posts/comments, chat messages, private-conversation messages, and book requests.
+- “Report Content” sends the selected content and reason to the XenForo moderation queue (or the iOS UGC event queue for book requests). “Block User and Report” creates the report, blocks the author, and removes that author’s content from the current screen immediately.
+- Profile and blocked-list screens can block or unblock a member. Blocking notifies moderators even when it is not attached to a specific post.
+- The authenticated user’s ignore list is also enforced server-side on forum, book-comment, Book Agenda, chat, private-message, and book-request responses. A blocked member cannot start or continue a one-to-one conversation; group conversations remain available while the blocked member’s messages are hidden.
 - New and edited community content is normalized and checked against an administrator-managed objectionable-content list and XenForo spam checks before persistence. Rejected content returns HTTP 422 and is not saved.
 - Moderators receive queued email notifications without private-message bodies or tokens. Open reports trigger a reminder at 20 hours and escalation at 24 hours.
 - Topluluk > Topluluk Güvenliği shows prohibited-content guidance, support contact, blocked users, and the 24-hour moderation commitment.
@@ -72,7 +73,7 @@ Suggested review flow:
 2. Log in using the reviewer credentials stored only in App Store Connect.
 3. Open Topluluk > Topluluk Güvenliği and inspect the prohibited-content summary, support link, blocked-users list and 24-hour commitment.
 4. Open the supplied forum. On the topic list, tap the visible ellipsis, report the supplied topic, then use “Block User and Report”; its author’s topics disappear immediately.
-5. Repeat the visible report/block flow on the supplied book comment and Book Agenda post/comment.
+5. Repeat the visible report/block flow on the supplied book comment, Book Agenda post/comment, and a book request row.
 6. Open Okur Sohbeti and use the ellipsis on the supplied chat message. Open Mesajlar and use the same controls on the supplied private message.
 7. Attempt the supplied prohibited test phrase in each composer. The app shows rejection and the content does not appear after refresh.
 8. Open Engellenenler and remove the demo block to reset the reviewer account.
@@ -80,7 +81,7 @@ Suggested review flow:
 
 Account deletion is initiated entirely in-app. Manual processing is expected within 30 days and completion is sent to the account email. Deletion operations must remove/anonymize associated user content as legally permitted.
 
-Do not submit until standalone IosApi `1.0.12` is validated on public HTTPS staging, the same SHA-256 ZIP is installed in production, moderator/filter options pass the release audit, and the reviewer flow is recorded on physical iPhone and iPad.
+Do not submit until standalone IosApi `1.0.13` is validated on public HTTPS staging, the same SHA-256 ZIP is installed in production, moderator/filter options pass the release audit, and the reviewer flow is recorded on physical iPhone and iPad.
 
 ## In-App Purchase Review Notes
 Subscription group: `ekitapligim.premium`
@@ -96,7 +97,7 @@ Hello App Review Team,
 
 Thank you for your review. We addressed Guideline 1.2 in a new binary, version 1.0.0 build 18.
 
-Before login or registration, users must view and accept the EULA and community rules. All community surfaces now show a visible ellipsis menu with “Report Content” and “Block User and Report.” Reports enter our XenForo moderator queue and blocking removes the author’s content immediately, with server-side filtering on subsequent responses. New and edited content is screened before storage; violations are rejected and never published.
+Before login or registration, users must view and accept the EULA and community rules. All community surfaces now show a visible ellipsis menu with “Report Content” and “Block User and Report,” including individual forum posts and book requests. Reports enter our moderator queue and blocking removes the author’s content immediately, with server-side filtering on subsequent responses. New and edited content is screened before storage; violations are rejected and never published.
 
 Our moderation workflow sends privacy-safe moderator notifications, a 20-hour reminder and a 24-hour escalation. The in-app Community Safety screen explains prohibited content, support contact, blocked-user controls and the 24-hour commitment.
 

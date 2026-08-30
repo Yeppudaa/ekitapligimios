@@ -117,7 +117,7 @@ struct HomeView: View {
                         .fixedSize(horizontal: false, vertical: true)
 
                     HStack(spacing: 8) {
-                        Button { container.selectedTab = .catalog } label: {
+                        Button { container.open(route: .catalog) } label: {
                             Label(L10n.homeHeroPrimaryAction, systemImage: "books.vertical.fill")
                                 .font(.caption.weight(.bold))
                                 .foregroundStyle(.white)
@@ -202,7 +202,7 @@ struct HomeView: View {
     }
 
     private var searchBar: some View {
-        Button { container.selectedTab = .catalog } label: {
+        Button { container.open(route: .catalog) } label: {
             HStack(spacing: 12) {
                 Image(systemName: "magnifyingglass")
                     .accessibilityHidden(true)
@@ -319,7 +319,7 @@ struct HomeView: View {
                 title: L10n.homeDiscoveryTitle,
                 subtitle: L10n.homeDiscoverySubtitle,
                 actionTitle: L10n.homeSeeAll
-            ) { container.selectedTab = .catalog }
+            ) { container.open(route: .catalog) }
             .padding(.horizontal, 16)
 
             ScrollView(.horizontal, showsIndicators: false) {
@@ -329,7 +329,7 @@ struct HomeView: View {
                         title: L10n.tabCatalogShort,
                         subtitle: L10n.homeDiscoveryCatalogSubtitle,
                         tint: EKitapligimPalette.teal
-                    ) { container.selectedTab = .catalog }
+                    ) { container.open(route: .catalog) }
 
                     discoveryCard(
                         badge: L10n.homeDiscoveryAgendaBadge,
@@ -364,7 +364,7 @@ struct HomeView: View {
                         title: L10n.tabForum,
                         subtitle: L10n.homeDiscoveryForumSubtitle,
                         tint: Color(hex: 0x3D75C5)
-                    ) { container.selectedTab = .forum }
+                    ) { container.selectedTab = .community }
 
                     discoveryCard(
                         badge: L10n.homeDiscoveryProfileBadge,
@@ -491,7 +491,10 @@ struct HomeView: View {
                 ScrollView(.horizontal, showsIndicators: false) {
                     LazyHStack(spacing: 12) {
                         ForEach(agendaPosts.prefix(4)) { post in
-                            Button { container.open(route: .bookAgendaPost(Int(post.id) ?? 0)) } label: {
+                            Button {
+                                guard let postID = Int(post.id), postID > 0 else { return }
+                                container.open(route: .bookAgendaPost(postID))
+                            } label: {
                                 HomeAgendaCard(post: post)
                             }
                             .buttonStyle(.plain)
@@ -508,7 +511,7 @@ struct HomeView: View {
     private func bookRail(title: String, subtitle: String, books: [BookDTO]) -> some View {
         VStack(alignment: .leading, spacing: 12) {
             EKitapligimSectionHeader(title: title, subtitle: subtitle, actionTitle: L10n.homeSeeAll) {
-                container.selectedTab = .catalog
+                container.open(route: .catalog)
             }
             .padding(.horizontal, 16)
 

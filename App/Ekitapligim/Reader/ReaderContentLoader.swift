@@ -18,7 +18,7 @@ final class ReaderContentLoader {
     }
 
     func prepare(bookID: String, sourceURL: URL, fileType: String) async throws -> URL {
-        let fileExtension = try DownloadFilePolicy.fileExtension(for: fileType)
+        let fileExtension = DownloadFilePolicy.resolvedFileExtension(for: fileType)
         let directory = try sessionDirectory()
         let safeName = try DownloadFilePolicy.fileName(bookID: bookID, fileExtension: fileExtension)
         let targetURL = directory
@@ -26,6 +26,15 @@ final class ReaderContentLoader {
             .appendingPathComponent(safeName, isDirectory: false)
         do {
             try await transfer.download(from: sourceURL, fileType: fileExtension, to: targetURL)
+            if let sniffed = DownloadFilePolicy.sniffedFileExtension(at: targetURL), sniffed != fileExtension {
+                let renamed = targetURL.deletingLastPathComponent()
+                    .appendingPathComponent(try DownloadFilePolicy.fileName(bookID: bookID, fileExtension: sniffed), isDirectory: false)
+                if fileManager.fileExists(atPath: renamed.path) {
+                    try fileManager.removeItem(at: renamed)
+                }
+                try fileManager.moveItem(at: targetURL, to: renamed)
+                return renamed
+            }
             return targetURL
         } catch {
             try? fileManager.removeItem(at: targetURL.deletingLastPathComponent())

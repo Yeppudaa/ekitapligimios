@@ -250,4 +250,69 @@ final class AndroidParityCopyTests: XCTestCase {
         XCTAssertEqual(L10n.agendaFeedEmptyTitle, "Bu rafta henüz paylaşım yok")
         XCTAssertEqual(L10n.agendaFeedEmptySubtitle, "İlk kitap notunu sen paylaşabilirsin.")
     }
+
+    func testProfileGuestAndLoginCopyMatchesAndroid() {
+        XCTAssertEqual(L10n.profileScreenTitle, "Profilim")
+        XCTAssertEqual(L10n.profileGuestTitle, "Kütüphanene hoş geldin")
+        XCTAssertEqual(
+            L10n.profileGuestSubtitle,
+            "Raflarını, favorilerini, yorumlarını ve okuma geçmişini tek dokunuşla yanında taşı."
+        )
+        XCTAssertEqual(L10n.profileGuestManageSubtitle, "Hesabını yönet, kütüphaneni senkronize et.")
+        XCTAssertEqual(L10n.profileGuestShelfSync, "Raf senkronu")
+        XCTAssertEqual(L10n.profileGuestShelfSyncSubtitle, "Kitapların hep hazır,\nher cihazında seninle.")
+        XCTAssertEqual(L10n.profileGuestLimits, "Limit takibi")
+        XCTAssertEqual(L10n.profileGuestLimitsSubtitle, "Okuma limitlerini takip et,\nhaklarını kontrol altında tut.")
+        XCTAssertEqual(L10n.profileGuestFavorites, "Favoriler")
+        XCTAssertEqual(L10n.profileGuestFavoritesSubtitle, "Seçtiklerini kaydet,\nkolayca yeniden ulaş.")
+        XCTAssertEqual(L10n.profileGuestSecure, "Güvenli erişim")
+        XCTAssertEqual(L10n.profileGuestSecureSubtitle, "Hesabın güvende,\nverilerin koruma altında.")
+        XCTAssertEqual(L10n.profileGuestFooter, "Güvenli bağlantı ile verileriniz korunur.")
+        XCTAssertEqual(L10n.commonLogin, "Giriş yap")
+        XCTAssertEqual(L10n.loginModeRegister, "Kayıt Ol")
+        XCTAssertEqual(L10n.loginCommunityTagline, "Ekitaplığım Kütüphane Topluluğu")
+        XCTAssertEqual(L10n.loginSignalShelf, "Raf senkronu")
+        XCTAssertEqual(L10n.loginSignalAPI, "Güvenli API")
+        XCTAssertEqual(L10n.loginSignalPremium, "Premium erişim")
+        XCTAssertEqual(L10n.loginBadgeLogin, "Üye girişi")
+        XCTAssertEqual(L10n.loginBadgeRegister, "Yeni üyelik")
+        XCTAssertEqual(L10n.loginBadgeReset, "Hesap kurtarma")
+        XCTAssertEqual(L10n.loginHeadingLogin, "Giriş Yap")
+        XCTAssertEqual(L10n.loginRegisterTitle, "Yeni Hesap Oluştur")
+        XCTAssertEqual(L10n.loginResetTitle, "Şifre Sıfırlama")
+        XCTAssertEqual(
+            L10n.loginSubtitleLogin,
+            "Kitaplığın, favorilerin ve günlük limitlerin tek hesapta senkronize olsun."
+        )
+        XCTAssertEqual(
+            L10n.loginSubtitleRegister,
+            "Kitap raflarını ve okuma limitlerini hesabınla güvenle eşleştir."
+        )
+        XCTAssertEqual(L10n.loginSubtitleReset, "E-posta adresine şifre sıfırlama bağlantısı gönderelim.")
+        XCTAssertEqual(L10n.loginUsernamePlaceholder, "Kullanıcı Adı veya E-posta")
+        XCTAssertEqual(L10n.loginEmailPlaceholder, "E-posta Adresi")
+        XCTAssertEqual(L10n.loginPasswordPlaceholder, "Şifre")
+        XCTAssertEqual(L10n.loginPasswordConfirmation, "Şifre Tekrar")
+        XCTAssertEqual(L10n.loginForgotPassword, "Şifremi Unuttum")
+        XCTAssertEqual(L10n.loginSubmit, "Giriş Yap")
+        XCTAssertEqual(L10n.loginRegisterSubmit, "Kayıt Ol")
+        XCTAssertEqual(L10n.loginResetSubmit, "Sıfırlama Bağlantısı Gönder")
+        XCTAssertEqual(L10n.loginSwitchToRegister, "Henüz hesabınız yok mu? Kayıt olun")
+        XCTAssertEqual(L10n.loginSwitchToLogin, "Zaten hesabınız var mı? Giriş yapın")
+        XCTAssertEqual(L10n.loginBackToLogin, "Giriş Ekranına Dön")
+        XCTAssertEqual(
+            L10n.loginAcceptLegalBody,
+            "Hesap oluşturarak E-Kitaplığım Kullanım Şartları ve Gizlilik Politikası'nı kabul ediyorum."
+        )
+    }
+
+    func testConversationsCopy() {
+        XCTAssertEqual(L10n.conversationsTitle, "Mesajlar")
+        XCTAssertEqual(L10n.conversationsYou, "Siz")
+        XCTAssertEqual(L10n.conversationsStarred, "Yıldızlı")
+        XCTAssertEqual(L10n.conversationsReplyCount(3), "3 yanıt")
+        XCTAssertEqual(L10n.conversationsReplyPlaceholder, "Yanıt yazın")
+        XCTAssertEqual(L10n.conversationsNew, "Yeni mesaj")
+        XCTAssertEqual(L10n.conversationsSubject, "Konu")
+    }
 }

@@ -183,6 +183,25 @@ final class ModelDecodingTests: XCTestCase {
         XCTAssertEqual(page.items.first?.requestedBy, "Ekitapligim")
         XCTAssertEqual(page.items.first?.voteCount, 13)
         XCTAssertEqual(true, page.items.first?.allowsVote)
+        XCTAssertNil(page.items.first?.userId)
+    }
+
+    func testBookRequestDecodesRequesterUserID() throws {
+        let data = Data("""
+        { "book_requests": [{ "id": "9", "title": "A", "author": "B", "user_id": 41, "requested_by": "Ada" }] }
+        """.utf8)
+        let page = try JSONDecoder.ekitapligim.decode(BookRequestsPageDTO.self, from: data)
+        XCTAssertEqual(page.items.first?.userId, 41)
+    }
+
+    func testForumPostDecodesEditAndDeleteFlags() throws {
+        let data = Data("""
+        { "id": "12", "thread_id": "3", "username": "Ada", "message": "Merhaba", "can_edit": true, "can_delete": true }
+        """.utf8)
+        let post = try JSONDecoder.ekitapligim.decode(ForumPostDTO.self, from: data)
+        XCTAssertTrue(post.canEdit)
+        XCTAssertTrue(post.canDelete)
+        XCTAssertEqual(UGCContentType.bookRequest.rawValue, "book_request")
     }
 
     func testBookRequestAllowsVoteOnlyWhenPending() throws {
@@ -634,6 +653,20 @@ final class ModelDecodingTests: XCTestCase {
         XCTAssertEqual(session.token, "reader-token")
         XCTAssertEqual(session.sourceUrl, "https://ekitapligim.com/books/yanlis-hedef.15585/read-source?t=reader-token")
         XCTAssertEqual(session.fileType, "pdf")
+        XCTAssertEqual(session.apiSourceUrl, "https://ekitapligim.com/api/v1/books/reader-source?t=reader-token")
+    }
+
+    func testReaderSessionDecodesWithoutAPISourceURL() throws {
+        let data = Data("""
+        {
+          "token": "reader-token",
+          "source_url": "https://ekitapligim.com/ios-api/v1/books/42/reader/source?t=reader-token",
+          "file_type": "epub"
+        }
+        """.utf8)
+        let session = try JSONDecoder.ekitapligim.decode(ReaderSessionDTO.self, from: data)
+        XCTAssertNil(session.apiSourceUrl)
+        XCTAssertEqual(session.fileType, "epub")
     }
 
     func testReaderSessionDecodesEPUBFileType() throws {
@@ -646,6 +679,73 @@ final class ModelDecodingTests: XCTestCase {
         """.utf8)
         let session = try JSONDecoder.ekitapligim.decode(ReaderSessionDTO.self, from: data)
         XCTAssertEqual(session.fileType, "epub")
+        XCTAssertNil(session.apiSourceUrl)
+    }
+
+    func testReaderAccessEnvelopeDecodesQuotaAndPermission() throws {
+        let data = Data("""
+        {
+          "access": {
+            "user_tier": "member",
+            "can_read_online": true,
+            "can_download": false,
+            "denial_code": null,
+            "denial_message": null,
+            "daily_read": {
+              "limit": 3,
+              "used": 1,
+              "remaining": 2,
+              "is_unlimited": false,
+              "is_allowed": true,
+              "usage_percent": 33
+            },
+            "daily_download": {
+              "limit": 1,
+              "used": 1,
+              "remaining": 0,
+              "isUnlimited": false,
+              "isAllowed": false
+            }
+          }
+        }
+        """.utf8)
+
+        let envelope = try JSONDecoder.ekitapligim.decode(ReaderAccessEnvelope.self, from: data)
+        XCTAssertEqual(envelope.access.userTier, "member")
+        XCTAssertTrue(envelope.access.canReadOnline)
+        XCTAssertFalse(envelope.access.canDownload)
+        XCTAssertEqual(envelope.access.dailyRead?.limit, 3)
+        XCTAssertEqual(envelope.access.dailyRead?.used, 1)
+        XCTAssertTrue(envelope.access.dailyRead?.isAllowed == true)
+        XCTAssertEqual(envelope.access.dailyDownload?.remaining, 0)
+        XCTAssertTrue(envelope.access.dailyDownload?.isAllowed == false)
+    }
+
+    func testReaderAccessEnvelopeDecodesDailyLimitDenial() throws {
+        let data = Data("""
+        {
+          "access": {
+            "user_tier": "member",
+            "can_read_online": false,
+            "can_download": false,
+            "denial_code": "daily_read_limit",
+            "denial_message": "Günlük okuma limitinize ulaştınız.",
+            "daily_read": {
+              "limit": 3,
+              "used": 3,
+              "remaining": 0,
+              "is_unlimited": false,
+              "is_allowed": false
+            }
+          }
+        }
+        """.utf8)
+
+        let access = try JSONDecoder.ekitapligim.decode(ReaderAccessEnvelope.self, from: data).access
+        XCTAssertFalse(access.canReadOnline)
+        XCTAssertEqual(access.denialCode, "daily_read_limit")
+        XCTAssertEqual(access.denialMessage, "Günlük okuma limitinize ulaştınız.")
+        XCTAssertEqual(access.dailyRead?.isAllowed, false)
     }
 
     func testTermsStatusDecodesBackendShape() throws {

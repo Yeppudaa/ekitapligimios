@@ -60,7 +60,7 @@ Regenerate routes after MobileApi reference updates:
 - `POST /ios-api/v1/forums/{node_id}/threads` — create forum topic (IosApi `ForumThreads::actionPost`; requires v1.0.4+ deploy)
 - `GET|POST /ios-api/v1/threads/{thread_id}/posts` — list/reply (IosApi `ThreadPosts` + Pub wrapper; requires v1.0.5+ deploy)
 
-IosApi 1.0.12 wraps every social create/edit action with a managed objectionable-content filter, Unicode/punctuation normalization, and XenForo spam checks before persistence. It returns `422 content_policy_violation` without saving rejected text. Authenticated social reads remove ignored users; one-to-one conversations with blocked members are refused while group conversations retain other participants and hide blocked messages.
+IosApi 1.0.13 wraps every social create/edit action with a managed objectionable-content filter, Unicode/punctuation normalization, and XenForo spam checks before persistence. It returns `422 content_policy_violation` without saving rejected text. Authenticated social reads remove ignored users; one-to-one conversations with blocked members are refused while group conversations retain other participants and hide blocked messages. Forum posts expose edit/delete when XenForo permits it (`POST`/`DELETE` `/posts/{id}`).
 
 Reports use XenForo's report queue and an additive `xf_ekitapligim_ios_ugc_event` table. A queued job sends moderator email without private bodies or secrets. The SLA cron runs every 15 minutes, reminds at 20 hours, escalates at 24 hours, and tracks report, action, and closure timestamps.
 

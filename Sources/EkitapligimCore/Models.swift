@@ -111,6 +111,7 @@ public struct BookRequestDTO: Decodable, Equatable, Identifiable, Sendable {
     public let title: String
     public let author: String
     public let requestedBy: String
+    public let userId: Int?
     public let voteCount: Int
     public let status: String
 
@@ -120,6 +121,8 @@ public struct BookRequestDTO: Decodable, Equatable, Identifiable, Sendable {
         self.title = try container.decodeIfPresent(String.self, forKey: .title) ?? ""
         self.author = try container.decodeIfPresent(String.self, forKey: .author) ?? ""
         self.requestedBy = try container.decodeIfPresent(String.self, forKey: .requestedBy) ?? ""
+        let parsedUserID = container.decodeFlexibleInt(forKey: .userId, fallbackKeys: [.requestedByUserId])
+        self.userId = parsedUserID > 0 ? parsedUserID : nil
         self.voteCount = try container.decodeIfPresent(Int.self, forKey: .voteCount) ?? 0
         self.status = try container.decodeIfPresent(String.self, forKey: .status) ?? "PENDING"
     }
@@ -135,6 +138,8 @@ public struct BookRequestDTO: Decodable, Equatable, Identifiable, Sendable {
         case title
         case author
         case requestedBy
+        case userId
+        case requestedByUserId
         case voteCount
         case status
     }
@@ -736,6 +741,14 @@ public struct ReaderSessionDTO: Decodable, Equatable, Sendable {
     public let token: String
     public let sourceUrl: String
     public let fileType: String
+    public let apiSourceUrl: String?
+
+    public init(token: String, sourceUrl: String, fileType: String, apiSourceUrl: String? = nil) {
+        self.token = token
+        self.sourceUrl = sourceUrl
+        self.fileType = fileType
+        self.apiSourceUrl = apiSourceUrl
+    }
 }
 
 public struct AuthResponseDTO: Decodable, Equatable, Sendable {
@@ -854,6 +867,7 @@ public struct ForumPostDTO: Decodable, Equatable, Identifiable, Sendable {
     public let message: String
     public let postDate: Int
     public let canEdit: Bool
+    public let canDelete: Bool
     public let canReply: Bool
     public let threadTitle: String?
     public let imageUrls: [String]?
@@ -871,6 +885,7 @@ public struct ForumPostDTO: Decodable, Equatable, Identifiable, Sendable {
         self.message = try container.decodeIfPresent(String.self, forKey: .message) ?? ""
         self.postDate = try container.decodeIfPresent(Int.self, forKey: .postDate) ?? 0
         self.canEdit = try container.decodeIfPresent(Bool.self, forKey: .canEdit) ?? false
+        self.canDelete = try container.decodeIfPresent(Bool.self, forKey: .canDelete) ?? false
         self.canReply = try container.decodeIfPresent(Bool.self, forKey: .canReply) ?? false
         self.threadTitle = try container.decodeIfPresent(String.self, forKey: .threadTitle)
         self.imageUrls = try container.decodeIfPresent([String].self, forKey: .imageUrls)
@@ -889,6 +904,7 @@ public struct ForumPostDTO: Decodable, Equatable, Identifiable, Sendable {
         case message
         case postDate
         case canEdit
+        case canDelete
         case canReply
         case threadTitle
         case imageUrls

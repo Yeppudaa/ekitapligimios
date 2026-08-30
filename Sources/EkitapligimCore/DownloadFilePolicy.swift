@@ -18,6 +18,11 @@ public enum DownloadFilePolicy {
         }
     }
 
+    /// Session payloads sometimes send `unknown` for Drive books. Treat that as PDF until the file header is sniffed.
+    public static func resolvedFileExtension(for rawFileType: String) -> String {
+        (try? fileExtension(for: rawFileType)) ?? "pdf"
+    }
+
     public static func fileName(bookID: String, fileExtension: String) throws -> String {
         guard !bookID.isEmpty,
               bookID.utf8.count <= 64,
@@ -50,5 +55,22 @@ public enum DownloadFilePolicy {
         default:
             throw DownloadFilePolicyError.unsupportedFileType
         }
+    }
+
+    public static func sniffedFileExtension(fromHeader data: Data) -> String? {
+        if (try? validateHeader(data, fileExtension: "pdf")) != nil {
+            return "pdf"
+        }
+        if (try? validateHeader(data, fileExtension: "epub")) != nil {
+            return "epub"
+        }
+        return nil
+    }
+
+    public static func sniffedFileExtension(at url: URL) -> String? {
+        guard let handle = try? FileHandle(forReadingFrom: url) else { return nil }
+        defer { try? handle.close() }
+        let header = (try? handle.read(upToCount: 1_024)) ?? Data()
+        return sniffedFileExtension(fromHeader: header)
     }
 }

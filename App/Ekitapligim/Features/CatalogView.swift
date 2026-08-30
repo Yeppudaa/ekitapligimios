@@ -5,37 +5,44 @@ import EkitapligimCore
 struct CatalogView: View {
     @EnvironmentObject private var container: AppContainer
     @State private var books: [BookDTO] = []
-    @State private var categories: [ForumDTO] = []
+    @State private var categories: [ForumDTO] = CatalogBookCategories.sortedFallbacks
     @State private var query = ""
     @State private var filters = CatalogFilters()
     @State private var currentPage = 1
     @State private var lastPage = 1
     @State private var isLoading = true
+    @State private var isRefreshing = false
     @State private var isLoadingMore = false
     @State private var showingFilters = false
     @State private var errorMessage: String?
     @State private var heroCollapseProgress: CGFloat = 0
-    @AppStorage("catalog.displayMode") private var displayModeRawValue = CatalogDisplayMode.list.rawValue
+    @AppStorage("catalog.displayMode") private var displayModeRawValue = CatalogDisplayMode.grid.rawValue
 
     private var displayMode: CatalogDisplayMode {
-        CatalogDisplayMode(rawValue: displayModeRawValue) ?? .list
+        CatalogDisplayMode(rawValue: displayModeRawValue) ?? .grid
     }
 
     var body: some View {
         NavigationStack {
             ZStack {
                 EKitapligimPageBackground()
-                Group {
-                    if isLoading {
-                        ProgressView(L10n.catalogLoading).tint(EKitapligimPalette.teal)
-                    } else if let message = errorMessage {
-                        ContentUnavailableView(L10n.catalogUnavailableTitle, systemImage: "wifi.exclamationmark", description: Text(message))
-                    } else if books.isEmpty {
-                        ContentUnavailableView(L10n.catalogEmptyTitle, systemImage: "magnifyingglass", description: Text(L10n.catalogEmptyDescription))
-                    } else {
-                        catalogContent
+                ScrollView {
+                    LazyVStack(spacing: 14) {
+                        EKScrollOffsetTracker()
+                        catalogHero
+                        categoryChips
+                        catalogControls
+                        if isLoading || isRefreshing {
+                            ProgressView()
+                                .tint(EKitapligimPalette.teal)
+                                .frame(maxWidth: .infinity)
+                        }
+                        catalogBookArea
+                        loadMoreButton.buttonStyle(.bordered)
                     }
+                    .padding(16)
                 }
+                .ekCollapsibleScrollTracking { heroCollapseProgress = $0 }
             }
             .navigationTitle(L10n.catalogTitle)
             .navigationBarTitleDisplayMode(.large)
@@ -73,22 +80,6 @@ struct CatalogView: View {
                 }
             }
         }
-    }
-
-    @ViewBuilder
-    private var catalogContent: some View {
-        ScrollView {
-            LazyVStack(spacing: 14) {
-                EKScrollOffsetTracker()
-                catalogHero
-                categoryChips
-                catalogControls
-                catalogGridOrList
-                loadMoreButton.buttonStyle(.bordered)
-            }
-            .padding(16)
-        }
-        .ekCollapsibleScrollTracking { heroCollapseProgress = $0 }
     }
 
     private var catalogHero: some View {
@@ -136,13 +127,13 @@ struct CatalogView: View {
 
     private var categoryChips: some View {
         ScrollView(.horizontal, showsIndicators: false) {
-            HStack(spacing: 8) {
-                EKChip(title: L10n.catalogFilterAllCategories, isSelected: filters.categoryID.isEmpty) {
+            HStack(spacing: 10) {
+                CatalogCategoryChip(title: L10n.catalogFilterAllChip, isSelected: filters.categoryID.isEmpty) {
                     filters.categoryID = ""
                     Task { await load(reset: true) }
                 }
                 ForEach(categories) { forum in
-                    EKChip(title: forum.title, isSelected: filters.categoryID == forum.id) {
+                    CatalogCategoryChip(title: forum.title, isSelected: filters.categoryID == forum.id) {
                         filters.categoryID = forum.id
                         Task { await load(reset: true) }
                     }
@@ -153,19 +144,34 @@ struct CatalogView: View {
 
     private var catalogControls: some View {
         HStack(spacing: 10) {
-            Toggle(isOn: $filters.premiumOnly) {
-                Text(L10n.catalogFilterPremium)
-                    .font(.caption.weight(.bold))
-            }
-            .toggleStyle(.switch)
-            .tint(EKitapligimPalette.teal)
-            .onChange(of: filters.premiumOnly) { _, _ in Task { await load(reset: true) } }
-            Spacer(minLength: 0)
             CatalogMetric(title: L10n.catalogStatBooks, value: EKitapligimFormat.count(books.count))
-            CatalogMetric(title: L10n.catalogStatPages, value: "\(lastPage)")
+                .frame(maxWidth: .infinity)
+            CatalogMetric(title: L10n.catalogStatPages, value: "\(currentPage)/\(lastPage)")
+                .frame(maxWidth: .infinity)
         }
         .padding(14)
         .ekitapligimCard(radius: 14)
+    }
+
+    @ViewBuilder
+    private var catalogBookArea: some View {
+        if let message = errorMessage, books.isEmpty {
+            ContentUnavailableView(
+                L10n.catalogUnavailableTitle,
+                systemImage: "wifi.exclamationmark",
+                description: Text(message)
+            )
+            .frame(minHeight: 220)
+        } else if books.isEmpty && !isLoading && !isRefreshing {
+            ContentUnavailableView(
+                L10n.catalogEmptyTitle,
+                systemImage: "magnifyingglass",
+                description: Text(L10n.catalogEmptyDescription)
+            )
+            .frame(minHeight: 220)
+        } else {
+            catalogGridOrList
+        }
     }
 
     @ViewBuilder
@@ -191,7 +197,7 @@ struct CatalogView: View {
 
     @ViewBuilder
     private var loadMoreButton: some View {
-        if currentPage < lastPage {
+        if currentPage < lastPage, !books.isEmpty {
             Button {
                 Task { await load(reset: false) }
             } label: {
@@ -208,10 +214,19 @@ struct CatalogView: View {
 
     private func load(reset: Bool) async {
         guard reset || !isLoadingMore else { return }
-        if reset { isLoading = true } else { isLoadingMore = true }
+        if reset {
+            if books.isEmpty {
+                isLoading = true
+            } else {
+                isRefreshing = true
+            }
+        } else {
+            isLoadingMore = true
+        }
         errorMessage = nil
         defer {
             isLoading = false
+            isRefreshing = false
             isLoadingMore = false
         }
         do {
@@ -224,21 +239,116 @@ struct CatalogView: View {
                 publisher: filters.publisher.nilIfBlank,
                 isbn: filters.isbn.nilIfBlank,
                 order: filters.order,
-                premiumOnly: filters.premiumOnly
+                premiumOnly: false
             )
             books = reset ? result.books : books + result.books.filter { item in !books.contains(where: { $0.id == item.id }) }
             currentPage = result.currentPage
             lastPage = result.lastPage
         } catch {
-            if reset { errorMessage = L10n.catalogLoadFailed }
+            if reset, books.isEmpty {
+                errorMessage = L10n.catalogLoadFailed
+            }
         }
     }
 
     private func loadCategories() async {
-        guard categories.isEmpty else { return }
-        if let result = try? await container.community.forums() {
-            categories = result.forums.filter { $0.isBookForum == true }
+        guard let result = try? await container.community.forums() else { return }
+        categories = CatalogBookCategories.merged(live: result.forums)
+    }
+}
+
+private enum CatalogBookCategories {
+    static let fallback: [ForumDTO] = [
+        ("6", "Roman"),
+        ("7", "Edebiyat"),
+        ("8", "Eğitim"),
+        ("9", "Bilim"),
+        ("10", "Tarih"),
+        ("11", "Din"),
+        ("12", "Psikoloji"),
+        ("13", "Kişisel Gelişim"),
+        ("14", "Ekonomi"),
+        ("15", "Çocuk"),
+        ("16", "Biyografi"),
+        ("17", "Felsefe"),
+        ("18", "Öykü / Hikaye"),
+        ("19", "Siyaset"),
+        ("20", "Romantik"),
+        ("21", "Fantastik"),
+        ("22", "Bilimkurgu"),
+        ("23", "Macera"),
+        ("24", "Polisiye"),
+        ("25", "Korku / Gerilim"),
+        ("26", "Gençlik"),
+        ("27", "Sağlık"),
+        ("28", "Türk Klasikleri"),
+        ("29", "Dünya Klasikleri"),
+        ("30", "Teknoloji / Bilişim"),
+        ("32", "Yabancı Dil"),
+        ("33", "Kültür / Sanat"),
+        ("34", "Sinema / Tiyatro"),
+        ("35", "Akademik"),
+        ("36", "Aile ve Yaşam"),
+        ("37", "Yemek / Mutfak"),
+        ("38", "Masal")
+    ].map { ForumDTO(id: $0.0, title: $0.1, isBookForum: true) }
+
+    static var knownIDs: Set<String> {
+        Set(fallback.map(\.id))
+    }
+
+    static var sortedFallbacks: [ForumDTO] {
+        sorted(fallback)
+    }
+
+    static func sorted(_ forums: [ForumDTO]) -> [ForumDTO] {
+        forums.sorted { lhs, rhs in
+            lhs.title.compare(rhs.title, locale: EKitapligimFormat.locale) == .orderedAscending
         }
+    }
+
+    static func merged(live: [ForumDTO]) -> [ForumDTO] {
+        var byID = Dictionary(uniqueKeysWithValues: fallback.map { ($0.id, $0) })
+        for forum in live where knownIDs.contains(forum.id) {
+            let title = forum.title.trimmingCharacters(in: .whitespacesAndNewlines)
+            guard !title.isEmpty, title.caseInsensitiveCompare("Genel") != .orderedSame else { continue }
+            byID[forum.id] = ForumDTO(
+                id: forum.id,
+                title: title,
+                description: forum.description,
+                url: forum.url,
+                stats: forum.stats,
+                threadCount: forum.threadCount,
+                isBookForum: true
+            )
+        }
+        return sorted(Array(byID.values))
+    }
+}
+
+private struct CatalogCategoryChip: View {
+    let title: String
+    let isSelected: Bool
+    let action: () -> Void
+
+    var body: some View {
+        Button(action: action) {
+            Text(title)
+                .font(.subheadline.weight(.semibold))
+                .foregroundStyle(isSelected ? Color.white : Color(hex: 0x2A3443))
+                .padding(.horizontal, 14)
+                .padding(.vertical, 8)
+                .background(
+                    isSelected ? EKitapligimPalette.teal : Color.white.opacity(0.92),
+                    in: RoundedRectangle(cornerRadius: 12, style: .continuous)
+                )
+                .overlay {
+                    RoundedRectangle(cornerRadius: 12, style: .continuous)
+                        .stroke(isSelected ? EKitapligimPalette.teal : Color(hex: 0xD8E2E5))
+                }
+        }
+        .buttonStyle(.plain)
+        .accessibilityAddTraits(isSelected ? [.isSelected] : [])
     }
 }
 
@@ -248,10 +358,9 @@ private struct CatalogFilters: Equatable {
     var publisher = ""
     var isbn = ""
     var order = "latest"
-    var premiumOnly = false
 
     var isActive: Bool {
-        !categoryID.isEmpty || !author.isEmpty || !publisher.isEmpty || !isbn.isEmpty || order != "latest" || premiumOnly
+        !categoryID.isEmpty || !author.isEmpty || !publisher.isEmpty || !isbn.isEmpty || order != "latest"
     }
 }
 
@@ -276,7 +385,6 @@ private struct CatalogFiltersView: View {
                     TextField(L10n.catalogFilterISBN, text: $filters.isbn)
                         .keyboardType(.asciiCapable)
                         .textInputAutocapitalization(.never)
-                    Toggle(L10n.catalogFilterPremium, isOn: $filters.premiumOnly)
                 }
                 Section(L10n.catalogFilterCategory) {
                     Picker(L10n.catalogFilterCategory, selection: $filters.categoryID) {
@@ -316,6 +424,7 @@ private struct CatalogMetric: View {
             Text(value).font(.headline.weight(.heavy)).foregroundStyle(EKitapligimPalette.tealDark)
             Text(title).font(.caption2).foregroundStyle(EKitapligimPalette.muted)
         }
+        .frame(maxWidth: .infinity)
         .padding(.horizontal, 10)
         .padding(.vertical, 8)
         .background(EKitapligimPalette.tealSoft, in: RoundedRectangle(cornerRadius: 10, style: .continuous))
@@ -431,7 +540,7 @@ private struct CatalogBookCover: View {
                 .background(Color.white.opacity(0.94), in: Capsule())
                 .frame(maxWidth: .infinity, maxHeight: .infinity, alignment: .bottomLeading)
                 .padding(8)
-                .accessibilityLabel(L10n.catalogFilterPremium)
+                .accessibilityLabel(L10n.premiumShortTitle)
             }
 
             if isDownloaded {

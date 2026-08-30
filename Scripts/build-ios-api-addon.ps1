@@ -84,7 +84,7 @@ foreach ($route in @($routes.routes.route | Where-Object { $_.controller -like "
         throw "Missing Pub wrapper for $($route.controller): $pubPath"
     }
     $pubSource = Get-Content -Raw -LiteralPath $pubPath
-    if (-not $pubSource.Contains("use PublicEndpointTrait", [System.StringComparison]::Ordinal)) {
+    if ($pubSource.IndexOf("use PublicEndpointTrait", [System.StringComparison]::Ordinal) -lt 0) {
         throw "Pub wrapper does not apply bearer/JSON dispatch trait: $pubPath"
     }
 }
@@ -116,12 +116,19 @@ $requiredFiles = @(
 )
 foreach ($relative in $requiredFiles) { Assert-Path (Join-Path $addonRoot $relative) }
 $addonManifest = Get-Content -Raw -LiteralPath (Join-Path $addonRoot "addon.json") | ConvertFrom-Json
-if ([int]$addonManifest.version_id -ne 1000012 -or $addonManifest.version_string -ne "1.0.12") {
-    throw "IosApi package must be exactly 1.0.12 / 1000012 for this release."
+if ([int]$addonManifest.version_id -ne 1000013 -or $addonManifest.version_string -ne "1.0.13") {
+    throw "IosApi package must be exactly 1.0.13 / 1000013 for this release."
 }
 $routeText = Get-Content -Raw -LiteralPath (Join-Path $addonRoot "_data\routes.xml")
-foreach ($requiredRoute in @('format="v1/legal/terms"', 'format="v1/safety/reports"', 'controller="Ekitapligim\IosApi:AuthLogin"', 'controller="Ekitapligim\IosApi:AuthRegister"')) {
-    if (-not $routeText.Contains($requiredRoute, [System.StringComparison]::Ordinal)) {
+foreach ($requiredRoute in @(
+        'format="v1/legal/terms"',
+        'format="v1/safety/reports"',
+        'format="v1/posts/:int&lt;post_id&gt;/"',
+        'controller="Ekitapligim\IosApi:AuthLogin"',
+        'controller="Ekitapligim\IosApi:AuthRegister"',
+        'controller="Ekitapligim\IosApi:ForumPost"'
+    )) {
+    if ($routeText.IndexOf($requiredRoute, [System.StringComparison]::Ordinal) -lt 0) {
         throw "Guideline 1.2 route audit failed: $requiredRoute"
     }
 }

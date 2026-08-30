@@ -104,6 +104,7 @@ public enum L10n {
 
     public static let readerPreparing = localized("reader.preparing", defaultValue: "Okuma bağlantısı hazırlanıyor")
     public static let readerUnavailable = localized("reader.unavailable", defaultValue: "Okuyucu hazır değil")
+    public static let readerAccessDenied = localized("reader.accessDenied", defaultValue: "Bu kitabı şu an okuyamazsınız.")
     public static let readerSecureLinkMissing = localized("reader.secureLinkMissing", defaultValue: "Güvenli geçici okuma bağlantısı alınamadı.")
     public static let readerInvalidBookId = localized("reader.invalidBookId", defaultValue: "Kitap kimliği geçersiz.")
     public static let readerAtsLinkMissing = localized("reader.atsLinkMissing", defaultValue: "App Store uyumlu güvenli okuma bağlantısı alınamadı.")
@@ -315,6 +316,8 @@ public enum L10n {
     public static let conversationsSending = localized("conversations.sending", defaultValue: "Gönderiliyor")
     public static let conversationsSendFailedTitle = localized("conversations.sendFailedTitle", defaultValue: "Mesaj gönderilemedi")
     public static let conversationsSendFailed = localized("conversations.sendFailed", defaultValue: "Mesaj gönderilemedi. Alıcıyı ve izinlerinizi kontrol edip yeniden deneyin.")
+    public static let conversationsYou = localized("conversations.you", defaultValue: "Siz")
+    public static let conversationsStarred = localized("conversations.starred", defaultValue: "Yıldızlı")
 
     public static let myCommentsTitle = localized("myComments.title", defaultValue: "Yorumlarım")
     public static let myCommentsLoading = localized("myComments.loading", defaultValue: "Yorumlar yükleniyor")
@@ -373,7 +376,7 @@ public enum L10n {
 
     public static let tabHome = localized("tab.home", defaultValue: "Ana Sayfa")
     public static let tabCatalog = localized("tab.catalog", defaultValue: "Kitaplar")
-    public static let tabLibrary = localized("tab.library", defaultValue: "Kitaplığım")
+    public static let tabLibrary = localized("tab.library", defaultValue: "Kütüphane")
     public static let tabCommunity = localized("tab.community", defaultValue: "Topluluk")
     public static let tabAccount = localized("tab.account", defaultValue: "Hesap")
     public static let menuTitle = localized("menu.title", defaultValue: "Menü")
@@ -407,33 +410,61 @@ public enum L10n {
     }
 
     public static let loginTitle = localized("login.title", defaultValue: "Giriş")
-    public static let loginUsernamePlaceholder = localized("login.usernamePlaceholder", defaultValue: "Kullanıcı adı veya e-posta")
+    public static let loginUsernamePlaceholder = localized("login.usernamePlaceholder", defaultValue: "Kullanıcı Adı veya E-posta")
     public static let loginPasswordPlaceholder = localized("login.passwordPlaceholder", defaultValue: "Şifre")
-    public static let loginSubmit = localized("login.submit", defaultValue: "Giriş yap")
+    public static let loginSubmit = localized("login.submit", defaultValue: "Giriş Yap")
     public static let loginInvalidCredentials = localized("login.invalidCredentials", defaultValue: "Kullanıcı adı veya şifre doğrulanamadı.")
     public static let loginAppleInvalid = localized("login.appleInvalid", defaultValue: "Apple ile giriş doğrulanamadı.")
     public static let loginAppleFailed = localized("login.appleFailed", defaultValue: "Apple ile giriş tamamlanamadı.")
     public static let loginModePicker = localized("login.modePicker", defaultValue: "Hesap işlemi")
     public static let loginModeLogin = localized("login.mode.login", defaultValue: "Giriş")
     public static let loginModeRegister = localized("login.mode.register", defaultValue: "Kayıt Ol")
-    public static let loginRegisterTitle = localized("login.register.title", defaultValue: "Hesap Oluştur")
-    public static let loginRegisterSubmit = localized("login.register.submit", defaultValue: "Kayıt ol")
+    public static let loginRegisterTitle = localized("login.register.title", defaultValue: "Yeni Hesap Oluştur")
+    public static let loginRegisterSubmit = localized("login.register.submit", defaultValue: "Kayıt Ol")
     public static let loginRegisterFailed = localized("login.register.failed", defaultValue: "Kayıt tamamlanamadı. Bilgilerinizi kontrol edip yeniden deneyin.")
-    public static let loginEmailPlaceholder = localized("login.emailPlaceholder", defaultValue: "E-posta")
-    public static let loginPasswordConfirmation = localized("login.passwordConfirmation", defaultValue: "Şifre tekrar")
+    public static let loginEmailPlaceholder = localized("login.emailPlaceholder", defaultValue: "E-posta Adresi")
+    public static let loginPasswordConfirmation = localized("login.passwordConfirmation", defaultValue: "Şifre Tekrar")
     public static let loginPasswordsMismatch = localized("login.passwordsMismatch", defaultValue: "Şifreler eşleşmiyor.")
     public static let loginAcceptLegal = localized("login.acceptLegal", defaultValue: "Kullanım şartlarını ve gizlilik politikasını kabul ediyorum")
+    public static let loginAcceptLegalBody = localized(
+        "login.acceptLegalBody",
+        defaultValue: "Hesap oluşturarak E-Kitaplığım Kullanım Şartları ve Gizlilik Politikası'nı kabul ediyorum."
+    )
     public static let loginEULA = localized("login.eula", defaultValue: "Son Kullanıcı Lisans Sözleşmesi (EULA)")
     public static let loginLegalLoading = localized("login.legalLoading", defaultValue: "Güncel şartlar yükleniyor…")
     public static let loginLegalUnavailable = localized("login.legalUnavailable", defaultValue: "Güncel şartlar yüklenemedi. Giriş ve kayıt geçici olarak kullanılamıyor.")
     public static let loginCommunityRulesSummary = localized("login.communityRulesSummary", defaultValue: "Nefret, taciz, cinsel içerik, şiddet, spam ve kişisel bilgi paylaşımı yasaktır. İhlaller bildirilebilir ve kullanıcılar engellenebilir.")
-    public static let loginForgotPassword = localized("login.forgotPassword", defaultValue: "Şifremi unuttum")
+    public static let loginForgotPassword = localized("login.forgotPassword", defaultValue: "Şifremi Unuttum")
     public static let loginResetTitle = localized("login.reset.title", defaultValue: "Şifre Sıfırlama")
-    public static let loginResetSubmit = localized("login.reset.submit", defaultValue: "Sıfırlama bağlantısı gönder")
+    public static let loginResetSubmit = localized("login.reset.submit", defaultValue: "Sıfırlama Bağlantısı Gönder")
     public static let loginResetSubmitted = localized("login.reset.submitted", defaultValue: "Bu e-posta kayıtlıysa sıfırlama bağlantısı gönderildi.")
     public static let loginResetFailed = localized("login.reset.failed", defaultValue: "Şifre sıfırlama isteği gönderilemedi.")
     public static let loginResetPrivacyNotice = localized("login.reset.privacyNotice", defaultValue: "Güvenlik nedeniyle e-posta adresinin kayıtlı olup olmadığı açıklanmaz.")
-    public static let loginBackToLogin = localized("login.backToLogin", defaultValue: "Giriş ekranına dön")
+    public static let loginBackToLogin = localized("login.backToLogin", defaultValue: "Giriş Ekranına Dön")
+    public static let loginCommunityTagline = localized("login.communityTagline", defaultValue: "Ekitaplığım Kütüphane Topluluğu")
+    public static let loginSignalShelf = localized("login.signal.shelf", defaultValue: "Raf senkronu")
+    public static let loginSignalAPI = localized("login.signal.api", defaultValue: "Güvenli API")
+    public static let loginSignalPremium = localized("login.signal.premium", defaultValue: "Premium erişim")
+    public static let loginBadgeLogin = localized("login.badge.login", defaultValue: "Üye girişi")
+    public static let loginBadgeRegister = localized("login.badge.register", defaultValue: "Yeni üyelik")
+    public static let loginBadgeReset = localized("login.badge.reset", defaultValue: "Hesap kurtarma")
+    public static let loginHeadingLogin = localized("login.heading.login", defaultValue: "Giriş Yap")
+    public static let loginSubtitleLogin = localized(
+        "login.subtitle.login",
+        defaultValue: "Kitaplığın, favorilerin ve günlük limitlerin tek hesapta senkronize olsun."
+    )
+    public static let loginSubtitleRegister = localized(
+        "login.subtitle.register",
+        defaultValue: "Kitap raflarını ve okuma limitlerini hesabınla güvenle eşleştir."
+    )
+    public static let loginSubtitleReset = localized(
+        "login.subtitle.reset",
+        defaultValue: "E-posta adresine şifre sıfırlama bağlantısı gönderelim."
+    )
+    public static let loginSwitchToRegister = localized("login.switchToRegister", defaultValue: "Henüz hesabınız yok mu? Kayıt olun")
+    public static let loginSwitchToLogin = localized("login.switchToLogin", defaultValue: "Zaten hesabınız var mı? Giriş yapın")
+    public static let loginShowPassword = localized("login.showPassword", defaultValue: "Şifreyi göster")
+    public static let loginHidePassword = localized("login.hidePassword", defaultValue: "Şifreyi gizle")
 
     public static let settingsTitle = localized("settings.title", defaultValue: "Hesap")
     public static let settingsUser = localized("settings.user", defaultValue: "Kullanıcı")
@@ -507,6 +538,7 @@ public enum L10n {
     public static let catalogFilterISBN = localized("catalog.filters.isbn", defaultValue: "ISBN")
     public static let catalogFilterPremium = localized("catalog.filters.premium", defaultValue: "Yalnızca premium kitaplar")
     public static let catalogFilterCategory = localized("catalog.filters.category", defaultValue: "Kategori")
+    public static let catalogFilterAllChip = localized("catalog.filters.allChip", defaultValue: "Hepsi")
     public static let catalogFilterAllCategories = localized("catalog.filters.allCategories", defaultValue: "Tüm kategoriler")
     public static let catalogFilterOrder = localized("catalog.filters.order", defaultValue: "Sıralama")
     public static let catalogOrderLatest = localized("catalog.order.latest", defaultValue: "En yeni")

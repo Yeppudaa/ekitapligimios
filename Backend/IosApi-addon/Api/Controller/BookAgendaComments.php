@@ -7,7 +7,7 @@ class BookAgendaComments extends \Ekitapligim\MobileApi\Api\Controller\BookAgend
 	use UgcControllerTrait;
 	public function actionGet(\XF\Mvc\ParameterBag $params)
 	{
-		return $this->filterReplyCollections(parent::actionGet($params), ['items', 'comments']);
+		return $this->applyAgendaViewerFlags($this->filterReplyCollections(parent::actionGet($params), ['items', 'comments']), ['items', 'comments']);
 	}
 	public function actionPost(\XF\Mvc\ParameterBag $params)
 	{

@@ -36,6 +36,17 @@ final class AndroidUGCParityContractTests: XCTestCase {
         XCTAssertEqual(reply.method, .post)
         XCTAssertTrue(reply.requiresAuthentication)
         XCTAssertEqual(form(reply), ["message": "Cevap"])
+
+        let edit = APIEndpoint.editForumPost(postID: 44, message: "Güncel")
+        XCTAssertEqual(edit.path, "posts/44")
+        XCTAssertEqual(edit.method, .post)
+        XCTAssertTrue(edit.requiresAuthentication)
+        XCTAssertEqual(form(edit), ["message": "Güncel"])
+
+        let delete = APIEndpoint.deleteForumPost(postID: 44)
+        XCTAssertEqual(delete.path, "posts/44")
+        XCTAssertEqual(delete.method, .delete)
+        XCTAssertTrue(delete.requiresAuthentication)
     }
 
     func testChatSendMatchesAndroidChatApi() {

@@ -5,6 +5,8 @@ enum ReportKind: Equatable {
     case book(bookID: Int)
     case post(postID: Int)
     case ugc(type: UGCContentType, contentID: Int)
+    /// Profile-level block that still notifies moderators (Guideline 1.2).
+    case memberBlock(userID: Int)
 }
 
 @MainActor
@@ -65,6 +67,13 @@ struct ReportContentView: View {
                     }
                 }
             }
+            if case .memberBlock = kind {
+                Picker(L10n.reportReason, selection: $ugcReason) {
+                    ForEach(UGCReportReason.allCases, id: \.rawValue) { reason in
+                        Text(reason.localizedTitle).tag(reason)
+                    }
+                }
+            }
             Text(screenDescription)
                 .font(.footnote)
                 .foregroundStyle(Color(hex: descriptionInk))
@@ -95,6 +104,8 @@ struct ReportContentView: View {
 
     private var screenTitle: String {
         switch kind {
+        case .memberBlock:
+            return L10n.membersBlockAndReport
         case .post:
             return L10n.forumThreadReportPost
         case .book:
@@ -111,6 +122,8 @@ struct ReportContentView: View {
 
     private var screenDescription: String {
         switch kind {
+        case .memberBlock:
+            return L10n.ugcBlockAndReportDescription
         case .post:
             return L10n.forumThreadReportDescription
         case .book:
@@ -127,7 +140,7 @@ struct ReportContentView: View {
 
     private var screenPlaceholder: String {
         switch kind {
-        case .post:
+        case .memberBlock, .post, .ugc:
             return L10n.forumThreadReportPlaceholder
         case .book:
             switch reportType {
@@ -136,14 +149,13 @@ struct ReportContentView: View {
             case "copyright": return L10n.bookDetailIssueCopyrightReportPlaceholder
             default: return L10n.reportMessageLabel
             }
-        case .ugc:
-            return L10n.forumThreadReportPlaceholder
         }
     }
 
     private var submitTitle: String {
         switch kind {
         case .book: L10n.commonSubmit
+        case .memberBlock: L10n.membersBlockAndReport
         case .post, .ugc: blockUserID == nil ? L10n.forumThreadReportSubmit : L10n.ugcBlockAndReport
         }
     }
@@ -171,7 +183,7 @@ struct ReportContentView: View {
         switch kind {
         case .book: return true
         case .post: return !trimmedMessage.isEmpty
-        case .ugc: return ugcReason != .other || trimmedMessage.count >= 8
+        case .ugc, .memberBlock: return ugcReason != .other || trimmedMessage.count >= 8
         }
     }
 
@@ -191,7 +203,7 @@ struct ReportContentView: View {
 
     private var descriptionInk: UInt32 {
         switch kind {
-        case .post, .ugc: 0x5E6775
+        case .post, .ugc, .memberBlock: 0x5E6775
         case .book: 0x475467
         }
     }
@@ -203,7 +215,7 @@ struct ReportContentView: View {
             guard validatePayload(payload, allowEmpty: true) else { return }
         case .post:
             guard !payload.isEmpty, validatePayload(payload, allowEmpty: false) else { return }
-        case .ugc:
+        case .ugc, .memberBlock:
             guard validatePayload(payload, allowEmpty: ugcReason != .other) else { return }
         }
         isSubmitting = true
@@ -214,6 +226,13 @@ struct ReportContentView: View {
                 try await container.safety.reportBookIssue(bookID: bookID, type: reportType, message: payload)
             case .post(let postID):
                 try await container.safety.reportForumPost(postID: postID, message: payload)
+            case .memberBlock(let userID):
+                _ = try await container.safety.blockMember(
+                    userID: userID,
+                    reason: ugcReason,
+                    details: payload
+                )
+                container.rememberBlockedUser(userID)
             case .ugc(let type, let contentID):
                 if let blockUserID {
                     try await container.blockAndReport(
@@ -248,36 +267,54 @@ struct UGCSafetyMenu: View {
     let contentID: Int
     let userID: Int?
     var onBlocked: (() -> Void)? = nil
+    var onEdit: (() -> Void)? = nil
+    var onDelete: (() -> Void)? = nil
+    /// When false, only edit/delete actions are shown (own posts).
+    var includeSafetyActions: Bool = true
 
     @State private var sheet: SafetySheet?
 
+    private var hasAnyAction: Bool {
+        onEdit != nil || onDelete != nil || includeSafetyActions
+    }
+
     var body: some View {
-        Menu {
-            Button {
-                sheet = SafetySheet(block: false)
-            } label: {
-                Label(L10n.ugcReportContent, systemImage: "flag")
-            }
-            if userID != nil {
-                Button(role: .destructive) {
-                    sheet = SafetySheet(block: true)
-                } label: {
-                    Label(L10n.ugcBlockAndReport, systemImage: "person.crop.circle.badge.xmark")
+        if hasAnyAction {
+            Menu {
+                if let onEdit {
+                    Button(L10n.commonEdit, action: onEdit)
                 }
+                if let onDelete {
+                    Button(L10n.commonDelete, role: .destructive, action: onDelete)
+                }
+                if includeSafetyActions {
+                    Button {
+                        sheet = SafetySheet(block: false)
+                    } label: {
+                        Label(L10n.ugcReportContent, systemImage: "flag")
+                    }
+                    if userID != nil {
+                        Button(role: .destructive) {
+                            sheet = SafetySheet(block: true)
+                        } label: {
+                            Label(L10n.ugcBlockAndReport, systemImage: "person.crop.circle.badge.xmark")
+                        }
+                    }
+                }
+            } label: {
+                Image(systemName: "ellipsis.circle")
+                    .font(.title3)
+                    .frame(width: 36, height: 36)
+                    .contentShape(Rectangle())
             }
-        } label: {
-            Image(systemName: "ellipsis.circle")
-                .font(.title3)
-                .frame(width: 36, height: 36)
-                .contentShape(Rectangle())
-        }
-        .accessibilityLabel(L10n.ugcSafetyActions)
-        .sheet(item: $sheet) { item in
-            ReportContentView(
-                kind: .ugc(type: type, contentID: contentID),
-                blockUserID: item.block ? userID : nil
-            ) { success in
-                if success && item.block { onBlocked?() }
+            .accessibilityLabel(L10n.ugcSafetyActions)
+            .sheet(item: $sheet) { item in
+                ReportContentView(
+                    kind: .ugc(type: type, contentID: contentID),
+                    blockUserID: item.block ? userID : nil
+                ) { success in
+                    if success && item.block { onBlocked?() }
+                }
             }
         }
     }

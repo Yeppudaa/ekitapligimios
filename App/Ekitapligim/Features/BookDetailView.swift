@@ -944,16 +944,25 @@ struct BookDetailView: View {
             downloadStatusMessage = downloadDenialMessage(from: currentAccess)
             return
         }
-        guard let session = try? await container.books.createReaderSession(bookID: resolvedID, purpose: .download),
-              let url = URL(string: session.sourceUrl) else {
-            downloadStatusMessage = downloadDenialMessage(from: currentAccess)
+        do {
+            let session = try await container.books.createReaderSession(bookID: resolvedID, purpose: .download)
+            guard let url = ReaderSourcePolicy.nativeContentURL(
+                session: session,
+                bookID: resolvedID,
+                apiBaseURL: container.config.apiBaseURL
+            ) else {
+                downloadStatusMessage = L10n.readerAtsLinkMissing
+                return
+            }
+            await container.downloadManager.download(
+                bookID: book.id,
+                sourceURL: url,
+                expectedFileType: session.fileType
+            )
+        } catch {
+            downloadStatusMessage = (error as? APIClientError)?.serverMessage ?? downloadDenialMessage(from: currentAccess)
             return
         }
-        await container.downloadManager.download(
-            bookID: book.id,
-            sourceURL: url,
-            expectedFileType: session.fileType
-        )
         switch container.downloadManager.states[book.id] {
         case .downloaded:
             downloadStatusMessage = L10n.bookDetailDownloadReady

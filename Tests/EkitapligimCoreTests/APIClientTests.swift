@@ -14,6 +14,28 @@ final class APIClientTests: XCTestCase {
         XCTAssertEqual(request.value(forHTTPHeaderField: "Authorization"), "Bearer abc123")
     }
 
+    func testOptionalAuthAttachesBearerWhenTokenIsAvailable() async throws {
+        let config = try makeConfig()
+        let client = APIClient(config: config, tokenProvider: InMemoryTokenProvider(token: "abc123"))
+
+        let request = try await client.authenticatedRequest(.chatRooms)
+
+        XCTAssertFalse(APIEndpoint.chatRooms.requiresAuthentication)
+        XCTAssertEqual(request.value(forHTTPHeaderField: "Authorization"), "Bearer abc123")
+    }
+
+    func testRequiredAuthWithoutTokenThrows() async throws {
+        let config = try makeConfig()
+        let client = APIClient(config: config)
+
+        do {
+            _ = try await client.authenticatedRequest(.library)
+            XCTFail("Expected authenticationRequired")
+        } catch APIClientError.authenticationRequired {
+            // expected
+        }
+    }
+
     func testLoginEndpointUsesFormBody() throws {
         let config = try makeConfig()
         let client = APIClient(config: config)

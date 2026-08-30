@@ -19,13 +19,17 @@ struct BlockedMembersView: View {
                 ContentUnavailableView(L10n.blockedMembersEmptyTitle, systemImage: "hand.raised")
             } else {
                 List(members) { member in
-                    HStack {
+                    HStack(spacing: 12) {
+                        EKAvatar(urlString: member.avatarUrl, username: member.username, size: 40, cornerRadius: 20)
                         Text(member.username)
+                            .font(.body.weight(.semibold))
                         Spacer()
-                        Button(L10n.blockedMembersRemove) {
+                        Button(L10n.membersUnblock) {
                             Task { await unblock(member) }
                         }
+                        .font(.subheadline.weight(.bold))
                     }
+                    .padding(.vertical, 4)
                 }
             }
         }
@@ -45,8 +49,12 @@ struct BlockedMembersView: View {
 
     private func unblock(_ member: BlockedMemberDTO) async {
         guard let id = Int(member.id) else { return }
-        try? await container.safety.unblockMember(userID: id)
-        container.forgetBlockedUser(id)
-        await load()
+        do {
+            _ = try await container.safety.unblockMember(userID: id)
+            container.forgetBlockedUser(id)
+            await load()
+        } catch {
+            errorMessage = L10n.membersActionFailed
+        }
     }
 }

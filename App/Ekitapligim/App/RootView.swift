@@ -45,19 +45,19 @@ struct RootView: View {
                 }
                 .tag(AppTab.home)
 
-            CatalogView()
+            CommunityView()
                 .tabItem {
-                    Label(AppTab.catalog.title, systemImage: AppTab.catalog.systemImage)
-                        .accessibilityIdentifier("primary-tab-catalog")
+                    Label(AppTab.community.title, systemImage: AppTab.community.systemImage)
+                        .accessibilityIdentifier("primary-tab-community")
                 }
-                .tag(AppTab.catalog)
+                .tag(AppTab.community)
 
-            NavigationStack { DirectoryView(kind: .author) }
+            NavigationStack { LibraryView() }
                 .tabItem {
-                    Label(AppTab.authors.title, systemImage: AppTab.authors.systemImage)
-                        .accessibilityIdentifier("primary-tab-authors")
+                    Label(AppTab.library.title, systemImage: AppTab.library.systemImage)
+                        .accessibilityIdentifier("primary-tab-library")
                 }
-                .tag(AppTab.authors)
+                .tag(AppTab.library)
 
             NavigationStack { BookRequestsView() }
                 .tabItem {
@@ -65,13 +65,6 @@ struct RootView: View {
                         .accessibilityIdentifier("primary-tab-requests")
                 }
                 .tag(AppTab.requests)
-
-            CommunityView()
-                .tabItem {
-                    Label(AppTab.forum.title, systemImage: AppTab.forum.systemImage)
-                        .accessibilityIdentifier("primary-tab-forum")
-                }
-                .tag(AppTab.forum)
 
             NavigationStack { ProfileView() }
                 .tabItem {
@@ -170,7 +163,7 @@ private struct AppSideMenu: View {
         guard container.isSignedIn else {
             return [
                 AppMenuItem(route: .login, title: L10n.commonLogin, subtitle: L10n.menuLoginSubtitle, icon: "arrow.right.square.fill"),
-                AppMenuItem(route: .login, title: L10n.menuRegister, subtitle: L10n.menuRegisterSubtitle, icon: "person.badge.plus.fill")
+                AppMenuItem(route: .register, title: L10n.menuRegister, subtitle: L10n.menuRegisterSubtitle, icon: "person.badge.plus.fill")
             ]
         }
         return [
@@ -353,14 +346,20 @@ private struct AppRouteSheet: View {
 
     @ViewBuilder private var routeDestination: some View {
         switch route {
-        case .home, .catalog, .forum, .authors, .requests, .profile:
+        case .home, .forum, .requests, .profile:
             EKEmptyState(
                 title: L10n.commonClose,
                 message: L10n.menuTitle,
                 systemImage: "arrow.left"
             )
+        case .catalog:
+            CatalogView()
+        case .authors:
+            DirectoryView(kind: .author)
         case .login:
-            LoginView()
+            LoginView(initialMode: .login)
+        case .register:
+            LoginView(initialMode: .register)
         case .bookDetail(let id):
             BookDetailView(bookID: id)
         case .reader(let id):

@@ -7,7 +7,7 @@ use XF\Mvc\Entity\Entity;
 final class UgcModeration
 {
 	public const REASONS = ['spam', 'harassment', 'hate', 'sexual', 'violence', 'privacy', 'copyright', 'other'];
-	public const TYPES = ['forum_post', 'book_comment', 'agenda_post', 'agenda_comment', 'chat_message', 'conversation_message'];
+	public const TYPES = ['forum_post', 'book_comment', 'agenda_post', 'agenda_comment', 'chat_message', 'conversation_message', 'book_request'];
 
 	public static function ensureTable(): void
 	{
@@ -67,6 +67,11 @@ final class UgcModeration
 			throw new \LengthException('Report details are required.');
 		}
 
+		if ($type === 'book_request')
+		{
+			return self::createBookRequestReport($contentId, $reason, $details);
+		}
+
 		[$xfType, $entity] = self::resolveContent($type, $contentId);
 		self::assertReportable($type, $entity);
 		$creator = \XF::service('XF:Report\Creator', $xfType, $entity);
@@ -94,6 +99,10 @@ final class UgcModeration
 		{
 			throw new \InvalidArgumentException('Invalid report content.');
 		}
+		if ($type === 'book_request')
+		{
+			return self::bookRequestUserId($contentId);
+		}
 		[, $entity] = self::resolveContent($type, $contentId);
 		return self::entityUserId($entity);
 	}
@@ -101,6 +110,31 @@ final class UgcModeration
 	public static function recordBlock(int $targetUserId, string $type = 'user_block', int $contentId = 0, string $reason = 'harassment'): int
 	{
 		return self::recordEvent(0, $targetUserId, $type, $contentId, $reason);
+	}
+
+	protected static function createBookRequestReport(int $contentId, string $reason, string $details): array
+	{
+		$targetUserId = self::bookRequestUserId($contentId);
+		$visitorId = (int) \XF::visitor()->user_id;
+		if (!$visitorId || $targetUserId === $visitorId)
+		{
+			throw new \DomainException('Content cannot be reported.');
+		}
+		$eventId = self::recordEvent(0, $targetUserId, 'book_request', $contentId, $reason);
+		return ['report_id' => 0, 'target_user_id' => $targetUserId, 'event_id' => $eventId];
+	}
+
+	protected static function bookRequestUserId(int $contentId): int
+	{
+		$row = \XF::db()->fetchRow(
+			'SELECT user_id FROM xf_ekitap_book_request WHERE request_id = ?',
+			[$contentId]
+		);
+		if (!$row)
+		{
+			throw new \OutOfBoundsException('Report content not found.');
+		}
+		return (int) $row['user_id'];
 	}
 
 	protected static function recordEvent(int $reportId, int $targetUserId, string $type, int $contentId, string $reason): int

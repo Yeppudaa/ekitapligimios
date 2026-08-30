@@ -44,6 +44,7 @@ struct LibraryView: View {
     @State private var selectedTab: LibraryTab
     @State private var isLoading = false
     @State private var errorMessage: String?
+    @State private var showingLogin = false
 
     private var items: [LibraryItemDTO] { container.libraryItems }
 
@@ -55,20 +56,31 @@ struct LibraryView: View {
     var body: some View {
         ZStack {
             Color(hex: 0xF6FAFA).ignoresSafeArea()
-            ScrollView {
-                LazyVStack(spacing: 14) {
-                    headerCard
-                    tabPicker
-                    content
+            if container.isSignedIn {
+                ScrollView {
+                    LazyVStack(spacing: 14) {
+                        headerCard
+                        tabPicker
+                        content
+                    }
+                    .padding(.horizontal, 18)
+                    .padding(.vertical, 12)
                 }
-                .padding(.horizontal, 18)
-                .padding(.vertical, 12)
+                .refreshable { await load() }
+            } else {
+                guestPrompt
             }
-            .refreshable { await load() }
         }
         .navigationTitle(L10n.libraryHeaderTitle)
         .navigationBarTitleDisplayMode(.large)
+        .sheet(isPresented: $showingLogin) { LoginView() }
         .task { await load() }
+        .onAppear {
+            selectedTab = LibraryTab(index: container.libraryShelfTab)
+        }
+        .onChange(of: container.libraryShelfTab) { _, tab in
+            selectedTab = LibraryTab(index: tab)
+        }
     }
 
     private var headerCard: some View {
@@ -119,6 +131,36 @@ struct LibraryView: View {
         )
         .clipShape(RoundedRectangle(cornerRadius: 18, style: .continuous))
         .overlay { RoundedRectangle(cornerRadius: 18).stroke(Color(hex: 0xDDE8E8)) }
+    }
+
+    private var guestPrompt: some View {
+        VStack(spacing: 18) {
+            Image(systemName: "books.vertical.fill")
+                .font(.system(size: 42, weight: .semibold))
+                .foregroundStyle(Color(hex: 0x16756F))
+                .frame(width: 88, height: 88)
+                .background(Color(hex: 0xEAF6F4), in: Circle())
+            Text(L10n.libraryGuestTitle)
+                .font(.title3.weight(.heavy))
+                .foregroundStyle(Color(hex: 0x18343A))
+            Text(L10n.libraryGuestSubtitle)
+                .font(.subheadline)
+                .foregroundStyle(Color(hex: 0x6C7C80))
+                .multilineTextAlignment(.center)
+            Button {
+                showingLogin = true
+            } label: {
+                Text(L10n.commonLogin)
+                    .font(.subheadline.weight(.bold))
+                    .foregroundStyle(.white)
+                    .padding(.horizontal, 22)
+                    .padding(.vertical, 12)
+                    .background(EKitapligimPalette.teal, in: Capsule())
+            }
+            .buttonStyle(.plain)
+        }
+        .padding(28)
+        .frame(maxWidth: .infinity, maxHeight: .infinity)
     }
 
     private var selectedShelfSummary: some View {

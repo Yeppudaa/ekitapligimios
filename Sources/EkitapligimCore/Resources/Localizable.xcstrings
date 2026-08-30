@@ -651,6 +651,16 @@
         }
       }
     },
+    "catalog.filters.allChip": {
+      "localizations": {
+        "tr": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Hepsi"
+          }
+        }
+      }
+    },
     "catalog.filters.allCategories": {
       "localizations": {
         "tr": {
@@ -1621,6 +1631,16 @@
         }
       }
     },
+    "conversations.starred": {
+      "localizations": {
+        "tr": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Yıldızlı"
+          }
+        }
+      }
+    },
     "conversations.subject": {
       "localizations": {
         "tr": {
@@ -1647,6 +1667,16 @@
           "stringUnit": {
             "state": "translated",
             "value": "Mesajlar alınamadı"
+          }
+        }
+      }
+    },
+    "conversations.you": {
+      "localizations": {
+        "tr": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Siz"
           }
         }
       }
@@ -2678,7 +2708,7 @@
         "tr": {
           "stringUnit": {
             "state": "translated",
-            "value": "Giriş ekranına dön"
+            "value": "Giriş Ekranına Dön"
           }
         }
       }
@@ -2688,7 +2718,7 @@
         "tr": {
           "stringUnit": {
             "state": "translated",
-            "value": "E-posta"
+            "value": "E-posta Adresi"
           }
         }
       }
@@ -2698,7 +2728,7 @@
         "tr": {
           "stringUnit": {
             "state": "translated",
-            "value": "Şifremi unuttum"
+            "value": "Şifremi Unuttum"
           }
         }
       }
@@ -2738,7 +2768,7 @@
         "tr": {
           "stringUnit": {
             "state": "translated",
-            "value": "Şifre tekrar"
+            "value": "Şifre Tekrar"
           }
         }
       }
@@ -2768,7 +2798,7 @@
         "tr": {
           "stringUnit": {
             "state": "translated",
-            "value": "Kayıt ol"
+            "value": "Kayıt Ol"
           }
         }
       }
@@ -2778,7 +2808,7 @@
         "tr": {
           "stringUnit": {
             "state": "translated",
-            "value": "Hesap Oluştur"
+            "value": "Yeni Hesap Oluştur"
           }
         }
       }
@@ -2808,7 +2838,7 @@
         "tr": {
           "stringUnit": {
             "state": "translated",
-            "value": "Sıfırlama bağlantısı gönder"
+            "value": "Sıfırlama Bağlantısı Gönder"
           }
         }
       }
@@ -2858,7 +2888,7 @@
         "tr": {
           "stringUnit": {
             "state": "translated",
-            "value": "Giriş yap"
+            "value": "Giriş Yap"
           }
         }
       }
@@ -2878,7 +2908,227 @@
         "tr": {
           "stringUnit": {
             "state": "translated",
-            "value": "Kullanıcı adı veya e-posta"
+            "value": "Kullanıcı Adı veya E-posta"
+          }
+        }
+      }
+    },
+    "login.acceptLegalBody": {
+      "localizations": {
+        "tr": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Hesap oluşturarak E-Kitaplığım Kullanım Şartları ve Gizlilik Politikası'nı kabul ediyorum."
+          }
+        }
+      }
+    },
+    "login.communityTagline": {
+      "localizations": {
+        "tr": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Ekitaplığım Kütüphane Topluluğu"
+          }
+        }
+      }
+    },
+    "login.signal.shelf": {
+      "localizations": {
+        "tr": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Raf senkronu"
+          }
+        }
+      }
+    },
+    "login.signal.api": {
+      "localizations": {
+        "tr": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Güvenli API"
+          }
+        }
+      }
+    },
+    "login.signal.premium": {
+      "localizations": {
+        "tr": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Premium erişim"
+          }
+        }
+      }
+    },
+    "login.badge.login": {
+      "localizations": {
+        "tr": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Üye girişi"
+          }
+        }
+      }
+    },
+    "login.badge.register": {
+      "localizations": {
+        "tr": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Yeni üyelik"
+          }
+        }
+      }
+    },
+    "login.badge.reset": {
+      "localizations": {
+        "tr": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Hesap kurtarma"
+          }
+        }
+      }
+    },
+    "login.heading.login": {
+      "localizations": {
+        "tr": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Giriş Yap"
+          }
+        }
+      }
+    },
+    "login.subtitle.login": {
+      "localizations": {
+        "tr": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Kitaplığın, favorilerin ve günlük limitlerin tek hesapta senkronize olsun."
+          }
+        }
+      }
+    },
+    "login.subtitle.register": {
+      "localizations": {
+        "tr": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Kitap raflarını ve okuma limitlerini hesabınla güvenle eşleştir."
+          }
+        }
+      }
+    },
+    "login.subtitle.reset": {
+      "localizations": {
+        "tr": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "E-posta adresine şifre sıfırlama bağlantısı gönderelim."
+          }
+        }
+      }
+    },
+    "login.switchToRegister": {
+      "localizations": {
+        "tr": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Henüz hesabınız yok mu? Kayıt olun"
+          }
+        }
+      }
+    },
+    "login.switchToLogin": {
+      "localizations": {
+        "tr": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Zaten hesabınız var mı? Giriş yapın"
+          }
+        }
+      }
+    },
+    "login.showPassword": {
+      "localizations": {
+        "tr": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Şifreyi göster"
+          }
+        }
+      }
+    },
+    "login.hidePassword": {
+      "localizations": {
+        "tr": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Şifreyi gizle"
+          }
+        }
+      }
+    },
+    "profile.guest.manageSubtitle": {
+      "localizations": {
+        "tr": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Hesabını yönet, kütüphaneni senkronize et."
+          }
+        }
+      }
+    },
+    "profile.guest.subtitle": {
+      "localizations": {
+        "tr": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Raflarını, favorilerini, yorumlarını ve okuma geçmişini tek dokunuşla yanında taşı."
+          }
+        }
+      }
+    },
+    "profile.guest.shelfSync.subtitle": {
+      "localizations": {
+        "tr": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Kitapların hep hazır,\nher cihazında seninle."
+          }
+        }
+      }
+    },
+    "profile.guest.limits.subtitle": {
+      "localizations": {
+        "tr": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Okuma limitlerini takip et,\nhaklarını kontrol altında tut."
+          }
+        }
+      }
+    },
+    "profile.guest.favorites.subtitle": {
+      "localizations": {
+        "tr": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Seçtiklerini kaydet,\nkolayca yeniden ulaş."
+          }
+        }
+      }
+    },
+    "profile.guest.secure.subtitle": {
+      "localizations": {
+        "tr": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Hesabın güvende,\nverilerin koruma altında."
           }
         }
       }
@@ -3826,6 +4076,16 @@
         }
       }
     },
+    "reader.accessDenied": {
+      "localizations": {
+        "tr": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Bu kitabı şu an okuyamazsınız."
+          }
+        }
+      }
+    },
     "report.footer": {
       "localizations": {
         "tr": {
@@ -4141,7 +4401,7 @@
         "tr": {
           "stringUnit": {
             "state": "translated",
-            "value": "Kitaplığım"
+            "value": "Kütüphane"
           }
         }
       }

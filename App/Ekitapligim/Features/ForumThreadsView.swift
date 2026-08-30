@@ -430,20 +430,35 @@ private struct ForumThreadCreateView: View {
     }
 
     var body: some View {
-        VStack(alignment: .leading, spacing: 12) {
+        VStack(alignment: .leading, spacing: 14) {
             Text(L10n.forumThreadsCreateDialogTitle)
                 .font(.title3.weight(.bold))
                 .frame(maxWidth: .infinity, alignment: .leading)
             TextField(L10n.forumThreadsCreateTitlePlaceholder, text: $title)
-                .textFieldStyle(.roundedBorder)
+                .padding(12)
+                .background(Color(hex: 0xF7F2EA), in: RoundedRectangle(cornerRadius: 12, style: .continuous))
                 .textInputAutocapitalization(.sentences)
-            TextField(L10n.forumThreadsCreateMessageSection, text: $message, axis: .vertical)
-                .textFieldStyle(.roundedBorder)
-                .lineLimit(4...8)
+            TextEditor(text: $message)
+                .accessibilityLabel(L10n.forumThreadsCreateMessageSection)
+                .frame(minHeight: 120)
+                .padding(8)
+                .background(Color(hex: 0xF7F2EA), in: RoundedRectangle(cornerRadius: 12, style: .continuous))
+                .overlay(alignment: .topLeading) {
+                    if message.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty {
+                        Text(L10n.forumThreadsCreateMessageSection)
+                            .foregroundStyle(EKitapligimPalette.muted)
+                            .padding(.horizontal, 12)
+                            .padding(.vertical, 16)
+                            .allowsHitTesting(false)
+                    }
+                }
             HStack {
+                Text("\(message.count)")
+                    .font(.caption2.weight(.semibold))
+                    .foregroundStyle(EKitapligimPalette.muted)
                 Spacer(minLength: 0)
                 Button(L10n.commonCancel) { dismiss() }
-                Button(L10n.forumThreadsCreateSubmit) {
+                Button {
                     Task {
                         let trimmedTitle = title.trimmingCharacters(in: .whitespacesAndNewlines)
                         let trimmedMessage = message.trimmingCharacters(in: .whitespacesAndNewlines)
@@ -453,12 +468,19 @@ private struct ForumThreadCreateView: View {
                             dismiss()
                         }
                     }
+                } label: {
+                    if isSubmitting {
+                        ProgressView()
+                    } else {
+                        Text(L10n.forumThreadsCreateSubmit)
+                            .font(.subheadline.weight(.bold))
+                    }
                 }
                 .disabled(!canSubmit)
             }
         }
         .padding(20)
-        .presentationDetents([.medium])
-        .presentationDragIndicator(.hidden)
+        .presentationDetents([.medium, .large])
+        .presentationDragIndicator(.visible)
     }
 }

@@ -47,4 +47,9 @@ class Setup extends AbstractSetup
 		TermsAcceptance::ensureTable();
 		UgcModeration::ensureTable();
 	}
+
+	public function upgrade1000013Step1(): void
+	{
+		UgcModeration::ensureTable();
+	}
 }

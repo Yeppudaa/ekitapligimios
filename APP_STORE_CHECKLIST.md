@@ -2,7 +2,7 @@
 
 ## Release Blockers
 - Public HTTPS staging API is required.
-- Standalone `Ekitapligim/IosApi` 1.0.12 must pass staging auth, objectionable-content, report, block, instant-hide and 20/24-hour SLA tests before the identical SHA-256 ZIP is installed in production. `MobileApi` 1.0.136 and Android routes must remain unchanged.
+- Standalone `Ekitapligim/IosApi` 1.0.13 must pass staging auth, objectionable-content, report, block, instant-hide and 20/24-hour SLA tests before the identical SHA-256 ZIP is installed in production. `MobileApi` 1.0.136 and Android routes must remain unchanged.
 - StoreKit backend verification is required for iOS premium/digital purchases.
 - The review build uses first-party username/email and password authentication only. The incomplete Sign in with Apple client surface and entitlement were removed after App Review reproduced a failure; re-enable it only after a Developer key, server token exchange, signed-device login, and deletion-time revocation are proven end to end.
 - Visible report and block-and-report controls exist on every social UGC card; physical iPhone/iPad evidence and staging verification are still required.

@@ -7,7 +7,7 @@ class BookAgenda extends \Ekitapligim\MobileApi\Api\Controller\BookAgenda
 	use UgcControllerTrait;
 	public function actionGet()
 	{
-		return $this->filterReplyCollections(parent::actionGet(), ['items']);
+		return $this->applyAgendaViewerFlags($this->filterReplyCollections(parent::actionGet(), ['items']), ['items']);
 	}
 	public function actionPost(\XF\Mvc\ParameterBag $params)
 	{

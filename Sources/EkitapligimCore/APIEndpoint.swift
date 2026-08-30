@@ -102,6 +102,7 @@ public enum UGCContentType: String, CaseIterable, Equatable, Hashable, Sendable 
     case agendaComment = "agenda_comment"
     case chatMessage = "chat_message"
     case conversationMessage = "conversation_message"
+    case bookRequest = "book_request"
 }
 
 public enum UGCReportReason: String, CaseIterable, Equatable, Hashable, Sendable {
@@ -254,6 +255,15 @@ public extension APIEndpoint {
             method: .post,
             path: "books/\(bookID)/reader/session",
             body: .form(["purpose": purpose.rawValue]),
+            requiresAuthentication: true
+        )
+    }
+
+    static func readerSource(bookID: Int, token: String) -> APIEndpoint {
+        APIEndpoint(
+            method: .get,
+            path: "books/\(bookID)/reader/source",
+            queryItems: [URLQueryItem(name: "t", value: token)],
             requiresAuthentication: true
         )
     }
@@ -520,6 +530,23 @@ public extension APIEndpoint {
             method: .post,
             path: "threads/\(threadID)/posts",
             body: .form(["message": message]),
+            requiresAuthentication: true
+        )
+    }
+
+    static func editForumPost(postID: Int, message: String) -> APIEndpoint {
+        APIEndpoint(
+            method: .post,
+            path: "posts/\(postID)",
+            body: .form(["message": message]),
+            requiresAuthentication: true
+        )
+    }
+
+    static func deleteForumPost(postID: Int) -> APIEndpoint {
+        APIEndpoint(
+            method: .delete,
+            path: "posts/\(postID)",
             requiresAuthentication: true
         )
     }

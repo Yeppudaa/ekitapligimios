@@ -17,6 +17,11 @@ struct ForumThreadDetailView: View {
     @State private var showingTerms = false
     @State private var showLoginAlert = false
     @State private var heroCollapseProgress: CGFloat = 0
+    @State private var editingPost: ForumPostDTO?
+    @State private var pendingDelete: ForumPostDTO?
+    @State private var editText = ""
+    @State private var isEditing = false
+    @State private var showingLogin = false
 
     private let contentSafety = ContentSafety()
 
@@ -104,10 +109,59 @@ struct ForumThreadDetailView: View {
             TermsAcceptanceView()
         }
         .alert(L10n.bookRequestsLoginRequiredTitle, isPresented: $showLoginAlert) {
-            Button(L10n.bookRequestsGoToLogin) { container.selectedTab = .profile }
+            Button(L10n.bookRequestsGoToLogin) { showingLogin = true }
             Button(L10n.commonCancel, role: .cancel) {}
         } message: {
             Text(L10n.forumThreadGuestReplyMessage)
+        }
+        .sheet(isPresented: $showingLogin) { LoginView() }
+        .alert(L10n.forumThreadDeleteConfirm, isPresented: Binding(
+            get: { pendingDelete != nil },
+            set: { if !$0 { pendingDelete = nil } }
+        )) {
+            Button(L10n.commonCancel, role: .cancel) { pendingDelete = nil }
+            Button(L10n.commonDelete, role: .destructive) {
+                if let post = pendingDelete {
+                    Task { await deletePost(post) }
+                }
+            }
+        }
+        .sheet(item: $editingPost) { post in
+            NavigationStack {
+                VStack(alignment: .leading, spacing: 12) {
+                    TextEditor(text: $editText)
+                        .accessibilityLabel(L10n.forumThreadEditTitle)
+                        .frame(minHeight: 160)
+                        .padding(8)
+                        .background(Color(hex: 0xF7F2EA), in: RoundedRectangle(cornerRadius: 14, style: .continuous))
+                    HStack {
+                        Text("\(editText.count)")
+                            .font(.caption)
+                            .foregroundStyle(EKitapligimPalette.muted)
+                        Spacer()
+                        Button {
+                            Task { await saveEdit(post) }
+                        } label: {
+                            if isEditing {
+                                ProgressView()
+                            } else {
+                                Text(L10n.commonSave)
+                                    .font(.subheadline.weight(.bold))
+                            }
+                        }
+                        .disabled(isEditing || editText.trimmingCharacters(in: .whitespacesAndNewlines).count < 2)
+                    }
+                }
+                .padding(16)
+                .navigationTitle(L10n.forumThreadEditTitle)
+                .toolbar {
+                    ToolbarItem(placement: .cancellationAction) {
+                        Button(L10n.commonCancel) { editingPost = nil }
+                    }
+                }
+            }
+            .presentationDetents([.medium, .large])
+            .onAppear { editText = post.message }
         }
     }
 
@@ -198,7 +252,7 @@ struct ForumThreadDetailView: View {
             }
             Spacer(minLength: 0)
             Button {
-                container.selectedTab = .profile
+                showingLogin = true
             } label: {
                 Label(L10n.forumThreadGuestLoginShort, systemImage: "rectangle.portrait.and.arrow.right")
                     .font(.caption.weight(.bold))
@@ -212,7 +266,7 @@ struct ForumThreadDetailView: View {
         .padding(12)
         .background(Color(hex: 0xF7F2EA), in: RoundedRectangle(cornerRadius: 8, style: .continuous))
         .contentShape(Rectangle())
-        .onTapGesture { showLoginAlert = true }
+        .onTapGesture { showingLogin = true }
     }
 
     private var replyCard: some View {
@@ -226,8 +280,8 @@ struct ForumThreadDetailView: View {
             TextEditor(text: $replyText)
                 .focused($isReplyFocused)
                 .accessibilityLabel(L10n.forumThreadReplyPlaceholder)
-                .frame(minHeight: 88)
-                .padding(8)
+                .frame(minHeight: 72)
+                .padding(10)
                 .background(.white, in: RoundedRectangle(cornerRadius: 16, style: .continuous))
                 .overlay {
                     RoundedRectangle(cornerRadius: 16, style: .continuous)
@@ -238,13 +292,16 @@ struct ForumThreadDetailView: View {
                         Text(L10n.forumThreadReplyPlaceholder)
                             .font(.body)
                             .foregroundStyle(EKitapligimPalette.muted)
-                            .padding(.horizontal, 12)
-                            .padding(.vertical, 16)
+                            .padding(.horizontal, 14)
+                            .padding(.vertical, 18)
                             .allowsHitTesting(false)
                     }
                 }
                 .accessibilityLabel(L10n.forumThreadReplyTextLabel)
-            HStack {
+            HStack(alignment: .center) {
+                Text("\(replyText.count)")
+                    .font(.caption2.weight(.semibold))
+                    .foregroundStyle(EKitapligimPalette.muted)
                 Spacer(minLength: 0)
                 Button {
                     Task { await reply() }
@@ -261,8 +318,19 @@ struct ForumThreadDetailView: View {
                     .padding(.horizontal, 16)
                     .padding(.vertical, 10)
                 }
-                .background(EKitapligimPalette.teal, in: RoundedRectangle(cornerRadius: 14, style: .continuous))
+                .background(
+                    (isReplySending || replyText.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty)
+                        ? EKitapligimPalette.teal.opacity(0.45)
+                        : EKitapligimPalette.teal,
+                    in: RoundedRectangle(cornerRadius: 14, style: .continuous)
+                )
                 .disabled(isReplySending || replyText.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty)
+            }
+        }
+        .toolbar {
+            ToolbarItemGroup(placement: .keyboard) {
+                Spacer()
+                Button(L10n.commonDismiss) { isReplyFocused = false }
             }
         }
     }
@@ -281,6 +349,7 @@ struct ForumThreadDetailView: View {
                     postAuthorHeader(post)
                 }
                 Spacer(minLength: 0)
+                postActions(post)
             }
 
             Rectangle()
@@ -338,7 +407,34 @@ struct ForumThreadDetailView: View {
                         )
                     }
                 }
+                if post.postDate > 0 {
+                    Text(EKitapligimFormat.relativeTime(post.postDate))
+                        .font(.caption)
+                        .foregroundStyle(Color(hex: 0x687385))
+                }
             }
+        }
+    }
+
+    @ViewBuilder
+    private func postActions(_ post: ForumPostDTO) -> some View {
+        let isOwn = post.userId != nil && post.userId == Int(container.profileState?.id ?? "")
+        let canEdit = post.canEdit || isOwn
+        let canDelete = post.canDelete || isOwn
+        if let contentID = Int(post.id), canEdit || canDelete || !isOwn {
+            UGCSafetyMenu(
+                type: .forumPost,
+                contentID: contentID,
+                userID: isOwn ? nil : post.userId,
+                onBlocked: {
+                    if let userID = post.userId {
+                        posts.removeAll { $0.userId == userID }
+                    }
+                },
+                onEdit: canEdit ? { editingPost = post } : nil,
+                onDelete: canDelete ? { pendingDelete = post } : nil,
+                includeSafetyActions: !isOwn
+            )
         }
     }
 
@@ -417,6 +513,42 @@ struct ForumThreadDetailView: View {
             statusMessage = L10n.forumThreadReplyPublished
         } catch {
             errorMessage = L10n.forumThreadReplyFailed
+        }
+    }
+
+    private func saveEdit(_ post: ForumPostDTO) async {
+        let message = editText.trimmingCharacters(in: .whitespacesAndNewlines)
+        guard let postID = Int(post.id), message.count >= 2, !isEditing else { return }
+        isEditing = true
+        defer { isEditing = false }
+        switch contentSafety.validateUserGeneratedText(message) {
+        case .accepted:
+            break
+        case .rejected(let reason):
+            errorMessage = reason.userMessage
+            return
+        }
+        do {
+            let updated = try await container.community.editPost(postID: postID, message: message)
+            if let index = posts.firstIndex(where: { $0.id == post.id }) {
+                posts[index] = updated
+            }
+            editingPost = nil
+            statusMessage = L10n.forumThreadEdited
+        } catch {
+            errorMessage = L10n.forumThreadEditFailed
+        }
+    }
+
+    private func deletePost(_ post: ForumPostDTO) async {
+        guard let postID = Int(post.id) else { return }
+        pendingDelete = nil
+        do {
+            try await container.community.deletePost(postID: postID)
+            posts.removeAll { $0.id == post.id }
+            statusMessage = L10n.forumThreadDeleted
+        } catch {
+            errorMessage = L10n.forumThreadDeleteFailed
         }
     }
 

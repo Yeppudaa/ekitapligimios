@@ -40,7 +40,7 @@ public final class APIClient: Sendable {
         let (data, response) = try await session.data(for: request)
         guard let http = response as? HTTPURLResponse else { throw APIClientError.invalidResponse }
         if http.statusCode == 401,
-           endpoint.requiresAuthentication,
+           request.value(forHTTPHeaderField: "Authorization") != nil,
            allowsTokenRefresh,
            let tokenManager = tokenProvider as? any SessionTokenManaging {
             do {
@@ -145,11 +145,10 @@ public final class APIClient: Sendable {
 
     public func authenticatedRequest(_ endpoint: APIEndpoint) async throws -> URLRequest {
         var request = try makeURLRequest(endpoint)
-        if endpoint.requiresAuthentication {
-            guard let token = try await tokenProvider?.accessToken(), !token.isEmpty else {
-                throw APIClientError.authenticationRequired
-            }
+        if let token = try await tokenProvider?.accessToken(), !token.isEmpty {
             request.setValue("Bearer \(token)", forHTTPHeaderField: "Authorization")
+        } else if endpoint.requiresAuthentication {
+            throw APIClientError.authenticationRequired
         }
         return request
     }

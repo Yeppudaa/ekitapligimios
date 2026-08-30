@@ -7,6 +7,8 @@ final class AppContainer: ObservableObject {
     @Published var authState: AuthenticationState = .signedOut
     @Published var selectedTab: AppTab = .home
     @Published var presentedRoute: AppRoute?
+    /// Shelf index for the Library tab (`library/{tab}` deep links and menu shortcuts).
+    @Published var libraryShelfTab: Int = 0
 
     // Android keeps this data at app level so the shell, menu and profile all read the same values.
     @Published private(set) var profileState: ProfileDTO?
@@ -76,7 +78,7 @@ final class AppContainer: ObservableObject {
         let config = AppConfig(environment: environment, apiBaseURL: apiURL, webBaseURL: webURL)
         let tokenStore = KeychainTokenStore(service: "com.ekitapligim.app")
         let apiClient = APIClient(config: config, tokenProvider: tokenStore)
-        let fileTransfer = ValidatedBookFileTransfer()
+        let fileTransfer = ValidatedBookFileTransfer(tokenProvider: tokenStore, apiBaseURL: apiURL)
 
         self.config = config
         self.tokenStore = tokenStore
@@ -344,6 +346,12 @@ final class AppContainer: ObservableObject {
     }
 
     func open(route: AppRoute) {
+        if case .library(let tab) = route {
+            libraryShelfTab = tab
+            presentedRoute = nil
+            selectedTab = .library
+            return
+        }
         if let tab = AppTab(route: route) {
             presentedRoute = nil
             selectedTab = tab
@@ -353,22 +361,20 @@ final class AppContainer: ObservableObject {
     }
 }
 
-/// The six bottom-bar destinations, matching `AppRoutes.bottomNavigationRoutes` on Android.
+/// The five bottom-bar destinations. Katalog and Yazarlar stay in the side menu.
 enum AppTab: Hashable, CaseIterable {
     case home
-    case catalog
-    case authors
+    case community
+    case library
     case requests
-    case forum
     case profile
 
     init?(route: AppRoute) {
         switch route {
         case .home: self = .home
-        case .catalog: self = .catalog
-        case .authors: self = .authors
+        case .forum: self = .community
+        case .library: self = .library
         case .requests: self = .requests
-        case .forum: self = .forum
         case .profile: self = .profile
         default: return nil
         }
@@ -377,10 +383,9 @@ enum AppTab: Hashable, CaseIterable {
     var title: String {
         switch self {
         case .home: L10n.tabHome
-        case .catalog: L10n.tabCatalogShort
-        case .authors: L10n.tabAuthors
+        case .community: L10n.tabCommunity
+        case .library: L10n.tabLibrary
         case .requests: L10n.tabRequests
-        case .forum: L10n.tabForum
         case .profile: L10n.tabProfile
         }
     }
@@ -388,10 +393,9 @@ enum AppTab: Hashable, CaseIterable {
     var systemImage: String {
         switch self {
         case .home: "house.fill"
-        case .catalog: "books.vertical.fill"
-        case .authors: "person.2.fill"
+        case .community: "bubble.left.and.bubble.right.fill"
+        case .library: "books.vertical.circle.fill"
         case .requests: "heart.fill"
-        case .forum: "bubble.left.and.bubble.right.fill"
         case .profile: "person.crop.circle.fill"
         }
     }

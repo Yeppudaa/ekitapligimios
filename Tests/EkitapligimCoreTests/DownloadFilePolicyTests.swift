@@ -31,4 +31,17 @@ final class DownloadFilePolicyTests: XCTestCase {
         let data = Data([0x50, 0x4B, 0x03, 0x04, 0x00])
         XCTAssertNoThrow(try DownloadFilePolicy.validateHeader(data, fileExtension: "epub"))
     }
+
+    func testSniffsPDFAndEPUBHeaders() {
+        XCTAssertEqual(DownloadFilePolicy.sniffedFileExtension(fromHeader: Data("%PDF-1.7".utf8)), "pdf")
+        XCTAssertEqual(DownloadFilePolicy.sniffedFileExtension(fromHeader: Data([0x50, 0x4B, 0x03, 0x04])), "epub")
+        XCTAssertNil(DownloadFilePolicy.sniffedFileExtension(fromHeader: Data("<html>drive.google.com</html>".utf8)))
+    }
+
+    func testResolvedFileExtensionFallsBackToPDFForUnknownSessionType() {
+        XCTAssertEqual(DownloadFilePolicy.resolvedFileExtension(for: "unknown"), "pdf")
+        XCTAssertEqual(DownloadFilePolicy.resolvedFileExtension(for: ""), "pdf")
+        XCTAssertEqual(DownloadFilePolicy.resolvedFileExtension(for: "epub"), "epub")
+        XCTAssertEqual(DownloadFilePolicy.resolvedFileExtension(for: "application/pdf"), "pdf")
+    }
 }

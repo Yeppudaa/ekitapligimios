@@ -25,6 +25,7 @@ books/:value/issue-report
 books/:value/reader/access
 books/:value/reader/progress
 books/:value/reader/session
+books/:value/reader/source
 chat/rooms
 chat/rooms/:value/messages
 legal/terms
@@ -57,6 +58,7 @@ member-unfollow/:value
 members
 members/:value/block
 members/:value/unblock
+posts/:value
 posts/:value/report
 publishers
 publishers/:value/books

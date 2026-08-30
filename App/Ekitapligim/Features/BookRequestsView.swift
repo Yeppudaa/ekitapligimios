@@ -12,6 +12,7 @@ struct BookRequestsView: View {
     @State private var statusMessage: String?
     @State private var showCreateSheet = false
     @State private var showLoginAlert = false
+    @State private var showingLogin = false
     @State private var isSubmitting = false
     @State private var votingID: String?
     @State private var draftTitle = ""
@@ -65,10 +66,11 @@ struct BookRequestsView: View {
         }
         .alert(L10n.bookRequestsLoginRequiredTitle, isPresented: $showLoginAlert) {
             Button(L10n.commonCancel, role: .cancel) {}
-            Button(L10n.bookRequestsGoToLogin) { container.selectedTab = .profile }
+            Button(L10n.bookRequestsGoToLogin) { showingLogin = true }
         } message: {
             Text(L10n.bookRequestsLoginRequiredMessage)
         }
+        .sheet(isPresented: $showingLogin) { LoginView() }
         .sheet(isPresented: $showCreateSheet) {
             VStack(alignment: .leading, spacing: 12) {
                 Text(L10n.bookRequestsCreateDialogTitle)
@@ -154,9 +156,16 @@ struct BookRequestsView: View {
                         .padding(28)
                         .ekitapligimCard()
                 } else {
-                    ForEach(items) { item in
+                    ForEach(items.filter { item in
+                        guard let userID = item.userId else { return true }
+                        return !container.blockedUserIDs.contains(userID)
+                    }) { item in
                         BookRequestRow(item: item, isVoting: votingID == item.id) {
                             Task { await vote(on: item) }
+                        } onBlocked: {
+                            if let userID = item.userId {
+                                items.removeAll { $0.userId == userID }
+                            }
                         }
                     }
                 }
@@ -251,6 +260,10 @@ struct BookRequestsView: View {
     }
 
     private func presentCreate() {
+        guard container.isSignedIn else {
+            showLoginAlert = true
+            return
+        }
         draftTitle = ""
         draftAuthor = ""
         draftISBN = ""
@@ -307,15 +320,27 @@ private struct BookRequestRow: View {
     let item: BookRequestDTO
     var isVoting: Bool = false
     let onVote: () -> Void
+    var onBlocked: (() -> Void)? = nil
 
     var body: some View {
         HStack(alignment: .center, spacing: 18) {
             BookRequestCover(title: item.title, author: item.author, seed: item.id + item.title)
             VStack(alignment: .leading, spacing: 6) {
-                Text(item.title)
-                    .font(.title3.weight(.heavy))
-                    .foregroundStyle(Color(hex: 0x07152E))
-                    .lineLimit(2)
+                HStack(alignment: .top) {
+                    Text(item.title)
+                        .font(.title3.weight(.heavy))
+                        .foregroundStyle(Color(hex: 0x07152E))
+                        .lineLimit(2)
+                    Spacer(minLength: 0)
+                    if let contentID = Int(item.id) {
+                        UGCSafetyMenu(
+                            type: .bookRequest,
+                            contentID: contentID,
+                            userID: item.userId,
+                            onBlocked: onBlocked
+                        )
+                    }
+                }
                 Text(L10n.bookRequestsAuthorLine(item.author))
                     .font(.body)
                     .foregroundStyle(Color(hex: 0x697386))

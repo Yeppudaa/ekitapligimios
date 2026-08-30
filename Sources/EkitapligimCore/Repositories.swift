@@ -640,6 +640,14 @@ public struct CommunityRepository: Sendable {
     public func reply(threadID: Int, message: String) async throws -> ForumPostDTO {
         try await apiClient.request(.replyToThread(threadID: threadID, message: message), as: ForumPostEnvelope.self).post
     }
+
+    public func editPost(postID: Int, message: String) async throws -> ForumPostDTO {
+        try await apiClient.request(.editForumPost(postID: postID, message: message), as: ForumPostEnvelope.self).post
+    }
+
+    public func deletePost(postID: Int) async throws {
+        let _: SuccessResponse = try await apiClient.request(.deleteForumPost(postID: postID))
+    }
 }
 
 public struct ForumsPageDTO: Decodable, Equatable, Sendable {

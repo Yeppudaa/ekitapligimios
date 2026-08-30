@@ -284,7 +284,11 @@ struct BookAgendaView: View {
 
     private var composerPrompt: some View {
         Button {
-            if container.isSignedIn { showingComposer = true } else { showingLogin = true }
+            if !container.isSignedIn {
+                showingLogin = true
+            } else if canCreate {
+                showingComposer = true
+            }
         } label: {
             HStack(spacing: 12) {
                 Image(systemName: "square.and.pencil")
@@ -297,7 +301,11 @@ struct BookAgendaView: View {
                     Text(container.isSignedIn ? L10n.agendaComposerPromptTitle : L10n.agendaComposerGuestTitle)
                         .font(.subheadline.weight(.bold))
                         .foregroundStyle(EKitapligimPalette.agendaInk)
-                    Text(container.isSignedIn ? L10n.agendaComposerPromptSubtitle : L10n.agendaComposerGuestSubtitle)
+                    Text(
+                        container.isSignedIn
+                            ? (canCreate ? L10n.agendaComposerPromptSubtitle : L10n.forumThreadReplyPermissionHint)
+                            : L10n.agendaComposerGuestSubtitle
+                    )
                         .font(.caption)
                         .foregroundStyle(EKitapligimPalette.agendaMuted)
                         .lineLimit(1)
@@ -311,6 +319,7 @@ struct BookAgendaView: View {
             .ekitapligimCard()
         }
         .buttonStyle(.plain)
+        .disabled(container.isSignedIn && !canCreate)
     }
 
     // MARK: Akış içeriği
@@ -348,7 +357,8 @@ struct BookAgendaView: View {
                         let actorID = post.actor.id
                         posts.removeAll { $0.actor.id == actorID }
                     },
-                    isSignedIn: container.isSignedIn
+                    isSignedIn: container.isSignedIn,
+                    currentUserID: container.profileState?.id
                 )
             }
             if let errorMessage, !posts.isEmpty {
@@ -488,7 +498,17 @@ struct BookAgendaPostCard: View {
     var onRequireLogin: () -> Void = {}
     var onBlocked: () -> Void = {}
     var isSignedIn: Bool = false
+    var currentUserID: String? = nil
     var showsCommentAction: Bool = true
+
+    private var canManagePost: Bool {
+        post.viewer.canEdit || post.viewer.canDelete || isOwnPost
+    }
+
+    private var isOwnPost: Bool {
+        guard let currentUserID, !currentUserID.isEmpty else { return false }
+        return post.actor.id == currentUserID
+    }
 
     private var kind: BookAgendaPostType {
         BookAgendaPostType(rawValue: post.type) ?? .standard
@@ -542,39 +562,46 @@ struct BookAgendaPostCard: View {
             }
             Spacer(minLength: 0)
 
-            if let contentID = Int(post.id) {
-                UGCSafetyMenu(
-                    type: .agendaPost,
-                    contentID: contentID,
-                    userID: post.viewer.canEdit ? nil : Int(post.actor.id),
-                    onBlocked: onBlocked
-                )
-            }
+            HStack(spacing: 4) {
+                if isSignedIn && !isOwnPost {
+                    Button(action: onFollow) {
+                        Text(post.viewer.followingActor ? L10n.agendaFollowing : L10n.agendaFollow)
+                            .font(.caption2.weight(.bold))
+                            .foregroundStyle(post.viewer.followingActor ? EKitapligimPalette.agendaMuted : EKitapligimPalette.agendaPurple)
+                            .padding(.horizontal, 10)
+                            .padding(.vertical, 5)
+                            .overlay {
+                                Capsule().stroke(
+                                    post.viewer.followingActor ? EKitapligimPalette.agendaBorder : EKitapligimPalette.agendaPurple
+                                )
+                            }
+                    }
+                    .buttonStyle(.plain)
+                }
 
-            if post.viewer.canEdit || post.viewer.canDelete {
-                Menu {
-                    if post.viewer.canEdit { Button(L10n.commonEdit, action: onEdit) }
-                    if post.viewer.canDelete { Button(L10n.commonDelete, role: .destructive, action: onDelete) }
-                } label: {
-                    Image(systemName: "ellipsis")
-                        .foregroundStyle(EKitapligimPalette.agendaMuted)
-                        .frame(width: 30, height: 30)
-                }
-                .accessibilityLabel(L10n.agendaPostOptions)
-            } else if isSignedIn {
-                Button(action: onFollow) {
-                    Text(post.viewer.followingActor ? L10n.agendaFollowing : L10n.agendaFollow)
-                        .font(.caption2.weight(.bold))
-                        .foregroundStyle(post.viewer.followingActor ? EKitapligimPalette.agendaMuted : EKitapligimPalette.agendaPurple)
-                        .padding(.horizontal, 10)
-                        .padding(.vertical, 5)
-                        .overlay {
-                            Capsule().stroke(
-                                post.viewer.followingActor ? EKitapligimPalette.agendaBorder : EKitapligimPalette.agendaPurple
-                            )
+                if canManagePost || (!isOwnPost && Int(post.id) != nil) {
+                    if let contentID = Int(post.id) {
+                        UGCSafetyMenu(
+                            type: .agendaPost,
+                            contentID: contentID,
+                            userID: isOwnPost ? nil : Int(post.actor.id),
+                            onBlocked: onBlocked,
+                            onEdit: (post.viewer.canEdit || isOwnPost) ? onEdit : nil,
+                            onDelete: (post.viewer.canDelete || isOwnPost) ? onDelete : nil,
+                            includeSafetyActions: !isOwnPost
+                        )
+                    } else if canManagePost {
+                        Menu {
+                            if post.viewer.canEdit || isOwnPost { Button(L10n.commonEdit, action: onEdit) }
+                            if post.viewer.canDelete || isOwnPost { Button(L10n.commonDelete, role: .destructive, action: onDelete) }
+                        } label: {
+                            Image(systemName: "ellipsis")
+                                .foregroundStyle(EKitapligimPalette.agendaMuted)
+                                .frame(width: 30, height: 30)
                         }
+                        .accessibilityLabel(L10n.agendaPostOptions)
+                    }
                 }
-                .buttonStyle(.plain)
             }
         }
     }
@@ -901,6 +928,8 @@ struct BookAgendaDetailView: View {
     @State private var errorMessage: String?
     @State private var actionMessage: String?
     @State private var showingLogin = false
+    @State private var editingPost: BookAgendaPostDTO?
+    @State private var pendingDeletion: BookAgendaPostDTO?
     @State private var editingComment: BookAgendaCommentDTO?
     @State private var pendingCommentDeletion: BookAgendaCommentDTO?
 
@@ -917,12 +946,15 @@ struct BookAgendaDetailView: View {
                             onReact: { Task { await react() } },
                             onBookmark: { Task { await bookmark() } },
                             onRepost: { Task { await repost() } },
+                            onEdit: { editingPost = post },
+                            onDelete: { pendingDeletion = post },
                             onRequireLogin: { showingLogin = true },
                             onBlocked: {
                                 if let userID = Int(post.actor.id) { container.rememberBlockedUser(userID) }
                                 self.post = nil
                             },
                             isSignedIn: container.isSignedIn,
+                            currentUserID: container.profileState?.id,
                             showsCommentAction: false
                         )
                         if let actionMessage {
@@ -946,6 +978,14 @@ struct BookAgendaDetailView: View {
         .navigationTitle(L10n.agendaTitle)
         .navigationBarTitleDisplayMode(.inline)
         .sheet(isPresented: $showingLogin) { LoginView() }
+        .sheet(item: $editingPost) { item in
+            NavigationStack {
+                BookAgendaEditView(post: item) { updated in
+                    post = updated
+                    onPostUpdated?(updated)
+                }
+            }
+        }
         .sheet(item: $editingComment) { comment in
             NavigationStack {
                 BookAgendaCommentEditView(comment: comment) { updated in
@@ -954,6 +994,14 @@ struct BookAgendaDetailView: View {
                     }
                 }
             }
+        }
+        .alert(L10n.agendaPostDeleteTitle, isPresented: postDeletionBinding) {
+            Button(L10n.commonDismiss, role: .cancel) { pendingDeletion = nil }
+            Button(L10n.commonDelete, role: .destructive) {
+                if let item = pendingDeletion { Task { await deletePost(item) } }
+            }
+        } message: {
+            Text(L10n.agendaPostDeleteMessage)
         }
         .alert(L10n.agendaCommentDeleteTitle, isPresented: commentDeletionBinding) {
             Button(L10n.commonDismiss, role: .cancel) { pendingCommentDeletion = nil }
@@ -964,6 +1012,10 @@ struct BookAgendaDetailView: View {
             Text(L10n.agendaCommentDeleteMessage)
         }
         .task { await load() }
+    }
+
+    private var postDeletionBinding: Binding<Bool> {
+        Binding(get: { pendingDeletion != nil }, set: { if !$0 { pendingDeletion = nil } })
     }
 
     private var commentDeletionBinding: Binding<Bool> {
@@ -985,6 +1037,7 @@ struct BookAgendaDetailView: View {
                 }) { comment in
                     BookAgendaCommentRow(
                         comment: comment,
+                        currentUserID: container.profileState?.id,
                         onEdit: { editingComment = comment },
                         onDelete: { pendingCommentDeletion = comment },
                         onBlocked: {
@@ -1135,6 +1188,17 @@ struct BookAgendaDetailView: View {
         }
     }
 
+    private func deletePost(_ item: BookAgendaPostDTO) async {
+        pendingDeletion = nil
+        do {
+            try await container.bookAgenda.deletePost(id: item.id)
+            post = nil
+            actionMessage = nil
+        } catch {
+            actionMessage = L10n.agendaPostDeleteFailed
+        }
+    }
+
     private func deleteComment(_ comment: BookAgendaCommentDTO) async {
         pendingCommentDeletion = nil
         do {
@@ -1153,9 +1217,15 @@ struct BookAgendaDetailView: View {
 
 private struct BookAgendaCommentRow: View {
     let comment: BookAgendaCommentDTO
+    var currentUserID: String? = nil
     let onEdit: () -> Void
     let onDelete: () -> Void
     let onBlocked: () -> Void
+
+    private var isOwn: Bool {
+        guard let currentUserID, !currentUserID.isEmpty else { return false }
+        return comment.actor.id == currentUserID
+    }
 
     var body: some View {
         HStack(alignment: .top, spacing: 10) {
@@ -1169,25 +1239,29 @@ private struct BookAgendaCommentRow: View {
                     Text(EKitapligimFormat.relativeTime(comment.createdAt))
                         .font(.system(size: 10))
                         .foregroundStyle(EKitapligimPalette.agendaMuted)
-                    if comment.viewer.canEdit || comment.viewer.canDelete {
-                        Menu {
-                            if comment.viewer.canEdit { Button(L10n.commonEdit, action: onEdit) }
-                            if comment.viewer.canDelete { Button(L10n.commonDelete, role: .destructive, action: onDelete) }
-                        } label: {
-                            Image(systemName: "ellipsis")
-                                .font(.caption)
-                                .foregroundStyle(EKitapligimPalette.agendaMuted)
-                                .frame(width: 30, height: 30)
+                    if comment.viewer.canEdit || comment.viewer.canDelete || isOwn || Int(comment.id) != nil {
+                        if let contentID = Int(comment.id) {
+                            UGCSafetyMenu(
+                                type: .agendaComment,
+                                contentID: contentID,
+                                userID: isOwn ? nil : Int(comment.actor.id),
+                                onBlocked: onBlocked,
+                                onEdit: (comment.viewer.canEdit || isOwn) ? onEdit : nil,
+                                onDelete: (comment.viewer.canDelete || isOwn) ? onDelete : nil,
+                                includeSafetyActions: !isOwn
+                            )
+                        } else {
+                            Menu {
+                                if comment.viewer.canEdit || isOwn { Button(L10n.commonEdit, action: onEdit) }
+                                if comment.viewer.canDelete || isOwn { Button(L10n.commonDelete, role: .destructive, action: onDelete) }
+                            } label: {
+                                Image(systemName: "ellipsis")
+                                    .font(.caption)
+                                    .foregroundStyle(EKitapligimPalette.agendaMuted)
+                                    .frame(width: 30, height: 30)
+                            }
+                            .accessibilityLabel(L10n.agendaCommentOptions)
                         }
-                        .accessibilityLabel(L10n.agendaCommentOptions)
-                    }
-                    if let contentID = Int(comment.id) {
-                        UGCSafetyMenu(
-                            type: .agendaComment,
-                            contentID: contentID,
-                            userID: comment.viewer.canEdit ? nil : Int(comment.actor.id),
-                            onBlocked: onBlocked
-                        )
                     }
                 }
                 Text(EKitapligimFormat.plainText(comment.message))

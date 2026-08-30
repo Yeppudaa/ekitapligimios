@@ -16,6 +16,7 @@ struct ReaderView: View {
     @State private var epubPosition = 1
     @State private var requestedPage: Int?
     @State private var isLoading = true
+    @State private var errorTitle = L10n.readerUnavailable
     @State private var errorMessage: String?
     @State private var showsBookmarks = false
     @State private var showsPagePicker = false
@@ -91,7 +92,7 @@ struct ReaderView: View {
             ProgressView(L10n.readerPreparing)
                 .frame(maxWidth: .infinity, maxHeight: .infinity)
         } else if let errorMessage {
-            ContentUnavailableView(L10n.readerUnavailable, systemImage: "lock.shield", description: Text(errorMessage))
+            ContentUnavailableView(errorTitle, systemImage: "lock.shield", description: Text(errorMessage))
         } else if let url = readerURL, readerFileType == "epub" {
             EPUBReaderView(sourceURL: url, progressPercent: $epubProgressPercent, position: $epubPosition)
         } else if let url = readerURL {
@@ -178,16 +179,20 @@ struct ReaderView: View {
 
     private func loadReaderSession() async {
         guard let bookID else {
+            errorTitle = L10n.readerUnavailable
             errorMessage = L10n.readerInvalidBookId
             isLoading = false
             return
         }
 
         isLoading = true
+        errorTitle = L10n.readerUnavailable
+        errorMessage = nil
         defer { isLoading = false }
         do {
             let access = try await container.books.readerAccess(bookID: bookID)
             guard access.canReadOnline else {
+                errorTitle = readerDenialTitle(from: access)
                 errorMessage = readerDenialMessage(from: access)
                 return
             }
@@ -195,10 +200,7 @@ struct ReaderView: View {
             // The server creates/counts the read session atomically. This must happen even
             // when an offline copy exists so daily read limits cannot be bypassed.
             let session = try await container.books.createReaderSession(bookID: bookID, purpose: .read)
-            guard let fileType = try? DownloadFilePolicy.fileExtension(for: session.fileType) else {
-                errorMessage = L10n.readerUnsupportedFormat
-                return
-            }
+            let fileType = DownloadFilePolicy.resolvedFileExtension(for: session.fileType)
 
             if let localFile = container.downloadManager.localFile(for: book.id) {
                 readerFileType = localFile.fileType
@@ -207,22 +209,45 @@ struct ReaderView: View {
                 await promoteReadingShelfIfNeeded()
                 return
             }
-            guard let url = URL(string: session.sourceUrl), url.scheme?.lowercased() == "https" else {
+            guard let url = ReaderSourcePolicy.nativeContentURL(
+                session: session,
+                bookID: bookID,
+                apiBaseURL: container.config.apiBaseURL
+            ) else {
                 errorMessage = L10n.readerAtsLinkMissing
                 return
             }
-            readerFileType = fileType
             let localURL = try await container.readerContentLoader.prepare(
                 bookID: book.id,
                 sourceURL: url,
                 fileType: fileType
             )
+            let resolvedType = DownloadFilePolicy.sniffedFileExtension(at: localURL) ?? fileType
+            readerFileType = resolvedType
             temporaryReaderURL = localURL
             readerURL = localURL
-            restorePDFPositionIfAvailable(fileType: fileType)
+            restorePDFPositionIfAvailable(fileType: resolvedType)
             await promoteReadingShelfIfNeeded()
+        } catch let transferError as BookFileTransferError {
+            errorMessage = transferError.readerMessage
         } catch {
             errorMessage = (error as? APIClientError)?.serverMessage ?? L10n.readerSessionFailed
+        }
+    }
+
+    private func readerDenialTitle(from access: ReaderAccessDTO) -> String {
+        let code = access.denialCode?.trimmingCharacters(in: .whitespacesAndNewlines).uppercased() ?? ""
+        if code == "DAILY_READ_LIMIT" {
+            return L10n.quotaReadTitle
+        }
+        if let quota = access.dailyRead, !quota.isAllowed, quota.limit > 0 {
+            return L10n.quotaReadTitle
+        }
+        switch code {
+        case "PREMIUM_REQUIRED", "SUBSCRIPTION_REQUIRED", "PREMIUM_ONLY":
+            return L10n.premiumTitle
+        default:
+            return L10n.readerAccessDenied
         }
     }
 

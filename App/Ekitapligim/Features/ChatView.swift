@@ -74,6 +74,11 @@ struct ChatView: View {
         }
         .sheet(isPresented: $showingLogin) { LoginView() }
         .task { await loadRooms() }
+        .onChange(of: container.isSignedIn) { _, signedIn in
+            if signedIn {
+                Task { await loadRooms() }
+            }
+        }
         .onDisappear { stopPolling() }
         .onChange(of: draft) { _, newValue in
             if newValue.count > Self.draftCharacterLimit {
@@ -437,6 +442,11 @@ struct ChatView: View {
                         ? L10n.chatComposerReadOnlySubtitle
                         : L10n.chatComposerNoPermission
                 )
+            } else if !(selectedRoom?.canSend ?? false) {
+                readOnlyNotice(
+                    title: L10n.chatComposerReadOnlyTitle,
+                    subtitle: L10n.chatComposerNoPermission
+                )
             } else {
                 HStack(alignment: .bottom, spacing: 9) {
                     HStack(spacing: 8) {
@@ -713,6 +723,13 @@ struct ChatView: View {
             oldestID = page.oldestId
             newestID = page.newestId
             hasOlder = page.hasMore
+            if let room = page.room {
+                if let index = rooms.firstIndex(where: { $0.id == room.id }) {
+                    rooms[index] = room
+                } else {
+                    rooms.insert(room, at: 0)
+                }
+            }
             errorMessage = nil
             startPolling()
         } catch {
