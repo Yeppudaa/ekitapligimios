@@ -306,6 +306,11 @@ final class AppContainer: ObservableObject {
         blockedUserIDs.remove(userID)
     }
 
+    /// Replaces the local ignore cache after loading the authoritative server list.
+    func replaceBlockedUsers(_ userIDs: Set<Int>) {
+        blockedUserIDs = userIDs
+    }
+
     func updatePassword(currentPassword: String, newPassword: String) async throws {
         let response = try await account.updatePassword(currentPassword: currentPassword, newPassword: newPassword)
         try await applyAuthResponse(response)

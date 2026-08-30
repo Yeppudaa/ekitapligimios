@@ -14,7 +14,13 @@ struct BlockedMembersView: View {
             if isLoading {
                 ProgressView(L10n.blockedMembersLoading)
             } else if let errorMessage {
-                ContentUnavailableView(L10n.blockedMembersUnavailableTitle, systemImage: "exclamationmark.triangle", description: Text(errorMessage))
+                VStack(spacing: 12) {
+                    ContentUnavailableView(L10n.blockedMembersUnavailableTitle, systemImage: "exclamationmark.triangle", description: Text(errorMessage))
+                    Button(L10n.commonRetry) {
+                        Task { await load() }
+                    }
+                    .buttonStyle(.borderedProminent)
+                }
             } else if members.isEmpty {
                 ContentUnavailableView(L10n.blockedMembersEmptyTitle, systemImage: "hand.raised")
             } else {
@@ -31,6 +37,7 @@ struct BlockedMembersView: View {
                     }
                     .padding(.vertical, 4)
                 }
+                .refreshable { await load() }
             }
         }
         .navigationTitle(L10n.blockedMembersTitle)
@@ -39,9 +46,12 @@ struct BlockedMembersView: View {
 
     private func load() async {
         isLoading = true
+        errorMessage = nil
         defer { isLoading = false }
         do {
-            members = try await container.safety.blockedMembers().members
+            let loadedMembers = try await container.safety.blockedMembers().members
+            members = loadedMembers
+            container.replaceBlockedUsers(Set(loadedMembers.compactMap { Int($0.id) }))
         } catch {
             errorMessage = L10n.blockedMembersLoadFailed
         }

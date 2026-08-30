@@ -68,6 +68,7 @@ struct ProfileView: View {
             case .messages: ConversationsView()
             case .premium: PremiumView()
             case .settings: SettingsView()
+            case .blockedMembers: BlockedMembersView()
             case .security:
                 AccountSecurityView(currentEmail: profile?.email ?? "") {
                     Task { await container.refreshSessionData() }
@@ -190,6 +191,8 @@ struct ProfileView: View {
     private var accountActions: some View {
         VStack(spacing: 10) {
             EKActionTile(title: L10n.accountSecurityTitle, systemImage: "lock.shield.fill") { route = .security }
+            EKActionTile(title: L10n.communityBlockedUsers, systemImage: "hand.raised") { route = .blockedMembers }
+                .accessibilityIdentifier("profile-blocked-members")
             EKActionTile(title: L10n.settingsTitle, systemImage: "gearshape.fill") { route = .settings }
 
             Button {
@@ -399,6 +402,7 @@ private enum ProfileRoute: Hashable, Identifiable {
     case premium
     case settings
     case security
+    case blockedMembers
 
     var id: String { String(describing: self) }
 }

@@ -48,6 +48,8 @@ struct SettingsView: View {
             settingsLink(L10n.settingsNotifications, icon: "bell", destination: NotificationsView())
             settingsLink(L10n.conversationsTitle, icon: "envelope", destination: ConversationsView())
             settingsLink(L10n.myCommentsTitle, icon: "text.bubble", destination: MyCommentsView())
+            settingsLink(L10n.communityBlockedUsers, icon: "hand.raised", destination: BlockedMembersView())
+                .accessibilityIdentifier("settings-blocked-members")
         }
     }
 
