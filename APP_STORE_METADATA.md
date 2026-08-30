@@ -48,10 +48,11 @@ ekitap,kitap,pdf,epub,okuyucu,kütüphane,yazar,yayınevi,forum,türkçe
 © Ekitapligim.com. All rights reserved.
 
 ## Review Notes Draft
-GUIDELINE 1.2 RESUBMISSION — v1.0.0 (build 18 or later)
+GUIDELINE 1.2 RESUBMISSION — v1.0.0 (build 23)
 
 - Before Sign In / Create Account: Apple Standard EULA + community rules must be accepted (controls stay disabled until accepted). Accepted terms version is recorded by the server with successful authentication.
 - Visible ellipsis safety menus on UGC: forum topic rows, individual forum posts, book comments, Book Agenda posts/comments, chat messages, private messages, and book requests → Report / Block & Report.
+- Forum post actions now follow XenForo's server-provided edit/delete permissions; successful moderation and deletion responses update the visible thread immediately without exposing unauthorized actions.
 - Member profiles: Block, Unblock, and Block & Report. Blocked Members list supports unblock to reset the reviewer account.
 - Report → XenForo moderation queue (book requests → iOS UGC event queue) with reason. Block notifies moderators and hides that author’s content immediately on the current screen; ignore list is also filtered server-side on subsequent API responses.
 - One-to-one conversations with a blocked member are refused; in group chat, that member’s messages stay hidden.
@@ -90,7 +91,7 @@ Hello App Review Team,
 
 Thank you for your review and for the clear guidance under Guideline 1.2 – Safety – User-Generated Content.
 
-We have revised the app and our backend moderation controls, and we are resubmitting a new binary (version 1.0.0, build 18 or later).
+We have revised the app and our backend moderation controls, and we are resubmitting a new binary (version 1.0.0, build 23).
 
 How we address Guideline 1.2:
 
@@ -102,6 +103,8 @@ New and edited user-generated content is checked against an administrator-manage
 
 3. Flagging / reporting
 Visible Report controls are available on user-generated content surfaces, including forum topic rows, individual forum posts, book comments, Book Agenda posts and comments, chat messages, private messages, and book requests. Reports are sent to our moderation queue with a reason.
+
+The latest binary also uses XenForo's server-provided permissions for individual forum post actions and updates the visible thread immediately after a successful moderation or deletion response.
 
 4. Blocking abusive users
 Users can Block and Block & Report from content menus and member profiles. Blocking notifies our moderation team and immediately removes that user’s content from the reporting user’s feed. Blocked users are also filtered server-side on subsequent API responses. Users can unblock from the Blocked Members list. One-to-one conversations with a blocked member are refused; in group conversations, the blocked member’s messages remain hidden.
@@ -133,7 +136,7 @@ Ekitapligim Team
 
 ### App Review Information → Notes (short)
 
-Guideline 1.2 resubmission — v1.0.0 (build 18 or later).
+Guideline 1.2 resubmission — v1.0.0 (build 23).
 Before login/register: EULA + community rules must be accepted.
 UGC: Report and Block & Report on forum topics/posts, comments, Book Agenda, chat, messages, and book requests. Member profile Block / Block & Report. Blocking notifies moderators and hides content immediately (client + server).
 Filtering: objectionable terms screened before save (HTTP 422 if rejected).
