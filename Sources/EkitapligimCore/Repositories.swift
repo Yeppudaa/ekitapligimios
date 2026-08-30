@@ -646,7 +646,8 @@ public struct CommunityRepository: Sendable {
     }
 
     public func deletePost(postID: Int) async throws {
-        let _: SuccessResponse = try await apiClient.request(.deleteForumPost(postID: postID))
+        // Accept any 2xx JSON payload; XenForo public wrappers may omit/reshape `success`.
+        let _: EmptyResponse = try await apiClient.request(.deleteForumPost(postID: postID))
     }
 }
 

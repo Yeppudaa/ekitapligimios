@@ -884,9 +884,9 @@ public struct ForumPostDTO: Decodable, Equatable, Identifiable, Sendable {
         self.username = try container.decodeIfPresent(String.self, forKey: .username) ?? ""
         self.message = try container.decodeIfPresent(String.self, forKey: .message) ?? ""
         self.postDate = try container.decodeIfPresent(Int.self, forKey: .postDate) ?? 0
-        self.canEdit = try container.decodeIfPresent(Bool.self, forKey: .canEdit) ?? false
-        self.canDelete = try container.decodeIfPresent(Bool.self, forKey: .canDelete) ?? false
-        self.canReply = try container.decodeIfPresent(Bool.self, forKey: .canReply) ?? false
+        self.canEdit = container.decodeFlexibleBool(forKey: .canEdit)
+        self.canDelete = container.decodeFlexibleBool(forKey: .canDelete)
+        self.canReply = container.decodeFlexibleBool(forKey: .canReply)
         self.threadTitle = try container.decodeIfPresent(String.self, forKey: .threadTitle)
         self.imageUrls = try container.decodeIfPresent([String].self, forKey: .imageUrls)
         self.userId = try container.decodeIfPresent(Int.self, forKey: .userId)

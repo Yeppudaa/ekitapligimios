@@ -16,7 +16,10 @@ class UgcModerationMail extends AbstractJob
 		$emails = array_values(array_unique(array_filter(array_map('trim', preg_split('/[,;\s]+/', (string) (\XF::options()->ekIosUgcModeratorEmails ?? '')) ?: []))));
 		if (!$emails)
 		{
-			throw new \RuntimeException('IosApi UGC moderator email list is empty.');
+			// Misconfiguration must not crash the XenForo job queue repeatedly.
+			// Moderators still see reports in ACP; configure ekIosUgcModeratorEmails for email alerts.
+			\XF::logError('IosApi UGC moderator email list is empty (option ekIosUgcModeratorEmails). Skipping mail for event ' . $eventId . '.');
+			return $this->complete();
 		}
 		$level = (string) $this->data['escalation'];
 		$subject = $level === 'new' ? 'Yeni iOS UGC güvenlik raporu' : 'iOS UGC raporu SLA uyarısı: ' . strtoupper($level);

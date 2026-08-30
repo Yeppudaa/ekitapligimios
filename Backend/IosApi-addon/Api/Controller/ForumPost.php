@@ -33,10 +33,30 @@ class ForumPost extends \Ekitapligim\MobileApi\Api\Controller\AbstractMobileCont
 	{
 		$visitor = $this->assertRegisteredApiUser();
 		$post = $this->assertViewablePost((int) $params->post_id);
+		$thread = $post->Thread;
+		$isFirstPost = (bool) $post->isFirstPost();
 
-		if (!$post->canDelete('soft', $error))
+		// First post deletion is thread deletion in XenForo.
+		if ($isFirstPost)
 		{
-			throw $this->exception($this->apiError($error ?: 'You cannot delete this post.', 'cannot_delete', null, 403));
+			if (!$thread || !$thread->canDelete('soft', $error))
+			{
+				return $this->apiError(
+					$error ?: 'You cannot delete this thread.',
+					'cannot_delete',
+					null,
+					403
+				);
+			}
+		}
+		else if (!$post->canDelete('soft', $error))
+		{
+			return $this->apiError(
+				$error ?: 'You cannot delete this post.',
+				'cannot_delete',
+				null,
+				403
+			);
 		}
 
 		if (!$visitor->hasPermission('general', 'bypassFloodCheck'))
@@ -59,8 +79,27 @@ class ForumPost extends \Ekitapligim\MobileApi\Api\Controller\AbstractMobileCont
 			}
 		}
 
-		$deleter = $this->postDeleter($post);
-		$deleter->delete('soft');
+		try
+		{
+			if ($isFirstPost)
+			{
+				$deleter = $this->threadDeleter($thread);
+				$deleter->delete('soft');
+				return $this->apiResult([
+					'success' => true,
+					'thread_deleted' => true,
+					'threadDeleted' => true,
+				]);
+			}
+
+			$deleter = $this->postDeleter($post);
+			$deleter->delete('soft');
+		}
+		catch (\Throwable $e)
+		{
+			\XF::logException($e, false, 'IosApi forum post delete failed: ');
+			return $this->apiError('Post could not be deleted.', 'delete_failed', null, 500);
+		}
 
 		return $this->apiResult(['success' => true]);
 	}
@@ -187,6 +226,16 @@ class ForumPost extends \Ekitapligim\MobileApi\Api\Controller\AbstractMobileCont
 		}
 
 		return $this->service('XF:Post\Deleter', $post);
+	}
+
+	protected function threadDeleter(\XF\Entity\Thread $thread)
+	{
+		if (class_exists(\XF\Service\Thread\DeleterService::class))
+		{
+			return $this->service(\XF\Service\Thread\DeleterService::class, $thread);
+		}
+
+		return $this->service('XF:Thread\Deleter', $thread);
 	}
 
 	protected function assertViewablePost(int $postId): \XF\Entity\Post

@@ -424,9 +424,8 @@ struct ForumThreadDetailView: View {
 
     @ViewBuilder
     private func postOwnActions(_ post: ForumPostDTO) -> some View {
-        let isOwn = isOwnPost(post)
-        let canEdit = post.canEdit || isOwn
-        let canDelete = post.canDelete || isOwn
+        let canEdit = post.canEdit
+        let canDelete = post.canDelete
         if canEdit || canDelete {
             HStack(spacing: 10) {
                 if canEdit {
@@ -466,8 +465,10 @@ struct ForumThreadDetailView: View {
     @ViewBuilder
     private func postActions(_ post: ForumPostDTO) -> some View {
         let isOwn = isOwnPost(post)
-        let canEdit = post.canEdit || isOwn
-        let canDelete = post.canDelete || isOwn
+        // Trust XenForo flags from the API. Forcing delete on every own post
+        // caused 403 "cannot_delete" (edit window / first-post rules).
+        let canEdit = post.canEdit
+        let canDelete = post.canDelete
         if let contentID = Int(post.id), canEdit || canDelete || !isOwn {
             UGCSafetyMenu(
                 type: .forumPost,
@@ -534,7 +535,10 @@ struct ForumThreadDetailView: View {
             posts = try await container.community.posts(threadID: threadID).posts
             canReply = posts.last?.canReply ?? thread.canReply
         } catch {
-            errorMessage = L10n.forumThreadLoadFailed
+            // Don't overwrite a successful delete banner with a reload failure.
+            if posts.isEmpty {
+                errorMessage = L10n.forumThreadLoadFailed
+            }
         }
     }
 
@@ -594,13 +598,16 @@ struct ForumThreadDetailView: View {
     private func deletePost(_ post: ForumPostDTO) async {
         guard let postID = Int(post.id) else { return }
         pendingDelete = nil
+        errorMessage = nil
         do {
             try await container.community.deletePost(postID: postID)
             posts.removeAll { $0.id == post.id }
             statusMessage = L10n.forumThreadDeleted
+            // Reload quietly; a reload failure must not look like a delete failure.
+            guard !posts.isEmpty else { return }
             await load()
         } catch {
-            errorMessage = L10n.forumThreadDeleteFailed
+            errorMessage = error.serverMessage ?? L10n.forumThreadDeleteFailed
         }
     }
 
