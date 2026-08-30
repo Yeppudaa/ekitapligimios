@@ -607,7 +607,7 @@ struct ForumThreadDetailView: View {
             guard !posts.isEmpty else { return }
             await load()
         } catch {
-            errorMessage = error.serverMessage ?? L10n.forumThreadDeleteFailed
+            errorMessage = (error as? APIClientError)?.serverMessage ?? L10n.forumThreadDeleteFailed
         }
     }
 
