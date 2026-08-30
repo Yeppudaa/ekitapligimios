@@ -52,4 +52,9 @@ class Setup extends AbstractSetup
 	{
 		UgcModeration::ensureTable();
 	}
+
+	public function upgrade1000014Step1(): void
+	{
+		// Rebuilds ios-api forum post edit/delete public routes (POST /posts/{id}/edit|delete).
+	}
 }

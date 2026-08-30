@@ -141,8 +141,8 @@ Behavior: toggles the current user's support vote and returns `voted` plus the c
 - `GET /forums/{forum_id}/threads`
 - `GET /threads/{thread_id}/posts`
 - `POST /threads/{thread_id}/posts`
-- `POST /posts/{post_id}` (edit own/permitted post)
-- `DELETE /posts/{post_id}` (soft-delete own/permitted post)
+- `POST /posts/{post_id}/edit` (edit own/permitted post; persists through XenForo Post Editor)
+- `POST /posts/{post_id}/delete` (soft-delete own/permitted post; XenForo-compatible POST, not HTTP DELETE)
 - `GET /members`
 - `GET /members/{user_id}`
 - `POST /members/{user_id}/follow`

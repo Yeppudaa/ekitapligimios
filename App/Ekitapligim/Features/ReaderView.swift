@@ -20,8 +20,11 @@ struct ReaderView: View {
     @State private var errorMessage: String?
     @State private var showsBookmarks = false
     @State private var showsPagePicker = false
+    @State private var showsReaderSettings = false
     @State private var pdfLayout: PDFReadingLayout = .continuous
     @State private var bookmarks: [ReaderBookmark] = []
+    @State private var progressSyncTask: Task<Void, Never>?
+    @State private var syncState: ReaderSyncState = .idle
 
     init(book: BookDTO) {
         self.book = book
@@ -36,6 +39,7 @@ struct ReaderView: View {
             Divider()
             readerContent
         }
+        .background(EKitapligimPalette.page)
         .navigationBarTitleDisplayMode(.inline)
         .sheet(isPresented: $showsBookmarks) {
             ReaderBookmarksView(
@@ -60,15 +64,23 @@ struct ReaderView: View {
                 )
             }
         }
+        .sheet(isPresented: $showsReaderSettings) {
+            ReaderSettingsView(layout: $pdfLayout, fileType: readerFileType)
+                .presentationDetents([.medium])
+                .presentationDragIndicator(.visible)
+        }
         .task {
             refreshBookmarks()
             await loadReaderSession()
         }
         .onDisappear {
+            progressSyncTask?.cancel()
             saveProgress()
             container.readerContentLoader.removePreparedFile(at: temporaryReaderURL)
             temporaryReaderURL = nil
         }
+        .onChange(of: progress.currentPage) { _, _ in scheduleProgressSync() }
+        .onChange(of: epubPosition) { _, _ in scheduleProgressSync() }
     }
 
     @ViewBuilder
@@ -77,12 +89,15 @@ struct ReaderView: View {
             title: book.title,
             progressPercent: displayedProgressPercent,
             detail: readerFileType == "epub" ? L10n.readerEPUBFormat : L10n.readerPage(progress.currentPage, progress.totalPages),
+            author: book.author,
             isBookmarked: isCurrentPageBookmarked,
             bookmarkCount: bookmarks.count,
             supportsBookmarks: readerFileType != "epub",
+            syncState: syncState,
             onToggleBookmark: toggleCurrentBookmark,
             onShowBookmarks: { showsBookmarks = true },
-            onShowPages: { showsPagePicker = true }
+            onShowPages: { showsPagePicker = true },
+            onShowSettings: { showsReaderSettings = true }
         )
     }
 
@@ -149,16 +164,34 @@ struct ReaderView: View {
         let latestPage = readerFileType == "epub" ? epubPosition : progress.currentPage
         let latestPercent = displayedProgressPercent
         let percentInt = Int(latestPercent.rounded())
-        Task {
-            if (try? await container.books.updateProgress(
-                bookID: bookID,
-                page: latestPage,
-                percent: latestPercent
-            )) != nil {
-                container.patchLibraryItem(book.id) { item in
-                    item.updating(progressPercent: percentInt, lastReadPage: latestPage)
-                }
+        progressSyncTask?.cancel()
+        progressSyncTask = Task {
+            await syncProgress(page: latestPage, percent: latestPercent, percentInt: percentInt, bookID: bookID)
+        }
+    }
+
+    private func scheduleProgressSync() {
+        guard !isLoading, readerURL != nil, let bookID else { return }
+        progressSyncTask?.cancel()
+        let latestPage = readerFileType == "epub" ? epubPosition : progress.currentPage
+        let latestPercent = displayedProgressPercent
+        let percentInt = Int(latestPercent.rounded())
+        progressSyncTask = Task {
+            try? await Task.sleep(for: .milliseconds(650))
+            guard !Task.isCancelled else { return }
+            await syncProgress(page: latestPage, percent: latestPercent, percentInt: percentInt, bookID: bookID)
+        }
+    }
+
+    private func syncProgress(page: Int, percent: Double, percentInt: Int, bookID: Int) async {
+        syncState = .syncing
+        if (try? await container.books.updateProgress(bookID: bookID, page: page, percent: percent)) != nil {
+            container.patchLibraryItem(book.id) { item in
+                item.updating(progressPercent: percentInt, lastReadPage: page)
             }
+            syncState = .synced
+        } else {
+            syncState = .failed
         }
     }
 
@@ -269,62 +302,138 @@ struct ReaderView: View {
     }
 }
 
+private enum ReaderSyncState: Equatable {
+    case idle, syncing, synced, failed
+
+    var label: String {
+        switch self {
+        case .idle: L10n.readerSyncReady
+        case .syncing: L10n.readerSyncSaving
+        case .synced: L10n.readerSyncSaved
+        case .failed: L10n.readerSyncPending
+        }
+    }
+
+    var color: Color {
+        switch self {
+        case .failed: EKitapligimPalette.amber
+        case .syncing: EKitapligimPalette.teal
+        default: EKitapligimPalette.success
+        }
+    }
+}
+
 @MainActor
 private struct ReaderToolbar: View {
     let title: String
     let progressPercent: Double
     let detail: String
+    let author: String
     let isBookmarked: Bool
     let bookmarkCount: Int
     let supportsBookmarks: Bool
+    let syncState: ReaderSyncState
     let onToggleBookmark: () -> Void
     let onShowBookmarks: () -> Void
     let onShowPages: () -> Void
+    let onShowSettings: () -> Void
 
     var body: some View {
-        HStack(spacing: 12) {
-            VStack(alignment: .leading, spacing: 2) {
-                Text(title)
-                    .font(.headline)
-                    .lineLimit(1)
-                Text(detail)
-                    .font(.caption.monospacedDigit())
-                    .foregroundStyle(.secondary)
+        VStack(spacing: 12) {
+            HStack(spacing: 12) {
+                VStack(alignment: .leading, spacing: 3) {
+                    Text(title)
+                        .font(.headline.weight(.semibold))
+                        .lineLimit(1)
+                    HStack(spacing: 6) {
+                        Text(author.isEmpty ? L10n.menuBrandTitle : author)
+                            .lineLimit(1)
+                        Text("•")
+                        Text(detail)
+                            .font(.caption.monospacedDigit())
+                    }
+                    .font(.caption)
+                    .foregroundStyle(EKitapligimPalette.muted)
+                }
+                Spacer(minLength: 4)
+                ZStack {
+                    Circle()
+                        .stroke(EKitapligimPalette.tealSoft, lineWidth: 5)
+                    Circle()
+                        .trim(from: 0, to: min(max(progressPercent / 100, 0), 1))
+                        .stroke(EKitapligimPalette.teal, style: StrokeStyle(lineWidth: 5, lineCap: .round))
+                        .rotationEffect(.degrees(-90))
+                    Text("%\(Int(progressPercent.rounded()))")
+                        .font(.caption2.monospacedDigit().weight(.bold))
+                        .foregroundStyle(EKitapligimPalette.tealDark)
+                }
+                .frame(width: 42, height: 42)
             }
-            Spacer(minLength: 8)
-            Text(L10n.commonPercent(Int(progressPercent)))
-                .font(.subheadline.monospacedDigit())
-                .foregroundStyle(.secondary)
-            if supportsBookmarks {
-                Button(action: onShowPages) {
-                    Image(systemName: "square.grid.2x2")
-                }
-                .accessibilityLabel(L10n.readerPages)
-                Button(action: onToggleBookmark) {
-                    Image(systemName: isBookmarked ? "bookmark.fill" : "bookmark")
-                }
-                .accessibilityLabel(isBookmarked ? L10n.readerRemoveBookmark : L10n.readerAddBookmark)
-                Button(action: onShowBookmarks) {
-                    Image(systemName: "list.bullet")
-                        .overlay(alignment: .topTrailing) {
-                            if bookmarkCount > 0 {
-                                Text("\(bookmarkCount)")
-                                    .font(.caption2.monospacedDigit())
-                                    .padding(2)
-                                    .background(.tint, in: Circle())
-                                    .foregroundStyle(.white)
-                                    .offset(x: 7, y: -7)
-                            }
+            HStack(spacing: 8) {
+                Image(systemName: syncState == .syncing ? "arrow.triangle.2.circlepath" : "checkmark.shield.fill")
+                    .symbolEffect(.pulse, options: .repeating, isActive: syncState == .syncing)
+                Text(syncState.label)
+                Spacer()
+                Text(L10n.commonPercent(Int(progressPercent)))
+                    .font(.caption.monospacedDigit().weight(.semibold))
+            }
+            .font(.caption2.weight(.medium))
+            .foregroundStyle(syncState.color)
+
+            ScrollView(.horizontal, showsIndicators: false) {
+                HStack(spacing: 10) {
+                    if supportsBookmarks {
+                        ReaderActionButton(
+                            title: isBookmarked ? L10n.readerRemoveBookmark : L10n.readerAddBookmark,
+                            systemImage: isBookmarked ? "bookmark.fill" : "bookmark",
+                            action: onToggleBookmark
+                        )
+                        ReaderActionButton(
+                            title: bookmarkCount > 0 ? "\(L10n.readerBookmarks) (\(bookmarkCount))" : L10n.readerBookmarks,
+                            systemImage: "list.bullet"
+                        ) {
+                            onShowBookmarks()
                         }
+                    }
+                    if supportsBookmarks {
+                        ReaderActionButton(title: L10n.readerPages, systemImage: "square.grid.2x2") {
+                            onShowPages()
+                        }
+                    }
+                    ReaderActionButton(title: L10n.readerSettings, systemImage: "slider.horizontal.3") {
+                        onShowSettings()
+                    }
+                    Spacer(minLength: 0)
                 }
-                .accessibilityLabel(L10n.readerBookmarks)
             }
         }
-        .padding()
+        .padding(.horizontal, 16)
+        .padding(.vertical, 12)
+        .background(.ultraThinMaterial)
     }
 }
 
-private enum PDFReadingLayout {
+@MainActor
+private struct ReaderActionButton: View {
+    let title: String
+    let systemImage: String
+    let action: () -> Void
+
+    var body: some View {
+        Button(action: action) {
+            Label(title, systemImage: systemImage)
+                .font(.caption.weight(.semibold))
+                .foregroundStyle(EKitapligimPalette.ink)
+                .padding(.horizontal, 10)
+                .padding(.vertical, 7)
+                .background(EKitapligimPalette.surfaceAlt, in: Capsule())
+        }
+        .buttonStyle(.plain)
+        .accessibilityLabel(title)
+    }
+}
+
+private enum PDFReadingLayout: Hashable {
     case continuous
     case paged
 }
@@ -335,46 +444,102 @@ private struct PDFReaderControls: View {
     let onRequestPage: (Int) -> Void
 
     var body: some View {
-        HStack(spacing: 12) {
-            Button {
-                onRequestPage(max(1, progress.currentPage - 1))
-            } label: {
-                Image(systemName: "chevron.left")
-            }
-            .disabled(progress.currentPage <= 1)
-            .accessibilityLabel(L10n.readerPreviousPage)
+        VStack(spacing: 8) {
+            HStack(spacing: 14) {
+                Button {
+                    onRequestPage(max(1, progress.currentPage - 1))
+                } label: {
+                    Image(systemName: "chevron.left")
+                }
+                .disabled(progress.currentPage <= 1)
+                .accessibilityLabel(L10n.readerPreviousPage)
 
-            Slider(
-                value: Binding(
-                    get: { Double(progress.currentPage) },
-                    set: { onRequestPage(Int($0.rounded())) }
-                ),
-                in: 1...Double(max(1, progress.totalPages)),
-                step: 1
-            )
-            .accessibilityLabel(L10n.readerPageSlider)
-            .accessibilityValue(L10n.readerPage(progress.currentPage, progress.totalPages))
+                Slider(
+                    value: Binding(
+                        get: { Double(progress.currentPage) },
+                        set: { onRequestPage(Int($0.rounded())) }
+                    ),
+                    in: 1...Double(max(1, progress.totalPages)),
+                    step: 1
+                )
+                .tint(EKitapligimPalette.teal)
+                .accessibilityLabel(L10n.readerPageSlider)
+                .accessibilityValue(L10n.readerPage(progress.currentPage, progress.totalPages))
 
-            Button {
-                onRequestPage(min(progress.totalPages, progress.currentPage + 1))
-            } label: {
-                Image(systemName: "chevron.right")
+                Button {
+                    onRequestPage(min(progress.totalPages, progress.currentPage + 1))
+                } label: {
+                    Image(systemName: "chevron.right")
+                }
+                .disabled(progress.currentPage >= progress.totalPages)
+                .accessibilityLabel(L10n.readerNextPage)
             }
-            .disabled(progress.currentPage >= progress.totalPages)
-            .accessibilityLabel(L10n.readerNextPage)
 
-            Menu {
-                Button(L10n.readerContinuousLayout) { layout = .continuous }
-                Button(L10n.readerPagedLayout) { layout = .paged }
-            } label: {
-                Image(systemName: layout == .continuous ? "arrow.down.doc" : "rectangle.portrait.on.rectangle.portrait")
+            HStack {
+                Text(L10n.readerPage(progress.currentPage, progress.totalPages))
+                    .font(.caption.monospacedDigit().weight(.semibold))
+                    .foregroundStyle(EKitapligimPalette.muted)
+                Spacer()
+                Menu {
+                    Button {
+                        layout = .continuous
+                    } label: {
+                        Label(L10n.readerContinuousLayout, systemImage: "arrow.down.doc")
+                    }
+                    Button {
+                        layout = .paged
+                    } label: {
+                        Label(L10n.readerPagedLayout, systemImage: "rectangle.portrait.on.rectangle.portrait")
+                    }
+                } label: {
+                    Label(L10n.readerLayout, systemImage: layout == .continuous ? "arrow.down.doc" : "rectangle.portrait.on.rectangle.portrait")
+                }
             }
-            .accessibilityLabel(L10n.readerLayout)
         }
         .buttonStyle(.borderless)
-        .padding(.horizontal, 16)
-        .frame(height: 52)
+        .padding(.horizontal, 18)
+        .padding(.vertical, 10)
         .background(.bar)
+    }
+}
+
+@MainActor
+private struct ReaderSettingsView: View {
+    @Environment(\.dismiss) private var dismiss
+    @Binding var layout: PDFReadingLayout
+    let fileType: String
+
+    var body: some View {
+        NavigationStack {
+            Form {
+                Section {
+                    Picker(L10n.readerLayout, selection: $layout) {
+                        Text(L10n.readerContinuousLayout).tag(PDFReadingLayout.continuous)
+                        Text(L10n.readerPagedLayout).tag(PDFReadingLayout.paged)
+                    }
+                    .pickerStyle(.inline)
+                } header: {
+                    Label(L10n.readerSettingsAppearance, systemImage: "rectangle.3.group")
+                } footer: {
+                    Text(fileType == "epub" ? L10n.readerSettingsEPUBNote : L10n.readerSettingsPDFNote)
+                }
+                Section {
+                    LabeledContent(L10n.readerSettingsFormat, value: fileType.uppercased())
+                    LabeledContent(L10n.readerSettingsSecureConnection, value: L10n.readerSettingsActive)
+                } header: {
+                    Label(L10n.readerSettingsBookInfo, systemImage: "info.circle")
+                }
+            }
+            .scrollContentBackground(.hidden)
+            .background(EKitapligimPalette.pageGradient)
+            .navigationTitle(L10n.readerSettings)
+            .navigationBarTitleDisplayMode(.inline)
+            .toolbar {
+                ToolbarItem(placement: .confirmationAction) {
+                    Button(L10n.commonClose) { dismiss() }
+                }
+            }
+        }
     }
 }
 

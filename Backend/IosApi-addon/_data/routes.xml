@@ -72,6 +72,9 @@
   <route route_type="public" route_prefix="ios-api" sub_name="member-unfollow-ios" format="v1/member-unfollow/:int&lt;user_id&gt;" controller="Ekitapligim\MobileApi:Members" action_prefix="unfollow" />
   <route route_type="public" route_prefix="ios-api" sub_name="members" format="v1/members" controller="Ekitapligim\MobileApi:Members" />
   <route route_type="public" route_prefix="ios-api" sub_name="post-item" format="v1/posts/:int&lt;post_id&gt;/" controller="Ekitapligim\IosApi:ForumPost" />
+  <route route_type="public" route_prefix="ios-api" sub_name="post-item-id" format="v1/posts/:int&lt;post_id&gt;" controller="Ekitapligim\IosApi:ForumPost" />
+  <route route_type="public" route_prefix="ios-api" sub_name="post-edit" format="v1/posts/:int&lt;post_id&gt;/edit" controller="Ekitapligim\IosApi:ForumPost" action_prefix="edit" />
+  <route route_type="public" route_prefix="ios-api" sub_name="post-delete" format="v1/posts/:int&lt;post_id&gt;/delete" controller="Ekitapligim\IosApi:ForumPost" action_prefix="delete" />
   <route route_type="public" route_prefix="ios-api" sub_name="post-report" format="v1/posts/:int&lt;post_id&gt;/report" controller="Ekitapligim\IosApi:PostReport" />
   <route route_type="public" route_prefix="ios-api" sub_name="safety-reports" format="v1/safety/reports" controller="Ekitapligim\IosApi:SafetyReports" />
   <route route_type="public" route_prefix="ios-api" sub_name="publisher-books" format="v1/publishers/:str&lt;slug&gt;/books" controller="Ekitapligim\MobileApi:PublisherBooks" />

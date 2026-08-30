@@ -38,14 +38,14 @@ final class AndroidUGCParityContractTests: XCTestCase {
         XCTAssertEqual(form(reply), ["message": "Cevap"])
 
         let edit = APIEndpoint.editForumPost(postID: 44, message: "Güncel")
-        XCTAssertEqual(edit.path, "posts/44")
+        XCTAssertEqual(edit.path, "posts/44/edit")
         XCTAssertEqual(edit.method, .post)
         XCTAssertTrue(edit.requiresAuthentication)
         XCTAssertEqual(form(edit), ["message": "Güncel"])
 
         let delete = APIEndpoint.deleteForumPost(postID: 44)
-        XCTAssertEqual(delete.path, "posts/44")
-        XCTAssertEqual(delete.method, .delete)
+        XCTAssertEqual(delete.path, "posts/44/delete")
+        XCTAssertEqual(delete.method, .post)
         XCTAssertTrue(delete.requiresAuthentication)
     }
 

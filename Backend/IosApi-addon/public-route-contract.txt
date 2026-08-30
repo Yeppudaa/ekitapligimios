@@ -59,6 +59,8 @@ members
 members/:value/block
 members/:value/unblock
 posts/:value
+posts/:value/delete
+posts/:value/edit
 posts/:value/report
 publishers
 publishers/:value/books

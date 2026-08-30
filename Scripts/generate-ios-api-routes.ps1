@@ -77,7 +77,11 @@ foreach ($route in @($source.routes.route | Where-Object { $_.route_type -eq "pu
 
 foreach ($customRoute in @(
     @{ sub_name = "legal-terms"; format = "v1/legal/terms"; controller = "Ekitapligim\IosApi:LegalTerms" },
-    @{ sub_name = "safety-reports"; format = "v1/safety/reports"; controller = "Ekitapligim\IosApi:SafetyReports" }
+    @{ sub_name = "safety-reports"; format = "v1/safety/reports"; controller = "Ekitapligim\IosApi:SafetyReports" },
+    @{ sub_name = "post-item"; format = "v1/posts/:int<post_id>/"; controller = "Ekitapligim\IosApi:ForumPost" },
+    @{ sub_name = "post-item-id"; format = "v1/posts/:int<post_id>"; controller = "Ekitapligim\IosApi:ForumPost" },
+    @{ sub_name = "post-edit"; format = "v1/posts/:int<post_id>/edit"; controller = "Ekitapligim\IosApi:ForumPost"; action_prefix = "edit" },
+    @{ sub_name = "post-delete"; format = "v1/posts/:int<post_id>/delete"; controller = "Ekitapligim\IosApi:ForumPost"; action_prefix = "delete" }
 )) {
     $node = $doc.CreateElement("route")
     $node.SetAttribute("route_type", "public")
@@ -85,6 +89,9 @@ foreach ($customRoute in @(
     $node.SetAttribute("sub_name", $customRoute.sub_name)
     $node.SetAttribute("format", $customRoute.format)
     $node.SetAttribute("controller", $customRoute.controller)
+    if ($customRoute.ContainsKey("action_prefix") -and $customRoute.action_prefix) {
+        $node.SetAttribute("action_prefix", $customRoute.action_prefix)
+    }
     [void]$routesNode.AppendChild($node)
     $added++
 }

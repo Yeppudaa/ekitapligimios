@@ -11,6 +11,16 @@ class ForumPost extends \Ekitapligim\MobileApi\Api\Controller\AbstractMobileCont
 
 	public function actionPost(ParameterBag $params)
 	{
+		if ($this->isDeleteOverride())
+		{
+			return $this->actionDelete($params);
+		}
+
+		return $this->editPost($params);
+	}
+
+	public function actionEdit(ParameterBag $params)
+	{
 		return $this->editPost($params);
 	}
 
@@ -49,7 +59,7 @@ class ForumPost extends \Ekitapligim\MobileApi\Api\Controller\AbstractMobileCont
 			}
 		}
 
-		$deleter = $this->service('XF:Post\Deleter', $post);
+		$deleter = $this->postDeleter($post);
 		$deleter->delete('soft');
 
 		return $this->apiResult(['success' => true]);
@@ -65,7 +75,7 @@ class ForumPost extends \Ekitapligim\MobileApi\Api\Controller\AbstractMobileCont
 			throw $this->exception($this->apiError($error ?: 'You cannot edit this post.', 'cannot_edit', null, 403));
 		}
 
-		$message = trim((string) $this->filter('message', 'str'));
+		$message = $this->filterMessage();
 		if ($policyError = $this->validateUgcWrite([$message]))
 		{
 			return $policyError;
@@ -75,7 +85,7 @@ class ForumPost extends \Ekitapligim\MobileApi\Api\Controller\AbstractMobileCont
 			return $this->apiError('Reply message is too short.', 'message_too_short');
 		}
 
-		$editor = $this->service('XF:Post\Editor', $post);
+		$editor = $this->postEditor($post);
 		$editor->setMessage($message);
 		$editor->checkForSpam();
 
@@ -104,7 +114,20 @@ class ForumPost extends \Ekitapligim\MobileApi\Api\Controller\AbstractMobileCont
 			}
 		}
 
-		$editor->save();
+		$saved = $editor->save();
+		if ($saved instanceof \XF\Entity\Post)
+		{
+			$post = $saved;
+		}
+		else
+		{
+			$reloaded = $this->em()->find('XF:Post', (int) $params->post_id, ['Thread', 'Thread.Forum', 'User']);
+			if ($reloaded)
+			{
+				$post = $reloaded;
+			}
+		}
+
 		$thread = $post->Thread;
 		if (!$thread)
 		{
@@ -115,6 +138,55 @@ class ForumPost extends \Ekitapligim\MobileApi\Api\Controller\AbstractMobileCont
 			'success' => true,
 			'post' => $this->serializePost($post, $thread)
 		]);
+	}
+
+	protected function isDeleteOverride(): bool
+	{
+		$method = strtolower(trim((string) $this->filter('_method', 'str')));
+		return $method === 'delete';
+	}
+
+	protected function filterMessage(): string
+	{
+		$message = trim((string) $this->filter('message', 'str'));
+		if ($message !== '')
+		{
+			return $message;
+		}
+
+		$raw = trim((string) $this->request->getInputRaw());
+		if ($raw === '')
+		{
+			return '';
+		}
+
+		$decoded = json_decode($raw, true);
+		if (is_array($decoded) && isset($decoded['message']))
+		{
+			return trim((string) $decoded['message']);
+		}
+
+		return '';
+	}
+
+	protected function postEditor(\XF\Entity\Post $post)
+	{
+		if (class_exists(\XF\Service\Post\EditorService::class))
+		{
+			return $this->service(\XF\Service\Post\EditorService::class, $post);
+		}
+
+		return $this->service('XF:Post\Editor', $post);
+	}
+
+	protected function postDeleter(\XF\Entity\Post $post)
+	{
+		if (class_exists(\XF\Service\Post\DeleterService::class))
+		{
+			return $this->service(\XF\Service\Post\DeleterService::class, $post);
+		}
+
+		return $this->service('XF:Post\Deleter', $post);
 	}
 
 	protected function assertViewablePost(int $postId): \XF\Entity\Post

@@ -126,6 +126,18 @@ public enum L10n {
     public static let readerLayout = localized("reader.layout", defaultValue: "Okuma düzeni")
     public static let readerContinuousLayout = localized("reader.layout.continuous", defaultValue: "Dikey sürekli")
     public static let readerPagedLayout = localized("reader.layout.paged", defaultValue: "Sayfa sayfa")
+    public static let readerSettings = localized("reader.settings", defaultValue: "Okuyucu ayarları")
+    public static let readerSettingsAppearance = localized("reader.settings.appearance", defaultValue: "Görünüm")
+    public static let readerSettingsBookInfo = localized("reader.settings.bookInfo", defaultValue: "Kitap bilgisi")
+    public static let readerSettingsFormat = localized("reader.settings.format", defaultValue: "Biçim")
+    public static let readerSettingsSecureConnection = localized("reader.settings.secureConnection", defaultValue: "Güvenli bağlantı")
+    public static let readerSettingsActive = localized("reader.settings.active", defaultValue: "Aktif")
+    public static let readerSettingsEPUBNote = localized("reader.settings.epubNote", defaultValue: "EPUB görünümü Readium tarafından yönetilir.")
+    public static let readerSettingsPDFNote = localized("reader.settings.pdfNote", defaultValue: "PDF sayfaları arasında geçiş biçimini seçin.")
+    public static let readerSyncReady = localized("reader.sync.ready", defaultValue: "Sunucu bağlantısı hazır")
+    public static let readerSyncSaving = localized("reader.sync.saving", defaultValue: "Sunucuya kaydediliyor")
+    public static let readerSyncSaved = localized("reader.sync.saved", defaultValue: "Sunucuya kaydedildi")
+    public static let readerSyncPending = localized("reader.sync.pending", defaultValue: "Senkronizasyon bekliyor")
 
     public static func readerPage(_ current: Int, _ total: Int) -> String {
         String(format: localized("reader.page", defaultValue: "Sayfa %d / %d"), current, total)

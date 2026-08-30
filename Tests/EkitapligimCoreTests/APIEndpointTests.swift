@@ -223,13 +223,13 @@ final class APIEndpointTests: XCTestCase {
         XCTAssertTrue(reply.requiresAuthentication)
 
         let edit = APIEndpoint.editForumPost(postID: 44, message: "Güncel")
-        XCTAssertEqual(edit.path, "posts/44")
+        XCTAssertEqual(edit.path, "posts/44/edit")
         XCTAssertEqual(edit.method, .post)
         XCTAssertTrue(edit.requiresAuthentication)
 
         let delete = APIEndpoint.deleteForumPost(postID: 44)
-        XCTAssertEqual(delete.path, "posts/44")
-        XCTAssertEqual(delete.method, .delete)
+        XCTAssertEqual(delete.path, "posts/44/delete")
+        XCTAssertEqual(delete.method, .post)
         XCTAssertTrue(delete.requiresAuthentication)
 
         let create = APIEndpoint.createForumThread(forumID: 12, title: "Başlık", message: "Mesaj")

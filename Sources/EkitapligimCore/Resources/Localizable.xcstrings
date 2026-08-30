@@ -3884,6 +3884,42 @@
     "reader.layout.paged": {
       "localizations": { "tr": { "stringUnit": { "state": "translated", "value": "Sayfa sayfa" } } }
     },
+    "reader.settings": {
+      "localizations": { "tr": { "stringUnit": { "state": "translated", "value": "Okuyucu ayarları" } } }
+    },
+    "reader.settings.appearance": {
+      "localizations": { "tr": { "stringUnit": { "state": "translated", "value": "Görünüm" } } }
+    },
+    "reader.settings.bookInfo": {
+      "localizations": { "tr": { "stringUnit": { "state": "translated", "value": "Kitap bilgisi" } } }
+    },
+    "reader.settings.format": {
+      "localizations": { "tr": { "stringUnit": { "state": "translated", "value": "Biçim" } } }
+    },
+    "reader.settings.secureConnection": {
+      "localizations": { "tr": { "stringUnit": { "state": "translated", "value": "Güvenli bağlantı" } } }
+    },
+    "reader.settings.active": {
+      "localizations": { "tr": { "stringUnit": { "state": "translated", "value": "Aktif" } } }
+    },
+    "reader.settings.epubNote": {
+      "localizations": { "tr": { "stringUnit": { "state": "translated", "value": "EPUB görünümü Readium tarafından yönetilir." } } }
+    },
+    "reader.settings.pdfNote": {
+      "localizations": { "tr": { "stringUnit": { "state": "translated", "value": "PDF sayfaları arasında geçiş biçimini seçin." } } }
+    },
+    "reader.sync.ready": {
+      "localizations": { "tr": { "stringUnit": { "state": "translated", "value": "Sunucu bağlantısı hazır" } } }
+    },
+    "reader.sync.saving": {
+      "localizations": { "tr": { "stringUnit": { "state": "translated", "value": "Sunucuya kaydediliyor" } } }
+    },
+    "reader.sync.saved": {
+      "localizations": { "tr": { "stringUnit": { "state": "translated", "value": "Sunucuya kaydedildi" } } }
+    },
+    "reader.sync.pending": {
+      "localizations": { "tr": { "stringUnit": { "state": "translated", "value": "Senkronizasyon bekliyor" } } }
+    },
     "reader.nextPage": {
       "localizations": { "tr": { "stringUnit": { "state": "translated", "value": "Sonraki sayfa" } } }
     },

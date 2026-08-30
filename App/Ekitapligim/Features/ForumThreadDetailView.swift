@@ -525,7 +525,10 @@ struct ForumThreadDetailView: View {
             errorMessage = L10n.forumThreadInvalidThread
             return
         }
-        isLoading = true
+        let showSpinner = posts.isEmpty
+        if showSpinner {
+            isLoading = true
+        }
         defer { isLoading = false }
         do {
             posts = try await container.community.posts(threadID: threadID).posts
@@ -582,6 +585,7 @@ struct ForumThreadDetailView: View {
             }
             editingPost = nil
             statusMessage = L10n.forumThreadEdited
+            await load()
         } catch {
             errorMessage = L10n.forumThreadEditFailed
         }
@@ -594,6 +598,7 @@ struct ForumThreadDetailView: View {
             try await container.community.deletePost(postID: postID)
             posts.removeAll { $0.id == post.id }
             statusMessage = L10n.forumThreadDeleted
+            await load()
         } catch {
             errorMessage = L10n.forumThreadDeleteFailed
         }

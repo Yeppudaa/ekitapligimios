@@ -54,13 +54,15 @@ Regenerate routes after MobileApi reference updates:
 - `POST /ios-api/v1/members/{user_id}/block|unblock`
 - `GET|POST /ios-api/v1/me/terms`, `POST /ios-api/v1/me/terms/accept`
 - `POST /ios-api/v1/posts/{post_id}/report`
+- `POST /ios-api/v1/posts/{post_id}/edit` — edit forum post (XenForo Post Editor; requires 1.0.14+)
+- `POST /ios-api/v1/posts/{post_id}/delete` — soft-delete forum post (POST, not HTTP DELETE; requires 1.0.14+)
 - `GET /ios-api/v1/legal/terms`
 - `POST /ios-api/v1/safety/reports`
 - `POST /ios-api/v1/auth/login|register` with mandatory `accepted_terms_version`
 - `POST /ios-api/v1/forums/{node_id}/threads` — create forum topic (IosApi `ForumThreads::actionPost`; requires v1.0.4+ deploy)
 - `GET|POST /ios-api/v1/threads/{thread_id}/posts` — list/reply (IosApi `ThreadPosts` + Pub wrapper; requires v1.0.5+ deploy)
 
-IosApi 1.0.13 wraps every social create/edit action with a managed objectionable-content filter, Unicode/punctuation normalization, and XenForo spam checks before persistence. It returns `422 content_policy_violation` without saving rejected text. Authenticated social reads remove ignored users; one-to-one conversations with blocked members are refused while group conversations retain other participants and hide blocked messages. Forum posts expose edit/delete when XenForo permits it (`POST`/`DELETE` `/posts/{id}`).
+IosApi 1.0.13 wraps every social create/edit action with a managed objectionable-content filter, Unicode/punctuation normalization, and XenForo spam checks before persistence. It returns `422 content_policy_violation` without saving rejected text. Authenticated social reads remove ignored users; one-to-one conversations with blocked members are refused while group conversations retain other participants and hide blocked messages. Forum posts expose edit/delete when XenForo permits it (`POST /posts/{id}/edit` and `POST /posts/{id}/delete`).
 
 Reports use XenForo's report queue and an additive `xf_ekitapligim_ios_ugc_event` table. A queued job sends moderator email without private bodies or secrets. The SLA cron runs every 15 minutes, reminds at 20 hours, escalates at 24 hours, and tracks report, action, and closure timestamps.
 

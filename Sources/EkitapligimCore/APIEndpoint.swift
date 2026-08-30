@@ -537,7 +537,7 @@ public extension APIEndpoint {
     static func editForumPost(postID: Int, message: String) -> APIEndpoint {
         APIEndpoint(
             method: .post,
-            path: "posts/\(postID)",
+            path: "posts/\(postID)/edit",
             body: .form(["message": message]),
             requiresAuthentication: true
         )
@@ -545,8 +545,8 @@ public extension APIEndpoint {
 
     static func deleteForumPost(postID: Int) -> APIEndpoint {
         APIEndpoint(
-            method: .delete,
-            path: "posts/\(postID)",
+            method: .post,
+            path: "posts/\(postID)/delete",
             requiresAuthentication: true
         )
     }
