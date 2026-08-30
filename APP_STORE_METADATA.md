@@ -11,10 +11,12 @@
 Kitapları keşfedin, PDF ve EPUB okuyun, kaldığınız yeri eşitleyin ve Ekitaplığım okur topluluğuna katılın.
 
 ## What's New
-- Giriş ve kayıt öncesine EULA ile topluluk kuralları onayı eklendi.
-- Forum, kitap yorumu, Kitap Gündemi, sohbet ve özel mesajlarda görünür bildirme ve engelleme işlemleri eklendi.
-- Engellenen kullanıcıların içerikleri tüm topluluk ekranlarından anında kaldırılıyor.
-- Topluluk Güvenliği ekranı ve 24 saatlik moderasyon taahhüdü eklendi.
+- Giriş ve kayıt öncesinde Apple Standard EULA ve topluluk kuralları onayı zorunlu.
+- Forum konuları ve tekil mesajlar, kitap yorumları, Kitap Gündemi, sohbet, özel mesajlar ve kitap isteklerinde Report / Block & Report.
+- Üye profilinden Block / Unblock ve Block & Report; Engellenenler listesinden kaldırma.
+- Engellenen kullanıcıların içerikleri istemci ve sunucu tarafında gizleniyor.
+- Uygunsuz terim filtresi kayıt öncesi; moderatör e-posta kuyruğu, 20s hatırlatma / 24s yükseltme.
+- Topluluk Güvenliği ekranı ve 24 saatlik moderasyon taahhüdü.
 
 ## Description
 Ekitaplığım, Ekitapligim.com kitap kataloğunu ve okur topluluğunu iPhone ve iPad’e taşıyan native bir uygulamadır.
@@ -46,42 +48,32 @@ ekitap,kitap,pdf,epub,okuyucu,kütüphane,yazar,yayınevi,forum,türkçe
 © Ekitapligim.com. All rights reserved.
 
 ## Review Notes Draft
-GUIDELINE 1.2 RESUBMISSION — BUILD 1.0.0 (18)
+GUIDELINE 1.2 RESUBMISSION — v1.0.0 (build 18 or later)
 
-- The reviewer must accept the Apple Standard EULA and our community rules before login or registration can continue. The acceptance version is recorded by the server with the successful authentication transaction.
-- Every user-generated-content surface has a visible ellipsis safety button: forum topic lists and individual posts, book comments, Book Agenda posts/comments, chat messages, private-conversation messages, and book requests.
-- “Report Content” sends the selected content and reason to the XenForo moderation queue (or the iOS UGC event queue for book requests). “Block User and Report” creates the report, blocks the author, and removes that author’s content from the current screen immediately.
-- Profile and blocked-list screens can block or unblock a member. Blocking notifies moderators even when it is not attached to a specific post.
-- The authenticated user’s ignore list is also enforced server-side on forum, book-comment, Book Agenda, chat, private-message, and book-request responses. A blocked member cannot start or continue a one-to-one conversation; group conversations remain available while the blocked member’s messages are hidden.
-- New and edited community content is normalized and checked against an administrator-managed objectionable-content list and XenForo spam checks before persistence. Rejected content returns HTTP 422 and is not saved.
-- Moderators receive queued email notifications without private-message bodies or tokens. Open reports trigger a reminder at 20 hours and escalation at 24 hours.
-- Topluluk > Topluluk Güvenliği shows prohibited-content guidance, support contact, blocked users, and the 24-hour moderation commitment.
+- Before Sign In / Create Account: Apple Standard EULA + community rules must be accepted (controls stay disabled until accepted). Accepted terms version is recorded by the server with successful authentication.
+- Visible ellipsis safety menus on UGC: forum topic rows, individual forum posts, book comments, Book Agenda posts/comments, chat messages, private messages, and book requests → Report / Block & Report.
+- Member profiles: Block, Unblock, and Block & Report. Blocked Members list supports unblock to reset the reviewer account.
+- Report → XenForo moderation queue (book requests → iOS UGC event queue) with reason. Block notifies moderators and hides that author’s content immediately on the current screen; ignore list is also filtered server-side on subsequent API responses.
+- One-to-one conversations with a blocked member are refused; in group chat, that member’s messages stay hidden.
+- Pre-persistence filtering against administrator-managed blocked terms + XenForo spam checks; rejected content returns HTTP 422 and is never published.
+- Moderator email queue (no PM bodies/tokens); 20-hour reminder and 24-hour escalation; human action within 24 hours (remove content / eject offender when required).
+- Community > Community Safety: prohibited-content guidance, support contact, blocked users, 24-hour commitment.
+- Production API: https://ekitapligim.com/ios-api/v1/ — Sign-In only via App Store Connect reviewer credentials. Demo report/block content is prepared on that account.
+- Physical iPhone + iPad recordings of EULA acceptance, report, and block + immediate hide are attached in Notes / Resolution Center.
 
-Ekitaplığım is a native SwiftUI iOS/iPadOS app, not a website wrapper. The catalog, PDF/EPUB reader, library, downloads, account, StoreKit, forum, messaging, reporting, blocking, and account-deletion surfaces are native.
-
-Reviewer account:
-- Username/email: stored only in the App Store Connect Sign-In Information fields.
-- Password: stored only in the App Store Connect Sign-In Information fields.
-- Environment: production public HTTPS API at `https://ekitapligim.com/ios-api/v1/`.
-- Safe member to follow/block: supplied in the prepared reviewer account's demo data.
-- Safe conversation recipient: supplied in the prepared reviewer account's demo data.
-- Rights-cleared PDF book: supplied in the prepared reviewer account's library.
-- Rights-cleared EPUB book: supplied in the prepared reviewer account's library.
+Ekitaplığım is a native SwiftUI iOS/iPadOS app (not a WKWebView wrapper).
 
 Suggested review flow:
-1. Open the login screen. Verify the EULA, community terms and privacy links are visible and the login button remains disabled until acceptance is enabled.
-2. Log in using the reviewer credentials stored only in App Store Connect.
-3. Open Topluluk > Topluluk Güvenliği and inspect the prohibited-content summary, support link, blocked-users list and 24-hour commitment.
-4. Open the supplied forum. On the topic list, tap the visible ellipsis, report the supplied topic, then use “Block User and Report”; its author’s topics disappear immediately.
-5. Repeat the visible report/block flow on the supplied book comment, Book Agenda post/comment, and a book request row.
-6. Open Okur Sohbeti and use the ellipsis on the supplied chat message. Open Mesajlar and use the same controls on the supplied private message.
-7. Attempt the supplied prohibited test phrase in each composer. The app shows rejection and the content does not appear after refresh.
-8. Open Engellenenler and remove the demo block to reset the reviewer account.
-9. Continue with catalog, reader, library and StoreKit purchase/restore tests using the rights-cleared demo content.
+1. Login/Register: confirm EULA + rules links; Sign In stays disabled until acceptance.
+2. Log in with App Store Connect reviewer credentials.
+3. Community > Community Safety: prohibited content, support, blocked users, 24h SLA.
+4. Forum: ellipsis on topic and on an individual post → Report, then Block & Report; author content disappears.
+5. Repeat on book comment, Book Agenda, book request, chat message, and private message.
+6. Member profile: Block / Block & Report; confirm hide; unblock from Blocked Members.
+7. Try a blocked test phrase in a composer → rejection, content not published after refresh.
+8. Continue catalog, reader, library, StoreKit with rights-cleared demo books.
 
-Account deletion is initiated entirely in-app. Manual processing is expected within 30 days and completion is sent to the account email. Deletion operations must remove/anonymize associated user content as legally permitted.
-
-Do not submit until standalone IosApi `1.0.13` is validated on public HTTPS staging, the same SHA-256 ZIP is installed in production, moderator/filter options pass the release audit, and the reviewer flow is recorded on physical iPhone and iPad.
+Backend prerequisite: IosApi 1.0.13+ on production with non-empty `ekIosUgcModeratorEmails` and `ekIosUgcBlockedTerms`.
 
 ## In-App Purchase Review Notes
 Subscription group: `ekitapligim.premium`
@@ -92,18 +84,63 @@ Product IDs:
 
 The app displays localized names and prices returned by StoreKit. It provides purchase, restore, Manage Subscriptions, Terms, Privacy Policy, and auto-renewal disclosure. A verified Apple transaction JWS is sent to the backend; premium is not granted for unverified or server-rejected transactions.
 
-## App Review Reply Draft
+## App Review Reply Draft (Resolution Center)
+
 Hello App Review Team,
 
-Thank you for your review. We addressed Guideline 1.2 in a new binary, version 1.0.0 build 18.
+Thank you for your review and for the clear guidance under Guideline 1.2 – Safety – User-Generated Content.
 
-Before login or registration, users must view and accept the EULA and community rules. All community surfaces now show a visible ellipsis menu with “Report Content” and “Block User and Report,” including individual forum posts and book requests. Reports enter our moderator queue and blocking removes the author’s content immediately, with server-side filtering on subsequent responses. New and edited content is screened before storage; violations are rejected and never published.
+We have revised the app and our backend moderation controls, and we are resubmitting a new binary (version 1.0.0, build 18 or later).
 
-Our moderation workflow sends privacy-safe moderator notifications, a 20-hour reminder and a 24-hour escalation. The in-app Community Safety screen explains prohibited content, support contact, blocked-user controls and the 24-hour commitment.
+How we address Guideline 1.2:
 
-The App Review Notes provide a prepared reviewer account and safe content on which every report/block flow can be exercised. Physical iPhone and iPad recordings showing pre-login acceptance, reporting, blocking and immediate content removal will be attached before submission.
+1. EULA / Terms before login or registration
+Users must view and accept the Apple Standard EULA and our community rules before Sign In or Create Account can continue. Acceptance is required in the login/register UI, and the accepted terms version is recorded by our server with a successful authentication request.
 
-Thank you.
+2. Filtering objectionable content
+New and edited user-generated content is checked against an administrator-managed blocked-terms list and XenForo spam checks before it is saved. Rejected content returns an error to the user (HTTP 422) and is not published.
+
+3. Flagging / reporting
+Visible Report controls are available on user-generated content surfaces, including forum topic rows, individual forum posts, book comments, Book Agenda posts and comments, chat messages, private messages, and book requests. Reports are sent to our moderation queue with a reason.
+
+4. Blocking abusive users
+Users can Block and Block & Report from content menus and member profiles. Blocking notifies our moderation team and immediately removes that user’s content from the reporting user’s feed. Blocked users are also filtered server-side on subsequent API responses. Users can unblock from the Blocked Members list. One-to-one conversations with a blocked member are refused; in group conversations, the blocked member’s messages remain hidden.
+
+5. Acting within 24 hours
+Moderators receive queued email notifications for open reports (without private message bodies or tokens). Open reports trigger a reminder at 20 hours and escalation at 24 hours. We act on objectionable content reports within 24 hours by removing the content and ejecting the user who provided the offending content when required.
+
+Where to verify in the app:
+- Login / Register: EULA and community rules acceptance (button remains disabled until accepted)
+- Community > Community Safety: prohibited-content guidance, support contact, blocked users, and the 24-hour moderation commitment
+- Forum topics and posts, Book Agenda, chat, messages, and Book Requests: ellipsis menu → Report / Block & Report
+- Member profile: Block / Unblock and Block & Report
+- Blocked Members: unblock to reset the reviewer account
+
+Review environment:
+- Public HTTPS API: https://ekitapligim.com/ios-api/v1/
+- Reviewer Sign-In credentials are provided only in App Store Connect Sign-In Information
+- Prepared demo content for report/block testing is available on the reviewer account
+
+We have attached (or will attach) physical-device screen recordings for iPhone and iPad that demonstrate:
+- EULA / terms acceptance before login or registration
+- Flagging objectionable content
+- Blocking an abusive user and immediate removal of that user’s content from the feed
+
+Please let us know if you need any additional information.
+
+Thank you,
+Ekitapligim Team
+
+### App Review Information → Notes (short)
+
+Guideline 1.2 resubmission — v1.0.0 (build 18 or later).
+Before login/register: EULA + community rules must be accepted.
+UGC: Report and Block & Report on forum topics/posts, comments, Book Agenda, chat, messages, and book requests. Member profile Block / Block & Report. Blocking notifies moderators and hides content immediately (client + server).
+Filtering: objectionable terms screened before save (HTTP 422 if rejected).
+SLA: moderator emails; 20h reminder / 24h escalation; human action within 24 hours.
+API: https://ekitapligim.com/ios-api/v1/
+Sign-in: use App Store Connect reviewer credentials.
+Physical iPhone + iPad recordings of EULA, report, and block flows are attached in Notes / Resolution Center.
 
 ## Screenshot Checklist
 - Home with live catalog statistics.
