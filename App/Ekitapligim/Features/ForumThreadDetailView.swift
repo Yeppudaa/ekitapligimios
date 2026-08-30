@@ -134,9 +134,9 @@ struct ForumThreadDetailView: View {
                         .foregroundStyle(Color(hex: 0x687385))
                 }
                 Spacer(minLength: 0)
-                if let postID = Int(post.id) {
-                    UGCSafetyMenu(type: .forumPost, contentID: postID, userID: post.userId) {
-                        if let userID = post.userId {
+                if let postID = thread.firstPostId {
+                    UGCSafetyMenu(type: .forumPost, contentID: postID, userID: thread.userId) {
+                        if let userID = thread.userId {
                             posts.removeAll { $0.userId == userID }
                         }
                     }
