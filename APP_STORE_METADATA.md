@@ -11,10 +11,10 @@
 Kitapları keşfedin, PDF ve EPUB okuyun, kaldığınız yeri eşitleyin ve Ekitaplığım okur topluluğuna katılın.
 
 ## What's New
-- Ana sayfa, katalog ve kitaplık Android uygulamasının görsel kimliğiyle uyumlu olacak şekilde yenilendi.
-- Yeni Ekitaplığım renk sistemi, marka logosu, kart düzenleri ve uygulama menüsü eklendi.
-- Katalog liste/ızgara görünümü ile kitaplık rafları ve okuma ilerlemesi daha anlaşılır hale getirildi.
-- Erişilebilirlik etiketleri ve Türkçe yerelleştirmeler güncellendi.
+- Giriş ve kayıt öncesine EULA ile topluluk kuralları onayı eklendi.
+- Forum, kitap yorumu, Kitap Gündemi, sohbet ve özel mesajlarda görünür bildirme ve engelleme işlemleri eklendi.
+- Engellenen kullanıcıların içerikleri tüm topluluk ekranlarından anında kaldırılıyor.
+- Topluluk Güvenliği ekranı ve 24 saatlik moderasyon taahhüdü eklendi.
 
 ## Description
 Ekitaplığım, Ekitapligim.com kitap kataloğunu ve okur topluluğunu iPhone ve iPad’e taşıyan native bir uygulamadır.
@@ -46,14 +46,15 @@ ekitap,kitap,pdf,epub,okuyucu,kütüphane,yazar,yayınevi,forum,türkçe
 © Ekitapligim.com. All rights reserved.
 
 ## Review Notes Draft
-GUIDELINE 2.1(b) AND 3.1.2(c) RESUBMISSION UPDATE
+GUIDELINE 1.2 RESUBMISSION — BUILD 1.0.0 (18)
 
-- Build 1.0.0 (15) is the validated binary for the subscription fix. It loads the bundle-prefixed StoreKit identifiers, while the production backend continues to accept the legacy identifiers only for restoration and entitlement verification. The bundle-prefixed products still require Review Information screenshots before they can be added to this submission.
-- The prepared reviewer account has no active Premium entitlement. Sign in, then open Account > Ekitaplığım Premium to test the monthly or yearly purchase and Restore Purchases.
-- The Premium screen displays the StoreKit product title, localized price, monthly or yearly duration, automatic-renewal disclosure, Restore Purchases, Manage Subscriptions, Terms, and Privacy links.
-- The Turkish App Description now includes the functional Apple Standard EULA link: https://www.apple.com/legal/internet-services/itunes/dev/stdeula/
-- The App Store Privacy Policy field and App Description include the functional privacy-policy link: https://ekitapligim.com/yardim/gizlilik-politikasi/
-- A real-device TestFlight recording is required before resubmission; no such recording is present in the current workspace, so it must be captured from TestFlight on a physical iPhone or iPad.
+- The reviewer must accept the Apple Standard EULA and our community rules before login or registration can continue. The acceptance version is recorded by the server with the successful authentication transaction.
+- Every user-generated-content surface has a visible ellipsis safety button: forum topic lists and posts, book comments, Book Agenda posts/comments, chat messages, and private-conversation messages.
+- “Report Content” sends the selected content and reason to the XenForo moderation queue. “Block User and Report” creates the report, blocks the author, and removes that author’s content from the current screen immediately.
+- The authenticated user’s ignore list is also enforced server-side on forum, book-comment, Book Agenda, chat, and private-message responses. A blocked member cannot start or continue a one-to-one conversation; group conversations remain available while the blocked member’s messages are hidden.
+- New and edited community content is normalized and checked against an administrator-managed objectionable-content list and XenForo spam checks before persistence. Rejected content returns HTTP 422 and is not saved.
+- Moderators receive queued email notifications without private-message bodies or tokens. Open reports trigger a reminder at 20 hours and escalation at 24 hours.
+- Topluluk > Topluluk Güvenliği shows prohibited-content guidance, support contact, blocked users, and the 24-hour moderation commitment.
 
 Ekitaplığım is a native SwiftUI iOS/iPadOS app, not a website wrapper. The catalog, PDF/EPUB reader, library, downloads, account, StoreKit, forum, messaging, reporting, blocking, and account-deletion surfaces are native.
 
@@ -67,21 +68,19 @@ Reviewer account:
 - Rights-cleared EPUB book: supplied in the prepared reviewer account's library.
 
 Suggested review flow:
-1. Log in with the reviewer account using the username/email and password supplied only in App Store Connect.
-2. Open Hesap > Ekitaplığım Premium and purchase or restore either bundle-prefixed subscription with Apple Sandbox after the products have been added to the submission. The prepared account intentionally starts without an active Premium entitlement, so this step must precede reader and download testing.
-3. Open Kitaplar, search/filter, switch list/grid, and open book details plus a related book.
-4. Read the provided rights-cleared PDF and EPUB after the Sandbox entitlement becomes active; verify progress and a PDF bookmark.
-5. Download the rights-cleared book and verify it under Kitaplığım > İndirilenler.
-6. Create/vote on the reviewer-safe book request.
-7. Open Topluluk, view a forum/thread, accept community terms if prompted, and post the supplied reviewer-safe reply.
-8. Report the supplied post/comment and block/unblock the supplied member.
-9. Open Mesajlar, reply to the safe conversation, and create a message to the safe recipient.
-10. Open Hesap > Profilim, edit safe profile fields, then inspect Giriş ve Güvenlik without changing the shared reviewer password.
-11. Open Hesap > Hesap silme talebi başlat and verify the 30-day disclosure and confirmation UI. Do not submit unless a disposable reviewer account is provided.
+1. Open the login screen. Verify the EULA, community terms and privacy links are visible and the login button remains disabled until acceptance is enabled.
+2. Log in using the reviewer credentials stored only in App Store Connect.
+3. Open Topluluk > Topluluk Güvenliği and inspect the prohibited-content summary, support link, blocked-users list and 24-hour commitment.
+4. Open the supplied forum. On the topic list, tap the visible ellipsis, report the supplied topic, then use “Block User and Report”; its author’s topics disappear immediately.
+5. Repeat the visible report/block flow on the supplied book comment and Book Agenda post/comment.
+6. Open Okur Sohbeti and use the ellipsis on the supplied chat message. Open Mesajlar and use the same controls on the supplied private message.
+7. Attempt the supplied prohibited test phrase in each composer. The app shows rejection and the content does not appear after refresh.
+8. Open Engellenenler and remove the demo block to reset the reviewer account.
+9. Continue with catalog, reader, library and StoreKit purchase/restore tests using the rights-cleared demo content.
 
 Account deletion is initiated entirely in-app. Manual processing is expected within 30 days and completion is sent to the account email. Deletion operations must remove/anonymize associated user content as legally permitted.
 
-Do not submit until every placeholder is replaced, MobileApi `1.0.84` or newer is on the public HTTPS environment, and the reviewer flow has been executed there.
+Do not submit until standalone IosApi `1.0.12` is validated on public HTTPS staging, the same SHA-256 ZIP is installed in production, moderator/filter options pass the release audit, and the reviewer flow is recorded on physical iPhone and iPad.
 
 ## In-App Purchase Review Notes
 Subscription group: `ekitapligim.premium`
@@ -95,17 +94,13 @@ The app displays localized names and prices returned by StoreKit. It provides pu
 ## App Review Reply Draft
 Hello App Review Team,
 
-Thank you for your review. We addressed both subscription-related issues in this submission.
+Thank you for your review. We addressed Guideline 1.2 in a new binary, version 1.0.0 build 18.
 
-For Guideline 2.1(b), build 1.0.0 (15) loads both submitted auto-renewable subscriptions from StoreKit. A real-device TestFlight recording should be attached showing the monthly and yearly products, localized StoreKit prices, subscription durations, automatic-renewal disclosure, purchase/restore controls, and the functional Terms and Privacy links.
+Before login or registration, users must view and accept the EULA and community rules. All community surfaces now show a visible ellipsis menu with “Report Content” and “Block User and Report.” Reports enter our XenForo moderator queue and blocking removes the author’s content immediately, with server-side filtering on subsequent responses. New and edited content is screened before storage; violations are rejected and never published.
 
-For Guideline 3.1.2(c), we updated the Turkish App Description to include the functional Apple Standard EULA link:
-https://www.apple.com/legal/internet-services/itunes/dev/stdeula/
+Our moderation workflow sends privacy-safe moderator notifications, a 20-hour reminder and a 24-hour escalation. The in-app Community Safety screen explains prohibited content, support contact, blocked-user controls and the 24-hour commitment.
 
-The functional Privacy Policy link is also present in the App Store Privacy Policy field and App Description:
-https://ekitapligim.com/yardim/gizlilik-politikasi/
-
-No additional binary change was required for the metadata issue. Please review version 1.0.0, build 15, together with the real-device recording once it is captured.
+The App Review Notes provide a prepared reviewer account and safe content on which every report/block flow can be exercised. Physical iPhone and iPad recordings showing pre-login acceptance, reporting, blocking and immediate content removal will be attached before submission.
 
 Thank you.
 

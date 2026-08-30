@@ -186,9 +186,9 @@ public struct BookRepository: BookRepositoryProtocol {
 }
 
 public protocol AuthRepositoryProtocol: Sendable {
-    func login(username: String, password: String) async throws -> AuthResponseDTO
+    func login(username: String, password: String, acceptedTermsVersion: String) async throws -> AuthResponseDTO
     func signInWithApple(identityToken: String, authorizationCode: String, nonce: String) async throws -> AuthResponseDTO
-    func register(username: String, email: String, password: String) async throws -> AuthResponseDTO
+    func register(username: String, email: String, password: String, acceptedTermsVersion: String) async throws -> AuthResponseDTO
     func forgotPassword(email: String) async throws
     func logout() async throws
 }
@@ -200,16 +200,22 @@ public struct AuthRepository: AuthRepositoryProtocol {
         self.apiClient = apiClient
     }
 
-    public func login(username: String, password: String) async throws -> AuthResponseDTO {
-        try await apiClient.request(.login(username: username, password: password), as: AuthResponseDTO.self)
+    public func login(username: String, password: String, acceptedTermsVersion: String) async throws -> AuthResponseDTO {
+        try await apiClient.request(
+            .login(username: username, password: password, acceptedTermsVersion: acceptedTermsVersion),
+            as: AuthResponseDTO.self
+        )
     }
 
     public func signInWithApple(identityToken: String, authorizationCode: String, nonce: String) async throws -> AuthResponseDTO {
         try await apiClient.request(.appleAuth(identityToken: identityToken, authorizationCode: authorizationCode, nonce: nonce), as: AuthResponseDTO.self)
     }
 
-    public func register(username: String, email: String, password: String) async throws -> AuthResponseDTO {
-        try await apiClient.request(.register(username: username, email: email, password: password), as: AuthResponseDTO.self)
+    public func register(username: String, email: String, password: String, acceptedTermsVersion: String) async throws -> AuthResponseDTO {
+        try await apiClient.request(
+            .register(username: username, email: email, password: password, acceptedTermsVersion: acceptedTermsVersion),
+            as: AuthResponseDTO.self
+        )
     }
 
     public func forgotPassword(email: String) async throws {
@@ -234,6 +240,10 @@ public struct AccountRepository: Sendable {
 
     public func termsStatus() async throws -> TermsStatusDTO {
         try await apiClient.request(.termsStatus, as: TermsStatusDTO.self)
+    }
+
+    public func legalTerms() async throws -> LegalTermsDTO {
+        try await apiClient.request(.legalTerms, as: LegalTermsDTO.self)
     }
 
     public func acceptTerms(version: String) async throws {
@@ -533,8 +543,29 @@ public struct SafetyRepository: Sendable {
         let _: SuccessResponse = try await apiClient.request(.reportForumPost(postID: postID, message: message))
     }
 
-    public func blockMember(userID: Int) async throws {
-        let _: SuccessResponse = try await apiClient.request(.blockMember(userID: userID))
+    public func reportContent(
+        type: UGCContentType,
+        contentID: Int,
+        reason: UGCReportReason,
+        details: String = ""
+    ) async throws -> SafetyReportResponseDTO {
+        try await apiClient.request(
+            .reportContent(type: type, contentID: contentID, reason: reason, details: details),
+            as: SafetyReportResponseDTO.self
+        )
+    }
+
+    public func blockMember(
+        userID: Int,
+        sourceType: UGCContentType? = nil,
+        sourceID: Int? = nil,
+        reason: UGCReportReason = .harassment,
+        details: String = ""
+    ) async throws -> BlockMemberResponseDTO {
+        try await apiClient.request(
+            .blockMember(userID: userID, sourceType: sourceType, sourceID: sourceID, reason: reason, details: details),
+            as: BlockMemberResponseDTO.self
+        )
     }
 
     public func unblockMember(userID: Int) async throws {
@@ -738,6 +769,26 @@ public struct TermsStatusDTO: Decodable, Equatable, Sendable {
     public let acceptedVersion: String?
     public let acceptedAt: Int?
     public let requiresAcceptance: Bool
+}
+
+public struct LegalTermsDTO: Decodable, Equatable, Sendable {
+    public let version: String
+    public let eulaUrl: URL
+    public let termsUrl: URL
+    public let privacyUrl: URL
+    public let supportUrl: URL
+    public let moderationSlaHours: Int
+}
+
+public struct SafetyReportResponseDTO: Decodable, Equatable, Sendable {
+    public let success: Bool
+    public let reportId: Int
+}
+
+public struct BlockMemberResponseDTO: Decodable, Equatable, Sendable {
+    public let success: Bool
+    public let blockedUserId: Int
+    public let reportCreated: Bool
 }
 
 public struct BlockedMembersPageDTO: Decodable, Equatable, Sendable {

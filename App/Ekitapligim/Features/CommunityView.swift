@@ -108,6 +108,17 @@ struct CommunityView: View {
             Text(L10n.communitySafetySection)
                 .font(.headline)
                 .foregroundStyle(EKitapligimPalette.ink)
+            NavigationLink {
+                CommunitySafetyView()
+            } label: {
+                Label(L10n.communitySafetyTitle, systemImage: "shield.checkered")
+                    .font(.subheadline.weight(.semibold))
+                    .foregroundStyle(EKitapligimPalette.ink)
+                    .frame(maxWidth: .infinity, alignment: .leading)
+                    .padding(14)
+                    .ekitapligimCard(radius: 14)
+            }
+            .buttonStyle(.plain)
             Button { showingBlockUser = true } label: {
                 Label(L10n.communityBlockUser, systemImage: "person.crop.circle.badge.xmark")
                     .font(.subheadline.weight(.semibold))

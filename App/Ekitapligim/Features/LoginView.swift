@@ -12,6 +12,8 @@ struct LoginView: View {
     @State private var password = ""
     @State private var passwordConfirmation = ""
     @State private var acceptsLegalTerms = false
+    @State private var legalTerms: LegalTermsDTO?
+    @State private var isLoadingLegalTerms = false
     @State private var errorMessage: String?
     @State private var successMessage: String?
     @State private var isSubmitting = false
@@ -30,7 +32,7 @@ struct LoginView: View {
 
                 credentialsSection
 
-                if mode == .register {
+                if mode != .passwordReset {
                     legalSection
                 }
 
@@ -43,6 +45,7 @@ struct LoginView: View {
                     Button(L10n.commonClose) { dismiss() }
                 }
             }
+            .task { await loadLegalTerms() }
         }
     }
 
@@ -83,8 +86,17 @@ struct LoginView: View {
     private var legalSection: some View {
         Section {
             Toggle(L10n.loginAcceptLegal, isOn: $acceptsLegalTerms)
-            Link(L10n.settingsTerms, destination: container.config.termsURL)
-            Link(L10n.settingsPrivacyPolicy, destination: container.config.privacyPolicyURL)
+            Link(L10n.loginEULA, destination: legalTerms?.eulaUrl ?? container.config.eulaURL)
+            Link(L10n.settingsTerms, destination: legalTerms?.termsUrl ?? container.config.termsURL)
+            Link(L10n.settingsPrivacyPolicy, destination: legalTerms?.privacyUrl ?? container.config.privacyPolicyURL)
+            if isLoadingLegalTerms {
+                ProgressView(L10n.loginLegalLoading)
+            } else if legalTerms == nil {
+                Label(L10n.loginLegalUnavailable, systemImage: "exclamationmark.triangle")
+                    .foregroundStyle(.red)
+            }
+        } footer: {
+            Text(L10n.loginCommunityRulesSummary)
         }
     }
 
@@ -143,13 +155,17 @@ struct LoginView: View {
     private var canSubmit: Bool {
         switch mode {
         case .login:
-            !username.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty && !password.isEmpty
+            !username.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty
+                && !password.isEmpty
+                && acceptsLegalTerms
+                && legalTerms != nil
         case .register:
             !username.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty
                 && emailLooksValid
                 && !password.isEmpty
                 && password == passwordConfirmation
                 && acceptsLegalTerms
+                && legalTerms != nil
         case .passwordReset:
             emailLooksValid
         }
@@ -167,14 +183,21 @@ struct LoginView: View {
         do {
             switch mode {
             case .login:
-                try await container.signIn(username: username, password: password)
+                guard let version = legalTerms?.version else { return }
+                try await container.signIn(username: username, password: password, acceptedTermsVersion: version)
                 dismiss()
             case .register:
                 guard password == passwordConfirmation else {
                     errorMessage = L10n.loginPasswordsMismatch
                     return
                 }
-                try await container.register(username: username, email: email, password: password)
+                guard let version = legalTerms?.version else { return }
+                try await container.register(
+                    username: username,
+                    email: email,
+                    password: password,
+                    acceptedTermsVersion: version
+                )
                 dismiss()
             case .passwordReset:
                 try await container.requestPasswordReset(email: email)
@@ -188,6 +211,13 @@ struct LoginView: View {
     private func clearMessages() {
         errorMessage = nil
         successMessage = nil
+    }
+
+    private func loadLegalTerms() async {
+        guard legalTerms == nil, !isLoadingLegalTerms else { return }
+        isLoadingLegalTerms = true
+        defer { isLoadingLegalTerms = false }
+        legalTerms = try? await container.account.legalTerms()
     }
 
 }

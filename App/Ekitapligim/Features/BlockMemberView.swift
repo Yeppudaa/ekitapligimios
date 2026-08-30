@@ -47,7 +47,8 @@ struct BlockMemberView: View {
         isSubmitting = true
         defer { isSubmitting = false }
         do {
-            try await container.safety.blockMember(userID: id)
+            _ = try await container.safety.blockMember(userID: id)
+            container.rememberBlockedUser(id)
             statusMessage = L10n.blockMemberSuccess
         } catch {
             statusMessage = L10n.blockMemberFailure

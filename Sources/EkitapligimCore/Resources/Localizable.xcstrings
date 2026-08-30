@@ -2661,6 +2661,18 @@
         }
       }
     },
+    "login.communityRulesSummary": {
+      "localizations": { "tr": { "stringUnit": { "state": "translated", "value": "Nefret, taciz, cinsel içerik, şiddet, spam ve kişisel bilgi paylaşımı yasaktır. İhlaller bildirilebilir ve kullanıcılar engellenebilir." } } }
+    },
+    "login.eula": {
+      "localizations": { "tr": { "stringUnit": { "state": "translated", "value": "Son Kullanıcı Lisans Sözleşmesi (EULA)" } } }
+    },
+    "login.legalLoading": {
+      "localizations": { "tr": { "stringUnit": { "state": "translated", "value": "Güncel şartlar yükleniyor…" } } }
+    },
+    "login.legalUnavailable": {
+      "localizations": { "tr": { "stringUnit": { "state": "translated", "value": "Güncel şartlar yüklenemedi. Giriş ve kayıt geçici olarak kullanılamıyor." } } }
+    },
     "login.backToLogin": {
       "localizations": {
         "tr": {
@@ -4503,6 +4515,60 @@
           }
         }
       }
+    },
+    "community.safetyCommitmentTitle": {
+      "localizations": { "tr": { "stringUnit": { "state": "translated", "value": "Güvenlik taahhüdümüz" } } }
+    },
+    "community.safetyContactSupport": {
+      "localizations": { "tr": { "stringUnit": { "state": "translated", "value": "Destek ekibiyle iletişime geç" } } }
+    },
+    "community.safetyControlsTitle": {
+      "localizations": { "tr": { "stringUnit": { "state": "translated", "value": "Güvenlik denetimleri" } } }
+    },
+    "community.safetyRulesSummary": {
+      "localizations": { "tr": { "stringUnit": { "state": "translated", "value": "Nefret söylemi, taciz, zorbalık, cinsel içerik, şiddet tehdidi, spam ve kişisel bilgilerin izinsiz paylaşımı yasaktır." } } }
+    },
+    "community.safetySLA": {
+      "localizations": { "tr": { "stringUnit": { "state": "translated", "value": "Bildirilen içerikler en geç 24 saat içinde moderasyon incelemesine alınır." } } }
+    },
+    "community.safetyTitle": {
+      "localizations": { "tr": { "stringUnit": { "state": "translated", "value": "Topluluk Güvenliği" } } }
+    },
+    "ugc.blockAndReport": {
+      "localizations": { "tr": { "stringUnit": { "state": "translated", "value": "Kullanıcıyı engelle ve bildir" } } }
+    },
+    "ugc.blockAndReportDescription": {
+      "localizations": { "tr": { "stringUnit": { "state": "translated", "value": "İçerik moderasyona gönderilir ve bu kullanıcının içerikleri hesabınızdan hemen gizlenir." } } }
+    },
+    "ugc.reason.copyright": {
+      "localizations": { "tr": { "stringUnit": { "state": "translated", "value": "Telif hakkı" } } }
+    },
+    "ugc.reason.harassment": {
+      "localizations": { "tr": { "stringUnit": { "state": "translated", "value": "Taciz veya zorbalık" } } }
+    },
+    "ugc.reason.hate": {
+      "localizations": { "tr": { "stringUnit": { "state": "translated", "value": "Nefret söylemi" } } }
+    },
+    "ugc.reason.other": {
+      "localizations": { "tr": { "stringUnit": { "state": "translated", "value": "Diğer" } } }
+    },
+    "ugc.reason.privacy": {
+      "localizations": { "tr": { "stringUnit": { "state": "translated", "value": "Kişisel bilgi ihlali" } } }
+    },
+    "ugc.reason.sexual": {
+      "localizations": { "tr": { "stringUnit": { "state": "translated", "value": "Cinsel içerik" } } }
+    },
+    "ugc.reason.spam": {
+      "localizations": { "tr": { "stringUnit": { "state": "translated", "value": "Spam" } } }
+    },
+    "ugc.reason.violence": {
+      "localizations": { "tr": { "stringUnit": { "state": "translated", "value": "Şiddet veya tehdit" } } }
+    },
+    "ugc.reportContent": {
+      "localizations": { "tr": { "stringUnit": { "state": "translated", "value": "İçeriği bildir" } } }
+    },
+    "ugc.safetyActions": {
+      "localizations": { "tr": { "stringUnit": { "state": "translated", "value": "Güvenlik işlemleri" } } }
     }
   },
   "version": "1.0"

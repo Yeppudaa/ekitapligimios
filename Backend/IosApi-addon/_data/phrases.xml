@@ -1,0 +1,10 @@
+<?xml version="1.0" encoding="utf-8"?>
+<phrases>
+  <phrase title="option_group_ekitapligimIosApi" version_id="1000012" version_string="1.0.12"><![CDATA[Ekitapligim iOS API]]></phrase>
+  <phrase title="option_group_ekitapligimIosApi_description" version_id="1000012" version_string="1.0.12"><![CDATA[iOS API güvenlik, moderasyon ve içerik filtresi ayarları.]]></phrase>
+  <phrase title="option_ekIosUgcBlockedTerms" version_id="1000012" version_string="1.0.12"><![CDATA[iOS sakıncalı kelime ve ifade listesi]]></phrase>
+  <phrase title="option_explain_ekIosUgcBlockedTerms" version_id="1000012" version_string="1.0.12"><![CDATA[Her satıra bir kelime veya ifade girin. Boş bırakılamaz; Unicode, boşluk ve noktalama varyasyonları normalize edilir.]]></phrase>
+  <phrase title="option_ekIosUgcModeratorEmails" version_id="1000012" version_string="1.0.12"><![CDATA[iOS UGC moderatör e-posta alıcıları]]></phrase>
+  <phrase title="option_explain_ekIosUgcModeratorEmails" version_id="1000012" version_string="1.0.12"><![CDATA[Virgül, noktalı virgül veya boşlukla ayırın. Boş bırakılırsa release denetimi başarısız olmalıdır.]]></phrase>
+</phrases>
+

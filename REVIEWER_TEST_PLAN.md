@@ -16,19 +16,19 @@ This plan is for the account and environment provided to Apple App Review.
 - Password: store only in App Store Connect review notes.
 - Role: a member whose previous premium entitlement is expired, so the reviewer can exercise the complete StoreKit purchase and restore flow.
 - The account must not require SMS, VPN, private email inbox access, or developer intervention.
-- Registration mode requires matching passwords and acceptance of the Terms of Service and Privacy Policy. Review should use the prepared account instead of creating another account unless Apple specifically needs to test registration.
+- Login and registration both require the current EULA and community-rules acceptance version; neither can continue while acceptance is off or the legal endpoint is unavailable.
 - Password reset always displays a generic confirmation and does not reveal whether an email address is registered.
 
 ## Test Cases
-1. Launch app and log in.
+1. Launch app, open login, follow the EULA/community/privacy links, verify login is disabled until acceptance, then log in.
 2. Browse catalog and search.
 3. Open book detail, open one related book, return, submit a reviewer-safe comment/rating, and report the demo comment.
 4. Open reader and verify progress updates.
 5. Download a book and verify it appears in Downloads.
 6. Open Library shelves.
 7. Open Community, forum, thread, and post detail.
-8. Report content.
-9. Block and unblock a demo user.
+8. On forum topic list/post, book comment, Book Agenda post/comment, chat message and private message, open the visible ellipsis and submit a report.
+9. Use “Block User and Report” on the prepared demo author; verify all of that author’s content disappears immediately, stays absent after refresh, and can be restored by unblocking from Topluluk Güvenliği.
 10. Browse Members, open the demo profile, follow/unfollow it, then block/unblock it.
 11. Open profile, edit the reviewer-safe about/location/website fields, save, and verify the values reload; then open notifications.
 12. With a disposable reviewer account, change email using the current password and complete confirmation if required. Change password, verify the current device remains signed in with rotated tokens, and verify an older mobile session is rejected.
@@ -43,6 +43,10 @@ This plan is for the account and environment provided to Apple App Review.
 - UI test result.
 - StoreKit sandbox purchase/restore result.
 - Staging API smoke test result.
+- IosApi package SHA-256 plus successful `ekitapligim-ios:release-audit` output.
+- XenForo report queue and moderator email-job evidence for every supported content type, with private bodies and credentials redacted.
+- 20-hour reminder and 24-hour escalation test evidence using controlled staging timestamps.
+- Physical iPhone and iPad recordings of EULA acceptance, reporting, blocking and immediate removal.
 - Accessibility smoke test notes.
 - Apple token exchange/revocation server log evidence with token values redacted.
 - Disposable-account deletion completion evidence showing request PII scrubbed and XenForo cleanup jobs completed.

@@ -2,11 +2,14 @@
 
 namespace Ekitapligim\IosApi\Api\Controller;
 
+use Ekitapligim\IosApi\Service\IgnoredUsers;
 use XF\Mvc\ParameterBag;
 use XF\Service\FloodCheckService;
 
 class ThreadPosts extends \Ekitapligim\MobileApi\Api\Controller\AbstractMobileController
 {
+	use UgcControllerTrait;
+
 	public function actionGet(ParameterBag $params)
 	{
 		$this->assertMobileScope();
@@ -24,10 +27,11 @@ class ThreadPosts extends \Ekitapligim\MobileApi\Api\Controller\AbstractMobileCo
 		$total = $finder->total();
 		$posts = $finder->limitByPage($page, $perPage)->fetch();
 		$items = [];
+		$blocked = IgnoredUsers::ids((int) \XF::visitor()->user_id);
 
 		foreach ($posts AS $post)
 		{
-			if ($post->canView())
+			if ($post->canView() && !isset($blocked[(int) $post->user_id]))
 			{
 				$items[] = $this->serializePost($post, $thread);
 			}
@@ -51,20 +55,16 @@ class ThreadPosts extends \Ekitapligim\MobileApi\Api\Controller\AbstractMobileCo
 		$visitor = $this->assertRegisteredApiUser();
 		$thread = $this->assertViewableThread((int) $params->thread_id);
 
-		if (!$this->hasAcceptedCurrentTerms((int) $visitor->user_id))
-		{
-			return $this->apiError('Topluluk kurallarını kabul etmeden cevap yazamazsınız.', 'terms_acceptance_required', [
-				'required_version' => Terms::CURRENT_VERSION,
-				'requiredVersion' => Terms::CURRENT_VERSION
-			], 403);
-		}
-
 		if (!$thread->canReply($error))
 		{
 			throw $this->exception($this->apiError($error ?: 'You cannot reply to this thread.', 'cannot_reply', null, 403));
 		}
 
 		$message = trim((string) $this->filter('message', 'str'));
+		if ($policyError = $this->validateUgcWrite([$message]))
+		{
+			return $policyError;
+		}
 		if (mb_strlen($message) < 2)
 		{
 			return $this->apiError('Reply message is too short.', 'message_too_short');
@@ -106,23 +106,6 @@ class ThreadPosts extends \Ekitapligim\MobileApi\Api\Controller\AbstractMobileCo
 			'success' => true,
 			'post' => $this->serializePost($post, $thread)
 		]);
-	}
-
-	protected function hasAcceptedCurrentTerms(int $userId): bool
-	{
-		\XF::db()->query(
-			'CREATE TABLE IF NOT EXISTS xf_ekitapligim_mobile_terms_acceptance (
-				user_id INT UNSIGNED NOT NULL,
-				terms_version VARCHAR(32) NOT NULL,
-				accept_date INT UNSIGNED NOT NULL,
-				PRIMARY KEY (user_id)
-			) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4'
-		);
-
-		return (bool) \XF::db()->fetchOne(
-			'SELECT 1 FROM xf_ekitapligim_mobile_terms_acceptance WHERE user_id = ? AND terms_version = ? LIMIT 1',
-			[$userId, Terms::CURRENT_VERSION]
-		);
 	}
 
 	protected function assertViewableThread(int $threadId): \XF\Entity\Thread

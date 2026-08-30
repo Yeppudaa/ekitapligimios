@@ -29,15 +29,34 @@ struct ConversationsView: View {
                 } else {
                     ScrollView {
                         LazyVStack(spacing: 12) {
-                            ForEach(conversations) { conversation in
-                                NavigationLink {
-                                    ConversationDetailView(conversationID: conversation.id)
-                                } label: {
-                                    ConversationRow(conversation: conversation)
-                                        .padding(14)
-                                        .ekitapligimCard(radius: 14)
+                            ForEach(conversations.filter { conversation in
+                                let blockedParticipants = conversation.participants.filter { participant in
+                                    Int(participant.id).map(container.blockedUserIDs.contains) == true
                                 }
-                                .buttonStyle(.plain)
+                                return conversation.participants.count > 2 || blockedParticipants.isEmpty
+                            }) { conversation in
+                                ZStack(alignment: .topTrailing) {
+                                    NavigationLink {
+                                        ConversationDetailView(conversationID: conversation.id)
+                                    } label: {
+                                        ConversationRow(conversation: conversation)
+                                            .padding(14)
+                                            .ekitapligimCard(radius: 14)
+                                    }
+                                    .buttonStyle(.plain)
+                                    if let message = conversation.lastMessage, !message.isMine, let contentID = Int(message.id) {
+                                        UGCSafetyMenu(
+                                            type: .conversationMessage,
+                                            contentID: contentID,
+                                            userID: message.userId
+                                        ) {
+                                            conversations.removeAll { item in
+                                                item.participants.contains { Int($0.id) == message.userId }
+                                            }
+                                        }
+                                        .padding(8)
+                                    }
+                                }
                             }
                             if currentPage < lastPage {
                                 EKLoadMoreButton(isLoading: isLoading) {
@@ -153,7 +172,9 @@ struct ConversationDetailView: View {
                             Task { await load() }
                         }
                     } else if let detail {
-                        List(detail.messages) { message in
+                        List(detail.messages.filter { message in
+                            !container.blockedUserIDs.contains(message.userId)
+                        }) { message in
                             MessageBubble(message: message)
                                 .listRowSeparator(.hidden)
                         }
@@ -249,6 +270,13 @@ private struct MessageBubble: View {
             .padding(10)
             .background(message.isMine ? Color.accentColor.opacity(0.14) : Color.secondary.opacity(0.10))
             .clipShape(RoundedRectangle(cornerRadius: 8))
+            if !message.isMine, let contentID = Int(message.id) {
+                UGCSafetyMenu(
+                    type: .conversationMessage,
+                    contentID: contentID,
+                    userID: message.userId
+                )
+            }
             if !message.isMine { Spacer(minLength: 44) }
         }
         .accessibilityElement(children: .combine)

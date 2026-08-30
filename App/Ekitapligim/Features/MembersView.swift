@@ -307,7 +307,8 @@ struct MemberProfileView: View {
         isActing = true
         defer { isActing = false }
         do {
-            try await container.safety.blockMember(userID: userID)
+            _ = try await container.safety.blockMember(userID: userID)
+            container.rememberBlockedUser(userID)
             blockCompleted = true
         } catch {
             operationError = L10n.membersActionFailed

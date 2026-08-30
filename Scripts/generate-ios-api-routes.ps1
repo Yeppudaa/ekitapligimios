@@ -1,5 +1,5 @@
 param(
-    [string]$MobileApiRoutesPath = "C:\Users\Monster\Downloads\startdesign (1)\MobileApi-addon\_data\routes.xml",
+    [string]$MobileApiRoutesPath = "C:\xampp\htdocs\ekitapligim\src\addons\Ekitapligim\MobileApi\_data\routes.xml",
     [string]$OutputPath = ""
 )
 
@@ -34,6 +34,15 @@ $iosControllers = @{
     "Terms" = $true
     "ForumThreads" = $true
     "ThreadPosts" = $true
+    "AuthLogin" = $true
+    "AuthRegister" = $true
+    "BookAgenda" = $true
+    "BookAgendaPost" = $true
+    "BookAgendaComments" = $true
+    "BookAgendaComment" = $true
+    "BookComments" = $true
+    "ChatMessages" = $true
+    "Conversations" = $true
 }
 
 [xml]$source = Get-Content -Raw -LiteralPath $MobileApiRoutesPath
@@ -62,6 +71,20 @@ foreach ($route in @($source.routes.route | Where-Object { $_.route_type -eq "pu
     }
 
     [void]$routesNode.AppendChild($imported)
+    $added++
+}
+
+foreach ($customRoute in @(
+    @{ sub_name = "legal-terms"; format = "v1/legal/terms"; controller = "Ekitapligim\IosApi:LegalTerms" },
+    @{ sub_name = "safety-reports"; format = "v1/safety/reports"; controller = "Ekitapligim\IosApi:SafetyReports" }
+)) {
+    $node = $doc.CreateElement("route")
+    $node.SetAttribute("route_type", "public")
+    $node.SetAttribute("route_prefix", "ios-api")
+    $node.SetAttribute("sub_name", $customRoute.sub_name)
+    $node.SetAttribute("format", $customRoute.format)
+    $node.SetAttribute("controller", $customRoute.controller)
+    [void]$routesNode.AppendChild($node)
     $added++
 }
 

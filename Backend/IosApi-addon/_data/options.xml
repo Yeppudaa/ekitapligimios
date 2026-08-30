@@ -1,0 +1,12 @@
+<?xml version="1.0" encoding="utf-8"?>
+<options>
+  <option option_id="ekIosUgcBlockedTerms" edit_format="textbox" data_type="string" advanced="0">
+    <default_value></default_value>
+    <edit_format_params>rows=12</edit_format_params>
+    <relation group_id="ekitapligimIosApi" display_order="10"/>
+  </option>
+  <option option_id="ekIosUgcModeratorEmails" edit_format="textbox" data_type="string" advanced="0">
+    <default_value></default_value>
+    <relation group_id="ekitapligimIosApi" display_order="20"/>
+  </option>
+</options>

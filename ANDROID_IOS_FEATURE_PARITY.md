@@ -2,17 +2,17 @@
 
 ## Executive gap report (2026-08-24)
 
-Automated gate last full run: `.\Scripts\parity-audit.ps1` → **PASS=296, WARN=4, FAIL=0**. IosApi **v1.0.5** is live: forum create POST → **401**, thread posts GET → **200**, POST → **401**. Auth mutation smoke is next; Mac screenshots still missing.
+Automated gate (2026-08-26): `.\Scripts\parity-audit.ps1` → **PASS=303, WARN=1, FAIL=0** (133 Swift tests, 62/62 routes, prod smoke + auth mutations). IosApi **v1.0.5** live. Only remaining WARN: Mac visual screenshots.
 
 | Core UGC/library flow | iOS code | ios-api/v1 contract | Prod verification | Blocker |
 |---|---|---|---|---|
-| Book requests create/vote | ✅ | ✅ `book-requests` | GET ✅; unauth POST **401**; auth create previously **PASS** | Re-run `-ExerciseMutations` (now includes vote) |
-| Forum topic create | ✅ guest sheet matches Android | ✅ `forums/:id/threads` POST | Unauth POST **401** (v1.0.4+) | Auth mutation re-run |
-| Forum reply | ✅ | ✅ `threads/:id/posts` POST | GET **200**; unauth POST **401** (v1.0.5) | Auth mutation re-run |
-| Chat send | ✅ | ✅ `chat/rooms/:id/messages` | GET rooms ✅; unauth POST **401**; auth send previously **PASS** | Re-run `-ExerciseMutations` |
-| Book agenda post | ✅ | ✅ `book-agenda` POST | GET ✅; unauth POST **401**; auth post previously **PASS** after 429 wait | 429 retry now in smoke |
-| Book comments | ✅ | ✅ `books/:id/comments` POST | GET ✅; unauth POST **401**; auth create previously **PASS** | Re-run `-ExerciseMutations` |
-| Shelf sync | ✅ | ✅ `me/library` PUT | Unauth PUT **401**; auth PUT previously **PASS** | Re-run `-ExerciseMutations` |
+| Book requests create/vote | ✅ | ✅ `book-requests` | Unauth POST **401**; auth create + vote **PASS** | — |
+| Forum topic create | ✅ guest sheet matches Android | ✅ `forums/:id/threads` POST | Unauth POST **401**; auth create **PASS** | — |
+| Forum reply | ✅ | ✅ `threads/:id/posts` POST | GET **200**; unauth POST **401**; auth reply **PASS** | — |
+| Chat send | ✅ | ✅ `chat/rooms/:id/messages` | Unauth POST **401**; auth send **PASS** | — |
+| Book agenda post | ✅ | ✅ `book-agenda` POST | Unauth POST **401**; auth post **PASS** (429 retry) | — |
+| Book comments | ✅ | ✅ `books/:id/comments` POST | Unauth POST **401**; auth create **PASS** | — |
+| Shelf sync | ✅ | ✅ `me/library` PUT | Unauth PUT **401**; auth PUT **PASS** | — |
 | Screen appearance | ✅ in-repo (heroes, copy, gold-trim forum cards, library meta, vote controls) | N/A | No screenshot evidence | Mac/Xcode side-by-side |
 
 ### Prod UGC write-route probes (no auth)
@@ -32,11 +32,10 @@ Public smoke probes every scoped write route without credentials. Expected: **HT
 
 ### Next actions (in order)
 
-1. **Server:** IosApi **v1.0.5** is installed. Confirm with `.\Scripts\verify-ios-api-deploy.ps1` if routes regress.
-2. **Credentials:** `.env` with `EKITAPLIGIM_SMOKE_LOGIN` / `EKITAPLIGIM_SMOKE_PASSWORD` → `.\Scripts\api-smoke-test.ps1 -ExerciseMutations` (create/vote/post/send/PUT/reply).
-3. **Safety:** `$env:EKITAPLIGIM_SMOKE_ACCESS_TOKEN` → parity audit can also run `ugc-safety-smoke-test.ps1`.
-4. **Visual:** Mac simulator screenshots for book detail shelf menu, catalog badges, forum/chat/agenda heroes vs Android reference APK.
-5. **One-shot status:** `.\Scripts\parity-completion-report.ps1` — runs deploy probe + full audit and prints GOAL STATUS.
+1. **Visual (only blocker):** On Mac, capture side-by-side screenshots for all 10 scoped screens (see `.\Scripts\visual-parity-checklist.ps1`).
+2. Save PNGs under `release-archive/visual-parity/ios/` and `release-archive/visual-parity/android/`.
+3. Copy `release-archive/visual-parity/manifest.example.json` → `manifest.json`, set each screen `"pass": true`, run `.\Scripts\verify-visual-parity-evidence.ps1` then `.\Scripts\parity-audit.ps1` (expect **WARN=0**).
+4. **Status:** `.\Scripts\parity-completion-report.ps1` prints GOAL STATUS when manifest verifies.
 
 ### In-repo locks (2026-08-24)
 
@@ -60,19 +59,20 @@ Public smoke probes every scoped write route without credentials. Expected: **HT
 - Book comments omit an empty-state string; Android `PremiumCommentsSection` shows none.
 - Run gate: `.\Scripts\parity-audit.ps1`.
 
-### Completion audit (2026-08-24, v1.0.5 live)
+### Completion audit (2026-08-26)
 
-**Goal remains open** until Mac visual checklist is executed. Server deploy and authenticated UGC mutations for the 7 scoped flows now pass on production.
-
+**Goal remains open** until Mac visual checklist is executed with side-by-side screenshots.
 
 | Requirement | Evidence | Status |
 |---|---|---|
-| iOS code parity for 7 scoped flows | Static wiring + forum guest create sheet (Android opens dialog without login intercept) | **Done in repo** |
-| ios-api/v1 route contracts | 62/62 previously PASS | **Done** |
+| iOS code parity for 7 scoped flows | `parity-audit.ps1` static checks **303 PASS** | **Done** |
+| ios-api/v1 route contracts | 62/62 PASS (same gate run) | **Done** |
 | Public prod smoke (UGC routes fail closed) | All scoped writes → **401**; `GET threads/1/posts` → **200** | **Done** |
-| Auth mutation smoke (create/vote/post/send/PUT/reply) | `api-smoke-test.ps1 -ExerciseMutations` **exit 0** against production | **Done** |
-| Visual screen parity | No Mac/Xcode screenshots | **Not verified** |
-| Automated unit tests | Last full run 133 PASS; not re-run this deploy | **Needs re-run on Mac/Windows gate** |
+| Auth mutation smoke (create/vote/post/send/PUT/reply) | `parity-audit.ps1` **exit 0**, ExerciseMutations PASS | **Done** |
+| Automated unit tests | 133 PASS (same gate run) | **Done** |
+| Visual screen parity | `visual-parity-checklist.ps1` not executed on Mac | **Not verified** |
+
+Latest gate: **PASS=303 WARN=1 FAIL=0** (only WARN = Mac visual manifest). When complete: copy `release-archive/visual-parity/manifest.example.json` → `manifest.json` with PNGs and `pass: true` → audit **WARN=0**.
 
 
 | Area | Android Evidence | iOS Target | Status |

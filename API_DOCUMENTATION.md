@@ -220,6 +220,24 @@ Auth: login required.
 Body: `version`.
 Response: empty success.
 
+### GET `/legal/terms`
+Auth: public read.
+Response: current terms version, Apple Standard EULA URL, community terms URL, privacy URL, support URL, and the 24-hour moderation SLA.
+
+### POST `/auth/login` and `/auth/register`
+Body addition: `accepted_terms_version` is mandatory and must equal the current `/legal/terms` version. Successful authentication and acceptance are recorded together; stale or missing versions return `403 terms_acceptance_required`.
+
+### POST `/safety/reports`
+Auth: login required.
+Body: `content_type` (`forum_post`, `book_comment`, `agenda_post`, `agenda_comment`, `chat_message`, `conversation_message`), `content_id`, `reason_code`, optional `details`.
+Response: `success`, XenForo `report_id`. Reports enqueue a privacy-safe moderator email job and are tracked for 20-hour reminder and 24-hour escalation.
+
+### POST `/members/{user_id}/block`
+Auth: login required.
+Optional context: `source_type`, `source_id`, `reason_code`, `details`. With context, the endpoint verifies that the target owns the content, creates a XenForo report idempotently, blocks the member and returns `blocked_user_id` plus `report_created`.
+
+All iOS social create/edit endpoints run the shared administrator-managed UGC policy and XenForo spam checks before persistence. Violations return `422 content_policy_violation`; rejected text is not written. Authenticated reads filter the visitor's ignored users across forum, book comments, Book Agenda, chat and private conversations.
+
 ### POST `/me/account-deletion-request`
 Auth: login required.
 Body: optional `current_password`, optional `reason`.
@@ -246,6 +264,6 @@ Response: 200 after verification and entitlement update.
 Current backend behavior: verifies the outer, transaction, and renewal JWS certificate chains; rejects bundle/product/environment mismatches; records the verified notification hash; preserves Apple billing grace periods; and atomically updates the matching existing entitlement by transaction/original transaction ID. Public sandbox verification is still required.
 
 ## Required Deployment Work Before iOS Release
-- Deploy IosApi `1.0.6` or newer (with its declared MobileApi dependency) to public HTTPS staging and production.
+- Deploy standalone IosApi `1.0.12` (SHA-256 verified; MobileApi 1.0.136 unchanged) to public HTTPS staging, configure moderator emails and managed filter terms, run `php cmd.php ekitapligim-ios:release-audit`, then promote the identical ZIP to production.
 - Configure the Apple root CA and verify StoreKit sandbox transactions and App Store Server Notifications.
 - Exercise Apple login, identity changes, blocking, reporting, terms acceptance, account deletion, reader access, and subscription state with the App Review account.

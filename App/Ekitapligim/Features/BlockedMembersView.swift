@@ -46,6 +46,7 @@ struct BlockedMembersView: View {
     private func unblock(_ member: BlockedMemberDTO) async {
         guard let id = Int(member.id) else { return }
         try? await container.safety.unblockMember(userID: id)
+        container.forgetBlockedUser(id)
         await load()
     }
 }

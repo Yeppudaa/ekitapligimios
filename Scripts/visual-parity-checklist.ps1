@@ -7,6 +7,7 @@ $root = Resolve-Path (Join-Path $PSScriptRoot "..")
 
 $checks = @(
     @{ Screen = "Book detail shelf actions"; Android = "BookDetailScreen.kt (gold shelf menu + favorite heart)"; iOS = "App/Ekitapligim/Features/BookDetailView.swift"; Notes = "Android PremiumBookTopBar gold 48pt round back/share; OKUYORUM/OKUYACAGIM/OKUDUM menu, heart toggle; share payload title — author + pdfUrl/threads URL" }
+    @{ Screen = "Forum thread list"; Android = "ForumThreadsScreen.kt"; iOS = "App/Ekitapligim/Features/ForumThreadsView.swift"; Notes = "48pt Forum empty glyph (onSurface), Yeni konu ac CTA, guest opens create sheet without login intercept, gold-trim hero cards" }
     @{ Screen = "Forum thread detail"; Android = "ForumThreadDetailScreen.kt"; iOS = "App/Ekitapligim/Features/ForumThreadDetailView.swift"; Notes = "Collapsible hero, ForumMessageBody, full-width images, keyboard-safe reply inset, trailing Cevapla, cream guest prompt, permission hint without locking field (server checks canReply)" }
     @{ Screen = "Book requests"; Android = "SocialScreen.kt (SocialHeroCard + RequestSectionTitle)"; iOS = "App/Ekitapligim/Features/BookRequestsView.swift"; Notes = "Gradient hero, Kitap Istek Listesi header, orange Istekte Bulun CTA, status pills, vote shows N Oy" }
     @{ Screen = "Okur Sohbeti"; Android = "ChatScreen.kt (ChatHero + ChatRoomTab)"; iOS = "App/Ekitapligim/Features/ChatView.swift"; Notes = "ChatHero, room tabs, welcome note, labeled Giris/Oturum CTAs, person leading icon, 50pt rounded send button, 1000-char draft" }
@@ -34,7 +35,9 @@ foreach ($check in $checks) {
 $lines += ""
 $lines += "## Commands"
 $lines += ""
-$lines += "- Automated code gate: ``.\Scripts\parity-audit.ps1`` (expect PASS=296 WARN=4 FAIL=0)"
+$lines += "- Automated code gate: ``.\Scripts\parity-audit.ps1`` (expect PASS=303 WARN=1 FAIL=0)"
+$lines += "- Mac capture: save PNGs to ``release-archive/visual-parity/{ios,android}/``; copy ``manifest.example.json`` to ``manifest.json`` and set pass=true"
+$lines += "- Verify evidence: ``.\Scripts\verify-visual-parity-evidence.ps1``"
 $lines += "- Completion status: ``.\Scripts\parity-completion-report.ps1``"
 $lines += "- Full matrix: ``ANDROID_IOS_FEATURE_PARITY.md``"
 $lines += ""
@@ -46,3 +49,5 @@ if ($OutputPath) {
 } else {
     Write-Host $text
 }
+
+exit 0

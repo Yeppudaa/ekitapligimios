@@ -333,8 +333,14 @@ struct ChatView: View {
                         } else if messages.isEmpty {
                             chatEmptyCard(message: L10n.chatMessagesEmpty)
                         } else {
-                            ForEach(messages) { message in
-                                ChatMessageBubble(message: message)
+                            ForEach(messages.filter { message in
+                                guard let userID = Int(message.userId) else { return true }
+                                return !container.blockedUserIDs.contains(userID)
+                            }) { message in
+                                ChatMessageBubble(message: message) {
+                                    let userID = message.userId
+                                    messages.removeAll { $0.userId == userID }
+                                }
                                     .id(message.id)
                             }
                         }
@@ -792,6 +798,7 @@ private struct ChatNavigationSubtitleModifier: ViewModifier {
 
 private struct ChatMessageBubble: View {
     let message: ChatMessageDTO
+    let onBlocked: () -> Void
 
     var body: some View {
         if message.isAnnouncement {
@@ -862,6 +869,15 @@ private struct ChatMessageBubble: View {
                 if !message.isMine {
                     chatBubbleShape.stroke(EKitapligimPalette.chatBorder, lineWidth: 1)
                 }
+            }
+
+            if !message.isMine, let contentID = Int(message.id) {
+                UGCSafetyMenu(
+                    type: .chatMessage,
+                    contentID: contentID,
+                    userID: Int(message.userId),
+                    onBlocked: onBlocked
+                )
             }
 
             if !message.isMine { Spacer(minLength: 40) }

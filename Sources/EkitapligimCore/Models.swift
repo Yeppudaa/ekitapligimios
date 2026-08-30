@@ -207,6 +207,7 @@ public struct ConversationDTO: Decodable, Equatable, Identifiable, Sendable {
     public let canReply: Bool
     public let participants: [ConversationParticipantDTO]
     public let preview: String
+    public let lastMessage: ConversationMessageDTO?
 
     public init(from decoder: Decoder) throws {
         let container = try decoder.container(keyedBy: CodingKeys.self)
@@ -221,6 +222,7 @@ public struct ConversationDTO: Decodable, Equatable, Identifiable, Sendable {
         self.canReply = try container.decodeIfPresent(Bool.self, forKey: .canReply) ?? false
         self.participants = try container.decodeIfPresent([ConversationParticipantDTO].self, forKey: .participants) ?? []
         self.preview = try container.decodeIfPresent(String.self, forKey: .preview) ?? ""
+        self.lastMessage = try container.decodeIfPresent(ConversationMessageDTO.self, forKey: .lastMessage)
     }
 
     private enum CodingKeys: String, CodingKey {
@@ -236,6 +238,7 @@ public struct ConversationDTO: Decodable, Equatable, Identifiable, Sendable {
         case canReply
         case participants
         case preview
+        case lastMessage
     }
 }
 
@@ -446,6 +449,7 @@ public struct BookCommentDTO: Decodable, Equatable, Identifiable, Sendable {
     public let imageUrls: [String]
     public let rating: Int
     public let createdAt: Int
+    public let userId: Int?
 
     public init(from decoder: Decoder) throws {
         let container = try decoder.container(keyedBy: CodingKeys.self)
@@ -458,6 +462,7 @@ public struct BookCommentDTO: Decodable, Equatable, Identifiable, Sendable {
         self.createdAt = try container.decodeIfPresent(Int.self, forKey: .createdAt)
             ?? container.decodeIfPresent(Int.self, forKey: .timestamp)
             ?? 0
+        self.userId = try container.decodeIfPresent(Int.self, forKey: .userId)
     }
 
     private enum CodingKeys: String, CodingKey {
@@ -470,6 +475,7 @@ public struct BookCommentDTO: Decodable, Equatable, Identifiable, Sendable {
         case rating
         case createdAt
         case timestamp
+        case userId
     }
 }
 
@@ -811,6 +817,8 @@ public struct ForumThreadDTO: Decodable, Equatable, Identifiable, Sendable {
     public let canReply: Bool
     public let isSticky: Bool
     public let discussionType: String?
+    public let userId: Int?
+    public let firstPostId: Int?
 
     public init(
         id: String,
@@ -821,7 +829,9 @@ public struct ForumThreadDTO: Decodable, Equatable, Identifiable, Sendable {
         postDate: Int = 0,
         canReply: Bool = false,
         isSticky: Bool = false,
-        discussionType: String? = nil
+        discussionType: String? = nil,
+        userId: Int? = nil,
+        firstPostId: Int? = nil
     ) {
         self.id = id
         self.title = title
@@ -832,6 +842,8 @@ public struct ForumThreadDTO: Decodable, Equatable, Identifiable, Sendable {
         self.canReply = canReply
         self.isSticky = isSticky
         self.discussionType = discussionType
+        self.userId = userId
+        self.firstPostId = firstPostId
     }
 }
 

@@ -30,19 +30,26 @@ $auditExit = $LASTEXITCODE
 Write-Host ""
 
 Write-Host "==> Completion verdict"
-$goalComplete = ($deployExit -eq 0) -and ($loginSet -and $passwordSet) -and ($auditExit -eq 0)
+& (Join-Path $PSScriptRoot "verify-visual-parity-evidence.ps1") | Out-Null
+$visualExit = $LASTEXITCODE
+$goalComplete = ($deployExit -eq 0) -and ($loginSet -and $passwordSet) -and ($auditExit -eq 0) -and ($visualExit -eq 0)
 
 if ($deployExit -ne 0) {
-    Write-Host "  BLOCKED: IosApi v1.0.4 not live on prod (forum POST still 404)."
+    Write-Host "  BLOCKED: IosApi deploy probe failed (forum/thread routes not live on prod)."
 }
 if (-not ($loginSet -and $passwordSet)) {
     Write-Host "  BLOCKED: Auth mutation smoke not run (copy .env.example to .env or set smoke login/password)."
 }
-Write-Host "  BLOCKED: Mac/Xcode visual checklist not executed from this environment."
+if ($auditExit -ne 0) {
+    Write-Host "  BLOCKED: Automated parity gate failed."
+}
+if ($visualExit -ne 0) {
+    Write-Host "  BLOCKED: Mac/Xcode visual evidence missing or incomplete (release-archive/visual-parity/manifest.json)."
+}
 Write-Host ""
 
 if ($goalComplete) {
-    Write-Host "GOAL STATUS: All automated gates green; run visual-parity-checklist.ps1 on Mac to finish."
+    Write-Host "GOAL STATUS: COMPLETE - automated gates and visual parity evidence verified."
     exit 0
 }
 

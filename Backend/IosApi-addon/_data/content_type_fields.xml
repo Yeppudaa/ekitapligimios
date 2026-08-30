@@ -1,0 +1,4 @@
+<?xml version="1.0" encoding="utf-8"?>
+<content_type_fields>
+  <field content_type="ek_social_comment" field_name="report_handler_class">Ekitapligim\IosApi\Report\SocialCommentHandler</field>
+</content_type_fields>

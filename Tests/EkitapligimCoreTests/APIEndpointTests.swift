@@ -9,11 +9,21 @@ final class APIEndpointTests: XCTestCase {
     }
 
     func testRegistrationAndPasswordResetArePublicFormRequests() {
-        let registration = APIEndpoint.register(username: "okur", email: "okur@example.com", password: "secret")
+        let registration = APIEndpoint.register(
+            username: "okur",
+            email: "okur@example.com",
+            password: "secret",
+            acceptedTermsVersion: "2026-08"
+        )
         XCTAssertEqual(registration.path, "auth/register")
         XCTAssertEqual(registration.method, .post)
         XCTAssertFalse(registration.requiresAuthentication)
-        XCTAssertEqual(registration.body, .form(["username": "okur", "email": "okur@example.com", "password": "secret"]))
+        XCTAssertEqual(registration.body, .form([
+            "username": "okur",
+            "email": "okur@example.com",
+            "password": "secret",
+            "accepted_terms_version": "2026-08"
+        ]))
 
         let reset = APIEndpoint.forgotPassword(email: "okur@example.com")
         XCTAssertEqual(reset.path, "auth/forgot-password")
@@ -156,6 +166,20 @@ final class APIEndpointTests: XCTestCase {
 
     func testSafetyEndpointsRequireAuthentication() {
         XCTAssertTrue(APIEndpoint.blockMember(userID: 42).requiresAuthentication)
+        XCTAssertEqual(APIEndpoint.legalTerms.path, "legal/terms")
+        let report = APIEndpoint.reportContent(
+            type: .agendaComment,
+            contentID: 91,
+            reason: .harassment,
+            details: "test"
+        )
+        XCTAssertEqual(report.path, "safety/reports")
+        XCTAssertEqual(report.body, .form([
+            "content_type": "agenda_comment",
+            "content_id": "91",
+            "reason_code": "harassment",
+            "details": "test"
+        ]))
         XCTAssertTrue(APIEndpoint.reportForumPost(postID: 99, message: "Uygunsuz içerik").requiresAuthentication)
         XCTAssertEqual(APIEndpoint.blockedMembers.path, "me/blocked-members")
     }

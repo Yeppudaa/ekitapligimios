@@ -227,9 +227,24 @@ function Resolve-SmokeAccessToken() {
         throw "Provide both Login and Password, or set both EKITAPLIGIM_SMOKE_LOGIN and EKITAPLIGIM_SMOKE_PASSWORD."
     }
 
+    $termsUri = [Uri]::new($script:baseUri, "legal/terms")
+    try {
+        $terms = Invoke-RestMethod -Uri $termsUri -Method GET -Headers @{ Accept = "application/json" } -TimeoutSec $TimeoutSec
+    } catch {
+        throw "FAIL GET legal/terms -> unable to resolve the required terms version: $($_.Exception.Message)"
+    }
+    $acceptedTermsVersion = [string]$terms.version
+    if ([string]::IsNullOrWhiteSpace($acceptedTermsVersion)) {
+        throw "FAIL GET legal/terms -> response is missing version"
+    }
+
     $uri = [Uri]::new($script:baseUri, "auth/login")
     try {
-        $response = Invoke-RestMethod -Uri $uri -Method POST -Body @{ login = $resolvedLogin; password = $resolvedPassword } -TimeoutSec $TimeoutSec
+        $response = Invoke-RestMethod -Uri $uri -Method POST -Body @{
+            login = $resolvedLogin
+            password = $resolvedPassword
+            accepted_terms_version = $acceptedTermsVersion
+        } -TimeoutSec $TimeoutSec
     } catch {
         $statusCode = $_.Exception.Response.StatusCode.value__
         if ($statusCode) {
@@ -394,8 +409,12 @@ Invoke-SmokeGet "me" -RequiresAuth
 Invoke-SmokeGet "me/library" -RequiresAuth
 Invoke-SmokeGet "me/comments?page=1" -RequiresAuth
 Invoke-SmokeGet "me/subscription" -RequiresAuth
-Invoke-SmokeGet "me/terms" -RequiresAuth
-Invoke-SmokePost "me/terms/accept" @{ version = "2026-07" } -RequiresAuth
+$termsResponse = Invoke-SmokeJsonGet "me/terms" -RequiresAuth
+if ($termsResponse -and $termsResponse.requiredVersion) {
+    Invoke-SmokePost "me/terms/accept" @{ version = [string]$termsResponse.requiredVersion } -RequiresAuth
+} else {
+    Write-Host "SKIP me/terms/accept (requires auth and a current terms version)"
+}
 Invoke-SmokeGet "me/notifications/counts" -RequiresAuth
 $conversationsResponse = Invoke-SmokeJsonGet "conversations?page=1" -RequiresAuth
 if ($conversationsResponse -and $conversationsResponse.conversations -and $conversationsResponse.conversations.Count -gt 0) {

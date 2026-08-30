@@ -14,7 +14,6 @@ struct ForumThreadDetailView: View {
     @State private var isReplySending = false
     @State private var errorMessage: String?
     @State private var statusMessage: String?
-    @State private var reportTarget: ReportTarget?
     @State private var showingTerms = false
     @State private var showLoginAlert = false
     @State private var heroCollapseProgress: CGFloat = 0
@@ -66,7 +65,10 @@ struct ForumThreadDetailView: View {
                                 .frame(maxWidth: .infinity)
                                 .padding(.vertical, 48)
                         } else {
-                            ForEach(posts) { post in
+                            ForEach(posts.filter { post in
+                                guard let userID = post.userId else { return true }
+                                return !container.blockedUserIDs.contains(userID)
+                            }) { post in
                                 postCard(post)
                             }
                         }
@@ -98,9 +100,6 @@ struct ForumThreadDetailView: View {
         .navigationTitle(thread.title)
         .navigationBarTitleDisplayMode(.inline)
         .task { await load() }
-        .sheet(item: $reportTarget) { target in
-            ReportContentView(kind: .post(postID: target.postID))
-        }
         .sheet(isPresented: $showingTerms) {
             TermsAcceptanceView()
         }
@@ -135,6 +134,13 @@ struct ForumThreadDetailView: View {
                         .foregroundStyle(Color(hex: 0x687385))
                 }
                 Spacer(minLength: 0)
+                if let postID = Int(post.id) {
+                    UGCSafetyMenu(type: .forumPost, contentID: postID, userID: post.userId) {
+                        if let userID = post.userId {
+                            posts.removeAll { $0.userId == userID }
+                        }
+                    }
+                }
             }
             .padding(18)
             .forumHeroSurface(radius: 12)
@@ -285,32 +291,10 @@ struct ForumThreadDetailView: View {
             ForumMessageBody(message: post.message)
             postImages(post)
 
-            if let postID = Int(post.id) {
-                HStack {
-                    Spacer(minLength: 0)
-                    Button { reportTarget = ReportTarget(postID: postID) } label: {
-                        Label(L10n.forumThreadReportAction, systemImage: "exclamationmark.triangle.fill")
-                            .font(.caption.weight(.semibold))
-                            .foregroundStyle(Color(hex: 0x8A5A00))
-                    }
-                    .buttonStyle(.plain)
-                    .accessibilityLabel(L10n.forumThreadReportPost)
-                }
-                .padding(.top, 10)
-            }
         }
         .padding(16)
         .frame(maxWidth: .infinity, alignment: .leading)
         .background(Color.white.opacity(0.99), in: RoundedRectangle(cornerRadius: 12, style: .continuous))
-        .contextMenu {
-            if let userID = post.userId {
-                Button(role: .destructive) {
-                    Task { await blockAuthor(userID: userID) }
-                } label: {
-                    Label(L10n.forumThreadBlockUser, systemImage: "person.crop.circle.badge.xmark")
-                }
-            }
-        }
     }
 
     private func postAuthorHeader(_ post: ForumPostDTO) -> some View {
@@ -436,17 +420,4 @@ struct ForumThreadDetailView: View {
         }
     }
 
-    private func blockAuthor(userID: Int) async {
-        do {
-            try await container.safety.blockMember(userID: userID)
-            statusMessage = L10n.blockMemberSuccess
-        } catch {
-            statusMessage = L10n.blockMemberFailure
-        }
-    }
-}
-
-private struct ReportTarget: Identifiable {
-    let postID: Int
-    var id: Int { postID }
 }

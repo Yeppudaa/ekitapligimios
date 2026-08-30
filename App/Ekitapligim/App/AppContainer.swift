@@ -16,6 +16,7 @@ final class AppContainer: ObservableObject {
     @Published private(set) var unreadNotifications = 0
     @Published private(set) var unreadMessages = 0
     @Published private(set) var isRefreshingSession = false
+    @Published private(set) var blockedUserIDs: Set<Int> = []
 
     var totalUnread: Int { unreadNotifications + unreadMessages }
     var isSignedIn: Bool { if case .signedIn = authState { return true }; return false }
@@ -136,9 +137,10 @@ final class AppContainer: ObservableObject {
         async let libraryResult = try? books.library()
         async let statsResult = try? readingStatsRepository.stats()
         async let countsResult = try? notifications.counts()
+        async let blockedResult = try? safety.blockedMembers()
 
-        let (loadedProfile, loadedSubscription, loadedLibrary, loadedStats, counts) = await (
-            profileResult, subscriptionResult, libraryResult, statsResult, countsResult
+        let (loadedProfile, loadedSubscription, loadedLibrary, loadedStats, counts, blocked) = await (
+            profileResult, subscriptionResult, libraryResult, statsResult, countsResult, blockedResult
         )
 
         if let loadedProfile { profileState = loadedProfile }
@@ -147,6 +149,9 @@ final class AppContainer: ObservableObject {
         // The dedicated route may not be deployed yet, in which case the profile payload carries the stats.
         readingStats = loadedStats.flatMap { $0 } ?? loadedProfile?.readingStats ?? readingStats
         if let counts { applyCounts(counts) }
+        if let blocked {
+            blockedUserIDs = Set(blocked.members.compactMap { Int($0.id) })
+        }
     }
 
     func refreshUnreadCounts() async {
@@ -223,12 +228,17 @@ final class AppContainer: ObservableObject {
         libraryItems = []
         unreadNotifications = 0
         unreadMessages = 0
+        blockedUserIDs = []
     }
 
-    func signIn(username: String, password: String) async throws {
+    func signIn(username: String, password: String, acceptedTermsVersion: String) async throws {
         authState = .authenticating
         do {
-            let response = try await auth.login(username: username, password: password)
+            let response = try await auth.login(
+                username: username,
+                password: password,
+                acceptedTermsVersion: acceptedTermsVersion
+            )
             try await applyAuthResponse(response)
         } catch {
             authState = .signedOut
@@ -247,10 +257,15 @@ final class AppContainer: ObservableObject {
         }
     }
 
-    func register(username: String, email: String, password: String) async throws {
+    func register(username: String, email: String, password: String, acceptedTermsVersion: String) async throws {
         authState = .authenticating
         do {
-            let response = try await auth.register(username: username, email: email, password: password)
+            let response = try await auth.register(
+                username: username,
+                email: email,
+                password: password,
+                acceptedTermsVersion: acceptedTermsVersion
+            )
             try await applyAuthResponse(response)
         } catch {
             authState = .signedOut
@@ -260,6 +275,33 @@ final class AppContainer: ObservableObject {
 
     func requestPasswordReset(email: String) async throws {
         try await auth.forgotPassword(email: email)
+    }
+
+    @discardableResult
+    func blockAndReport(
+        userID: Int,
+        sourceType: UGCContentType,
+        sourceID: Int,
+        reason: UGCReportReason,
+        details: String = ""
+    ) async throws -> BlockMemberResponseDTO {
+        let response = try await safety.blockMember(
+            userID: userID,
+            sourceType: sourceType,
+            sourceID: sourceID,
+            reason: reason,
+            details: details
+        )
+        blockedUserIDs.insert(userID)
+        return response
+    }
+
+    func rememberBlockedUser(_ userID: Int) {
+        blockedUserIDs.insert(userID)
+    }
+
+    func forgetBlockedUser(_ userID: Int) {
+        blockedUserIDs.remove(userID)
     }
 
     func updatePassword(currentPassword: String, newPassword: String) async throws {

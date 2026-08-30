@@ -29,6 +29,11 @@ public struct AppConfig: Sendable, Equatable {
         webBaseURL.appendingPathComponent("yardim/kurallar", isDirectory: true)
     }
 
+    public var eulaURL: URL {
+        URL(string: "https://www.apple.com/legal/internet-services/itunes/dev/stdeula/")
+            ?? termsURL
+    }
+
     public static func production() throws -> AppConfig {
         guard
             let apiURL = URL(string: "https://ekitapligim.com/ios-api/v1/"),

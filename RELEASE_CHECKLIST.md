@@ -18,9 +18,16 @@
 - [ ] Backend App Store JWS verification installed and tested with real Apple sandbox transactions.
 - [ ] Ask to Buy/pending approval and out-of-app completion were delivered through `Transaction.updates`, synchronized to the backend, and finished only after verification.
 - [ ] Backend user blocking/reporting installed and tested on staging.
-- [ ] Backend terms acceptance installed and tested before UGC posting is enabled.
+- [ ] Standalone IosApi 1.0.12 installed on staging; MobileApi 1.0.136 and `/mobile-api/v1/` checksum/behavior unchanged.
+- [ ] `ekIosUgcBlockedTerms` and `ekIosUgcModeratorEmails` configured; `php cmd.php ekitapligim-ios:release-audit` passed.
+- [ ] Backend terms acceptance is mandatory on both login and registration and tested before UGC posting is enabled.
+- [ ] Every UGC create/edit endpoint rejects configured normalized variants with `422 content_policy_violation` and no database row.
+- [ ] Forum, book comment, Book Agenda post/comment, chat and private-message reports appear in XenForo and enqueue moderator email.
+- [ ] Ignore filtering and immediate local hiding verified on every social response/screen; blocked one-to-one conversation is refused and group messages are selectively hidden.
+- [ ] SLA cron reminder at 20 hours, escalation at 24 hours, action time and closure time verified on staging.
 - [ ] App Store Server Notifications endpoint verifies JWS and is tested with real Apple sandbox notifications.
 - [ ] `Scripts/build-ios-api-addon.ps1 -CreateZip` produced the standalone `Ekitapligim/IosApi` XenForo package; `Ekitapligim/MobileApi` remains untouched for Android.
+- [ ] The exact staging-tested IosApi ZIP SHA-256 was installed in production; rollback ZIP and database backup were captured first.
 - [ ] `Scripts/prepare-public-deployment.ps1 -TeamId "..."` produced a manifest, matching SHA-256, XenForo ZIP, and placeholder-free AASA file.
 - [ ] Backend account deletion endpoint stores deletion requests and supports Apple/no-password accounts.
 - [ ] Profile and notification APIs verified against staging permissions.
@@ -42,6 +49,7 @@
 - [ ] Export compliance answered.
 - [ ] Clean Debug build passed.
 - [ ] Clean Release build passed.
+- [ ] Build 18 (not rejected build 17) archived and uploaded.
 - [ ] `Scripts/validate-workspace.ps1` passed.
 - [ ] `Scripts/ui-accessibility-audit.ps1` passed.
 - [ ] `Scripts/appstore-preflight.ps1` passed with no placeholders.
@@ -56,3 +64,4 @@
 - [ ] Forum/report/block flows verified against staging XenForo permissions.
 - [ ] `APP_STORE_METADATA.md` placeholders replaced before submission.
 - [ ] `REVIEWER_TEST_PLAN.md` executed with evidence captured.
+- [ ] Physical iPhone and iPad recordings show pre-login EULA, reporting, block-and-report, and immediate content removal.

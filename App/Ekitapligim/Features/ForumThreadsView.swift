@@ -76,13 +76,28 @@ struct ForumThreadsView: View {
                                     .padding(.horizontal, 4)
                             }
 
-                            ForEach(threads) { thread in
-                                NavigationLink {
-                                    ForumThreadDetailView(thread: thread)
-                                } label: {
-                                    ForumThreadCard(thread: thread)
+                            ForEach(threads.filter { thread in
+                                guard let userID = thread.userId else { return true }
+                                return !container.blockedUserIDs.contains(userID)
+                            }) { thread in
+                                ZStack(alignment: .topTrailing) {
+                                    NavigationLink {
+                                        ForumThreadDetailView(thread: thread)
+                                    } label: {
+                                        ForumThreadCard(thread: thread)
+                                    }
+                                    .buttonStyle(.plain)
+                                    if let firstPostID = thread.firstPostId {
+                                        UGCSafetyMenu(
+                                            type: .forumPost,
+                                            contentID: firstPostID,
+                                            userID: thread.userId
+                                        ) {
+                                            threads.removeAll { $0.userId == thread.userId }
+                                        }
+                                        .padding(8)
+                                    }
                                 }
-                                .buttonStyle(.plain)
                             }
                             if currentPage < lastPage {
                                 EKLoadMoreButton(

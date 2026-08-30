@@ -41,7 +41,7 @@ Windows/source validation:
 .\Scripts\swift-test-windows.ps1
 .\Scripts\api-smoke-test.ps1 -BaseUrl "https://staging.ekitapligim.com/ios-api/v1/"
 .\Scripts\appstore-preflight.ps1
-.\\Scripts\\apply-mobileapi-ios-patch.ps1 -AddonPath "C:\\path\\to\\MobileApi-addon" -CreateZip
+.\Scripts\build-ios-api-addon.ps1 -CreateZip
 .\\Scripts\\generate-branded-appicon.ps1 -SourcePath "C:\\path\\to\\app_logo_round.png"
 ```
 

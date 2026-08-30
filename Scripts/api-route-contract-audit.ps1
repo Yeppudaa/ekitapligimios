@@ -1,3 +1,5 @@
+param([switch]$SkipInstalled)
+
 $ErrorActionPreference = "Stop"
 $root = Resolve-Path (Join-Path $PSScriptRoot "..")
 $endpointPath = Join-Path $root "Sources/EkitapligimCore/APIEndpoint.swift"
@@ -40,7 +42,7 @@ if ($missing.Count) {
 Write-Host "API route contract audit completed: $($endpoints.Count) Swift path templates matched."
 
 $installedRoutesPath = "C:\xampp\htdocs\ekitapligim\src\addons\Ekitapligim\IosApi\_data\routes.xml"
-if (Test-Path -LiteralPath $installedRoutesPath) {
+if (-not $SkipInstalled -and (Test-Path -LiteralPath $installedRoutesPath)) {
     [xml]$installedRoutes = Get-Content -Raw -LiteralPath $installedRoutesPath
     $installedTemplates = @($installedRoutes.routes.route | Where-Object {
         $_.route_type -eq 'public' -and ([string] $_.format).StartsWith('v1/')

@@ -330,7 +330,10 @@ struct BookAgendaView: View {
         } else if posts.isEmpty {
             EKStateCard(title: L10n.agendaFeedEmptyTitle, message: L10n.agendaFeedEmptySubtitle, systemImage: "books.vertical.fill")
         } else {
-            ForEach(posts) { post in
+            ForEach(posts.filter { post in
+                guard let userID = Int(post.actor.id) else { return true }
+                return !container.blockedUserIDs.contains(userID)
+            }) { post in
                 BookAgendaPostCard(
                     post: post,
                     onOpen: { selectedPostID = post.id },
@@ -341,6 +344,10 @@ struct BookAgendaView: View {
                     onDelete: { pendingDeletion = post },
                     onFollow: { Task { await toggleFollow(post) } },
                     onRequireLogin: { showingLogin = true },
+                    onBlocked: {
+                        let actorID = post.actor.id
+                        posts.removeAll { $0.actor.id == actorID }
+                    },
                     isSignedIn: container.isSignedIn
                 )
             }
@@ -479,6 +486,7 @@ struct BookAgendaPostCard: View {
     var onDelete: () -> Void = {}
     var onFollow: () -> Void = {}
     var onRequireLogin: () -> Void = {}
+    var onBlocked: () -> Void = {}
     var isSignedIn: Bool = false
     var showsCommentAction: Bool = true
 
@@ -533,6 +541,15 @@ struct BookAgendaPostCard: View {
                     .lineLimit(1)
             }
             Spacer(minLength: 0)
+
+            if let contentID = Int(post.id) {
+                UGCSafetyMenu(
+                    type: .agendaPost,
+                    contentID: contentID,
+                    userID: post.viewer.canEdit ? nil : Int(post.actor.id),
+                    onBlocked: onBlocked
+                )
+            }
 
             if post.viewer.canEdit || post.viewer.canDelete {
                 Menu {
@@ -901,6 +918,10 @@ struct BookAgendaDetailView: View {
                             onBookmark: { Task { await bookmark() } },
                             onRepost: { Task { await repost() } },
                             onRequireLogin: { showingLogin = true },
+                            onBlocked: {
+                                if let userID = Int(post.actor.id) { container.rememberBlockedUser(userID) }
+                                self.post = nil
+                            },
                             isSignedIn: container.isSignedIn,
                             showsCommentAction: false
                         )
@@ -958,11 +979,18 @@ struct BookAgendaDetailView: View {
             if comments.isEmpty {
                 EKStateCard(title: L10n.agendaCommentsEmptyTitle, message: L10n.agendaCommentsEmptySubtitle, systemImage: "books.vertical.fill")
             } else {
-                ForEach(comments) { comment in
+                ForEach(comments.filter { comment in
+                    guard let userID = Int(comment.actor.id) else { return true }
+                    return !container.blockedUserIDs.contains(userID)
+                }) { comment in
                     BookAgendaCommentRow(
                         comment: comment,
                         onEdit: { editingComment = comment },
-                        onDelete: { pendingCommentDeletion = comment }
+                        onDelete: { pendingCommentDeletion = comment },
+                        onBlocked: {
+                            let actorID = comment.actor.id
+                            comments.removeAll { $0.actor.id == actorID }
+                        }
                     )
                 }
             }
@@ -1127,6 +1155,7 @@ private struct BookAgendaCommentRow: View {
     let comment: BookAgendaCommentDTO
     let onEdit: () -> Void
     let onDelete: () -> Void
+    let onBlocked: () -> Void
 
     var body: some View {
         HStack(alignment: .top, spacing: 10) {
@@ -1151,6 +1180,14 @@ private struct BookAgendaCommentRow: View {
                                 .frame(width: 30, height: 30)
                         }
                         .accessibilityLabel(L10n.agendaCommentOptions)
+                    }
+                    if let contentID = Int(comment.id) {
+                        UGCSafetyMenu(
+                            type: .agendaComment,
+                            contentID: contentID,
+                            userID: comment.viewer.canEdit ? nil : Int(comment.actor.id),
+                            onBlocked: onBlocked
+                        )
                     }
                 }
                 Text(EKitapligimFormat.plainText(comment.message))

@@ -95,6 +95,26 @@ public enum ReaderSessionPurpose: String, Equatable, Sendable {
     case download
 }
 
+public enum UGCContentType: String, CaseIterable, Equatable, Hashable, Sendable {
+    case forumPost = "forum_post"
+    case bookComment = "book_comment"
+    case agendaPost = "agenda_post"
+    case agendaComment = "agenda_comment"
+    case chatMessage = "chat_message"
+    case conversationMessage = "conversation_message"
+}
+
+public enum UGCReportReason: String, CaseIterable, Equatable, Hashable, Sendable {
+    case spam
+    case harassment
+    case hate
+    case sexual
+    case violence
+    case privacy
+    case copyright
+    case other
+}
+
 public extension APIEndpoint {
     static let siteStats = APIEndpoint(method: .get, path: "book-stats")
 
@@ -349,19 +369,30 @@ public extension APIEndpoint {
         )
     }
 
-    static func login(username: String, password: String) -> APIEndpoint {
+    static let legalTerms = APIEndpoint(method: .get, path: "legal/terms")
+
+    static func login(username: String, password: String, acceptedTermsVersion: String) -> APIEndpoint {
         APIEndpoint(
             method: .post,
             path: "auth/login",
-            body: .form(["login": username, "password": password])
+            body: .form([
+                "login": username,
+                "password": password,
+                "accepted_terms_version": acceptedTermsVersion
+            ])
         )
     }
 
-    static func register(username: String, email: String, password: String) -> APIEndpoint {
+    static func register(username: String, email: String, password: String, acceptedTermsVersion: String) -> APIEndpoint {
         APIEndpoint(
             method: .post,
             path: "auth/register",
-            body: .form(["username": username, "email": email, "password": password])
+            body: .form([
+                "username": username,
+                "email": email,
+                "password": password,
+                "accepted_terms_version": acceptedTermsVersion
+            ])
         )
     }
 
@@ -411,8 +442,41 @@ public extension APIEndpoint {
         )
     }
 
-    static func blockMember(userID: Int) -> APIEndpoint {
-        APIEndpoint(method: .post, path: "members/\(userID)/block", requiresAuthentication: true)
+    static func reportContent(
+        type: UGCContentType,
+        contentID: Int,
+        reason: UGCReportReason,
+        details: String = ""
+    ) -> APIEndpoint {
+        APIEndpoint(
+            method: .post,
+            path: "safety/reports",
+            body: .form([
+                "content_type": type.rawValue,
+                "content_id": String(contentID),
+                "reason_code": reason.rawValue,
+                "details": details
+            ]),
+            requiresAuthentication: true
+        )
+    }
+
+    static func blockMember(
+        userID: Int,
+        sourceType: UGCContentType? = nil,
+        sourceID: Int? = nil,
+        reason: UGCReportReason = .harassment,
+        details: String = ""
+    ) -> APIEndpoint {
+        var fields = ["reason_code": reason.rawValue, "details": details]
+        if let sourceType { fields["source_type"] = sourceType.rawValue }
+        if let sourceID { fields["source_id"] = String(sourceID) }
+        return APIEndpoint(
+            method: .post,
+            path: "members/\(userID)/block",
+            body: .form(fields),
+            requiresAuthentication: true
+        )
     }
 
     static func unblockMember(userID: Int) -> APIEndpoint {

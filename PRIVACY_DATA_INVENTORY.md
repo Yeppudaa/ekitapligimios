@@ -11,6 +11,9 @@
 | Reading progress | Continue reading/sync | Yes | No | Until user deletes account/library data |
 | Library/favorites | User library | Yes | No | Until user deletes/removes |
 | Comments/posts/messages | Community | Yes | No | Per XenForo moderation/retention |
+| Safety reports, report reason, reporter/target/content IDs and moderation timestamps | Community safety, abuse handling and 24-hour SLA | Yes | No | Per XenForo moderation/security retention; moderator email excludes content bodies and credentials |
+| Terms acceptance version/time | Legal and community-rule consent | Yes | No | Account lifetime/legal retention |
+| Blocked-user relationships | User safety and server-side content filtering | Yes | No | Until user unblocks/account deletion |
 | Purchase transactions | Entitlements | Yes | No | Per App Store/legal retention |
 | Notification activity | In-app notification center | Yes | No | Per XenForo alert retention |
 | Offline book files | User-requested offline reading | No additional identifier | No | App sandbox until user removes download/app |

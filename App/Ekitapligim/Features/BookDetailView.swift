@@ -45,7 +45,6 @@ struct BookDetailView: View {
     @State private var commentRating = 5
     @State private var isSubmittingComment = false
     @State private var commentsError: String?
-    @State private var selectedCommentForReport: BookCommentDTO?
     @State private var showingCommentLoginAlert = false
     @State private var showingReaderLoginAlert = false
     @State private var showingReport = false
@@ -107,11 +106,6 @@ struct BookDetailView: View {
                 } else {
                     issueFeedback = L10n.bookDetailIssueSubmitFailed
                 }
-            }
-        }
-        .sheet(item: $selectedCommentForReport) { comment in
-            if let postID = Int(comment.id) {
-                ReportContentView(kind: .post(postID: postID))
             }
         }
         .alert(L10n.bookCommentsLoginRequiredTitle, isPresented: $showingCommentLoginAlert) {
@@ -666,12 +660,13 @@ struct BookDetailView: View {
                 commentsComposer
             }
             commentsFeedback
-            ForEach(comments) { comment in
+            ForEach(comments.filter { comment in
+                guard let userID = comment.userId else { return true }
+                return !container.blockedUserIDs.contains(userID)
+            }) { comment in
                 BookCommentRow(comment: comment) {
-                    if isSignedIn {
-                        selectedCommentForReport = comment
-                    } else {
-                        showingCommentLoginAlert = true
+                    if let userID = comment.userId {
+                        comments.removeAll { $0.userId == userID }
                     }
                 }
             }
@@ -1072,7 +1067,7 @@ private struct SimilarBookCard: View {
 @MainActor
 private struct BookCommentRow: View {
     let comment: BookCommentDTO
-    let report: () -> Void
+    let onBlocked: () -> Void
 
     var body: some View {
         VStack(alignment: .leading, spacing: 6) {
@@ -1090,6 +1085,9 @@ private struct BookCommentRow: View {
                     }
                 }
                 .accessibilityLabel(L10n.bookCommentsRating(comment.rating))
+                if let postID = Int(comment.id) {
+                    UGCSafetyMenu(type: .bookComment, contentID: postID, userID: comment.userId, onBlocked: onBlocked)
+                }
             }
             if !comment.message.isEmpty {
                 Text(comment.message)
@@ -1104,12 +1102,6 @@ private struct BookCommentRow: View {
             RoundedRectangle(cornerRadius: 14, style: .continuous)
                 .stroke(Color(hex: 0xE4E9EA), lineWidth: 1)
         }
-        .contextMenu {
-            Button(action: report) {
-                Label(L10n.bookCommentsReport, systemImage: "flag")
-            }
-        }
-        .accessibilityAction(named: L10n.bookCommentsReport, report)
     }
 }
 

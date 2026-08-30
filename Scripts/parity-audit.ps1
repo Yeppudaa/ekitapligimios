@@ -525,7 +525,12 @@ if (-not $SkipNetwork -and (
             $safetyOutput = & (Join-Path $PSScriptRoot "ugc-safety-smoke-test.ps1") @safetyArgs 2>&1
             $safetyExit = $LASTEXITCODE
             if ($safetyExit -ne 0) { throw ($safetyOutput | Out-String) }
-            Add-Result "UGC safety smoke" "PASS" "Completed with bearer token"
+            $safetyText = ($safetyOutput | Out-String)
+            if ($safetyText -match "Read-only mode") {
+                Add-Result "UGC safety smoke" "WARN" "Read-only checks completed; pass -ExerciseMutations with explicit staging IDs for full UGC evidence"
+            } else {
+                Add-Result "UGC safety smoke" "PASS" "Completed with bearer token"
+            }
         }
     } catch {
         $script:results = @($results | Where-Object { $_.Name -ne "Auth UGC mutations" -and $_.Name -ne "UGC safety smoke" })
@@ -536,7 +541,22 @@ if (-not $SkipNetwork -and (
 } else {
     Add-Result "UGC safety smoke" "WARN" "Requires EKITAPLIGIM_SMOKE_ACCESS_TOKEN when running auth mutations"
 }
-Add-Result "Visual screenshot parity" "WARN" "Requires Mac/Xcode simulator side-by-side comparison"
+
+Write-Step "Checking visual parity evidence"
+try {
+    $visualOutput = & (Join-Path $PSScriptRoot "verify-visual-parity-evidence.ps1") 2>&1
+    $visualExit = $LASTEXITCODE
+    $visualText = ($visualOutput | Out-String).Trim()
+    if ($visualExit -eq 0) {
+        Add-Result "Visual screenshot parity" "PASS" "manifest.json verified for all scoped screens"
+    } elseif ($visualExit -eq 2) {
+        Add-Result "Visual screenshot parity" "WARN" "Missing release-archive/visual-parity/manifest.json (copy manifest.example.json on Mac after capture)"
+    } else {
+        Add-Result "Visual screenshot parity" "WARN" ($visualText -replace "`r?`n", "; ")
+    }
+} catch {
+    Add-Result "Visual screenshot parity" "WARN" $_.Exception.Message
+}
 
 Write-Host ""
 Write-Step "Summary"
@@ -558,8 +578,10 @@ if (@($results | Where-Object { $_.Name -eq "Live forum create POST" -and $_.Sta
 if (@($results | Where-Object { $_.Name -eq "Auth UGC mutations" -and $_.Status -eq "WARN" }).Count -gt 0) {
     Write-Host "- Copy .env.example to .env with EKITAPLIGIM_SMOKE_LOGIN/PASSWORD (or set env vars) and re-run parity-audit.ps1."
 }
-if (@($results | Where-Object { $_.Name -eq "Visual screenshot parity" }).Count -gt 0) {
+if (@($results | Where-Object { $_.Name -eq "Visual screenshot parity" -and $_.Status -eq "WARN" }).Count -gt 0) {
     Write-Host "- Capture Mac/Xcode side-by-side screenshots vs Android reference for scoped UGC screens."
+    Write-Host "- Save PNGs under release-archive/visual-parity/ios and release-archive/visual-parity/android"
+    Write-Host "- Copy manifest.example.json to manifest.json, set pass=true, re-run parity-audit.ps1"
     Write-Host "- Checklist: .\Scripts\visual-parity-checklist.ps1"
 }
 Write-Host "- Full matrix: ANDROID_IOS_FEATURE_PARITY.md"

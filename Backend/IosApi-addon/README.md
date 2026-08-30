@@ -4,8 +4,9 @@ Standalone XenForo add-on for the native iOS app. Public routes live under `/ios
 
 ## Architecture
 
-- **Depends on** `Ekitapligim/MobileApi` for shared catalog, community, reader, and library controllers.
+- **Depends on** unchanged `Ekitapligim/MobileApi` 1.0.136 for shared catalog, reader, and library controllers.
 - **Owns** Apple Sign In, App Store billing/notifications, account deletion, blocking, reporting, and terms acceptance.
+- **Owns** all iOS social write/filter wrappers (forum, book comments, Book Agenda, chat, and private conversations) under `/ios-api/v1/`; `/mobile-api/v1/` is never modified.
 - **Extends** `AbstractMobileController` through XenForo class extensions so App Store entitlements grant premium access without modifying MobileApi source files.
 
 ## Build
@@ -27,7 +28,8 @@ Regenerate routes after MobileApi reference updates:
 2. Upload and install `Ekitapligim/IosApi` from Admin → Add-ons.
 3. Rebuild routes/caches if prompted.
 4. Configure Apple server secrets (see below).
-5. Verify forum topic create route responds (401/403 without auth, not 404):
+5. Configure XenForo options `ekIosUgcBlockedTerms` and `ekIosUgcModeratorEmails`; neither may be empty for release.
+6. Run `php cmd.php ekitapligim-ios:release-audit` and verify forum topic create responds (401/403 without auth, not 404):
 
 ```powershell
 .\Scripts\parity-audit.ps1 -BaseUrl "https://ekitapligim.com/ios-api/v1/"
@@ -52,10 +54,15 @@ Regenerate routes after MobileApi reference updates:
 - `POST /ios-api/v1/members/{user_id}/block|unblock`
 - `GET|POST /ios-api/v1/me/terms`, `POST /ios-api/v1/me/terms/accept`
 - `POST /ios-api/v1/posts/{post_id}/report`
+- `GET /ios-api/v1/legal/terms`
+- `POST /ios-api/v1/safety/reports`
+- `POST /ios-api/v1/auth/login|register` with mandatory `accepted_terms_version`
 - `POST /ios-api/v1/forums/{node_id}/threads` — create forum topic (IosApi `ForumThreads::actionPost`; requires v1.0.4+ deploy)
 - `GET|POST /ios-api/v1/threads/{thread_id}/posts` — list/reply (IosApi `ThreadPosts` + Pub wrapper; requires v1.0.5+ deploy)
 
-All other iOS app endpoints are registered under `/ios-api/v1/` but delegate to existing `Ekitapligim\MobileApi` controllers. Reading stats, profile media uploads, and book-agenda follow are owned by IosApi so they work even when MobileApi route import is incomplete on the server.
+IosApi 1.0.12 wraps every social create/edit action with a managed objectionable-content filter, Unicode/punctuation normalization, and XenForo spam checks before persistence. It returns `422 content_policy_violation` without saving rejected text. Authenticated social reads remove ignored users; one-to-one conversations with blocked members are refused while group conversations retain other participants and hide blocked messages.
+
+Reports use XenForo's report queue and an additive `xf_ekitapligim_ios_ugc_event` table. A queued job sends moderator email without private bodies or secrets. The SLA cron runs every 15 minutes, reminds at 20 hours, escalates at 24 hours, and tracks report, action, and closure timestamps.
 
 ## Apple Server Configuration
 

@@ -16,11 +16,9 @@ $root = Resolve-Path (Join-Path $PSScriptRoot "..")
 $aasaTemplate = Join-Path $root "Web/.well-known/apple-app-site-association"
 
 if (-not $AddonZip) {
-    $latestZip = Get-ChildItem (Join-Path $root "Backend/packages/Ekitapligim-MobileApi-iOS-*.zip") -File -ErrorAction SilentlyContinue |
-        Sort-Object LastWriteTimeUtc -Descending |
-        Select-Object -First 1
+    $latestZip = Get-Item (Join-Path $root "release-archive/Ekitapligim-IosApi.zip") -ErrorAction SilentlyContinue
     if (-not $latestZip) {
-        throw "No MobileApi release ZIP was found under Backend/packages."
+        throw "No standalone IosApi release ZIP was found. Run Scripts/build-ios-api-addon.ps1 -CreateZip."
     }
     $AddonZip = $latestZip.FullName
 }
@@ -34,10 +32,10 @@ Add-Type -AssemblyName System.IO.Compression.FileSystem
 $archive = [System.IO.Compression.ZipFile]::OpenRead($resolvedZip)
 try {
     $addonEntry = $archive.Entries | Where-Object {
-        $_.FullName -eq "upload/src/addons/Ekitapligim/MobileApi/addon.json"
+        $_.FullName -eq "upload/src/addons/Ekitapligim/IosApi/addon.json"
     } | Select-Object -First 1
     if (-not $addonEntry) {
-        throw "MobileApi ZIP does not contain the expected XenForo addon.json path."
+        throw "IosApi ZIP does not contain the expected XenForo addon.json path."
     }
 } finally {
     $archive.Dispose()
@@ -96,11 +94,13 @@ $instructions = @"
 1. Verify the addon ZIP SHA-256 against `deployment-manifest.json`.
 2. Install or upgrade the ZIP through the XenForo add-on release process.
 3. Publish `.well-known/apple-app-site-association` at the site root without redirects or authentication and with `Content-Type: application/json`.
-4. Configure the production Apple secrets described in `Backend/MobileApi-addon/README.md` outside source control.
-5. Run `Scripts/public-release-audit.ps1 -TeamId "$TeamId" -BundleId "$BundleId"`.
-6. Run authenticated API, session rotation, UGC safety, StoreKit sandbox, and account-deletion reviewer tests.
+4. Configure the production Apple secrets described in `Backend/IosApi-addon/README.md` outside source control.
+5. Configure non-empty XenForo options `ekIosUgcBlockedTerms` and `ekIosUgcModeratorEmails`.
+6. Run `Scripts/mobileapi-release-audit.ps1 -AddonZip "$zipDestination"` (the historical filename now audits standalone IosApi only).
+7. Run `Scripts/public-release-audit.ps1 -TeamId "$TeamId" -BundleId "$BundleId"`.
+8. Run authenticated auth, content-filter, report, block, instant-hide, SLA, StoreKit sandbox, and account-deletion reviewer tests on staging before production.
 "@
 Set-Content -LiteralPath (Join-Path $resolvedOutput "DEPLOY.md") -Value $instructions -Encoding utf8NoBOM
 
 Write-Host "Public deployment package created: $resolvedOutput"
-Write-Host "MobileApi SHA-256: $hash"
+Write-Host "IosApi SHA-256: $hash"

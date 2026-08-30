@@ -18,13 +18,18 @@ final class APIClientTests: XCTestCase {
         let config = try makeConfig()
         let client = APIClient(config: config)
 
-        let request = try client.makeURLRequest(.login(username: "demo@example.com", password: "secret value"))
+        let request = try client.makeURLRequest(.login(
+            username: "demo@example.com",
+            password: "secret value",
+            acceptedTermsVersion: "2026-08"
+        ))
         let body = String(data: try XCTUnwrap(request.httpBody), encoding: .utf8)
 
         XCTAssertEqual(request.httpMethod, "POST")
         XCTAssertEqual(request.value(forHTTPHeaderField: "Content-Type"), "application/x-www-form-urlencoded; charset=utf-8")
         XCTAssertTrue(body?.contains("login=demo@example.com") == true)
         XCTAssertTrue(body?.contains("password=secret%20value") == true)
+        XCTAssertTrue(body?.contains("accepted_terms_version=2026-08") == true)
     }
 
     func testFormBodyEscapesSeparators() throws {

@@ -83,11 +83,11 @@ Checks the public HTTPS legal/support pages, Mobile API JSON contract, and Apple
 .\Scripts\public-release-audit.ps1 -TeamId "YOUR_APPLE_TEAM_ID"
 ```
 
-The command is expected to fail until the MobileApi add-on and `Web/.well-known/apple-app-site-association` are deployed publicly.
+The command is expected to fail until the standalone IosApi add-on and `Web/.well-known/apple-app-site-association` are deployed publicly.
 
 ## `prepare-public-deployment.ps1`
 
-Creates an immutable deployment directory containing the latest verified MobileApi XenForo ZIP, SHA-256 manifest, deployment instructions, and an AASA file with the real Team ID:
+Creates an immutable deployment directory containing the latest verified standalone IosApi XenForo ZIP, SHA-256 manifest, deployment instructions, and an AASA file with the real Team ID:
 
 ```powershell
 .\Scripts\prepare-public-deployment.ps1 -TeamId "YOUR_APPLE_TEAM_ID"
@@ -97,7 +97,7 @@ The Team ID must be ten uppercase letters or digits. Existing output directories
 
 ## `mobileapi-release-audit.ps1`
 
-Inspects the newest XenForo release ZIP before deployment. It verifies the public reader routes, revocable mobile sessions, iOS entitlement checks, reader-purpose enforcement, and account-deletion session revocation without extracting or modifying the package:
+Inspects the standalone IosApi release ZIP before deployment. It verifies the iOS route table, UGC safety controls, SLA cron, managed options, and the unchanged MobileApi 1.0.136 dependency without extracting or modifying the package:
 
 ```powershell
 .\Scripts\mobileapi-release-audit.ps1
@@ -136,15 +136,21 @@ Uses `EKITAPLIGIM_SMOKE_LOGIN` and `EKITAPLIGIM_SMOKE_PASSWORD` for a disposable
 
 ## `ugc-safety-smoke-test.ps1`
 
-Checks App Review-critical community safety flows: block/unblock, blocked members visibility, terms acceptance, and rejection of unauthenticated replies.
+Checks App Review-critical community safety flows. Read-only mode verifies authenticated terms/blocked-member access and unauthenticated rejection. Full controlled mode verifies the managed filter across all UGC write routes, no accepted rejected phrase, contextual block-and-report, and XenForo report queue integration.
 
 For local development:
 
 ```powershell
-.\Scripts\ugc-safety-smoke-test.ps1 -BaseUrl "http://localhost/ekitapligim/ios-api/v1/" -BearerToken $env:EKITAPLIGIM_SMOKE_ACCESS_TOKEN -BlockedUserId 4 -ThreadId 1 -AllowInsecure
+.\Scripts\ugc-safety-smoke-test.ps1 -BaseUrl "https://staging.example.com/ios-api/v1/" -BearerToken $env:EKITAPLIGIM_SMOKE_ACCESS_TOKEN
 ```
 
-Use a disposable normal-member token and a safe demo target user on staging. The script attempts cleanup by unblocking the target user at the end.
+For controlled mutation evidence, use a disposable account, an administrator-configured blocked phrase, explicit content IDs, and the production guard override only when staging is unavailable:
+
+```powershell
+.\Scripts\ugc-safety-smoke-test.ps1 -BaseUrl "https://staging.example.com/ios-api/v1/" -BearerToken $env:EKITAPLIGIM_SMOKE_ACCESS_TOKEN -ExerciseMutations -BlockedUserId 123 -ThreadId 456 -BookId 789 -AgendaPostId 321 -ChatRoomId 5 -ConversationId 654 -BlockedTerm "configured-test-phrase" -ForumPostId 457 -BookCommentId 790 -AgendaCommentId 322 -ChatMessageId 901 -ConversationMessageId 655
+```
+
+The mutation command is refused against production unless `-AllowProductionMutations` is explicitly provided. Reports are intentionally left in the moderation queue as evidence and must only use a disposable/controlled environment.
 
 ## `appstore-preflight.ps1`
 
@@ -237,6 +243,17 @@ Prints (or writes) the scoped Mac vs Android screenshot checklist for the seven 
 .\Scripts\visual-parity-checklist.ps1
 .\Scripts\visual-parity-checklist.ps1 -OutputPath ".\visual-parity-checklist.md"
 ```
+
+## `verify-visual-parity-evidence.ps1`
+
+Verifies `release-archive/visual-parity/manifest.json` lists all 10 scoped screens with `pass: true` and existing iOS/Android PNG paths. Used by `parity-audit.ps1` and `parity-completion-report.ps1`.
+
+```powershell
+# After Mac capture: copy manifest.example.json -> manifest.json, set pass=true, add PNGs
+.\Scripts\verify-visual-parity-evidence.ps1
+```
+
+Exit code `0` = complete, `2` = manifest missing, `1` = incomplete paths or pass flags.
 
 ## `api-route-contract-audit.ps1`
 

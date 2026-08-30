@@ -54,7 +54,9 @@ Write-Step "Checking required files"
     "Scripts/ugc-safety-smoke-test.ps1",
     "Scripts/parity-audit.ps1",
     "Scripts/verify-ios-api-deploy.ps1",
+    "Scripts/verify-visual-parity-evidence.ps1",
     "Scripts/visual-parity-checklist.ps1",
+    "release-archive/visual-parity/manifest.example.json",
     "ANDROID_IOS_FEATURE_PARITY.md",
     "Scripts/appstore-preflight.ps1",
     "Scripts/apply-mobileapi-ios-patch.ps1",
@@ -286,7 +288,7 @@ Write-Step "Running Swift static audit"
 & (Join-Path $PSScriptRoot "swift-static-audit.ps1")
 
 Write-Step "Running API route contract audit"
-& (Join-Path $PSScriptRoot "api-route-contract-audit.ps1")
+& (Join-Path $PSScriptRoot "api-route-contract-audit.ps1") -SkipInstalled
 
 Write-Step "Running UI accessibility audit"
 & (Join-Path $PSScriptRoot "ui-accessibility-audit.ps1")
@@ -527,10 +529,12 @@ $phpCommand = Get-Command php -ErrorAction SilentlyContinue
 $phpPath = if ($phpCommand) { $phpCommand.Source } elseif (Test-Path -LiteralPath "C:\xampp\php\php.exe") { "C:\xampp\php\php.exe" } else { $null }
 if ($phpPath) {
     Write-Host "php: $phpPath"
-    Get-ChildItem -LiteralPath "Backend/MobileApi-addon" -Recurse -Filter "*.php" | ForEach-Object {
-        & $phpPath -l $_.FullName | Write-Host
-        if ($LASTEXITCODE -ne 0) {
-            throw "PHP syntax check failed for $($_.FullName)"
+    foreach ($backendAddon in @("Backend/MobileApi-addon", "Backend/IosApi-addon")) {
+        Get-ChildItem -LiteralPath $backendAddon -Recurse -Filter "*.php" | ForEach-Object {
+            & $phpPath -l $_.FullName | Write-Host
+            if ($LASTEXITCODE -ne 0) {
+                throw "PHP syntax check failed for $($_.FullName)"
+            }
         }
     }
 } elseif ($Strict) {

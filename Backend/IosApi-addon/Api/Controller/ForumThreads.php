@@ -2,11 +2,14 @@
 
 namespace Ekitapligim\IosApi\Api\Controller;
 
+use Ekitapligim\IosApi\Service\IgnoredUsers;
 use XF\Mvc\ParameterBag;
 use XF\Service\FloodCheckService;
 
 class ForumThreads extends \Ekitapligim\MobileApi\Api\Controller\AbstractMobileController
 {
+	use UgcControllerTrait;
+
 	public function actionGet(ParameterBag $params)
 	{
 		$this->assertMobileScope();
@@ -25,10 +28,11 @@ class ForumThreads extends \Ekitapligim\MobileApi\Api\Controller\AbstractMobileC
 		$total = $finder->total();
 		$threads = $finder->limitByPage($page, $perPage)->fetch();
 		$items = [];
+		$blocked = IgnoredUsers::ids((int) \XF::visitor()->user_id);
 
 		foreach ($threads AS $thread)
 		{
-			if ($thread->canView())
+			if ($thread->canView() && !isset($blocked[(int) $thread->user_id]))
 			{
 				$items[] = $this->serializeThread($thread);
 			}
@@ -61,14 +65,6 @@ class ForumThreads extends \Ekitapligim\MobileApi\Api\Controller\AbstractMobileC
 			throw $this->exception($this->apiError('Forum not found.', 'forum_not_found', null, 404));
 		}
 
-		if (!$this->hasAcceptedCurrentTerms((int) $visitor->user_id))
-		{
-			return $this->apiError('Topluluk kurallarını kabul etmeden konu açamazsınız.', 'terms_acceptance_required', [
-				'required_version' => Terms::CURRENT_VERSION,
-				'requiredVersion' => Terms::CURRENT_VERSION
-			], 403);
-		}
-
 		if (!$forum->canCreateThread($error))
 		{
 			throw $this->exception($this->apiError($error ?: 'You cannot create a thread in this forum.', 'cannot_create_thread', null, 403));
@@ -76,6 +72,10 @@ class ForumThreads extends \Ekitapligim\MobileApi\Api\Controller\AbstractMobileC
 
 		$title = trim((string) $this->filter('title', 'str'));
 		$message = trim((string) $this->filter('message', 'str'));
+		if ($policyError = $this->validateUgcWrite([$title, $message]))
+		{
+			return $policyError;
+		}
 		if (mb_strlen($title) < 3)
 		{
 			return $this->apiError('Thread title is too short.', 'title_too_short');
@@ -124,23 +124,6 @@ class ForumThreads extends \Ekitapligim\MobileApi\Api\Controller\AbstractMobileC
 		]);
 	}
 
-	protected function hasAcceptedCurrentTerms(int $userId): bool
-	{
-		\XF::db()->query(
-			'CREATE TABLE IF NOT EXISTS xf_ekitapligim_mobile_terms_acceptance (
-				user_id INT UNSIGNED NOT NULL,
-				terms_version VARCHAR(32) NOT NULL,
-				accept_date INT UNSIGNED NOT NULL,
-				PRIMARY KEY (user_id)
-			) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4'
-		);
-
-		return (bool) \XF::db()->fetchOne(
-			'SELECT 1 FROM xf_ekitapligim_mobile_terms_acceptance WHERE user_id = ? AND terms_version = ? LIMIT 1',
-			[$userId, Terms::CURRENT_VERSION]
-		);
-	}
-
 	protected function assertViewableForum(int $nodeId)
 	{
 		$node = $this->em()->find('XF:Node', $nodeId);
@@ -164,6 +147,8 @@ class ForumThreads extends \Ekitapligim\MobileApi\Api\Controller\AbstractMobileC
 			'username' => $username,
 			'user_id' => (int) $thread->user_id,
 			'userId' => (int) $thread->user_id,
+			'first_post_id' => (int) $thread->first_post_id,
+			'firstPostId' => (int) $thread->first_post_id,
 			'reply_count' => (int) $thread->reply_count,
 			'replyCount' => (int) $thread->reply_count,
 			'view_count' => (int) $thread->view_count,

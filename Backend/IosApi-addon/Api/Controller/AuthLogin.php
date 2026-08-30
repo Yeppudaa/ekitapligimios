@@ -2,6 +2,7 @@
 
 namespace Ekitapligim\IosApi\Api\Controller;
 
+use Ekitapligim\IosApi\Service\TermsAcceptance;
 use XF\Entity\User;
 use XF\Service\User\LoginService;
 
@@ -10,6 +11,14 @@ class AuthLogin extends \Ekitapligim\MobileApi\Api\Controller\AbstractMobileCont
 	public function actionPost()
 	{
 		$this->assertMobileWriteScope();
+		$acceptedVersion = trim((string) $this->filter('accepted_terms_version', 'str'));
+		if (!TermsAcceptance::isCurrent($acceptedVersion))
+		{
+			return $this->apiError('Güncel kullanım şartlarını kabul etmelisiniz.', 'terms_acceptance_required', [
+				'required_version' => TermsAcceptance::CURRENT_VERSION,
+				'requiredVersion' => TermsAcceptance::CURRENT_VERSION,
+			], 403);
+		}
 
 		$login = trim($this->filter('login', 'str'));
 		$password = (string) $this->filter('password', 'str');
@@ -37,6 +46,7 @@ class AuthLogin extends \Ekitapligim\MobileApi\Api\Controller\AbstractMobileCont
 		{
 			return $this->apiError('This account cannot be used right now.', 'account_unavailable', null, 403);
 		}
+		TermsAcceptance::record((int) $user->user_id, $acceptedVersion);
 
 		return $this->apiResult($this->buildAuthPayload($user));
 	}

@@ -39,6 +39,7 @@ final class ModelDecodingTests: XCTestCase {
             {
               "id": "15601",
               "post_id": 15601,
+              "user_id": 42,
               "book_id": "15585",
               "username": "Demo",
               "message": "Güzel kitap",
@@ -56,6 +57,35 @@ final class ModelDecodingTests: XCTestCase {
         XCTAssertEqual(page.comments.first?.id, "15601")
         XCTAssertEqual(page.comments.first?.bookId, "15585")
         XCTAssertEqual(page.comments.first?.rating, 5)
+        XCTAssertEqual(page.comments.first?.userId, 42)
+    }
+
+    func testLegalTermsAndSafetyResponsesDecodeGuideline12Shape() throws {
+        let legal = try JSONDecoder.ekitapligim.decode(LegalTermsDTO.self, from: Data("""
+        {
+          "version":"2026-08",
+          "eula_url":"https://www.apple.com/legal/internet-services/itunes/dev/stdeula/",
+          "terms_url":"https://ekitapligim.com/yardim/kurallar/",
+          "privacy_url":"https://ekitapligim.com/yardim/gizlilik-politikasi/",
+          "support_url":"https://ekitapligim.com/diger/iletisim",
+          "moderation_sla_hours":24
+        }
+        """.utf8))
+        XCTAssertEqual(legal.version, "2026-08")
+        XCTAssertEqual(legal.moderationSlaHours, 24)
+
+        let report = try JSONDecoder.ekitapligim.decode(
+            SafetyReportResponseDTO.self,
+            from: Data(#"{"success":true,"report_id":17}"#.utf8)
+        )
+        XCTAssertEqual(report.reportId, 17)
+
+        let block = try JSONDecoder.ekitapligim.decode(
+            BlockMemberResponseDTO.self,
+            from: Data(#"{"success":true,"blocked_user_id":42,"report_created":true}"#.utf8)
+        )
+        XCTAssertEqual(block.blockedUserId, 42)
+        XCTAssertTrue(block.reportCreated)
     }
 
     func testMembersPageDecodesCurrentBackendShape() throws {
@@ -353,6 +383,8 @@ final class ModelDecodingTests: XCTestCase {
               "reply_count": 0,
               "view_count": 108,
               "post_date": 1779279451,
+              "user_id": 1,
+              "first_post_id": 99,
               "can_reply": false,
               "is_sticky": true,
               "discussion_type": "discussion"
@@ -370,6 +402,8 @@ final class ModelDecodingTests: XCTestCase {
 
         XCTAssertEqual(page.threads.count, 1)
         XCTAssertEqual(page.threads.first?.replyCount, 0)
+        XCTAssertEqual(page.threads.first?.userId, 1)
+        XCTAssertEqual(page.threads.first?.firstPostId, 99)
         XCTAssertEqual(page.currentPage, 1)
         XCTAssertEqual(page.lastPage, 1)
         XCTAssertEqual(page.total, 1)

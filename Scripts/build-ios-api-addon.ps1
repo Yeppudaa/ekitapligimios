@@ -3,6 +3,8 @@ param(
 
     [switch]$SkipRouteRegeneration,
 
+    [switch]$RegenerateRoutes,
+
     [string]$OutputDirectory = ""
 )
 
@@ -24,11 +26,15 @@ Assert-Path (Join-Path $addonRoot "addon.json")
 Assert-Path (Join-Path $addonRoot "_data\routes.xml")
 Assert-Path (Join-Path $addonRoot "public-route-contract.txt")
 
-if ($SkipRouteRegeneration) {
+if ($SkipRouteRegeneration -and $RegenerateRoutes) {
+    throw "Use either -SkipRouteRegeneration or -RegenerateRoutes, not both."
+}
+
+if (-not $RegenerateRoutes) {
     Write-Step "Using the reviewed IosApi routes.xml"
 } else {
-    Write-Step "Regenerating ios-api routes from MobileApi reference"
-    $mobileApiRoutes = "C:\Users\Monster\Downloads\startdesign (1)\MobileApi-addon\_data\routes.xml"
+    Write-Step "Regenerating ios-api routes from the installed read-only MobileApi reference"
+    $mobileApiRoutes = "C:\xampp\htdocs\ekitapligim\src\addons\Ekitapligim\MobileApi\_data\routes.xml"
     if (-not (Test-Path -LiteralPath $mobileApiRoutes)) {
         Write-Warning "MobileApi reference routes not found at $mobileApiRoutes; using existing IosApi routes.xml"
     } else {
@@ -37,7 +43,7 @@ if ($SkipRouteRegeneration) {
 }
 
 Write-Step "Running API route contract audit"
-& (Join-Path $PSScriptRoot "api-route-contract-audit.ps1")
+& (Join-Path $PSScriptRoot "api-route-contract-audit.ps1") -SkipInstalled
 
 Write-Step "Auditing IosApi routed action prefixes"
 [xml]$routes = Get-Content -Raw -LiteralPath (Join-Path $addonRoot "_data\routes.xml")
@@ -77,6 +83,10 @@ foreach ($route in @($routes.routes.route | Where-Object { $_.controller -like "
     if (-not (Test-Path -LiteralPath $pubPath)) {
         throw "Missing Pub wrapper for $($route.controller): $pubPath"
     }
+    $pubSource = Get-Content -Raw -LiteralPath $pubPath
+    if (-not $pubSource.Contains("use PublicEndpointTrait", [System.StringComparison]::Ordinal)) {
+        throw "Pub wrapper does not apply bearer/JSON dispatch trait: $pubPath"
+    }
 }
 
 Write-Step "Running PHP syntax checks"
@@ -91,6 +101,29 @@ if ($php) {
     Write-Host "PHP syntax checks passed."
 } else {
     Write-Warning "PHP not installed; skipped syntax checks."
+}
+
+Write-Step "Auditing Guideline 1.2 package controls"
+$requiredFiles = @(
+    "Service\UgcPolicy.php",
+    "Service\UgcModeration.php",
+    "Job\UgcModerationMail.php",
+    "Cron\UgcSla.php",
+    "Api\Controller\LegalTerms.php",
+    "Api\Controller\SafetyReports.php",
+    "_data\options.xml",
+    "_data\cron.xml"
+)
+foreach ($relative in $requiredFiles) { Assert-Path (Join-Path $addonRoot $relative) }
+$addonManifest = Get-Content -Raw -LiteralPath (Join-Path $addonRoot "addon.json") | ConvertFrom-Json
+if ([int]$addonManifest.version_id -ne 1000012 -or $addonManifest.version_string -ne "1.0.12") {
+    throw "IosApi package must be exactly 1.0.12 / 1000012 for this release."
+}
+$routeText = Get-Content -Raw -LiteralPath (Join-Path $addonRoot "_data\routes.xml")
+foreach ($requiredRoute in @('format="v1/legal/terms"', 'format="v1/safety/reports"', 'controller="Ekitapligim\IosApi:AuthLogin"', 'controller="Ekitapligim\IosApi:AuthRegister"')) {
+    if (-not $routeText.Contains($requiredRoute, [System.StringComparison]::Ordinal)) {
+        throw "Guideline 1.2 route audit failed: $requiredRoute"
+    }
 }
 
 if ($CreateZip) {

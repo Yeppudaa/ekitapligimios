@@ -41,7 +41,16 @@ function Assert-Unauthorized([scriptblock]$Call, [string]$Label) {
     }
 }
 
-$initial = Invoke-Api 'auth/login' 'POST' @{ login = $login; password = $password }
+$legal = Invoke-Api 'legal/terms'
+$termsVersion = [string]$legal.version
+if ([string]::IsNullOrWhiteSpace($termsVersion)) {
+    throw 'legal/terms did not return a current terms version.'
+}
+$initial = Invoke-Api 'auth/login' 'POST' @{
+    login = $login
+    password = $password
+    accepted_terms_version = $termsVersion
+}
 $rotated = Invoke-Api 'auth/refresh' 'POST' @{ refresh_token = [string]$initial.refresh_token }
 
 Assert-Unauthorized { Invoke-Api 'me' 'GET' $null ([string]$initial.access_token) } 'rotated access token'
