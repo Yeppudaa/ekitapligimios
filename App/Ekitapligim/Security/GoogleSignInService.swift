@@ -72,6 +72,7 @@ enum GoogleSignInService {
     )
   }
 
+  @MainActor
   private static func presentationController() async -> UIViewController? {
     for _ in 0..<10 {
       if let presenter = UIViewController.ekitapligimForPresentation,
@@ -87,10 +88,11 @@ enum GoogleSignInService {
     return presenter
   }
 
+  @MainActor
   private static func isPresenterReady(_ presenter: UIViewController) -> Bool {
     if presenter.viewIfLoaded?.window != nil { return true }
     if presenter.view.window != nil { return true }
-    if let windowScene = presenter.view.windowScene,
+    if let windowScene = presenter.view.window?.windowScene,
        windowScene.windows.contains(where: \.isKeyWindow) {
       return true
     }
