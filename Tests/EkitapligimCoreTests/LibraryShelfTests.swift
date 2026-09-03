@@ -77,15 +77,82 @@ final class LibraryShelfTests: XCTestCase {
         XCTAssertEqual(makeItem(shelfState: "FAVORI", isFavorite: true).libraryMetaText, L10n.libraryMetaFavorite)
     }
 
+    func testContinueReadingPrefersMostRecentlyReadBook() {
+        let olderHighProgress = makeItem(bookId: "old", shelfState: "OKUYORUM", progressPercent: 80, lastReadPage: 200, lastReadAt: 100)
+        let newestLowProgress = makeItem(bookId: "new", shelfState: "OKUYORUM", progressPercent: 10, lastReadPage: 12, lastReadAt: 500)
+        let items = [olderHighProgress, newestLowProgress]
+
+        XCTAssertEqual(items.continueReadingItem()?.bookId, "new")
+    }
+
+    func testContinueReadingFallsBackToLibraryOrderWhenTimestampsAreMissing() {
+        let first = makeItem(bookId: "first", shelfState: "OKUYORUM", progressPercent: 10, lastReadPage: 4)
+        let later = makeItem(bookId: "later", shelfState: "OKUYORUM", progressPercent: 90, lastReadPage: 180)
+        let items = [first, later]
+
+        XCTAssertEqual(items.continueReadingItem()?.bookId, "first")
+    }
+
+    func testContinueReadingSkipsFinishedBooks() {
+        let finished = makeItem(bookId: "done", shelfState: "OKUDUM", progressPercent: 100, lastReadPage: 300, lastReadAt: 900)
+        let reading = makeItem(bookId: "reading", shelfState: "OKUYORUM", progressPercent: 20, lastReadPage: 40, lastReadAt: 100)
+
+        XCTAssertEqual([finished, reading].continueReadingItem()?.bookId, "reading")
+    }
+
+    func testContinueReadingUsesRecentlyReadBookOutsideReadingShelf() {
+        let want = makeItem(bookId: "want", shelfState: "OKUYACAGIM", progressPercent: 5, lastReadPage: 9, lastReadAt: 800)
+        let reading = makeItem(bookId: "reading", shelfState: "OKUYORUM", progressPercent: 50, lastReadPage: 80, lastReadAt: 100)
+
+        XCTAssertEqual([reading, want].continueReadingItem()?.bookId, "want")
+    }
+
+    func testMergingRecencyKeepsNewerLocalProgress() {
+        let server = makeItem(bookId: "1", shelfState: "OKUYORUM", progressPercent: 10, lastReadPage: 8, lastReadAt: 50)
+        let local = makeItem(bookId: "1", shelfState: "OKUYORUM", progressPercent: 22, lastReadPage: 18, lastReadAt: 80)
+
+        let merged = LibraryItemDTO.mergingRecency(server: [server], local: [local])
+
+        XCTAssertEqual(merged.first?.progressPercent, 22)
+        XCTAssertEqual(merged.first?.lastReadPage, 18)
+        XCTAssertEqual(merged.first?.lastReadAt, 80)
+    }
+
+    func testLibraryItemDecodesStringProgressAndLastReadAt() throws {
+        let data = Data("""
+        {
+          "book_id": "15582",
+          "shelf_state": "OKUYORUM",
+          "progress_percent": "40",
+          "last_read_page": "12",
+          "last_read_at": "1700000000",
+          "title": "Dune",
+          "author": "Frank Herbert",
+          "cover_url": "",
+          "page_count": "320"
+        }
+        """.utf8)
+
+        let item = try JSONDecoder.ekitapligim.decode(LibraryItemDTO.self, from: data)
+
+        XCTAssertEqual(item.bookId, "15582")
+        XCTAssertEqual(item.progressPercent, 40)
+        XCTAssertEqual(item.lastReadPage, 12)
+        XCTAssertEqual(item.lastReadAt, 1700000000)
+        XCTAssertEqual(item.pageCount, 320)
+    }
+
     private func makeItem(
+        bookId: String = "123",
         shelfState: String,
         progressPercent: Int = 0,
         lastReadPage: Int = 0,
         isFavorite: Bool = false,
-        isDownloaded: Bool = false
+        isDownloaded: Bool = false,
+        lastReadAt: Int = 0
     ) -> LibraryItemDTO {
         LibraryItemDTO(
-            bookId: "123",
+            bookId: bookId,
             shelfState: shelfState,
             progressPercent: progressPercent,
             lastReadPage: lastReadPage,
@@ -94,7 +161,8 @@ final class LibraryShelfTests: XCTestCase {
             title: "Test",
             author: "Author",
             coverUrl: "",
-            pageCount: 100
+            pageCount: 100,
+            lastReadAt: lastReadAt
         )
     }
 }

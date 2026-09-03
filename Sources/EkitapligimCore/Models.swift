@@ -92,6 +92,28 @@ public struct DirectoryPageDTO: Decodable, Equatable, Sendable {
         self.total = pagination?.total ?? items.count
     }
 
+    public func displayTotals(
+        kind: DirectoryKind,
+        stats: SiteStatsDTO?,
+        loadedBookCount: Int,
+        existingBookTotal: Int,
+        isSearching: Bool
+    ) -> (entries: Int, books: Int) {
+        var entries = total
+        if !isSearching, total <= items.count, let stats {
+            entries = kind == .author ? stats.totalAuthors : stats.totalPublishers
+        }
+        entries = max(entries, items.count)
+
+        if isSearching {
+            return (entries, loadedBookCount)
+        }
+        if let stats, stats.totalBooks > 0 {
+            return (entries, stats.totalBooks)
+        }
+        return (entries, existingBookTotal > 0 ? existingBookTotal : loadedBookCount)
+    }
+
     private enum CodingKeys: String, CodingKey {
         case authors
         case publishers
@@ -767,6 +789,7 @@ public struct LibraryItemDTO: Decodable, Equatable, Sendable {
     public let shelfState: String
     public let progressPercent: Int
     public let lastReadPage: Int
+    public let lastReadAt: Int
     public let isDownloaded: Bool
     public let isFavorite: Bool
     public let title: String
@@ -778,14 +801,15 @@ public struct LibraryItemDTO: Decodable, Equatable, Sendable {
         let container = try decoder.container(keyedBy: CodingKeys.self)
         self.bookId = try container.decodeFlexibleString(forKey: .bookId, fallbackKeys: [.id, .threadId])
         self.shelfState = try container.decodeIfPresent(String.self, forKey: .shelfState) ?? ""
-        self.progressPercent = try container.decodeIfPresent(Int.self, forKey: .progressPercent) ?? 0
-        self.lastReadPage = try container.decodeIfPresent(Int.self, forKey: .lastReadPage) ?? 0
-        self.isDownloaded = try container.decodeIfPresent(Bool.self, forKey: .isDownloaded) ?? false
-        self.isFavorite = try container.decodeIfPresent(Bool.self, forKey: .isFavorite) ?? false
+        self.progressPercent = container.decodeFlexibleInt(forKey: .progressPercent)
+        self.lastReadPage = container.decodeFlexibleInt(forKey: .lastReadPage)
+        self.lastReadAt = container.decodeFlexibleInt(forKey: .lastReadAt, fallbackKeys: [.updatedAt])
+        self.isDownloaded = container.decodeFlexibleBool(forKey: .isDownloaded)
+        self.isFavorite = container.decodeFlexibleBool(forKey: .isFavorite)
         self.title = try container.decodeIfPresent(String.self, forKey: .title) ?? ""
         self.author = try container.decodeIfPresent(String.self, forKey: .author) ?? ""
         self.coverUrl = try container.decodeIfPresent(String.self, forKey: .coverUrl) ?? ""
-        self.pageCount = try container.decodeIfPresent(Int.self, forKey: .pageCount) ?? 0
+        self.pageCount = container.decodeFlexibleInt(forKey: .pageCount)
     }
 
     private enum CodingKeys: String, CodingKey {
@@ -795,6 +819,8 @@ public struct LibraryItemDTO: Decodable, Equatable, Sendable {
         case shelfState
         case progressPercent
         case lastReadPage
+        case lastReadAt
+        case updatedAt
         case isDownloaded
         case isFavorite
         case title
@@ -813,12 +839,14 @@ public struct LibraryItemDTO: Decodable, Equatable, Sendable {
         title: String,
         author: String,
         coverUrl: String,
-        pageCount: Int
+        pageCount: Int,
+        lastReadAt: Int = 0
     ) {
         self.bookId = bookId
         self.shelfState = shelfState
         self.progressPercent = progressPercent
         self.lastReadPage = lastReadPage
+        self.lastReadAt = lastReadAt
         self.isDownloaded = isDownloaded
         self.isFavorite = isFavorite
         self.title = title
@@ -832,7 +860,8 @@ public struct LibraryItemDTO: Decodable, Equatable, Sendable {
         progressPercent: Int? = nil,
         lastReadPage: Int? = nil,
         isDownloaded: Bool? = nil,
-        isFavorite: Bool? = nil
+        isFavorite: Bool? = nil,
+        lastReadAt: Int? = nil
     ) -> LibraryItemDTO {
         LibraryItemDTO(
             bookId: bookId,
@@ -844,7 +873,8 @@ public struct LibraryItemDTO: Decodable, Equatable, Sendable {
             title: title,
             author: author,
             coverUrl: coverUrl,
-            pageCount: pageCount
+            pageCount: pageCount,
+            lastReadAt: lastReadAt ?? self.lastReadAt
         )
     }
 }
@@ -873,6 +903,27 @@ public extension LibraryItemDTO {
 
     var isFavoriteItem: Bool {
         isFavorite || normalizedShelfState == "FAVORI" || normalizedShelfState == "FAVORITE" || normalizedShelfState == "FAV"
+    }
+
+    /// Home/profile "continue reading" should follow the most recently opened unfinished book.
+    var isContinueReadingCandidate: Bool {
+        if isOnFinishedShelf { return false }
+        return isOnReadingShelf || progressPercent > 0 || lastReadPage > 0
+    }
+
+    /// Keeps a fresher local snapshot when the server library payload has no recency timestamps.
+    static func mergingRecency(server: [LibraryItemDTO], local: [LibraryItemDTO]) -> [LibraryItemDTO] {
+        let localByID = Dictionary(local.map { ($0.bookId, $0) }, uniquingKeysWith: { first, _ in first })
+        return server.map { item in
+            guard let localItem = localByID[item.bookId], localItem.lastReadAt > item.lastReadAt else {
+                return item
+            }
+            return item.updating(
+                progressPercent: localItem.progressPercent,
+                lastReadPage: localItem.lastReadPage,
+                lastReadAt: localItem.lastReadAt
+            )
+        }
     }
 
     /// Values Android sends when changing shelf/favorite without resetting reader progress.
@@ -922,6 +973,18 @@ public extension LibraryItemDTO {
         default:
             return shelfState
         }
+    }
+}
+
+public extension Array where Element == LibraryItemDTO {
+    /// Prefer the newest `lastReadAt`, then the server's original order. Never pick by progress percent.
+    func continueReadingItem() -> LibraryItemDTO? {
+        let candidates = filter(\.isContinueReadingCandidate)
+        guard !candidates.isEmpty else { return nil }
+        if let newest = candidates.filter({ $0.lastReadAt > 0 }).max(by: { $0.lastReadAt < $1.lastReadAt }) {
+            return newest
+        }
+        return candidates.first
     }
 }
 

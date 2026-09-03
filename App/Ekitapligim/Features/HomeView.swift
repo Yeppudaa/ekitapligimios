@@ -270,53 +270,70 @@ struct HomeView: View {
     // MARK: - Devam et
 
     @ViewBuilder private var continueReadingCard: some View {
-        if let item = container.continueReadingItem {
+        if container.isSignedIn {
             VStack(alignment: .leading, spacing: 10) {
                 HStack {
                     Text(L10n.homeContinueTitle)
                         .font(.headline.weight(.heavy))
                         .foregroundStyle(EKitapligimPalette.profileInk)
                     Spacer()
-                    Image(systemName: "chevron.right")
-                        .foregroundStyle(EKitapligimPalette.teal)
+                    if container.continueReadingItem != nil {
+                        Image(systemName: "chevron.right")
+                            .foregroundStyle(EKitapligimPalette.teal)
+                    }
                 }
                 .padding(.horizontal, 16)
 
-                NavigationLink(value: item.bookId) {
-                    HStack(spacing: 14) {
-                        EKitapligimRemoteCover(urlString: item.coverUrl)
-                            .frame(width: 72, height: 108)
-                            .clipShape(RoundedRectangle(cornerRadius: 10, style: .continuous))
-                        VStack(alignment: .leading, spacing: 6) {
-                            Text(item.title)
-                                .font(.subheadline.weight(.bold))
-                                .foregroundStyle(EKitapligimPalette.ink)
-                                .lineLimit(2)
-                            if !item.author.isEmpty {
-                                Text(item.author).font(.caption).foregroundStyle(EKitapligimPalette.muted)
-                            }
-                            ProgressView(value: Double(item.displayProgressPercent), total: 100)
-                                .tint(EKitapligimPalette.amber)
-                            HStack {
-                                Text(L10n.commonPercent(item.displayProgressPercent))
-                                    .font(.caption2.weight(.bold))
-                                    .foregroundStyle(EKitapligimPalette.muted)
-                                Spacer()
-                                Label(L10n.homeContinueAction, systemImage: "play.fill")
-                                    .font(.caption.weight(.bold))
-                                    .foregroundStyle(.white)
-                                    .padding(.horizontal, 12)
-                                    .padding(.vertical, 7)
-                                    .background(EKitapligimPalette.teal)
-                                    .clipShape(RoundedRectangle(cornerRadius: 10, style: .continuous))
+                if let item = container.continueReadingItem {
+                    NavigationLink(value: item.bookId) {
+                        HStack(spacing: 14) {
+                            EKitapligimRemoteCover(urlString: item.coverUrl)
+                                .frame(width: 72, height: 108)
+                                .clipShape(RoundedRectangle(cornerRadius: 10, style: .continuous))
+                            VStack(alignment: .leading, spacing: 6) {
+                                Text(item.title)
+                                    .font(.subheadline.weight(.bold))
+                                    .foregroundStyle(EKitapligimPalette.ink)
+                                    .lineLimit(2)
+                                if !item.author.isEmpty {
+                                    Text(item.author).font(.caption).foregroundStyle(EKitapligimPalette.muted)
+                                }
+                                ProgressView(value: Double(item.displayProgressPercent), total: 100)
+                                    .tint(EKitapligimPalette.amber)
+                                HStack {
+                                    Text(L10n.commonPercent(item.displayProgressPercent))
+                                        .font(.caption2.weight(.bold))
+                                        .foregroundStyle(EKitapligimPalette.muted)
+                                    Spacer()
+                                    Label(L10n.homeContinueAction, systemImage: "play.fill")
+                                        .font(.caption.weight(.bold))
+                                        .foregroundStyle(.white)
+                                        .padding(.horizontal, 12)
+                                        .padding(.vertical, 7)
+                                        .background(EKitapligimPalette.teal)
+                                        .clipShape(RoundedRectangle(cornerRadius: 10, style: .continuous))
+                                }
                             }
                         }
+                        .padding(14)
+                        .ekitapligimCard(radius: 14)
+                    }
+                    .buttonStyle(.plain)
+                    .padding(.horizontal, 16)
+                } else {
+                    VStack(alignment: .leading, spacing: 4) {
+                        Text(L10n.continueReadingEmptyTitle)
+                            .font(.subheadline.weight(.bold))
+                            .foregroundStyle(EKitapligimPalette.ink)
+                        Text(L10n.continueReadingEmptySubtitle)
+                            .font(.caption)
+                            .foregroundStyle(EKitapligimPalette.muted)
                     }
                     .padding(14)
+                    .frame(maxWidth: .infinity, alignment: .leading)
                     .ekitapligimCard(radius: 14)
+                    .padding(.horizontal, 16)
                 }
-                .buttonStyle(.plain)
-                .padding(.horizontal, 16)
             }
         }
     }

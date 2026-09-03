@@ -4,6 +4,7 @@ import EkitapligimCore
 @MainActor
 struct CatalogView: View {
     @EnvironmentObject private var container: AppContainer
+    let onOpenMenu: (() -> Void)?
     @State private var books: [BookDTO] = []
     @State private var categories: [ForumDTO] = CatalogBookCategories.sortedFallbacks
     @State private var query = ""
@@ -18,6 +19,10 @@ struct CatalogView: View {
     @State private var errorMessage: String?
     @State private var heroCollapseProgress: CGFloat = 0
     @AppStorage("catalog.displayMode") private var displayModeRawValue = CatalogDisplayMode.grid.rawValue
+
+    init(onOpenMenu: (() -> Void)? = nil) {
+        self.onOpenMenu = onOpenMenu
+    }
 
     private var displayMode: CatalogDisplayMode {
         CatalogDisplayMode(rawValue: displayModeRawValue) ?? .grid
@@ -73,6 +78,14 @@ struct CatalogView: View {
                         Image(systemName: filters.isActive ? "line.3.horizontal.decrease.circle.fill" : "line.3.horizontal.decrease.circle")
                     }
                     .accessibilityLabel(L10n.catalogFiltersTitle)
+                }
+                if let onOpenMenu {
+                    ToolbarItem(placement: .topBarTrailing) {
+                        Button(action: onOpenMenu) {
+                            Image(systemName: "line.3.horizontal")
+                        }
+                        .accessibilityLabel(L10n.menuTitle)
+                    }
                 }
             }
             .navigationDestination(for: String.self) { id in

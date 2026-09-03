@@ -87,6 +87,19 @@ final class EkitapligimUITests: XCTestCase {
         XCTAssertFalse(app.otherElements["EmptyView"].exists)
     }
 
+    func testCatalogToolbarControlsDoNotOverlap() throws {
+        let app = launchApp()
+        selectPrimaryDestination(app, titled: "Kitaplar")
+
+        let filtersButton = app.buttons["Filtreler"]
+        let menuButton = app.buttons["Menü"]
+        XCTAssertTrue(filtersButton.waitForExistence(timeout: 5))
+        XCTAssertTrue(menuButton.waitForExistence(timeout: 5))
+        XCTAssertTrue(filtersButton.isHittable)
+        XCTAssertTrue(menuButton.isHittable)
+        XCTAssertFalse(filtersButton.frame.intersects(menuButton.frame))
+    }
+
     func testCaptureAppStoreScreenshots() throws {
         let app = launchApp()
         XCTAssertTrue(app.buttons["Menü"].waitForExistence(timeout: 15))

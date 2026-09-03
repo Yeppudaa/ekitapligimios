@@ -186,12 +186,48 @@ struct ReaderView: View {
     private func syncProgress(page: Int, percent: Double, percentInt: Int, bookID: Int) async {
         syncState = .syncing
         if (try? await container.books.updateProgress(bookID: bookID, page: page, percent: percent)) != nil {
-            container.patchLibraryItem(book.id) { item in
-                item.updating(progressPercent: percentInt, lastReadPage: page)
-            }
+            rememberContinueReading(page: page, percent: percentInt)
             syncState = .synced
         } else {
             syncState = .failed
+        }
+    }
+
+    private func rememberContinueReading(page: Int, percent: Int) {
+        let now = Int(Date().timeIntervalSince1970)
+        let existing = container.libraryItems.first(where: { $0.bookId == book.id })
+        let nextShelf: String = {
+            let current = existing?.normalizedShelfState ?? ""
+            if current == "OKUDUM" || current == "READ" || current == "FINISHED" {
+                return existing?.shelfState ?? "OKUYORUM"
+            }
+            return "OKUYORUM"
+        }()
+        if let existing {
+            container.upsertLibraryItem(
+                existing.updating(
+                    shelfState: nextShelf,
+                    progressPercent: percent,
+                    lastReadPage: page,
+                    lastReadAt: now
+                )
+            )
+        } else {
+            container.upsertLibraryItem(
+                LibraryItemDTO(
+                    bookId: book.id,
+                    shelfState: nextShelf,
+                    progressPercent: percent,
+                    lastReadPage: page,
+                    isDownloaded: container.downloadManager.localFile(for: book.id) != nil,
+                    isFavorite: false,
+                    title: book.title,
+                    author: book.author,
+                    coverUrl: book.coverUrl,
+                    pageCount: book.pageCount,
+                    lastReadAt: now
+                )
+            )
         }
     }
 

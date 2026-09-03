@@ -77,4 +77,9 @@ class Setup extends AbstractSetup
 	{
 		// Owns Google authentication so expected invalid-token responses are not logged as server errors.
 	}
+
+	public function upgrade1000019Step1(): void
+	{
+		// Accepts the iOS Google client ID as a valid ID-token audience in addition to web clients.
+	}
 }

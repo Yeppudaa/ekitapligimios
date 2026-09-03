@@ -14,6 +14,8 @@ struct DirectoryView: View {
     @State private var sortAscending = true
     @State private var currentPage = 0
     @State private var lastPage = 1
+    @State private var totalEntries = 0
+    @State private var totalBooks = 0
     @State private var isLoading = true
     @State private var errorMessage: String?
     @State private var heroCollapseProgress: CGFloat = 0
@@ -27,7 +29,13 @@ struct DirectoryView: View {
         return result
     }
 
-    private var totalBooks: Int { items.reduce(0) { $0 + $1.bookCount } }
+    private var entryStatTitle: String {
+        kind == .author ? L10n.homeAuthors : L10n.homePublishers
+    }
+
+    private var entryStatImage: String {
+        kind == .author ? "person.2.fill" : "building.2.fill"
+    }
 
     var body: some View {
         EKitapligimScreen {
@@ -43,6 +51,7 @@ struct DirectoryView: View {
                         LazyVStack(alignment: .leading, spacing: 14) {
                             EKScrollOffsetTracker()
                             heroCard
+                            statsRow
                             alphabetChips
                             sortChip
                             if filteredItems.isEmpty {
@@ -79,30 +88,24 @@ struct DirectoryView: View {
 
     private var heroCard: some View {
         EKCollapsibleHero(progress: heroCollapseProgress) {
-            VStack(alignment: .leading, spacing: 12) {
-                HStack(spacing: 12) {
-                    ZStack {
-                        Circle()
-                            .fill(kind == .author ? EKitapligimPalette.tealSoft : EKitapligimPalette.amberSoft)
-                        Image(systemName: kind == .author ? "person.fill" : "building.2.fill")
-                            .font(.title2)
-                            .foregroundStyle(kind == .author ? EKitapligimPalette.teal : EKitapligimPalette.amber)
-                    }
-                    .frame(width: 52, height: 52)
-                    VStack(alignment: .leading, spacing: 4) {
-                        Text(kind == .author ? L10n.directoryAuthorsTitle : L10n.directoryPublishersTitle)
-                            .font(.title3.weight(.heavy))
-                            .foregroundStyle(EKitapligimPalette.ink)
-                        Text(L10n.directoryHeroSubtitle(items.count, totalBooks))
-                            .font(.caption)
-                            .foregroundStyle(EKitapligimPalette.muted)
-                    }
-                    Spacer(minLength: 0)
+            HStack(spacing: 12) {
+                ZStack {
+                    Circle()
+                        .fill(kind == .author ? EKitapligimPalette.tealSoft : EKitapligimPalette.amberSoft)
+                    Image(systemName: kind == .author ? "person.fill" : "building.2.fill")
+                        .font(.title2)
+                        .foregroundStyle(kind == .author ? EKitapligimPalette.teal : EKitapligimPalette.amber)
                 }
-                HStack(spacing: 10) {
-                    DirectoryStatTile(title: L10n.directoryStatEntries, value: EKitapligimFormat.count(items.count), systemImage: "person.2.fill")
-                    DirectoryStatTile(title: L10n.directoryStatBooks, value: EKitapligimFormat.count(totalBooks), systemImage: "books.vertical.fill")
+                .frame(width: 52, height: 52)
+                VStack(alignment: .leading, spacing: 4) {
+                    Text(kind == .author ? L10n.directoryAuthorsTitle : L10n.directoryPublishersTitle)
+                        .font(.title3.weight(.heavy))
+                        .foregroundStyle(EKitapligimPalette.ink)
+                    Text(L10n.directoryHeroSubtitle(totalEntries, totalBooks))
+                        .font(.caption)
+                        .foregroundStyle(EKitapligimPalette.muted)
                 }
+                Spacer(minLength: 0)
             }
             .padding(18)
             .background(
@@ -130,7 +133,7 @@ struct DirectoryView: View {
                         .font(.headline.weight(.bold))
                         .foregroundStyle(EKitapligimPalette.ink)
                         .lineLimit(1)
-                    Text(L10n.directoryHeroSubtitle(items.count, totalBooks))
+                    Text(L10n.directoryHeroSubtitle(totalEntries, totalBooks))
                         .font(.caption2)
                         .foregroundStyle(EKitapligimPalette.muted)
                         .lineLimit(1)
@@ -140,6 +143,13 @@ struct DirectoryView: View {
             .padding(.horizontal, 14)
             .padding(.vertical, 10)
             .ekitapligimCard(radius: 14)
+        }
+    }
+
+    private var statsRow: some View {
+        HStack(spacing: 10) {
+            DirectoryStatTile(title: entryStatTitle, value: EKitapligimFormat.count(totalEntries), systemImage: entryStatImage)
+            DirectoryStatTile(title: L10n.directoryStatBooks, value: EKitapligimFormat.count(totalBooks), systemImage: "books.vertical.fill")
         }
     }
 
@@ -181,21 +191,44 @@ struct DirectoryView: View {
         isLoading = true
         errorMessage = nil
         defer { isLoading = false }
+        let trimmedQuery = query.trimmingCharacters(in: .whitespacesAndNewlines)
         let page = reset ? 1 : currentPage + 1
         do {
-            let result = try await container.directories.items(
+            async let directoryRequest = container.directories.items(
                 kind: kind,
                 page: page,
-                query: query.trimmingCharacters(in: .whitespacesAndNewlines).nilIfEmpty
+                query: trimmedQuery.nilIfEmpty
             )
+            async let statsRequest = loadSiteStatsIfNeeded(reset)
+
+            let result = try await directoryRequest
+            let stats = await statsRequest
             items = reset ? result.items : items + result.items.filter { newItem in
                 !items.contains(where: { $0.id == newItem.id })
             }
             currentPage = result.currentPage
             lastPage = result.lastPage
+            applyDirectoryTotals(result: result, stats: stats, isSearching: !trimmedQuery.isEmpty)
         } catch {
             if reset { errorMessage = L10n.directoryLoadFailed }
         }
+    }
+
+    private func loadSiteStatsIfNeeded(_ reset: Bool) async -> SiteStatsDTO? {
+        guard reset else { return nil }
+        return try? await container.site.stats()
+    }
+
+    private func applyDirectoryTotals(result: DirectoryPageDTO, stats: SiteStatsDTO?, isSearching: Bool) {
+        let totals = result.displayTotals(
+            kind: kind,
+            stats: stats,
+            loadedBookCount: items.reduce(0) { $0 + $1.bookCount },
+            existingBookTotal: totalBooks,
+            isSearching: isSearching
+        )
+        totalEntries = totals.entries
+        totalBooks = totals.books
     }
 
     private func directoryFirstLetter(_ name: String) -> String {
@@ -321,6 +354,7 @@ struct DirectoryBooksView: View {
     @State private var books: [BookDTO] = []
     @State private var currentPage = 0
     @State private var lastPage = 1
+    @State private var totalBooks = 0
     @State private var isLoading = true
     @State private var errorMessage: String?
 
@@ -379,7 +413,7 @@ struct DirectoryBooksView: View {
             Text(item.name)
                 .font(.title2.weight(.heavy))
                 .foregroundStyle(.white)
-            Text(L10n.directoryBookCount(books.count))
+            Text(L10n.directoryBookCount(max(item.bookCount, totalBooks, books.count)))
                 .font(.caption)
                 .foregroundStyle(.white.opacity(0.85))
         }
@@ -413,6 +447,7 @@ struct DirectoryBooksView: View {
             }
             currentPage = result.currentPage
             lastPage = result.lastPage
+            totalBooks = max(item.bookCount, result.totalBooks, books.count)
         } catch {
             if reset { errorMessage = L10n.catalogLoadFailed }
         }

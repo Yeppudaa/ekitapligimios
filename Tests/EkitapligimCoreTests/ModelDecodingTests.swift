@@ -321,6 +321,58 @@ final class ModelDecodingTests: XCTestCase {
         XCTAssertEqual(page.items.first?.bookCount, 78)
         XCTAssertEqual(page.lastPage, 231)
         XCTAssertEqual(page.total, 6904)
+
+        let stats = try JSONDecoder.ekitapligim.decode(SiteStatsDTO.self, from: Data("""
+        {
+          "total_books": 14404,
+          "total_authors": 7131,
+          "total_publishers": 1564
+        }
+        """.utf8))
+        let totals = page.displayTotals(
+            kind: .author,
+            stats: stats,
+            loadedBookCount: 78,
+            existingBookTotal: 0,
+            isSearching: false
+        )
+        XCTAssertEqual(totals.entries, 6904)
+        XCTAssertEqual(totals.books, 14404)
+
+        let publisherPage = try JSONDecoder.ekitapligim.decode(DirectoryPageDTO.self, from: Data("""
+        {
+          "publishers": [
+            { "id": "can", "name": "Can", "slug": "can", "book_count": 12, "kind": "publisher" }
+          ],
+          "pagination": { "page": 1, "per_page": 30, "total": 1561, "pages": 53 }
+        }
+        """.utf8))
+        let publisherTotals = publisherPage.displayTotals(
+            kind: .publisher,
+            stats: stats,
+            loadedBookCount: 12,
+            existingBookTotal: 0,
+            isSearching: false
+        )
+        XCTAssertEqual(publisherTotals.entries, 1561)
+        XCTAssertEqual(publisherTotals.books, 14404)
+
+        let missingPagination = try JSONDecoder.ekitapligim.decode(DirectoryPageDTO.self, from: Data("""
+        {
+          "authors": [
+            { "id": "a", "name": "A", "slug": "a", "book_count": 961, "kind": "author" }
+          ]
+        }
+        """.utf8))
+        let fallbackTotals = missingPagination.displayTotals(
+            kind: .author,
+            stats: stats,
+            loadedBookCount: 961,
+            existingBookTotal: 0,
+            isSearching: false
+        )
+        XCTAssertEqual(fallbackTotals.entries, 7131)
+        XCTAssertEqual(fallbackTotals.books, 14404)
     }
 
     func testBooksPageDecodesCurrentBackendPaginationShape() throws {

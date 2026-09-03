@@ -18,6 +18,7 @@ struct LoginView: View {
     @State private var errorMessage: String?
     @State private var successMessage: String?
     @State private var isSubmitting = false
+    @State private var isGoogleSigningIn = false
     @State private var pendingGoogleIDToken: String?
     @State private var googleUsername = ""
     @State private var googleUsernameError: String?
@@ -441,8 +442,8 @@ struct LoginView: View {
                 }
             }
             .buttonStyle(.plain)
-            .disabled(!canSubmitGoogle || isSubmitting)
-            .opacity(canSubmitGoogle && !isSubmitting ? 1 : 0.55)
+            .disabled(!canSubmitGoogle || isSubmitting || isGoogleSigningIn)
+            .opacity(canSubmitGoogle && !isSubmitting && !isGoogleSigningIn ? 1 : 0.55)
         }
         .padding(.top, 4)
     }
@@ -516,11 +517,16 @@ struct LoginView: View {
     }
 
     private func submitGoogle() async {
-        isSubmitting = true
+        guard !isSubmitting, !isGoogleSigningIn else { return }
+        isGoogleSigningIn = true
         clearMessages()
-        defer { isSubmitting = false }
+        defer { isGoogleSigningIn = false }
         do {
+            // Present Google UI before flipping `isSubmitting` so SwiftUI does not
+            // rebuild this sheet's hosting controller mid-presentation.
             let idToken = try await GoogleSignInService.signIn()
+            isSubmitting = true
+            defer { isSubmitting = false }
             let requestedUsername = mode == .register
                 ? username.trimmingCharacters(in: .whitespacesAndNewlines)
                 : ""

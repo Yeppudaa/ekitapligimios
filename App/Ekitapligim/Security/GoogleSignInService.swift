@@ -31,22 +31,15 @@ enum GoogleSignInService {
         guard GIDSignIn.sharedInstance.configuration != nil else {
             throw GoogleSignInServiceError.notConfigured
         }
-        guard let presenter = UIViewController.ekitapligimForPresentation else {
+        guard hasRegisteredGoogleURLScheme() else {
+            throw GoogleSignInServiceError.notConfigured
+        }
+        guard let presenter = await presentationController() else {
             throw GoogleSignInServiceError.missingPresenter
         }
 
         do {
-            let result = try await withCheckedThrowingContinuation { (continuation: CheckedContinuation<GIDSignInResult, Error>) in
-                GIDSignIn.sharedInstance.signIn(withPresenting: presenter) { signInResult, error in
-                    if let error {
-                        continuation.resume(throwing: error)
-                    } else if let signInResult {
-                        continuation.resume(returning: signInResult)
-                    } else {
-                        continuation.resume(throwing: GoogleSignInServiceError.missingToken)
-                    }
-                }
-            }
+            let result = try await GIDSignIn.sharedInstance.signIn(withPresenting: presenter)
             guard let idToken = result.user.idToken?.tokenString, !idToken.isEmpty else {
                 throw GoogleSignInServiceError.missingToken
             }
@@ -57,6 +50,37 @@ enum GoogleSignInService {
             }
             throw error
         }
+    }
+
+    private static func presentationController() async -> UIViewController? {
+        for _ in 0..<5 {
+            if let presenter = UIViewController.ekitapligimForPresentation,
+               presenter.view.window != nil,
+               presenter.presentedViewController == nil {
+                return presenter
+            }
+            try? await Task.sleep(for: .milliseconds(50))
+        }
+        let presenter = UIViewController.ekitapligimForPresentation
+        guard presenter?.view.window != nil else { return nil }
+        return presenter
+    }
+
+    private static func hasRegisteredGoogleURLScheme() -> Bool {
+        let types = Bundle.main.object(forInfoDictionaryKey: "CFBundleURLTypes") as? [[String: Any]] ?? []
+        let schemes = types.flatMap { ($0["CFBundleURLSchemes"] as? [String]) ?? [] }
+            .map { $0.trimmingCharacters(in: .whitespacesAndNewlines) }
+            .filter { !$0.isEmpty && !$0.hasPrefix("$(") }
+        if let clientID = plistValue("GIDClientID") {
+            let expected = reversedClientID(from: clientID)
+            if schemes.contains(expected) { return true }
+        }
+        return schemes.contains { $0.hasPrefix("com.googleusercontent.apps.") }
+    }
+
+    private static func reversedClientID(from clientID: String) -> String {
+        let prefix = clientID.replacingOccurrences(of: ".apps.googleusercontent.com", with: "")
+        return "com.googleusercontent.apps.\(prefix)"
     }
 
     private static func plistValue(_ key: String) -> String? {

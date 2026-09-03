@@ -161,10 +161,15 @@ foreach ($requiredOfflineLifecycleControl in @(
     }
 }
 $readerView = Get-Content -Raw -LiteralPath "App/Ekitapligim/Features/ReaderView.swift"
-if ($readerView -notmatch [regex]::Escape("container.downloadManager.localFile(for: book.id)")) {
+$readPurposeIndex = $readerView.IndexOf("purpose: .read")
+$authorizedLocalFileIndex = $readerView.IndexOf(
+    "container.downloadManager.localFile(for: book.id)",
+    [Math]::Max(0, $readPurposeIndex)
+)
+if ($authorizedLocalFileIndex -lt 0) {
     Fail "Reader must reuse a validated local download after obtaining an authorized read session"
 }
-if ($readerView.IndexOf("purpose: .read") -gt $readerView.IndexOf("container.downloadManager.localFile(for: book.id)")) {
+if ($readPurposeIndex -gt $authorizedLocalFileIndex) {
     Fail "Reader must obtain its quota-enforced read session before opening a local download"
 }
 $downloadPolicy = Get-Content -Raw -LiteralPath "Sources/EkitapligimCore/DownloadFilePolicy.swift"

@@ -7,6 +7,7 @@ class AuthGoogle extends \Ekitapligim\MobileApi\Api\Controller\AuthGoogle
 	private const WEB_CLIENT_IDS = [
 		'507822335039-3871s4mggrgpd3kusmm2ihlhre0j2r82.apps.googleusercontent.com',
 		'258534406055-v8lmgd6moijakv1kcurgit788uk5v2el.apps.googleusercontent.com',
+		'258534406055-trcoiet648ohvijagtpli1h1556i2cjq.apps.googleusercontent.com',
 	];
 
 	protected function verifyGoogleToken(string $idToken): ?array

@@ -11,6 +11,9 @@ struct EkitapligimApp: App {
             RootView()
                 .environmentObject(container)
                 .preferredColorScheme(.light)
+                .onOpenURL { url in
+                    _ = GoogleSignInService.handle(url)
+                }
                 .task {
                     await container.bootstrap()
                 }

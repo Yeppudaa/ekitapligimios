@@ -32,12 +32,9 @@ final class AppContainer: ObservableObject {
     var favoriteBooks: [LibraryItemDTO] { libraryItems.filter(\.isFavoriteItem) }
     var downloadedBooks: [LibraryItemDTO] { libraryItems.filter(\.isDownloaded) }
 
-    /// The most advanced in-progress book, used by the "Kaldığın yerden devam et" cards.
+    /// The most recently read unfinished book, used by the "Kaldığın yerden devam et" cards.
     var continueReadingItem: LibraryItemDTO? {
-        currentlyReading
-            .filter { $0.progressPercent > 0 || $0.lastReadPage > 0 }
-            .max { $0.progressPercent < $1.progressPercent }
-            ?? currentlyReading.first
+        libraryItems.continueReadingItem()
     }
 
     private var unreadPollTask: Task<Void, Never>?
@@ -154,7 +151,9 @@ final class AppContainer: ObservableObject {
 
         if let loadedProfile { profileState = loadedProfile }
         if let loadedSubscription { subscription = loadedSubscription }
-        if let loadedLibrary { libraryItems = loadedLibrary.items }
+        if let loadedLibrary {
+            libraryItems = LibraryItemDTO.mergingRecency(server: loadedLibrary.items, local: libraryItems)
+        }
         // The dedicated route may not be deployed yet, in which case the profile payload carries the stats.
         readingStats = loadedStats.flatMap { $0 } ?? loadedProfile?.readingStats ?? readingStats
         if let counts { applyCounts(counts) }
@@ -176,7 +175,7 @@ final class AppContainer: ObservableObject {
     @discardableResult
     func refreshLibrary() async -> Bool {
         guard isSignedIn, let page = try? await books.library() else { return false }
-        libraryItems = page.items
+        libraryItems = LibraryItemDTO.mergingRecency(server: page.items, local: libraryItems)
         return true
     }
 
@@ -186,11 +185,8 @@ final class AppContainer: ObservableObject {
     }
 
     func upsertLibraryItem(_ item: LibraryItemDTO) {
-        if let index = libraryItems.firstIndex(where: { $0.bookId == item.bookId }) {
-            libraryItems[index] = item
-        } else {
-            libraryItems.insert(item, at: 0)
-        }
+        libraryItems.removeAll { $0.bookId == item.bookId }
+        libraryItems.insert(item, at: 0)
     }
 
     func updateProfile(_ updated: ProfileDTO) {

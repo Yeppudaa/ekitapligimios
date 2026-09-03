@@ -21,7 +21,9 @@ struct RootView: View {
     var body: some View {
         ZStack(alignment: .topTrailing) {
             tabs
-            menuButton
+            if container.selectedTab != .catalog {
+                menuButton
+            }
             drawer
         }
         .onOpenURL { url in
@@ -46,7 +48,7 @@ struct RootView: View {
                 case .home:
                     HomeView()
                 case .catalog:
-                    NavigationStack { CatalogView() }
+                    CatalogView(onOpenMenu: openMenu)
                 case .agenda:
                     NavigationStack { BookAgendaView() }
                 case .flow:
@@ -68,7 +70,7 @@ struct RootView: View {
     }
 
     private var menuButton: some View {
-        Button { withAnimation(.easeOut(duration: 0.2)) { isMenuPresented = true } } label: {
+        Button(action: openMenu) {
             Image(systemName: "line.3.horizontal")
                 .accessibilityHidden(true)
                 .font(.title3.weight(.semibold))
@@ -89,6 +91,10 @@ struct RootView: View {
         .accessibilityLabel(L10n.menuTitle)
         .padding(.top, 8)
         .padding(.trailing, 12)
+    }
+
+    private func openMenu() {
+        withAnimation(.easeOut(duration: 0.2)) { isMenuPresented = true }
     }
 
     @ViewBuilder private var drawer: some View {
