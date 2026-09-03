@@ -45,7 +45,7 @@ workflows:
           set -euo pipefail
           BUNDLE_ID="com.ekitapligim.app"
           SIGNING_DIR="$CM_BUILD_DIR/build/push-signing"
-          mkdir -p "$SIGNING_DIR/profiles" "$SIGNING_DIR/certificates"
+          mkdir -p "$SIGNING_DIR/profiles"
           BUNDLE_IDS_JSON=$(app-store-connect bundle-ids list \
             --bundle-id-identifier "$BUNDLE_ID" \
             --strict-match-identifier \
@@ -66,12 +66,25 @@ workflows:
               "$BUNDLE_RESOURCE_ID" \
               --capability "Push Notifications"
           fi
-          app-store-connect fetch-signing-files "$BUNDLE_ID" \
+          CERTIFICATES_JSON=$(app-store-connect certificates list \
+            --profile-type IOS_APP_STORE \
+            --json)
+          CERTIFICATE_RESOURCE_IDS=$(printf '%s' "$CERTIFICATES_JSON" | jq -r '
+            (if type == "array" then . else (.data // [.] ) end)
+            | map(.id // empty)
+            | join(",")
+          ')
+          if [ -z "$CERTIFICATE_RESOURCE_IDS" ]; then
+            echo "Could not resolve an Apple Distribution certificate for App Store signing"
+            exit 1
+          fi
+          PROFILE_NAME="Ekitapligim App Store Push ${CM_BUILD_ID}"
+          app-store-connect profiles create "$BUNDLE_RESOURCE_ID" \
+            --certificate-ids "$CERTIFICATE_RESOURCE_IDS" \
             --type IOS_APP_STORE \
-            --strict-match-identifier \
-            --create \
-            --profiles-dir "$SIGNING_DIR/profiles" \
-            --certificates-dir "$SIGNING_DIR/certificates"
+            --name "$PROFILE_NAME" \
+            --save \
+            --profiles-dir "$SIGNING_DIR/profiles"
 
       - name: Configure App Store code signing
         script: |
