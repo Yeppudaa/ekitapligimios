@@ -547,7 +547,7 @@ private struct MemberProfilePayload: Decodable {
 }
 
 extension MemberProfileDTO {
-    init(
+    public init(
         member: MemberDTO,
         library: [LibraryItemDTO],
         lastReadBook: LibraryItemDTO?,
