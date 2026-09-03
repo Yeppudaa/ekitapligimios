@@ -41,7 +41,9 @@ final class AppContainer: ObservableObject {
     }
 
     private var unreadPollTask: Task<Void, Never>?
+    private var presencePollTask: Task<Void, Never>?
     private static let unreadPollInterval: Duration = .seconds(60)
+    private static let presencePollInterval: Duration = .seconds(150)
 
     let downloadManager: DownloadManager
     let readerContentLoader: ReaderContentLoader
@@ -55,6 +57,7 @@ final class AppContainer: ObservableObject {
     let bookRequests: BookRequestsRepository
     let conversations: ConversationsRepository
     let members: MembersRepository
+    let presence: PresenceRepository
     let auth: AuthRepository
     let account: AccountRepository
     let safety: SafetyRepository
@@ -92,6 +95,7 @@ final class AppContainer: ObservableObject {
         self.bookRequests = BookRequestsRepository(apiClient: apiClient)
         self.conversations = ConversationsRepository(apiClient: apiClient)
         self.members = MembersRepository(apiClient: apiClient)
+        self.presence = PresenceRepository(apiClient: apiClient)
         self.auth = AuthRepository(apiClient: apiClient)
         self.account = AccountRepository(apiClient: apiClient)
         self.safety = SafetyRepository(apiClient: apiClient)
@@ -121,6 +125,8 @@ final class AppContainer: ObservableObject {
                 await refreshSessionData()
                 await storeKit.refreshEntitlements()
                 startUnreadPolling()
+                startPresencePolling()
+                await touchPresence()
             }
         } catch {
             authState = .signedOut
@@ -216,15 +222,46 @@ final class AppContainer: ObservableObject {
         unreadPollTask = nil
     }
 
+    func startPresencePolling() {
+        presencePollTask?.cancel()
+        presencePollTask = Task { [weak self] in
+            while !Task.isCancelled {
+                try? await Task.sleep(for: Self.presencePollInterval)
+                if Task.isCancelled { return }
+                await self?.touchPresence()
+            }
+        }
+    }
+
+    func stopPresencePolling() {
+        presencePollTask?.cancel()
+        presencePollTask = nil
+    }
+
+    func touchPresence() async {
+        guard isSignedIn else { return }
+        _ = try? await presence.touch()
+    }
+
     /// Called when the scene becomes active again so badges are never stale on return.
     func handleScenePhaseActive() {
         guard isSignedIn else { return }
         startUnreadPolling()
-        Task { await refreshUnreadCounts() }
+        startPresencePolling()
+        Task {
+            await refreshUnreadCounts()
+            await refreshLibrary()
+            await touchPresence()
+        }
+    }
+
+    func handleScenePhaseBackground() {
+        stopPresencePolling()
     }
 
     private func clearSessionData() {
         stopUnreadPolling()
+        stopPresencePolling()
         profileState = nil
         subscription = nil
         readingStats = nil
@@ -253,6 +290,17 @@ final class AppContainer: ObservableObject {
         authState = .authenticating
         do {
             let response = try await auth.signInWithApple(identityToken: identityToken, authorizationCode: authorizationCode, nonce: nonce)
+            try await applyAuthResponse(response)
+        } catch {
+            authState = .signedOut
+            throw error
+        }
+    }
+
+    func signInWithGoogle(idToken: String, username: String? = nil) async throws {
+        authState = .authenticating
+        do {
+            let response = try await auth.signInWithGoogle(idToken: idToken, username: username)
             try await applyAuthResponse(response)
         } catch {
             authState = .signedOut
@@ -336,6 +384,8 @@ final class AppContainer: ObservableObject {
         await refreshSessionData()
         await storeKit.refreshEntitlements()
         startUnreadPolling()
+        startPresencePolling()
+        await touchPresence()
     }
 
     func logout() async {

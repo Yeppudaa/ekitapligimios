@@ -62,4 +62,19 @@ class Setup extends AbstractSetup
 	{
 		// Rebuilds ios-api notification routes onto IosApi-owned XenForo alert controllers.
 	}
+
+	public function upgrade1000016Step1(): void
+	{
+		// Rebuilds ios-api presence, member-visit, and IosApi-owned Members routes.
+	}
+
+	public function upgrade1000017Step1(): void
+	{
+		// Fixes XenForo session activity parameter order in MobilePresence.
+	}
+
+	public function upgrade1000018Step1(): void
+	{
+		// Owns Google authentication so expected invalid-token responses are not logged as server errors.
+	}
 }

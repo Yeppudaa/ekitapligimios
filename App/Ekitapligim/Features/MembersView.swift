@@ -136,6 +136,13 @@ private struct MemberRow: View {
                         .foregroundStyle(EKitapligimPalette.teal)
                         .background(Circle().fill(.white).padding(-2))
                         .accessibilityLabel(L10n.membersVerified)
+                } else if member.isOnline {
+                    Circle()
+                        .fill(Color.green)
+                        .frame(width: 12, height: 12)
+                        .overlay(Circle().stroke(.white, lineWidth: 2))
+                        .offset(x: 2, y: 2)
+                        .accessibilityLabel(L10n.profileOnline)
                 }
             }
 
@@ -148,6 +155,11 @@ private struct MemberRow: View {
                     .font(.caption.weight(.semibold))
                     .foregroundStyle(EKitapligimPalette.tealDark)
                     .lineLimit(1)
+                if member.isOnline {
+                    Text(L10n.profileOnline)
+                        .font(.caption2.weight(.bold))
+                        .foregroundStyle(Color.green)
+                }
                 if !member.about.isEmpty {
                     Text(member.about)
                         .font(.caption)
@@ -366,6 +378,9 @@ struct MemberProfileView: View {
                             .foregroundStyle(.white.opacity(0.82))
                             .lineLimit(1)
                         HStack(spacing: 7) {
+                            if member.isOnline {
+                                memberChip(L10n.profileOnline)
+                            }
                             if member.isFollowed {
                                 memberChip(L10n.membersFollowingBadge)
                             }
@@ -711,6 +726,9 @@ struct MemberProfileView: View {
         defer { isLoading = false }
         do {
             profile = try await container.members.memberProfile(id: memberID)
+            if isSignedIn {
+                try? await container.members.recordVisit(id: memberID)
+            }
         } catch {
             errorMessage = L10n.membersProfileLoadFailed
         }

@@ -1,5 +1,15 @@
 # Third-Party Notices
 
+## Google Sign-In for iOS
+
+Version: 9.2.0
+Source: https://github.com/google/GoogleSignIn-iOS
+License: Apache License 2.0
+
+Copyright 2025 Google LLC
+
+Licensed under the Apache License, Version 2.0. You may obtain a copy of the license at https://www.apache.org/licenses/LICENSE-2.0. Software distributed under the License is distributed on an "AS IS" BASIS, WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND.
+
 ## Readium Swift Toolkit
 
 Version: 3.9.0  

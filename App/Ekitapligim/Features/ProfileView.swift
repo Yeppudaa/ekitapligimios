@@ -11,11 +11,11 @@ struct ProfileView: View {
     @State private var isLoadingPosts = false
     @State private var errorMessage: String?
     @State private var statusMessage: String?
-    @State private var showingLogin = false
-    @State private var loginInitialMode: AuthFormMode = .login
+    @State private var authSheetMode: AuthFormMode?
     @State private var showingDeleteConfirmation = false
     @State private var isSubmittingDeletion = false
     @State private var route: ProfileRoute?
+    @State private var lastLibraryRefresh: Date?
 
     private var profile: ProfileDTO? { container.profileState }
     private var stats: ReadingStatsDTO? { container.readingStats }
@@ -28,14 +28,8 @@ struct ProfileView: View {
                 signedInContent
             } else {
                 GuestProfilePrompt(
-                    onLogin: {
-                        loginInitialMode = .login
-                        showingLogin = true
-                    },
-                    onRegister: {
-                        loginInitialMode = .register
-                        showingLogin = true
-                    }
+                    onLogin: { authSheetMode = .login },
+                    onRegister: { authSheetMode = .register }
                 )
             }
         }
@@ -55,7 +49,9 @@ struct ProfileView: View {
                 }
             }
         }
-        .sheet(isPresented: $showingLogin) { LoginView(initialMode: loginInitialMode) }
+        .sheet(item: $authSheetMode) { mode in
+            LoginView(initialMode: mode)
+        }
         .navigationDestination(item: $route) { destination in
             switch destination {
             case .edit: ProfileEditView()
@@ -80,7 +76,13 @@ struct ProfileView: View {
             route = .library(tab)
             container.pendingProfileLibraryTab = nil
         }
-        .task { await initialLoad() }
+        .task {
+            await initialLoad()
+            await refreshLibraryIfNeeded()
+        }
+        .onAppear {
+            Task { await refreshLibraryIfNeeded() }
+        }
         .refreshable { await refresh() }
         .alert(L10n.profileDeleteRequest, isPresented: $showingDeleteConfirmation) {
             Button(L10n.commonDismiss, role: .cancel) {}
@@ -346,6 +348,13 @@ struct ProfileView: View {
     private func initialLoad() async {
         guard container.isSignedIn, container.profileState == nil else { return }
         await refresh()
+    }
+
+    private func refreshLibraryIfNeeded() async {
+        guard container.isSignedIn else { return }
+        if let lastLibraryRefresh, Date().timeIntervalSince(lastLibraryRefresh) < 2 { return }
+        lastLibraryRefresh = Date()
+        await container.refreshLibrary()
     }
 
     private func refresh() async {
@@ -769,7 +778,7 @@ private struct ContinueReadingCard: View {
                             Text(L10n.continueReadingFromPage(max(item.lastReadPage, 1)))
                                 .font(.caption2.weight(.semibold))
                                 .foregroundStyle(EKitapligimPalette.profileTealDeep)
-                            ProgressView(value: Double(min(max(item.progressPercent, 0), 100)), total: 100)
+                            ProgressView(value: Double(item.displayProgressPercent), total: 100)
                                 .tint(EKitapligimPalette.profileSuccess)
                         }
                         Image(systemName: "chevron.right")
@@ -901,6 +910,16 @@ private struct ProfileMetricsRow: View {
 private struct ProfileInfoCard: View {
     let profile: ProfileDTO?
 
+    private var profileOnlineStatusValue: String {
+        if profile?.isOnline == true {
+            return L10n.profileOnline
+        }
+        if profile?.activityVisible == false {
+            return L10n.profileInfoHidden
+        }
+        return L10n.profileOffline
+    }
+
     var body: some View {
         VStack(alignment: .leading, spacing: 11) {
             HStack(alignment: .top) {
@@ -938,8 +957,8 @@ private struct ProfileInfoCard: View {
             }
             EKInfoRow(
                 label: L10n.profileInfoOnlineStatus,
-                value: (profile?.activityVisible ?? true) ? L10n.profileInfoVisible : L10n.profileInfoHidden,
-                systemImage: "eye"
+                value: profileOnlineStatusValue,
+                systemImage: "circle.fill"
             )
             EKInfoRow(
                 label: L10n.profileMemberGroup,

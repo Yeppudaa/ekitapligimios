@@ -33,9 +33,17 @@ struct LiveActivityView: View {
     }
 
     private var hero: some View {
-        HStack(alignment: .center, spacing: 12) {
+        HStack(alignment: .center, spacing: 14) {
+            ZStack {
+                Circle()
+                    .fill(Color.white.opacity(0.16))
+                    .frame(width: 52, height: 52)
+                Image(systemName: "bolt.horizontal.circle.fill")
+                    .font(.title2)
+                    .foregroundStyle(.white)
+            }
             VStack(alignment: .leading, spacing: 5) {
-                EKLiveBadge()
+                EKLiveBadge(showsPulse: true)
                 Text(L10n.liveActivitySubtitle)
                     .font(.title3.weight(.heavy))
                     .foregroundStyle(.white)
@@ -50,12 +58,13 @@ struct LiveActivityView: View {
         .frame(maxWidth: .infinity, alignment: .leading)
         .background(
             LinearGradient(
-                colors: [EKitapligimPalette.liveRed, EKitapligimPalette.liveOrange],
+                colors: [EKitapligimPalette.liveRed, EKitapligimPalette.liveOrange, Color(hex: 0xFF8A4C)],
                 startPoint: .topLeading,
                 endPoint: .bottomTrailing
             )
         )
-        .clipShape(RoundedRectangle(cornerRadius: 18, style: .continuous))
+        .clipShape(RoundedRectangle(cornerRadius: 20, style: .continuous))
+        .shadow(color: EKitapligimPalette.liveRed.opacity(0.22), radius: 14, y: 8)
     }
 
     @ViewBuilder private var content: some View {
@@ -74,8 +83,10 @@ struct LiveActivityView: View {
         } else if items.isEmpty {
             EKStateCard(title: L10n.liveActivityEmptyTitle, message: L10n.liveActivityEmptySubtitle)
         } else {
-            ForEach(items) { item in
-                LiveActivityRow(item: item)
+            VStack(alignment: .leading, spacing: 0) {
+                ForEach(Array(items.enumerated()), id: \.element.id) { index, item in
+                    LiveActivityRow(item: item, style: .timeline, showsConnector: index < items.count - 1)
+                }
             }
             if hasMore {
                 EKLoadMoreButton(isLoading: isLoadingMore, tint: EKitapligimPalette.liveRed) {
@@ -122,10 +133,18 @@ struct LiveActivityView: View {
 
 // MARK: - Aktivite satırı
 
+enum LiveActivityRowStyle {
+    case standard
+    case compact
+    case timeline
+}
+
 struct LiveActivityRow: View {
     @EnvironmentObject private var container: AppContainer
     let item: LiveActivityItemDTO
+    var style: LiveActivityRowStyle = .standard
     var showsChevron: Bool = true
+    var showsConnector: Bool = false
 
     private var kind: LiveActivityKind { LiveActivityKind(rawValue: item.type) }
 
@@ -133,12 +152,57 @@ struct LiveActivityRow: View {
         Button {
             openActivity()
         } label: {
-            rowContent
+            Group {
+                switch style {
+                case .timeline:
+                    timelineRowContent
+                case .compact, .standard:
+                    rowContent
+                }
+            }
         }
-        .buttonStyle(.plain)
+        .buttonStyle(LiveActivityRowButtonStyle())
         .disabled(!hasDestination)
         .accessibilityLabel(hasDestination ? item.message : item.message)
         .accessibilityHint(kind.title)
+    }
+
+    private var timelineRowContent: some View {
+        HStack(alignment: .top, spacing: 12) {
+            VStack(spacing: 0) {
+                ZStack {
+                    Circle()
+                        .fill(kind.tint.opacity(0.16))
+                        .frame(width: 34, height: 34)
+                    Circle()
+                        .fill(kind.tint)
+                        .frame(width: 10, height: 10)
+                }
+                if showsConnector {
+                    Rectangle()
+                        .fill(kind.tint.opacity(0.22))
+                        .frame(width: 2)
+                        .frame(maxHeight: .infinity)
+                        .padding(.vertical, 4)
+                }
+            }
+            .frame(width: 34)
+
+            VStack(alignment: .leading, spacing: 8) {
+                activityBody
+            }
+            .padding(14)
+            .frame(maxWidth: .infinity, alignment: .leading)
+            .background(EKitapligimPalette.paper)
+            .clipShape(RoundedRectangle(cornerRadius: 16, style: .continuous))
+            .overlay {
+                RoundedRectangle(cornerRadius: 16, style: .continuous)
+                    .stroke(EKitapligimPalette.border)
+            }
+            .shadow(color: EKitapligimPalette.ink.opacity(0.04), radius: 8, y: 3)
+            .padding(.bottom, showsConnector ? 14 : 4)
+        }
+        .frame(maxWidth: .infinity, alignment: .leading)
     }
 
     private var rowContent: some View {
@@ -152,50 +216,7 @@ struct LiveActivityRow: View {
             }
             .frame(width: 38, height: 38)
 
-            VStack(alignment: .leading, spacing: 4) {
-                HStack(spacing: 6) {
-                    Text(kind.title)
-                        .font(.system(size: 9, weight: .heavy))
-                        .foregroundStyle(kind.tint)
-                        .padding(.horizontal, 7)
-                        .padding(.vertical, 3)
-                        .background(kind.tint.opacity(0.12), in: Capsule())
-                    Spacer(minLength: 0)
-                    Text(EKitapligimFormat.relativeTime(item.eventDate))
-                        .font(.caption2)
-                        .foregroundStyle(EKitapligimPalette.muted)
-                }
-
-                Text(EKitapligimFormat.plainText(item.message))
-                    .font(.subheadline)
-                    .foregroundStyle(EKitapligimPalette.ink)
-                    .multilineTextAlignment(.leading)
-                    .fixedSize(horizontal: false, vertical: true)
-
-                if let book = item.book, !book.title.isEmpty {
-                    HStack(spacing: 8) {
-                        EKitapligimRemoteCover(urlString: book.coverUrl ?? "")
-                            .frame(width: 26, height: 38)
-                            .clipShape(RoundedRectangle(cornerRadius: 5, style: .continuous))
-                        VStack(alignment: .leading, spacing: 1) {
-                            Text(book.title)
-                                .font(.caption2.weight(.bold))
-                                .foregroundStyle(EKitapligimPalette.ink)
-                                .lineLimit(1)
-                            if !book.author.isEmpty {
-                                Text(book.author)
-                                    .font(.system(size: 10))
-                                    .foregroundStyle(EKitapligimPalette.muted)
-                                    .lineLimit(1)
-                            }
-                        }
-                        Spacer(minLength: 0)
-                    }
-                    .padding(8)
-                    .background(EKitapligimPalette.surfaceAlt)
-                    .clipShape(RoundedRectangle(cornerRadius: 9, style: .continuous))
-                }
-            }
+            activityBody
 
             if showsChevron, hasDestination {
                 Image(systemName: "chevron.right")
@@ -203,10 +224,65 @@ struct LiveActivityRow: View {
                     .foregroundStyle(EKitapligimPalette.muted)
             }
         }
-        .padding(13)
+        .padding(style == .compact ? EdgeInsets(top: 12, leading: 16, bottom: 12, trailing: 16) : EdgeInsets(top: 13, leading: 13, bottom: 13, trailing: 13))
         .frame(maxWidth: .infinity, alignment: .leading)
-        .ekitapligimCard(radius: 15)
+        .background(style == .compact ? AnyShapeStyle(Color.clear) : AnyShapeStyle(EKitapligimPalette.paper))
+        .clipShape(RoundedRectangle(cornerRadius: style == .compact ? 0 : 15, style: .continuous))
+        .overlay {
+            if style != .compact {
+                RoundedRectangle(cornerRadius: 15, style: .continuous)
+                    .stroke(EKitapligimPalette.border)
+            }
+        }
+        .shadow(color: style == .compact ? .clear : EKitapligimPalette.ink.opacity(0.04), radius: 8, y: 3)
         .accessibilityElement(children: .combine)
+    }
+
+    private var activityBody: some View {
+        VStack(alignment: .leading, spacing: 4) {
+            HStack(spacing: 6) {
+                Text(kind.title)
+                    .font(.system(size: 9, weight: .heavy))
+                    .foregroundStyle(kind.tint)
+                    .padding(.horizontal, 7)
+                    .padding(.vertical, 3)
+                    .background(kind.tint.opacity(0.12), in: Capsule())
+                Spacer(minLength: 0)
+                Text(EKitapligimFormat.relativeTime(item.eventDate))
+                    .font(.caption2)
+                    .foregroundStyle(EKitapligimPalette.muted)
+            }
+
+            Text(EKitapligimFormat.plainText(item.message))
+                .font(style == .compact ? .caption : .subheadline)
+                .foregroundStyle(EKitapligimPalette.ink)
+                .multilineTextAlignment(.leading)
+                .fixedSize(horizontal: false, vertical: true)
+
+            if let book = item.book, !book.title.isEmpty {
+                HStack(spacing: 8) {
+                    EKitapligimRemoteCover(urlString: book.coverUrl ?? "")
+                        .frame(width: 26, height: 38)
+                        .clipShape(RoundedRectangle(cornerRadius: 5, style: .continuous))
+                    VStack(alignment: .leading, spacing: 1) {
+                        Text(book.title)
+                            .font(.caption2.weight(.bold))
+                            .foregroundStyle(EKitapligimPalette.ink)
+                            .lineLimit(1)
+                        if !book.author.isEmpty {
+                            Text(book.author)
+                                .font(.system(size: 10))
+                                .foregroundStyle(EKitapligimPalette.muted)
+                                .lineLimit(1)
+                        }
+                    }
+                    Spacer(minLength: 0)
+                }
+                .padding(8)
+                .background(EKitapligimPalette.surfaceAlt)
+                .clipShape(RoundedRectangle(cornerRadius: 9, style: .continuous))
+            }
+        }
     }
 
     private var hasDestination: Bool {
@@ -302,5 +378,13 @@ enum LiveActivityKind {
         case .request: EKitapligimPalette.liveRed
         case .other: EKitapligimPalette.muted
         }
+    }
+}
+
+private struct LiveActivityRowButtonStyle: ButtonStyle {
+    func makeBody(configuration: Configuration) -> some View {
+        configuration.label
+            .scaleEffect(configuration.isPressed ? 0.985 : 1)
+            .animation(.easeOut(duration: 0.12), value: configuration.isPressed)
     }
 }

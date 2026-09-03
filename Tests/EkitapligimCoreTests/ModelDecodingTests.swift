@@ -100,6 +100,7 @@ final class ModelDecodingTests: XCTestCase {
               "reaction_score": 3,
               "register_date": 1783710000,
               "last_activity": 0,
+              "is_online": true,
               "avatar_url": "https://ekitapligim.com/avatar.jpg",
               "is_staff": false,
               "is_followed": true,
@@ -117,7 +118,37 @@ final class ModelDecodingTests: XCTestCase {
         XCTAssertEqual(page.members.first?.id, "4")
         XCTAssertEqual(page.members.first?.messageCount, 12)
         XCTAssertEqual(page.members.first?.isFollowed, true)
+        XCTAssertEqual(page.members.first?.isOnline, true)
         XCTAssertEqual(page.total, 25)
+    }
+
+    func testMemberDecodesOnlineStatus() throws {
+        let data = Data("""
+        {
+          "id": "9",
+          "username": "OnlineUser",
+          "is_online": true,
+          "isOnline": true
+        }
+        """.utf8)
+
+        let member = try JSONDecoder.ekitapligim.decode(MemberDTO.self, from: data)
+        XCTAssertTrue(member.isOnline)
+    }
+
+    func testPresenceAndVisitResponsesDecode() throws {
+        let presence = try JSONDecoder.ekitapligim.decode(
+            PresenceTouchDTO.self,
+            from: Data("{\"success\": true}".utf8)
+        )
+        XCTAssertTrue(presence.success)
+
+        let visit = try JSONDecoder.ekitapligim.decode(
+            MemberVisitDTO.self,
+            from: Data("{\"success\": true, \"recorded\": true}".utf8)
+        )
+        XCTAssertTrue(visit.success)
+        XCTAssertEqual(visit.recorded, true)
     }
 
     func testConversationDetailDecodesCurrentBackendShape() throws {
@@ -217,6 +248,39 @@ final class ModelDecodingTests: XCTestCase {
 
         XCTAssertEqual(false, acquiredPage.items.first?.allowsVote)
         XCTAssertEqual(false, rejectedPage.items.first?.allowsVote)
+    }
+
+    func testBookRequestDecodesAcquiredBookID() throws {
+        let data = Data("""
+        { "book_requests": [{ "id": "1", "title": "A", "author": "B", "status": "ACQUIRED", "book_id": "15585" }] }
+        """.utf8)
+
+        let page = try JSONDecoder.ekitapligim.decode(BookRequestsPageDTO.self, from: data)
+
+        XCTAssertEqual("15585", page.items.first?.bookId)
+        XCTAssertEqual("15585", page.items.first?.fulfilledBookID)
+        XCTAssertTrue(page.items.first?.isAcquired == true)
+    }
+
+    func testBookRequestDecodesFulfilledThreadIDFallback() throws {
+        let data = Data("""
+        { "book_requests": [{ "id": "1", "title": "A", "author": "B", "status": "ACQUIRED", "thread_id": 15585 }] }
+        """.utf8)
+
+        let page = try JSONDecoder.ekitapligim.decode(BookRequestsPageDTO.self, from: data)
+
+        XCTAssertEqual("15585", page.items.first?.fulfilledBookID)
+    }
+
+    func testPendingBookRequestDoesNotNavigate() throws {
+        let data = Data("""
+        { "book_requests": [{ "id": "1", "title": "A", "author": "B", "status": "PENDING", "book_id": "15585" }] }
+        """.utf8)
+
+        let page = try JSONDecoder.ekitapligim.decode(BookRequestsPageDTO.self, from: data)
+
+        XCTAssertNil(page.items.first?.fulfilledBookID)
+        XCTAssertEqual("15585", page.items.first?.bookId)
     }
 
     func testBookRequestVoteDecodesSnakeCaseCount() throws {

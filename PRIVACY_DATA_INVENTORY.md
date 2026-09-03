@@ -3,6 +3,7 @@
 | Data | Purpose | Linked To User | Tracking | Retention |
 |---|---|---:|---:|---|
 | Username/email | Account login/profile | Yes | No | Until account deletion/legal retention |
+| Google account name/subject/profile image | Google authentication, account linking, suggested forum identity/avatar | Yes | No | Until account deletion/account unlinking |
 | Optional profile location | Profile display; user-entered, no device GPS | Yes | No | Until changed/account deletion |
 | Optional profile website | Profile display/contact | Yes | No | Until changed/account deletion |
 | Password | Login only, sent to backend | Yes | No | Not stored in app |
@@ -21,9 +22,11 @@
 ## App Store Privacy Label Draft
 Likely data types:
 - Contact Info: email address.
+- Contact Info: name supplied by Google when Google authentication is used.
 - Contact Info: other user contact info for optional profile website.
 - Location: coarse location for optional user-entered profile location; the app does not access device location services.
 - User Content: posts/comments/messages, if enabled.
+- User Content: Google profile image used as the initial forum avatar when Google registration is used.
 - Identifiers: user ID.
 - Purchases: subscription or premium transactions, if StoreKit is enabled.
 - Usage Data: reading progress/library activity.

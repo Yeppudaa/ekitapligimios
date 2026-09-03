@@ -6,6 +6,11 @@ Do not commit secret values.
 - `APPLE_TEAM_ID`: Apple Developer Team ID, supplied in Xcode or CI secret store.
 - `EKITAPLIGIM_API_BASE_URL`: set by `.xcconfig`.
 - `EKITAPLIGIM_ENVIRONMENT`: development, staging, or production.
+- `EKITAPLIGIM_GOOGLE_IOS_CLIENT_ID`: public iOS OAuth client identifier for `com.ekitapligim.app`.
+- `EKITAPLIGIM_GOOGLE_SERVER_CLIENT_ID`: public web/server OAuth client identifier allowlisted by the backend.
+- `EKITAPLIGIM_GOOGLE_URL_SCHEME`: reversed iOS client identifier used for the OAuth callback.
+
+Google OAuth client IDs and the reversed URL scheme are public configuration, not secrets. Never place a Google client secret in the app or source control.
 
 ## Backend Environment
 - `EKITAPLIGIM_IOS_BUNDLE_ID`: `com.ekitapligim.app`.

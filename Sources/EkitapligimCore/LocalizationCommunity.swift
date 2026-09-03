@@ -212,6 +212,8 @@ public extension L10n {
     static var profileInfoRegisterDate: String { tr("profile.info.registerDate", "Kayıt tarihi") }
     static var profileInfoLastActivity: String { tr("profile.info.lastActivity", "Son aktivite") }
     static var profileInfoOnlineStatus: String { tr("profile.info.onlineStatus", "Çevrimiçi durum") }
+    static var profileOnline: String { tr("profile.online", "Çevrimiçi") }
+    static var profileOffline: String { tr("profile.offline", "Çevrimdışı") }
     static var profileInfoVisible: String { tr("profile.info.visible", "Görünür") }
     static var profileInfoHidden: String { tr("profile.info.hidden", "Gizli") }
 

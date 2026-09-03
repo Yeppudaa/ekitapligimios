@@ -204,6 +204,12 @@ public extension APIEndpoint {
         APIEndpoint(method: .post, path: "member-unfollow/\(id)", requiresAuthentication: true)
     }
 
+    static let touchPresence = APIEndpoint(method: .post, path: "me/presence", requiresAuthentication: true)
+
+    static func recordMemberVisit(id: String) -> APIEndpoint {
+        APIEndpoint(method: .post, path: "member-visit/\(id)", requiresAuthentication: true)
+    }
+
     static func books(
         page: Int = 1,
         query: String? = nil,
@@ -419,6 +425,18 @@ public extension APIEndpoint {
                 "authorization_code": authorizationCode,
                 "nonce": nonce
             ])
+        )
+    }
+
+    static func googleAuth(idToken: String, username: String? = nil) -> APIEndpoint {
+        var form = ["id_token": idToken]
+        if let username = username?.trimmingCharacters(in: .whitespacesAndNewlines), !username.isEmpty {
+            form["username"] = username
+        }
+        return APIEndpoint(
+            method: .post,
+            path: "auth/google",
+            body: .form(form)
         )
     }
 

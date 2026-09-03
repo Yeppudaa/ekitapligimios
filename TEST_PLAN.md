@@ -35,6 +35,8 @@
 ## UI Tests
 - Launch/login.
 - Register with password confirmation and required legal acceptance; verify invalid and duplicate account errors do not leave authentication loading.
+- Google sign-in: verify OAuth callback handling, server-client audience, Keychain session persistence, cancellation recovery, and existing connected/matching-email accounts.
+- Google registration: verify `409 username_required` displays the server suggestion, a chosen forum username is retried with the same ID token, validation errors remain actionable, and success creates/links exactly one XenForo account.
 - Request password reset for both existing and unknown addresses and verify the same privacy-preserving success text.
 - Browse catalog.
 - Toggle catalog list/grid presentation, relaunch, and verify the preference persists; verify HTTPS covers and missing-cover placeholders in both modes.

@@ -92,8 +92,6 @@ struct BookDetailView: View {
                 .ignoresSafeArea()
             )
         }
-        .navigationTitle(L10n.bookDetailTitle)
-        .navigationBarTitleDisplayMode(.inline)
         .toolbar(.hidden, for: .navigationBar)
         .safeAreaInset(edge: .top, spacing: 0) {
             androidBookTopBar
@@ -993,6 +991,11 @@ struct BookDetailView: View {
     }
 
 
+    private var topBarTitle: String {
+        guard let book, !book.title.isEmpty else { return L10n.bookDetailTitle }
+        return book.title
+    }
+
     private var androidBookTopBar: some View {
         HStack(spacing: 12) {
             Button { dismiss() } label: {
@@ -1001,10 +1004,11 @@ struct BookDetailView: View {
             .buttonStyle(.plain)
             .accessibilityLabel(L10n.commonBack)
 
-            Text(L10n.bookDetailTitle)
-                .font(.system(.title3, design: .serif).weight(.heavy))
+            Text(topBarTitle)
+                .font(.system(.headline, design: .serif).weight(.heavy))
                 .foregroundStyle(Color(hex: 0x0D3037))
                 .multilineTextAlignment(.center)
+                .lineLimit(1)
                 .frame(maxWidth: .infinity)
 
             Group {
@@ -1023,8 +1027,19 @@ struct BookDetailView: View {
                 }
             }
         }
-        .padding(.horizontal, 20)
-        .padding(.vertical, 18)
+        .padding(.leading, 20)
+        .padding(.trailing, 78)
+        .padding(.vertical, 12)
+        .background {
+            Rectangle()
+                .fill(.ultraThinMaterial)
+                .ignoresSafeArea(edges: .top)
+                .overlay(alignment: .bottom) {
+                    Rectangle()
+                        .fill(EKitapligimPalette.border)
+                        .frame(height: 1)
+                }
+        }
     }
 
     private func androidRoundToolbarIcon(_ systemName: String) -> some View {

@@ -36,6 +36,7 @@ $iosControllers = @{
     "ThreadPosts" = $true
     "AuthLogin" = $true
     "AuthRegister" = $true
+    "AuthGoogle" = $true
     "BookAgenda" = $true
     "BookAgendaPost" = $true
     "BookAgendaComments" = $true

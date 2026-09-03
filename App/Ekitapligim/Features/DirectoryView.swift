@@ -100,8 +100,8 @@ struct DirectoryView: View {
                     Spacer(minLength: 0)
                 }
                 HStack(spacing: 10) {
-                    DirectoryStatTile(title: L10n.directoryStatEntries, value: EKitapligimFormat.count(items.count))
-                    DirectoryStatTile(title: L10n.directoryStatBooks, value: EKitapligimFormat.count(totalBooks))
+                    DirectoryStatTile(title: L10n.directoryStatEntries, value: EKitapligimFormat.count(items.count), systemImage: "person.2.fill")
+                    DirectoryStatTile(title: L10n.directoryStatBooks, value: EKitapligimFormat.count(totalBooks), systemImage: "books.vertical.fill")
                 }
             }
             .padding(18)
@@ -147,7 +147,11 @@ struct DirectoryView: View {
         ScrollView(.horizontal, showsIndicators: false) {
             HStack(spacing: 8) {
                 ForEach(turkishAlphabet, id: \.self) { letter in
-                    EKChip(title: letter, isSelected: selectedLetter == letter) {
+                    EKChip(
+                        title: letter,
+                        isSelected: selectedLetter == letter,
+                        selectedBackground: kind == .author ? EKitapligimPalette.teal : EKitapligimPalette.amber
+                    ) {
                         selectedLetter = letter
                     }
                 }
@@ -206,15 +210,28 @@ struct DirectoryView: View {
 private struct DirectoryStatTile: View {
     let title: String
     let value: String
+    var systemImage: String = "books.vertical.fill"
 
     var body: some View {
-        VStack(alignment: .leading, spacing: 2) {
-            Text(value).font(.headline.weight(.heavy)).foregroundStyle(EKitapligimPalette.ink)
-            Text(title).font(.caption2).foregroundStyle(EKitapligimPalette.muted)
+        HStack(spacing: 10) {
+            Image(systemName: systemImage)
+                .font(.caption.weight(.bold))
+                .foregroundStyle(EKitapligimPalette.teal)
+                .frame(width: 30, height: 30)
+                .background(EKitapligimPalette.tealSoft, in: RoundedRectangle(cornerRadius: 9, style: .continuous))
+            VStack(alignment: .leading, spacing: 2) {
+                Text(value).font(.headline.weight(.heavy)).foregroundStyle(EKitapligimPalette.ink)
+                Text(title).font(.caption2).foregroundStyle(EKitapligimPalette.muted)
+            }
+            Spacer(minLength: 0)
         }
         .frame(maxWidth: .infinity, alignment: .leading)
         .padding(12)
-        .background(.white.opacity(0.72), in: RoundedRectangle(cornerRadius: 12, style: .continuous))
+        .background(.white.opacity(0.82), in: RoundedRectangle(cornerRadius: 12, style: .continuous))
+        .overlay {
+            RoundedRectangle(cornerRadius: 12, style: .continuous)
+                .stroke(EKitapligimPalette.border)
+        }
     }
 }
 
@@ -223,37 +240,75 @@ private struct DirectoryCard: View {
     let kind: DirectoryKind
     let item: DirectoryItemDTO
 
-    var body: some View {
-        HStack(spacing: 14) {
-            ZStack {
-                Circle().fill(kind == .author ? EKitapligimPalette.tealSoft : EKitapligimPalette.amberSoft)
-                Image(systemName: kind == .author ? "person.fill" : "building.2.fill")
-                    .foregroundStyle(kind == .author ? EKitapligimPalette.teal : EKitapligimPalette.amber)
-            }
-            .frame(width: 48, height: 48)
+    private var accent: Color { kind == .author ? EKitapligimPalette.teal : EKitapligimPalette.amber }
+    private var accentSoft: Color { kind == .author ? EKitapligimPalette.tealSoft : EKitapligimPalette.amberSoft }
 
-            VStack(alignment: .leading, spacing: 4) {
-                Text(item.name)
-                    .font(.headline)
-                    .foregroundStyle(EKitapligimPalette.ink)
-                    .lineLimit(2)
-                Text(L10n.directoryBookCount(item.bookCount))
-                    .font(.caption)
+    var body: some View {
+        HStack(spacing: 0) {
+            RoundedRectangle(cornerRadius: 2, style: .continuous)
+                .fill(
+                    LinearGradient(
+                        colors: [accent, accent.opacity(0.55)],
+                        startPoint: .top,
+                        endPoint: .bottom
+                    )
+                )
+                .frame(width: 4)
+                .padding(.vertical, 10)
+
+            HStack(spacing: 14) {
+                ZStack {
+                    Circle()
+                        .fill(
+                            LinearGradient(
+                                colors: [accentSoft, .white],
+                                startPoint: .topLeading,
+                                endPoint: .bottomTrailing
+                            )
+                        )
+                    Text(directoryInitials(item.name))
+                        .font(.subheadline.weight(.heavy))
+                        .foregroundStyle(accent)
+                }
+                .frame(width: 50, height: 50)
+
+                VStack(alignment: .leading, spacing: 4) {
+                    Text(item.name)
+                        .font(.headline.weight(.bold))
+                        .foregroundStyle(EKitapligimPalette.ink)
+                        .lineLimit(2)
+                    Text(L10n.directoryBookCount(item.bookCount))
+                        .font(.caption)
+                        .foregroundStyle(EKitapligimPalette.muted)
+                }
+                Spacer(minLength: 0)
+                Text(EKitapligimFormat.count(item.bookCount))
+                    .font(.caption.weight(.heavy))
+                    .foregroundStyle(accent)
+                    .padding(.horizontal, 10)
+                    .padding(.vertical, 6)
+                    .background(accentSoft, in: Capsule())
+                Image(systemName: "chevron.right")
+                    .font(.caption2.weight(.bold))
                     .foregroundStyle(EKitapligimPalette.muted)
             }
-            Spacer(minLength: 0)
-            Text(EKitapligimFormat.count(item.bookCount))
-                .font(.caption.weight(.heavy))
-                .foregroundStyle(EKitapligimPalette.tealDark)
-                .padding(.horizontal, 10)
-                .padding(.vertical, 6)
-                .background(EKitapligimPalette.tealSoft, in: Capsule())
-            Image(systemName: "chevron.right")
-                .font(.caption2)
-                .foregroundStyle(EKitapligimPalette.muted)
+            .padding(.horizontal, 14)
+            .padding(.vertical, 12)
         }
-        .padding(14)
-        .ekitapligimCard(radius: 15)
+        .background(EKitapligimPalette.paper)
+        .clipShape(RoundedRectangle(cornerRadius: 16, style: .continuous))
+        .overlay {
+            RoundedRectangle(cornerRadius: 16, style: .continuous)
+                .stroke(EKitapligimPalette.border)
+        }
+        .shadow(color: EKitapligimPalette.ink.opacity(0.05), radius: 10, y: 4)
+    }
+
+    private func directoryInitials(_ name: String) -> String {
+        let parts = name.split(separator: " ").prefix(2)
+        let initials = parts.compactMap(\.first)
+        let value = String(initials)
+        return value.isEmpty ? "#" : value.uppercased(with: Locale(identifier: "tr_TR"))
     }
 }
 
@@ -340,6 +395,7 @@ struct DirectoryBooksView: View {
             )
         )
         .clipShape(RoundedRectangle(cornerRadius: 18, style: .continuous))
+        .shadow(color: (kind == .author ? EKitapligimPalette.teal : EKitapligimPalette.amber).opacity(0.22), radius: 14, y: 8)
     }
 
     private func load(reset: Bool) async {
@@ -372,7 +428,8 @@ private struct DirectoryBookGridCard: View {
         VStack(alignment: .leading, spacing: 8) {
             EKitapligimRemoteCover(urlString: book.coverUrl)
                 .aspectRatio(2 / 3, contentMode: .fit)
-                .clipShape(RoundedRectangle(cornerRadius: 10, style: .continuous))
+                .clipShape(RoundedRectangle(cornerRadius: 12, style: .continuous))
+                .shadow(color: EKitapligimPalette.ink.opacity(0.08), radius: 8, y: 4)
             Text(book.title)
                 .font(.subheadline.weight(.semibold))
                 .foregroundStyle(EKitapligimPalette.ink)
@@ -387,8 +444,14 @@ private struct DirectoryBookGridCard: View {
                     .foregroundStyle(EKitapligimPalette.amber)
             }
         }
-        .padding(10)
-        .ekitapligimCard(radius: 12)
+        .padding(12)
+        .background(EKitapligimPalette.paper)
+        .clipShape(RoundedRectangle(cornerRadius: 14, style: .continuous))
+        .overlay {
+            RoundedRectangle(cornerRadius: 14, style: .continuous)
+                .stroke(EKitapligimPalette.border)
+        }
+        .shadow(color: EKitapligimPalette.ink.opacity(0.04), radius: 8, y: 3)
     }
 }
 

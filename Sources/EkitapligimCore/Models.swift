@@ -114,6 +114,7 @@ public struct BookRequestDTO: Decodable, Equatable, Identifiable, Sendable {
     public let userId: Int?
     public let voteCount: Int
     public let status: String
+    public let bookId: String?
 
     public init(from decoder: Decoder) throws {
         let container = try decoder.container(keyedBy: CodingKeys.self)
@@ -125,11 +126,22 @@ public struct BookRequestDTO: Decodable, Equatable, Identifiable, Sendable {
         self.userId = parsedUserID > 0 ? parsedUserID : nil
         self.voteCount = try container.decodeIfPresent(Int.self, forKey: .voteCount) ?? 0
         self.status = try container.decodeIfPresent(String.self, forKey: .status) ?? "PENDING"
+        let parsedBookID = try container.decodeFlexibleString(forKey: .bookId, fallbackKeys: [.threadId, .bookThreadId])
+        self.bookId = parsedBookID.isEmpty ? nil : parsedBookID
     }
 
     /// Android `SocialScreen` only enables upvote while the request is still `PENDING`.
     public var allowsVote: Bool {
         status.trimmingCharacters(in: .whitespacesAndNewlines).uppercased() == "PENDING"
+    }
+
+    public var isAcquired: Bool {
+        status.trimmingCharacters(in: .whitespacesAndNewlines).uppercased() == "ACQUIRED"
+    }
+
+    public var fulfilledBookID: String? {
+        guard isAcquired, let bookId, !bookId.isEmpty else { return nil }
+        return bookId
     }
 
     private enum CodingKeys: String, CodingKey {
@@ -142,6 +154,9 @@ public struct BookRequestDTO: Decodable, Equatable, Identifiable, Sendable {
         case requestedByUserId
         case voteCount
         case status
+        case bookId
+        case threadId
+        case bookThreadId
     }
 }
 
@@ -296,6 +311,7 @@ public struct MemberDTO: Decodable, Equatable, Identifiable, Sendable {
     public let reactionScore: Int
     public let registerDate: Int
     public let lastActivity: Int
+    public let isOnline: Bool
     public let avatarUrl: String
     public let isStaff: Bool
     public let isFollowed: Bool
@@ -316,6 +332,7 @@ public struct MemberDTO: Decodable, Equatable, Identifiable, Sendable {
         self.reactionScore = try container.decodeIfPresent(Int.self, forKey: .reactionScore) ?? 0
         self.registerDate = try container.decodeIfPresent(Int.self, forKey: .registerDate) ?? 0
         self.lastActivity = try container.decodeIfPresent(Int.self, forKey: .lastActivity) ?? 0
+        self.isOnline = try container.decodeIfPresent(Bool.self, forKey: .isOnline) ?? false
         self.avatarUrl = try container.decodeIfPresent(String.self, forKey: .avatarUrl) ?? ""
         self.isStaff = try container.decodeIfPresent(Bool.self, forKey: .isStaff) ?? false
         self.isFollowed = try container.decodeIfPresent(Bool.self, forKey: .isFollowed) ?? false
@@ -337,6 +354,7 @@ public struct MemberDTO: Decodable, Equatable, Identifiable, Sendable {
         case reactionScore
         case registerDate
         case lastActivity
+        case isOnline
         case avatarUrl
         case isStaff
         case isFollowed
@@ -1144,6 +1162,7 @@ public struct ProfileDTO: Decodable, Equatable, Sendable {
     public let trophyPoints: Int?
     public let registerDate: Int?
     public let lastActivity: Int?
+    public let isOnline: Bool?
     public let isStaff: Bool?
     public let canEdit: Bool?
     public let canUploadAvatar: Bool?
@@ -1185,6 +1204,7 @@ public struct ProfileDTO: Decodable, Equatable, Sendable {
         self.trophyPoints = try container.decodeIfPresent(Int.self, forKey: .trophyPoints)
         self.registerDate = try container.decodeIfPresent(Int.self, forKey: .registerDate)
         self.lastActivity = try container.decodeIfPresent(Int.self, forKey: .lastActivity)
+        self.isOnline = try container.decodeIfPresent(Bool.self, forKey: .isOnline)
         self.isStaff = try container.decodeIfPresent(Bool.self, forKey: .isStaff)
         self.canEdit = try container.decodeIfPresent(Bool.self, forKey: .canEdit)
         self.canUploadAvatar = try container.decodeIfPresent(Bool.self, forKey: .canUploadAvatar)
@@ -1217,6 +1237,7 @@ public struct ProfileDTO: Decodable, Equatable, Sendable {
         case trophyPoints
         case registerDate
         case lastActivity
+        case isOnline
         case isStaff
         case canEdit
         case canUploadAvatar
@@ -1232,6 +1253,15 @@ public struct ProfileDTO: Decodable, Equatable, Sendable {
         case badges
         case earnedBadges
     }
+}
+
+public struct PresenceTouchDTO: Decodable, Equatable, Sendable {
+    public let success: Bool
+}
+
+public struct MemberVisitDTO: Decodable, Equatable, Sendable {
+    public let success: Bool
+    public let recorded: Bool?
 }
 
 public struct NotificationDTO: Decodable, Equatable, Identifiable, Sendable {

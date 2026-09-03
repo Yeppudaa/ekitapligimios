@@ -77,6 +77,42 @@ final class APIClientTests: XCTestCase {
         XCTAssertTrue(body?.contains("nonce=raw-nonce") == true)
     }
 
+    func testGoogleAuthEndpointUsesFormBody() throws {
+        let config = try makeConfig()
+        let client = APIClient(config: config)
+
+        let request = try client.makeURLRequest(.googleAuth(idToken: "id.token+value"))
+        let body = String(data: try XCTUnwrap(request.httpBody), encoding: .utf8)
+
+        XCTAssertEqual(request.httpMethod, "POST")
+        XCTAssertNil(request.value(forHTTPHeaderField: "Authorization"))
+        XCTAssertEqual(body, "id_token=id.token%2Bvalue")
+        XCTAssertEqual(APIEndpoint.googleAuth(idToken: "id.token+value").path, "auth/google")
+    }
+
+    func testGoogleRegistrationEndpointIncludesUsername() throws {
+        let config = try makeConfig()
+        let client = APIClient(config: config)
+
+        let request = try client.makeURLRequest(.googleAuth(idToken: "id.token", username: "Yeni Okur"))
+        let body = String(data: try XCTUnwrap(request.httpBody), encoding: .utf8)
+
+        XCTAssertTrue(body?.contains("id_token=id.token") == true)
+        XCTAssertTrue(body?.contains("username=Yeni%20Okur") == true)
+    }
+
+    func testXenForoErrorDecodesObjectOrEmptyArrayParams() throws {
+        let decoder = JSONDecoder.ekitapligim
+        let usernameRequired = Data(#"{"errors":[{"code":"username_required","message":"Kullanıcı adı gerekli.","params":{"suggested_username":"Yeni Okur","email":"okur@example.com"}}]}"#.utf8)
+        let ordinaryError = Data(#"{"errors":[{"code":"google_token_invalid","message":"Geçersiz.","params":[]}]}"#.utf8)
+
+        let requiredEnvelope = try decoder.decode(APIErrorEnvelope.self, from: usernameRequired)
+        let ordinaryEnvelope = try decoder.decode(APIErrorEnvelope.self, from: ordinaryError)
+
+        XCTAssertEqual(requiredEnvelope.errors.first?.params?["suggested_username"], "Yeni Okur")
+        XCTAssertNil(ordinaryEnvelope.errors.first?.params)
+    }
+
     func testRefreshEndpointUsesRefreshTokenWithoutBearerAuthorization() throws {
         let config = try makeConfig()
         let client = APIClient(config: config)

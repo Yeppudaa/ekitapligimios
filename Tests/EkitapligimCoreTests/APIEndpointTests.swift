@@ -32,6 +32,17 @@ final class APIEndpointTests: XCTestCase {
         XCTAssertEqual(reset.body, .form(["email": "okur@example.com"]))
     }
 
+    func testGoogleAuthIsPublicFormRequest() {
+        let google = APIEndpoint.googleAuth(idToken: "id.token")
+        XCTAssertEqual(google.path, "auth/google")
+        XCTAssertEqual(google.method, .post)
+        XCTAssertFalse(google.requiresAuthentication)
+        XCTAssertEqual(google.body, .form(["id_token": "id.token"]))
+
+        let registration = APIEndpoint.googleAuth(idToken: "id.token", username: "  Yeni Okur  ")
+        XCTAssertEqual(registration.body, .form(["id_token": "id.token", "username": "Yeni Okur"]))
+    }
+
     func testBooksEndpointBuildsQuery() throws {
         let base = try XCTUnwrap(URL(string: "https://ekitapligim.com/ios-api/v1/"))
         let url = try APIEndpoint.books(page: 2, query: "Orhan", category: "Roman", order: "popular").url(relativeTo: base)
@@ -114,6 +125,10 @@ final class APIEndpointTests: XCTestCase {
         XCTAssertEqual(APIEndpoint.followMember(id: "42").path, "member-follow/42")
         XCTAssertTrue(APIEndpoint.followMember(id: "42").requiresAuthentication)
         XCTAssertEqual(APIEndpoint.unfollowMember(id: "42").path, "member-unfollow/42")
+        XCTAssertEqual(APIEndpoint.touchPresence.path, "me/presence")
+        XCTAssertTrue(APIEndpoint.touchPresence.requiresAuthentication)
+        XCTAssertEqual(APIEndpoint.recordMemberVisit(id: "42").path, "member-visit/42")
+        XCTAssertTrue(APIEndpoint.recordMemberVisit(id: "42").requiresAuthentication)
     }
 
     func testReaderProgressRequiresAuthentication() {

@@ -116,8 +116,8 @@ $requiredFiles = @(
 )
 foreach ($relative in $requiredFiles) { Assert-Path (Join-Path $addonRoot $relative) }
 $addonManifest = Get-Content -Raw -LiteralPath (Join-Path $addonRoot "addon.json") | ConvertFrom-Json
-if ([int]$addonManifest.version_id -ne 1000015 -or $addonManifest.version_string -ne "1.0.15") {
-    throw "IosApi package must be exactly 1.0.15 / 1000015 for this release."
+if ([int]$addonManifest.version_id -ne 1000018 -or $addonManifest.version_string -ne "1.0.18") {
+    throw "IosApi package must be exactly 1.0.18 / 1000018 for this release."
 }
 $routeText = Get-Content -Raw -LiteralPath (Join-Path $addonRoot "_data\routes.xml")
 foreach ($requiredRoute in @(

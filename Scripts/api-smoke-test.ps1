@@ -321,6 +321,9 @@ $membersResponse = Invoke-SmokeJsonGet "members?page=1&per_page=2&sort=alphabeti
 if ($membersResponse -and $membersResponse.members -and $membersResponse.members.Count -gt 0) {
     $member = $membersResponse.members | Select-Object -First 1
     Invoke-SmokeJsonGet "member-detail/$($member.id)" | Out-Null
+    if (-not [string]::IsNullOrWhiteSpace($BearerToken)) {
+        Invoke-SmokePost "member-visit/$($member.id)" @{} -RequiresAuth
+    }
 }
 $forumsResponse = Invoke-SmokeJsonGet "forums"
 $probeThreadId = $null
@@ -416,6 +419,7 @@ if ($termsResponse -and $termsResponse.requiredVersion) {
     Write-Host "SKIP me/terms/accept (requires auth and a current terms version)"
 }
 Invoke-SmokeGet "me/notifications/counts" -RequiresAuth
+Invoke-SmokePost "me/presence" @{} -RequiresAuth
 $conversationsResponse = Invoke-SmokeJsonGet "conversations?page=1" -RequiresAuth
 if ($conversationsResponse -and $conversationsResponse.conversations -and $conversationsResponse.conversations.Count -gt 0) {
     $conversation = $conversationsResponse.conversations | Select-Object -First 1

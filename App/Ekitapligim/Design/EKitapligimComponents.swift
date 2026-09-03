@@ -460,12 +460,23 @@ struct EKLoadMoreButton: View {
 struct EKLiveBadge: View {
     var title: String = L10n.liveActivityBadge
     var onDark: Bool = true
+    var showsPulse: Bool = false
+
+    @State private var pulse = false
 
     var body: some View {
         HStack(spacing: 5) {
-            Circle()
-                .fill(onDark ? Color.white : EKitapligimPalette.liveDot)
-                .frame(width: 6, height: 6)
+            ZStack {
+                if showsPulse {
+                    Circle()
+                        .fill(onDark ? Color.white.opacity(0.35) : EKitapligimPalette.liveDot.opacity(0.35))
+                        .frame(width: pulse ? 14 : 6, height: pulse ? 14 : 6)
+                        .animation(.easeInOut(duration: 1.2).repeatForever(autoreverses: true), value: pulse)
+                }
+                Circle()
+                    .fill(onDark ? Color.white : EKitapligimPalette.liveDot)
+                    .frame(width: 6, height: 6)
+            }
             Text(title)
                 .font(.system(size: 9, weight: .heavy))
                 .tracking(0.6)
@@ -478,6 +489,10 @@ struct EKLiveBadge: View {
             if !onDark {
                 Capsule().stroke(EKitapligimPalette.liveBadgeBorder)
             }
+        }
+        .onAppear {
+            guard showsPulse else { return }
+            pulse = true
         }
     }
 }

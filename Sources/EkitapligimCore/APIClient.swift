@@ -208,6 +208,29 @@ public struct APIErrorEnvelope: Decodable, Equatable, Sendable {
 public struct APIErrorDetail: Decodable, Equatable, Sendable {
     public let code: String
     public let message: String
+    public let params: [String: String]?
+
+    private enum CodingKeys: String, CodingKey {
+        case code
+        case message
+        case params
+    }
+
+    public init(code: String, message: String, params: [String: String]? = nil) {
+        self.code = code
+        self.message = message
+        self.params = params
+    }
+
+    public init(from decoder: Decoder) throws {
+        let container = try decoder.container(keyedBy: CodingKeys.self)
+        code = try container.decode(String.self, forKey: .code)
+        message = try container.decode(String.self, forKey: .message)
+        // XenForo emits `params` as an object when populated and as [] when empty.
+        // A tolerant decode preserves useful fields such as suggested_username
+        // without making every other API error envelope undecodable.
+        params = try? container.decode([String: String].self, forKey: .params)
+    }
 }
 
 public extension JSONDecoder {

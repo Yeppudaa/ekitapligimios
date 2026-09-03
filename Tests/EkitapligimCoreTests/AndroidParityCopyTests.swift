@@ -272,7 +272,7 @@ final class AndroidParityCopyTests: XCTestCase {
         XCTAssertEqual(L10n.loginModeRegister, "Kayıt Ol")
         XCTAssertEqual(L10n.loginCommunityTagline, "Ekitaplığım Kütüphane Topluluğu")
         XCTAssertEqual(L10n.loginSignalShelf, "Raf senkronu")
-        XCTAssertEqual(L10n.loginSignalAPI, "Güvenli API")
+        XCTAssertEqual(L10n.loginSignalChat, "Canlı Sohbet")
         XCTAssertEqual(L10n.loginSignalPremium, "Premium erişim")
         XCTAssertEqual(L10n.loginBadgeLogin, "Üye girişi")
         XCTAssertEqual(L10n.loginBadgeRegister, "Yeni üyelik")
@@ -300,6 +300,11 @@ final class AndroidParityCopyTests: XCTestCase {
         XCTAssertEqual(L10n.loginSwitchToRegister, "Henüz hesabınız yok mu? Kayıt olun")
         XCTAssertEqual(L10n.loginSwitchToLogin, "Zaten hesabınız var mı? Giriş yapın")
         XCTAssertEqual(L10n.loginBackToLogin, "Giriş Ekranına Dön")
+        XCTAssertEqual(L10n.loginGoogleSignIn, "Google ile giriş")
+        XCTAssertEqual(L10n.loginGoogleRegister, "Google ile kayıt ol")
+        XCTAssertEqual(L10n.loginOrDivider, "veya")
+        XCTAssertEqual(L10n.loginGoogleFailed, "Google ile giriş tamamlanamadı.")
+        XCTAssertEqual(L10n.loginGoogleUnavailable, "Google ile giriş şu anda kullanılamıyor.")
         XCTAssertEqual(
             L10n.loginAcceptLegalBody,
             "Hesap oluşturarak E-Kitaplığım Kullanım Şartları ve Gizlilik Politikası'nı kabul ediyorum."

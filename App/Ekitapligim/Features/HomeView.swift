@@ -14,6 +14,7 @@ struct HomeView: View {
     @State private var liveItems: [LiveActivityItemDTO] = []
     @State private var chatRoom: ChatRoomDTO?
     @State private var chatPreview: [ChatMessageDTO] = []
+    @State private var chatNewestID: String?
     @State private var isLoading = true
     @State private var errorMessage: String?
 
@@ -58,7 +59,10 @@ struct HomeView: View {
                     }
                     .padding(.bottom, 28)
                 }
-                .refreshable { await load() }
+                .refreshable {
+                    await load()
+                    await refreshDynamicContent(force: true)
+                }
             }
             .toolbar(.hidden, for: .navigationBar)
             .navigationDestination(for: String.self) { id in
@@ -66,13 +70,19 @@ struct HomeView: View {
             }
             .task {
                 await loadIfNeeded()
+                await refreshDynamicContent()
                 startChatPolling()
+            }
+            .onAppear {
+                Task { await refreshDynamicContent() }
             }
             .onDisappear { chatPollTask?.cancel() }
         }
     }
 
     @State private var chatPollTask: Task<Void, Never>?
+    @State private var isRefreshingDynamic = false
+    @State private var lastDynamicRefresh: Date?
 
     // MARK: - Üst bölüm
 
@@ -285,10 +295,10 @@ struct HomeView: View {
                             if !item.author.isEmpty {
                                 Text(item.author).font(.caption).foregroundStyle(EKitapligimPalette.muted)
                             }
-                            ProgressView(value: Double(item.progressPercent), total: 100)
+                            ProgressView(value: Double(item.displayProgressPercent), total: 100)
                                 .tint(EKitapligimPalette.amber)
                             HStack {
-                                Text(L10n.commonPercent(item.progressPercent))
+                                Text(L10n.commonPercent(item.displayProgressPercent))
                                     .font(.caption2.weight(.bold))
                                     .foregroundStyle(EKitapligimPalette.muted)
                                 Spacer()
@@ -328,49 +338,56 @@ struct HomeView: View {
                         badge: L10n.homeDiscoveryCatalogBadge,
                         title: L10n.tabCatalogShort,
                         subtitle: L10n.homeDiscoveryCatalogSubtitle,
-                        tint: EKitapligimPalette.teal
+                        tint: EKitapligimPalette.teal,
+                        systemImage: "books.vertical.fill"
                     ) { container.open(route: .catalog) }
 
                     discoveryCard(
                         badge: L10n.homeDiscoveryAgendaBadge,
                         title: L10n.menuBookAgenda,
                         subtitle: L10n.homeDiscoveryAgendaSubtitle,
-                        tint: EKitapligimPalette.agendaPurple
+                        tint: EKitapligimPalette.agendaPurple,
+                        systemImage: "square.text.square.fill"
                     ) { container.open(route: .bookAgenda) }
 
                     discoveryCard(
                         badge: L10n.homeDiscoveryChatBadge,
                         title: L10n.menuChat,
                         subtitle: L10n.homeDiscoveryChatSubtitle,
-                        tint: EKitapligimPalette.chatTeal
+                        tint: EKitapligimPalette.chatTeal,
+                        systemImage: "bubble.left.and.bubble.right.fill"
                     ) { container.open(route: .chat) }
 
                     discoveryCard(
                         badge: L10n.homeDiscoveryLiveBadge,
                         title: L10n.homeDiscoveryLiveTitle,
                         subtitle: L10n.homeDiscoveryLiveSubtitle,
-                        tint: EKitapligimPalette.liveOrange
+                        tint: EKitapligimPalette.liveOrange,
+                        systemImage: "bolt.horizontal.circle.fill"
                     ) { container.open(route: .liveActivity) }
 
                     discoveryCard(
                         badge: L10n.homeDiscoveryRequestsBadge,
                         title: L10n.menuRequests,
                         subtitle: L10n.homeDiscoveryRequestsSubtitle,
-                        tint: Color(hex: 0xD45F7A)
+                        tint: Color(hex: 0xD45F7A),
+                        systemImage: "heart.text.square.fill"
                     ) { container.open(route: .requests) }
 
                     discoveryCard(
                         badge: L10n.homeDiscoveryForumBadge,
                         title: L10n.tabForum,
                         subtitle: L10n.homeDiscoveryForumSubtitle,
-                        tint: Color(hex: 0x3D75C5)
+                        tint: Color(hex: 0x3D75C5),
+                        systemImage: "text.bubble.fill"
                     ) { container.open(route: .forum) }
 
                     discoveryCard(
                         badge: L10n.homeDiscoveryProfileBadge,
                         title: L10n.tabProfile,
                         subtitle: L10n.homeDiscoveryProfileSubtitle,
-                        tint: Color(hex: 0x8A6B3E)
+                        tint: Color(hex: 0x8A6B3E),
+                        systemImage: "person.crop.circle.fill"
                     ) { container.selectedTab = .profile }
                 }
                 .padding(.horizontal, 16)
@@ -393,29 +410,50 @@ struct HomeView: View {
         title: String,
         subtitle: String,
         tint: Color,
+        systemImage: String,
         action: @escaping () -> Void
     ) -> some View {
         Button(action: action) {
-            VStack(alignment: .leading, spacing: 8) {
-                Text(badge)
-                    .font(.system(size: 9, weight: .heavy))
-                    .foregroundStyle(tint)
+            VStack(alignment: .leading, spacing: 10) {
+                HStack {
+                    EKPill(title: badge, foreground: tint, background: tint.opacity(0.12))
+                    Spacer(minLength: 0)
+                    Image(systemName: systemImage)
+                        .font(.title3.weight(.semibold))
+                        .foregroundStyle(tint.opacity(0.9))
+                }
                 Text(title)
                     .font(.subheadline.weight(.heavy))
                     .foregroundStyle(EKitapligimPalette.ink)
+                    .lineLimit(1)
                 Text(subtitle)
                     .font(.caption2)
                     .foregroundStyle(EKitapligimPalette.muted)
                     .lineLimit(2)
                     .multilineTextAlignment(.leading)
+                Spacer(minLength: 0)
+                HStack {
+                    Spacer(minLength: 0)
+                    Image(systemName: "arrow.up.right")
+                        .font(.caption.weight(.bold))
+                        .foregroundStyle(tint)
+                }
             }
             .padding(14)
-            .frame(width: 170, height: 112, alignment: .topLeading)
+            .frame(width: 180, height: 130, alignment: .topLeading)
             .background(
-                LinearGradient(colors: [.white, tint.opacity(0.08)], startPoint: .topLeading, endPoint: .bottomTrailing)
+                LinearGradient(
+                    colors: [.white, tint.opacity(0.1)],
+                    startPoint: .topLeading,
+                    endPoint: .bottomTrailing
+                )
             )
-            .clipShape(RoundedRectangle(cornerRadius: 16, style: .continuous))
-            .overlay { RoundedRectangle(cornerRadius: 16).stroke(EKitapligimPalette.border) }
+            .clipShape(RoundedRectangle(cornerRadius: 18, style: .continuous))
+            .overlay {
+                RoundedRectangle(cornerRadius: 18, style: .continuous)
+                    .stroke(tint.opacity(0.18))
+            }
+            .shadow(color: tint.opacity(0.12), radius: 10, y: 5)
         }
         .buttonStyle(.plain)
     }
@@ -444,7 +482,7 @@ struct HomeView: View {
                         .font(.caption)
                         .foregroundStyle(EKitapligimPalette.muted)
                 } else {
-                    ForEach(chatPreview.prefix(2)) { message in
+                    ForEach(Array(chatPreview.suffix(2))) { message in
                         Text(message.message)
                             .font(.caption)
                             .foregroundStyle(EKitapligimPalette.ink)
@@ -533,42 +571,77 @@ struct HomeView: View {
     // MARK: - Canlı aktivite
 
     private var liveActivityCard: some View {
-        Button { container.open(route: .liveActivity) } label: {
-            VStack(alignment: .leading, spacing: 12) {
-                Text(L10n.homeLiveCardEyebrow)
-                    .font(.system(size: 10, weight: .heavy))
-                    .foregroundStyle(EKitapligimPalette.agendaPurple)
-                Text(L10n.liveActivityTitle)
-                    .font(.headline.weight(.heavy))
-                    .foregroundStyle(EKitapligimPalette.ink)
-                Text(L10n.homeLiveCardSubtitle)
-                    .font(.caption)
-                    .foregroundStyle(EKitapligimPalette.muted)
+        VStack(alignment: .leading, spacing: 0) {
+            Button { container.open(route: .liveActivity) } label: {
+                HStack(alignment: .center, spacing: 12) {
+                    VStack(alignment: .leading, spacing: 6) {
+                        EKLiveBadge(showsPulse: true)
+                        Text(L10n.liveActivityTitle)
+                            .font(.headline.weight(.heavy))
+                            .foregroundStyle(.white)
+                        Text(L10n.homeLiveCardSubtitle)
+                            .font(.caption)
+                            .foregroundStyle(.white.opacity(0.88))
+                            .lineLimit(2)
+                    }
+                    Spacer(minLength: 0)
+                    Image(systemName: "waveform.path.ecg")
+                        .font(.title2.weight(.semibold))
+                        .foregroundStyle(.white.opacity(0.9))
+                }
+                .accessibilityElement(children: .combine)
+                .padding(16)
+                .frame(maxWidth: .infinity, alignment: .leading)
+                .background(
+                    LinearGradient(
+                        colors: [EKitapligimPalette.liveRed, EKitapligimPalette.liveOrange],
+                        startPoint: .topLeading,
+                        endPoint: .bottomTrailing
+                    )
+                )
+            }
+            .buttonStyle(.plain)
+            .accessibilityLabel(L10n.liveActivityTitle)
 
+            VStack(alignment: .leading, spacing: 0) {
                 if liveItems.isEmpty {
                     Text(L10n.homeLiveCardEmpty)
                         .font(.caption)
                         .foregroundStyle(EKitapligimPalette.muted)
+                        .padding(16)
                 } else {
-                    ForEach(liveItems.prefix(3)) { item in
-                        LiveActivityRow(item: item)
+                    ForEach(Array(liveItems.prefix(3).enumerated()), id: \.element.id) { index, item in
+                        LiveActivityRow(item: item, style: .compact, showsChevron: false)
+                        if index < min(liveItems.count, 3) - 1 {
+                            Divider().padding(.horizontal, 16)
+                        }
                     }
                 }
 
-                HStack {
-                    Spacer()
-                    Text(L10n.homeLiveCardAction)
-                        .font(.caption.weight(.bold))
-                        .foregroundStyle(EKitapligimPalette.tealDark)
-                    Image(systemName: "chevron.right")
-                        .font(.caption)
-                        .foregroundStyle(EKitapligimPalette.tealDark)
+                Button { container.open(route: .liveActivity) } label: {
+                    HStack {
+                        Spacer()
+                        Text(L10n.homeLiveCardAction)
+                            .font(.caption.weight(.bold))
+                            .foregroundStyle(EKitapligimPalette.tealDark)
+                        Image(systemName: "chevron.right")
+                            .font(.caption)
+                            .foregroundStyle(EKitapligimPalette.tealDark)
+                    }
+                    .padding(.horizontal, 16)
+                    .padding(.vertical, 12)
                 }
+                .buttonStyle(.plain)
+                .accessibilityLabel(L10n.homeLiveCardAction)
             }
-            .padding(16)
-            .ekitapligimCard()
+            .background(.ultraThinMaterial)
         }
-        .buttonStyle(.plain)
+        .clipShape(RoundedRectangle(cornerRadius: 18, style: .continuous))
+        .overlay {
+            RoundedRectangle(cornerRadius: 18, style: .continuous)
+                .stroke(EKitapligimPalette.border)
+        }
+        .shadow(color: EKitapligimPalette.liveOrange.opacity(0.12), radius: 12, y: 6)
         .padding(.horizontal, 16)
     }
 
@@ -617,6 +690,35 @@ struct HomeView: View {
         await load()
     }
 
+    /// Refreshes library, agenda, live activity, and chat preview on every home visit.
+    private func refreshDynamicContent(force: Bool = false) async {
+        if isRefreshingDynamic { return }
+        if !force, let lastDynamicRefresh, Date().timeIntervalSince(lastDynamicRefresh) < 2 {
+            return
+        }
+        isRefreshingDynamic = true
+        defer {
+            isRefreshingDynamic = false
+            lastDynamicRefresh = Date()
+        }
+
+        if container.isSignedIn {
+            await container.refreshLibrary()
+        }
+
+        async let agendaRequest = container.bookAgenda.feed(tab: .agenda, filter: nil, page: 1, perPage: 4)
+        async let liveRequest = container.liveActivity.activity(limit: 5)
+
+        if let agenda = try? await agendaRequest {
+            agendaPosts = agenda.items
+        }
+        if let live = try? await liveRequest {
+            liveItems = live.items
+        }
+
+        await loadChatPreview(reset: true)
+    }
+
     private func load() async {
         isLoading = true
         errorMessage = nil
@@ -633,11 +735,9 @@ struct HomeView: View {
             async let dailyRequest = container.books.books(
                 page: dailyPickPage(), query: nil, category: "6", author: nil, publisher: nil, isbn: nil, order: "post_date", premiumOnly: false
             )
-            async let agendaRequest = container.bookAgenda.feed(tab: .agenda, filter: nil, page: 1, perPage: 4)
-            async let liveRequest = container.liveActivity.activity(limit: 5)
 
-            let (loadedStats, popular, newest, daily, agenda, live) = try await (
-                statsRequest, popularRequest, newestRequest, dailyRequest, agendaRequest, liveRequest
+            let (loadedStats, popular, newest, daily) = try await (
+                statsRequest, popularRequest, newestRequest, dailyRequest
             )
 
             stats = loadedStats
@@ -645,17 +745,9 @@ struct HomeView: View {
             newestBooks = newest.books
             dailyPickBooks = dailySeededShuffle(daily.books)
             premiumBooks = newest.books.filter(\.isPremiumOnly).shuffled()
-            agendaPosts = agenda.items
-            liveItems = live.items
-
-            if container.isSignedIn {
-                await container.refreshLibrary()
-            }
         } catch {
             errorMessage = L10n.homeStatsLoadFailed
         }
-
-        await loadChatPreview()
     }
 
     private func dailyPickPage() -> Int {
@@ -672,17 +764,38 @@ struct HomeView: View {
         Array(Set(books.map(\.id))).compactMap { id in books.first { $0.id == id } }.shuffled()
     }
 
-    private func loadChatPreview() async {
+    private func loadChatPreview(reset: Bool = false) async {
         do {
-            let rooms = try await container.chat.rooms()
-            chatRoom = rooms.rooms.first
-            if let roomID = chatRoom?.id {
+            if reset || chatRoom == nil {
+                let rooms = try await container.chat.rooms()
+                chatRoom = rooms.rooms.first
+                chatNewestID = nil
+            }
+            guard let roomID = chatRoom?.id else {
+                chatPreview = []
+                return
+            }
+
+            if reset || chatNewestID == nil {
                 let page = try await container.chat.messages(roomID: roomID, limit: 6)
                 chatPreview = page.messages
+                chatNewestID = page.newestId ?? page.messages.last?.id
+            } else if let afterID = chatNewestID {
+                let page = try await container.chat.messages(roomID: roomID, limit: 20, afterID: afterID)
+                guard !page.messages.isEmpty else { return }
+                let existing = Set(chatPreview.map(\.id))
+                chatPreview.append(contentsOf: page.messages.filter { !existing.contains($0.id) })
+                if chatPreview.count > 8 {
+                    chatPreview = Array(chatPreview.suffix(8))
+                }
+                chatNewestID = page.newestId ?? page.messages.last?.id ?? chatNewestID
             }
         } catch {
-            chatRoom = nil
-            chatPreview = []
+            if reset {
+                chatRoom = nil
+                chatPreview = []
+                chatNewestID = nil
+            }
         }
     }
 
@@ -692,7 +805,7 @@ struct HomeView: View {
             while !Task.isCancelled {
                 try? await Task.sleep(for: .seconds(5))
                 if Task.isCancelled { return }
-                await loadChatPreview()
+                await loadChatPreview(reset: false)
             }
         }
     }

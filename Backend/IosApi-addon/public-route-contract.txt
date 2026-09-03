@@ -1,5 +1,6 @@
 auth/apple
 auth/forgot-password
+auth/google
 auth/login
 auth/logout
 auth/refresh
@@ -48,6 +49,7 @@ me/notifications/:value/mark
 me/notifications/counts
 me/notifications/mark-all
 me/password
+me/presence
 me/reading-stats
 me/subscription
 me/terms
@@ -55,6 +57,7 @@ me/terms/accept
 member-detail/:value
 member-follow/:value
 member-unfollow/:value
+member-visit/:value
 members
 members/:value/block
 members/:value/unblock

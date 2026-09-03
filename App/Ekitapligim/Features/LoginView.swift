@@ -18,6 +18,10 @@ struct LoginView: View {
     @State private var errorMessage: String?
     @State private var successMessage: String?
     @State private var isSubmitting = false
+    @State private var pendingGoogleIDToken: String?
+    @State private var googleUsername = ""
+    @State private var googleUsernameError: String?
+    @State private var showingGoogleUsernamePrompt = false
 
     init(initialMode: AuthFormMode = .login) {
         _mode = State(initialValue: initialMode)
@@ -48,6 +52,20 @@ struct LoginView: View {
                     Button(L10n.commonClose) { dismiss() }
                 }
             }
+            .alert(L10n.loginGoogleUsernameTitle, isPresented: $showingGoogleUsernamePrompt) {
+                TextField(L10n.loginGoogleUsernamePlaceholder, text: $googleUsername)
+                    .textInputAutocapitalization(.never)
+                    .autocorrectionDisabled()
+                Button(L10n.loginRegisterSubmit) {
+                    Task { await submitPendingGoogleRegistration() }
+                }
+                .disabled(googleUsername.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty || isSubmitting)
+                Button(L10n.commonCancel, role: .cancel) {
+                    clearPendingGoogleRegistration()
+                }
+            } message: {
+                Text(googleUsernameError ?? L10n.loginGoogleUsernameMessage)
+            }
             .task { await loadLegalTerms() }
         }
     }
@@ -67,7 +85,7 @@ struct LoginView: View {
     private var signalRow: some View {
         HStack(spacing: 10) {
             loginSignal(L10n.loginSignalShelf, systemImage: "books.vertical.fill")
-            loginSignal(L10n.loginSignalAPI, systemImage: "checkmark.shield.fill")
+            loginSignal(L10n.loginSignalChat, systemImage: "bubble.left.and.bubble.right.fill")
             loginSignal(L10n.loginSignalPremium, systemImage: "crown.fill")
         }
     }
@@ -146,6 +164,10 @@ struct LoginView: View {
             }
             .buttonStyle(.plain)
             .disabled(!canSubmit || isSubmitting)
+
+            if mode != .passwordReset {
+                googleAuthSection
+            }
 
             Button(switchTitle) {
                 switch mode {
@@ -387,6 +409,54 @@ struct LoginView: View {
         }
     }
 
+    private var googleAuthSection: some View {
+        VStack(spacing: 12) {
+            HStack(spacing: 10) {
+                googleDividerLine
+                Text(L10n.loginOrDivider)
+                    .font(.caption.weight(.semibold))
+                    .foregroundStyle(Color(hex: 0x657484))
+                googleDividerLine
+            }
+
+            Button {
+                Task { await submitGoogle() }
+            } label: {
+                HStack(spacing: 10) {
+                    GoogleGMark()
+                    if isSubmitting {
+                        ProgressView()
+                    } else {
+                        Text(mode == .register ? L10n.loginGoogleRegister : L10n.loginGoogleSignIn)
+                            .font(.body.weight(.bold))
+                    }
+                }
+                .foregroundStyle(Color(hex: 0x172033))
+                .frame(maxWidth: .infinity)
+                .frame(height: 54)
+                .background(Color.white, in: RoundedRectangle(cornerRadius: 16, style: .continuous))
+                .overlay {
+                    RoundedRectangle(cornerRadius: 16, style: .continuous)
+                        .stroke(Color(hex: 0xD7E3E6), lineWidth: 1)
+                }
+            }
+            .buttonStyle(.plain)
+            .disabled(!canSubmitGoogle || isSubmitting)
+            .opacity(canSubmitGoogle && !isSubmitting ? 1 : 0.55)
+        }
+        .padding(.top, 4)
+    }
+
+    private var googleDividerLine: some View {
+        Rectangle()
+            .fill(Color(hex: 0xD7E3E6))
+            .frame(height: 1)
+    }
+
+    private var canSubmitGoogle: Bool {
+        acceptsLegalTerms && legalTerms != nil
+    }
+
     private var canSubmit: Bool {
         switch mode {
         case .login:
@@ -445,6 +515,82 @@ struct LoginView: View {
         }
     }
 
+    private func submitGoogle() async {
+        isSubmitting = true
+        clearMessages()
+        defer { isSubmitting = false }
+        do {
+            let idToken = try await GoogleSignInService.signIn()
+            let requestedUsername = mode == .register
+                ? username.trimmingCharacters(in: .whitespacesAndNewlines)
+                : ""
+            do {
+                try await container.signInWithGoogle(
+                    idToken: idToken,
+                    username: requestedUsername.isEmpty ? nil : requestedUsername
+                )
+            } catch {
+                if let suggestion = googleUsernameSuggestion(from: error) {
+                    pendingGoogleIDToken = idToken
+                    googleUsername = requestedUsername.isEmpty ? suggestion : requestedUsername
+                    googleUsernameError = nil
+                    showingGoogleUsernamePrompt = true
+                    return
+                }
+                throw error
+            }
+            dismiss()
+        } catch let error as GoogleSignInServiceError {
+            switch error {
+            case .canceled:
+                return
+            case .notConfigured, .missingPresenter:
+                errorMessage = L10n.loginGoogleUnavailable
+            case .missingToken:
+                errorMessage = L10n.loginGoogleFailed
+            }
+        } catch {
+            errorMessage = (error as? APIClientError)?.serverMessage ?? L10n.loginGoogleFailed
+        }
+    }
+
+    private func submitPendingGoogleRegistration() async {
+        guard let idToken = pendingGoogleIDToken else { return }
+        let selectedUsername = googleUsername.trimmingCharacters(in: .whitespacesAndNewlines)
+        guard !selectedUsername.isEmpty else {
+            googleUsernameError = L10n.loginGoogleUsernameRequired
+            showingGoogleUsernamePrompt = true
+            return
+        }
+
+        isSubmitting = true
+        googleUsernameError = nil
+        defer { isSubmitting = false }
+        do {
+            try await container.signInWithGoogle(idToken: idToken, username: selectedUsername)
+            clearPendingGoogleRegistration()
+            dismiss()
+        } catch {
+            googleUsernameError = (error as? APIClientError)?.serverMessage ?? L10n.loginGoogleRegistrationFailed
+            showingGoogleUsernamePrompt = true
+        }
+    }
+
+    private func googleUsernameSuggestion(from error: Error) -> String? {
+        guard let apiError = error as? APIClientError,
+              case .httpStatus(409, let envelope) = apiError,
+              let detail = envelope?.errors.first,
+              detail.code == "username_required"
+        else { return nil }
+        return detail.params?["suggested_username"] ?? ""
+    }
+
+    private func clearPendingGoogleRegistration() {
+        pendingGoogleIDToken = nil
+        googleUsername = ""
+        googleUsernameError = nil
+    }
+
     private func clearMessages() {
         errorMessage = nil
         successMessage = nil
@@ -458,8 +604,36 @@ struct LoginView: View {
     }
 }
 
-enum AuthFormMode: Hashable {
+enum AuthFormMode: String, Hashable, Identifiable {
     case login
     case register
     case passwordReset
+
+    var id: String { rawValue }
+}
+
+private struct GoogleGMark: View {
+    var body: some View {
+        ZStack {
+            Circle()
+                .strokeBorder(
+                    AngularGradient(
+                        colors: [
+                            Color(hex: 0x4285F4),
+                            Color(hex: 0x34A853),
+                            Color(hex: 0xFBBC05),
+                            Color(hex: 0xEA4335),
+                            Color(hex: 0x4285F4)
+                        ],
+                        center: .center
+                    ),
+                    lineWidth: 3
+                )
+            Text("G")
+                .font(.system(size: 13, weight: .bold, design: .rounded))
+                .foregroundStyle(Color(hex: 0x4285F4))
+        }
+        .frame(width: 22, height: 22)
+        .accessibilityHidden(true)
+    }
 }

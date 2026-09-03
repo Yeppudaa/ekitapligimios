@@ -2,6 +2,7 @@
 
 namespace Ekitapligim\IosApi\Pub\Controller;
 
+use Ekitapligim\IosApi\Service\MobilePresence;
 use Ekitapligim\MobileApi\Service\MobileSession;
 use XF\Api\ErrorMessage;
 use XF\Api\Mvc\Reply\ApiResult;
@@ -138,6 +139,7 @@ trait PublicEndpointTrait
 		if ($user)
 		{
 			\XF::setVisitor($user);
+			MobilePresence::touch($user);
 		}
 	}
 

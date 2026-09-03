@@ -2,7 +2,7 @@
 <routes>
   <route route_type="public" route_prefix="ios-api" sub_name="auth-apple" format="v1/auth/apple" controller="Ekitapligim\IosApi:AuthApple" />
   <route route_type="public" route_prefix="ios-api" sub_name="auth-forgot" format="v1/auth/forgot-password" controller="Ekitapligim\MobileApi:AuthForgot" />
-  <route route_type="public" route_prefix="ios-api" sub_name="auth-google" format="v1/auth/google" controller="Ekitapligim\MobileApi:AuthGoogle" />
+  <route route_type="public" route_prefix="ios-api" sub_name="auth-google" format="v1/auth/google" controller="Ekitapligim\IosApi:AuthGoogle" />
   <route route_type="public" route_prefix="ios-api" sub_name="auth-login" format="v1/auth/login" controller="Ekitapligim\IosApi:AuthLogin" />
   <route route_type="public" route_prefix="ios-api" sub_name="auth-logout" format="v1/auth/logout" controller="Ekitapligim\MobileApi:AuthLogout" />
   <route route_type="public" route_prefix="ios-api" sub_name="auth-refresh" format="v1/auth/refresh" controller="Ekitapligim\MobileApi:AuthRefresh" />
@@ -59,18 +59,20 @@
   <route route_type="public" route_prefix="ios-api" sub_name="me-notification-mark-all" format="v1/me/notifications/mark-all" controller="Ekitapligim\IosApi:MeNotifications" action_prefix="mark-all" />
   <route route_type="public" route_prefix="ios-api" sub_name="me-notifications" format="v1/me/notifications" controller="Ekitapligim\IosApi:MeNotifications" />
   <route route_type="public" route_prefix="ios-api" sub_name="me-password" format="v1/me/password" controller="Ekitapligim\MobileApi:Me" action_prefix="password" />
+  <route route_type="public" route_prefix="ios-api" sub_name="me-presence" format="v1/me/presence" controller="Ekitapligim\IosApi:MePresence" />
   <route route_type="public" route_prefix="ios-api" sub_name="me-subscription" format="v1/me/subscription" controller="Ekitapligim\MobileApi:MeSubscription" />
   <route route_type="public" route_prefix="ios-api" sub_name="me-terms" format="v1/me/terms" controller="Ekitapligim\IosApi:Terms" />
   <route route_type="public" route_prefix="ios-api" sub_name="me-terms-accept" format="v1/me/terms/accept" controller="Ekitapligim\IosApi:Terms" action_prefix="accept" />
-  <route route_type="public" route_prefix="ios-api" sub_name="member" format="v1/members/:int&lt;user_id&gt;/" controller="Ekitapligim\MobileApi:Members" />
+  <route route_type="public" route_prefix="ios-api" sub_name="member" format="v1/members/:int&lt;user_id&gt;/" controller="Ekitapligim\IosApi:Members" />
   <route route_type="public" route_prefix="ios-api" sub_name="member-block" format="v1/members/:int&lt;user_id&gt;/block" controller="Ekitapligim\IosApi:MemberBlock" action_prefix="block" />
-  <route route_type="public" route_prefix="ios-api" sub_name="member-detail-ios" format="v1/member-detail/:int&lt;user_id&gt;" controller="Ekitapligim\MobileApi:Members" />
+  <route route_type="public" route_prefix="ios-api" sub_name="member-detail-ios" format="v1/member-detail/:int&lt;user_id&gt;" controller="Ekitapligim\IosApi:Members" />
+  <route route_type="public" route_prefix="ios-api" sub_name="member-visit-ios" format="v1/member-visit/:int&lt;user_id&gt;" controller="Ekitapligim\IosApi:MemberVisit" />
   <route route_type="public" route_prefix="ios-api" sub_name="member-follow" format="v1/members/:int&lt;user_id&gt;/follow" controller="Ekitapligim\MobileApi:Members" action_prefix="follow" />
   <route route_type="public" route_prefix="ios-api" sub_name="member-follow-ios" format="v1/member-follow/:int&lt;user_id&gt;" controller="Ekitapligim\MobileApi:Members" action_prefix="follow" />
   <route route_type="public" route_prefix="ios-api" sub_name="member-unblock" format="v1/members/:int&lt;user_id&gt;/unblock" controller="Ekitapligim\IosApi:MemberBlock" action_prefix="unblock" />
   <route route_type="public" route_prefix="ios-api" sub_name="member-unfollow" format="v1/members/:int&lt;user_id&gt;/unfollow" controller="Ekitapligim\MobileApi:Members" action_prefix="unfollow" />
   <route route_type="public" route_prefix="ios-api" sub_name="member-unfollow-ios" format="v1/member-unfollow/:int&lt;user_id&gt;" controller="Ekitapligim\MobileApi:Members" action_prefix="unfollow" />
-  <route route_type="public" route_prefix="ios-api" sub_name="members" format="v1/members" controller="Ekitapligim\MobileApi:Members" />
+  <route route_type="public" route_prefix="ios-api" sub_name="members" format="v1/members" controller="Ekitapligim\IosApi:Members" />
   <route route_type="public" route_prefix="ios-api" sub_name="post-item" format="v1/posts/:int&lt;post_id&gt;/" controller="Ekitapligim\IosApi:ForumPost" />
   <route route_type="public" route_prefix="ios-api" sub_name="post-item-id" format="v1/posts/:int&lt;post_id&gt;" controller="Ekitapligim\IosApi:ForumPost" />
   <route route_type="public" route_prefix="ios-api" sub_name="post-edit" format="v1/posts/:int&lt;post_id&gt;/edit" controller="Ekitapligim\IosApi:ForumPost" action_prefix="edit" />

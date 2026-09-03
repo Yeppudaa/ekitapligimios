@@ -25,11 +25,14 @@ struct RootView: View {
             drawer
         }
         .onOpenURL { url in
+            if GoogleSignInService.handle(url) { return }
             guard let route = DeepLinkParser().parse(url.absoluteString) else { return }
             container.open(route: route)
         }
+        .onAppear { GoogleSignInService.configureIfNeeded() }
         .onChange(of: scenePhase) { _, phase in
             if phase == .active { container.handleScenePhaseActive() }
+            if phase == .background { container.handleScenePhaseBackground() }
         }
         .sheet(item: $container.presentedRoute) { route in
             AppRouteSheet(route: route)

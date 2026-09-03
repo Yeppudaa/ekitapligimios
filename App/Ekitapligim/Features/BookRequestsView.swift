@@ -323,24 +323,45 @@ private struct BookRequestRow: View {
     var onBlocked: (() -> Void)? = nil
 
     var body: some View {
+        HStack(alignment: .center, spacing: 12) {
+            bookContent
+            if let contentID = Int(item.id) {
+                UGCSafetyMenu(
+                    type: .bookRequest,
+                    contentID: contentID,
+                    userID: item.userId,
+                    onBlocked: onBlocked
+                )
+            }
+            voteColumn
+        }
+        .padding(.horizontal, 18)
+        .padding(.vertical, 16)
+        .ekitapligimCard()
+    }
+
+    @ViewBuilder
+    private var bookContent: some View {
+        if let bookID = item.fulfilledBookID {
+            NavigationLink { BookDetailDestination(bookIDString: bookID) } label: {
+                bookInfo
+            }
+            .buttonStyle(.plain)
+            .accessibilityLabel(L10n.agendaOpenBook)
+        } else {
+            bookInfo
+        }
+    }
+
+    private var bookInfo: some View {
         HStack(alignment: .center, spacing: 18) {
             BookRequestCover(title: item.title, author: item.author, seed: item.id + item.title)
             VStack(alignment: .leading, spacing: 6) {
-                HStack(alignment: .top) {
-                    Text(item.title)
-                        .font(.title3.weight(.heavy))
-                        .foregroundStyle(Color(hex: 0x07152E))
-                        .lineLimit(2)
-                    Spacer(minLength: 0)
-                    if let contentID = Int(item.id) {
-                        UGCSafetyMenu(
-                            type: .bookRequest,
-                            contentID: contentID,
-                            userID: item.userId,
-                            onBlocked: onBlocked
-                        )
-                    }
-                }
+                Text(item.title)
+                    .font(.title3.weight(.heavy))
+                    .foregroundStyle(Color(hex: 0x07152E))
+                    .lineLimit(2)
+                    .frame(maxWidth: .infinity, alignment: .leading)
                 Text(L10n.bookRequestsAuthorLine(item.author))
                     .font(.body)
                     .foregroundStyle(Color(hex: 0x697386))
@@ -351,38 +372,38 @@ private struct BookRequestRow: View {
                         .foregroundStyle(Color(hex: 0x697386))
                         .lineLimit(1)
                 }
-                BookRequestStatusPill(status: item.status)
-            }
-            Spacer(minLength: 8)
-            VStack(spacing: 8) {
-                Button(action: onVote) {
-                    Image(systemName: "hand.thumbsup.fill")
-                        .font(.system(size: 32, weight: .semibold))
-                        .foregroundStyle(Color(hex: 0x1954C8).opacity(item.allowsVote && !isVoting ? 1 : 0.35))
-                        .frame(width: 62, height: 62)
-                        .background(Color(hex: 0xF1F5FF))
-                        .clipShape(Circle())
-                        .overlay {
-                            Circle().stroke(Color(hex: 0xE4EAF8), lineWidth: 1)
-                        }
-                }
-                .buttonStyle(.plain)
-                .disabled(!item.allowsVote || isVoting)
-                .accessibilityLabel(L10n.bookRequestsVoteAccessibility)
-                Text(L10n.bookRequestsVoteCount(item.voteCount))
-                    .font(.headline.weight(.bold))
-                    .foregroundStyle(Color(hex: 0x697386))
-                    .lineLimit(1)
+                BookRequestStatusPill(status: item.status, showsBookHint: item.fulfilledBookID != nil)
             }
         }
-        .padding(.horizontal, 18)
-        .padding(.vertical, 16)
-        .ekitapligimCard()
+    }
+
+    private var voteColumn: some View {
+        VStack(spacing: 8) {
+            Button(action: onVote) {
+                Image(systemName: "hand.thumbsup.fill")
+                    .font(.system(size: 32, weight: .semibold))
+                    .foregroundStyle(Color(hex: 0x1954C8).opacity(item.allowsVote && !isVoting ? 1 : 0.35))
+                    .frame(width: 62, height: 62)
+                    .background(Color(hex: 0xF1F5FF))
+                    .clipShape(Circle())
+                    .overlay {
+                        Circle().stroke(Color(hex: 0xE4EAF8), lineWidth: 1)
+                    }
+            }
+            .buttonStyle(.plain)
+            .disabled(!item.allowsVote || isVoting)
+            .accessibilityLabel(L10n.bookRequestsVoteAccessibility)
+            Text(L10n.bookRequestsVoteCount(item.voteCount))
+                .font(.headline.weight(.bold))
+                .foregroundStyle(Color(hex: 0x697386))
+                .lineLimit(1)
+        }
     }
 }
 
 private struct BookRequestStatusPill: View {
     let status: String
+    var showsBookHint: Bool = false
 
     private var tone: Color {
         switch status.uppercased() {
@@ -399,6 +420,10 @@ private struct BookRequestStatusPill: View {
             Text(L10n.bookRequestsStatus(status))
                 .font(.subheadline.weight(.bold))
                 .lineLimit(1)
+            if showsBookHint {
+                Image(systemName: "chevron.right")
+                    .font(.caption.weight(.bold))
+            }
         }
         .foregroundStyle(tone)
         .padding(.horizontal, 10)

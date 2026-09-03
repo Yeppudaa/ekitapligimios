@@ -140,6 +140,32 @@ if ($productionApiUri.Scheme -ne "https" -or $productionApiUri.Host -ne "ekitapl
     throw "Production API URL must use HTTPS ekitapligim.com: $productionApiURL"
 }
 
+Write-Step "Checking Google Sign-In configuration"
+$googleServerClientID = "258534406055-v8lmgd6moijakv1kcurgit788uk5v2el.apps.googleusercontent.com"
+foreach ($configuration in @("Development", "Staging", "Production")) {
+    $configPath = "App/Ekitapligim/Config/$configuration.xcconfig"
+    $configContent = Get-Content -Raw -LiteralPath $configPath
+    $iosClientID = Get-XcconfigValue $configContent "EKITAPLIGIM_GOOGLE_IOS_CLIENT_ID"
+    $serverClientID = Get-XcconfigValue $configContent "EKITAPLIGIM_GOOGLE_SERVER_CLIENT_ID"
+    $urlScheme = Get-XcconfigValue $configContent "EKITAPLIGIM_GOOGLE_URL_SCHEME"
+    if ($iosClientID -notmatch '^\d+-[a-z0-9]+\.apps\.googleusercontent\.com$') {
+        throw "$configuration Google iOS client ID is missing or invalid"
+    }
+    if ($serverClientID -ne $googleServerClientID) {
+        throw "$configuration Google server client ID does not match the backend allowlist"
+    }
+    $expectedScheme = "com.googleusercontent.apps." + $iosClientID.Replace(".apps.googleusercontent.com", "")
+    if ($urlScheme -ne $expectedScheme) {
+        throw "$configuration Google URL scheme does not match its reversed iOS client ID"
+    }
+}
+$infoPlistGoogle = Get-Content -Raw -LiteralPath "App/Ekitapligim/Support/Info.plist"
+foreach ($requiredGooglePlistKey in @("GIDClientID", "GIDServerClientID", "EKITAPLIGIM_GOOGLE_URL_SCHEME")) {
+    if ($infoPlistGoogle -notmatch [regex]::Escape($requiredGooglePlistKey)) {
+        throw "Info.plist is missing Google Sign-In key: $requiredGooglePlistKey"
+    }
+}
+
 Write-Step "Checking entitlements are not broader than implemented features"
 $entitlements = Get-Content -Raw -LiteralPath "App/Ekitapligim/Support/Ekitapligim.entitlements"
 if ($entitlements -match "aps-environment") {
@@ -168,6 +194,8 @@ if ($infoPlist -notmatch "<key>ITSAppUsesNonExemptEncryption</key>\s*<false/>") 
 }
 foreach ($requiredPrivacyType in @(
     "NSPrivacyCollectedDataTypeEmailAddress",
+    "NSPrivacyCollectedDataTypeName",
+    "NSPrivacyCollectedDataTypePhotosorVideos",
     "NSPrivacyCollectedDataTypeOtherUserContactInfo",
     "NSPrivacyCollectedDataTypeCoarseLocation",
     "NSPrivacyCollectedDataTypeUserID",

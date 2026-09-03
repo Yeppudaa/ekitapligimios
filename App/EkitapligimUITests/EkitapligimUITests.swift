@@ -43,6 +43,18 @@ final class EkitapligimUITests: XCTestCase {
         XCTAssertTrue(app.buttons["Giriş yap"].exists)
     }
 
+    func testGoogleSignInAndRegistrationControlsAreAvailable() throws {
+        let app = launchApp()
+        selectPrimaryDestination(app, titled: "Profil")
+        let signIn = app.buttons["Giriş yap"]
+        XCTAssertTrue(signIn.waitForExistence(timeout: 5))
+        signIn.tap()
+
+        XCTAssertTrue(app.buttons["Google ile giriş"].waitForExistence(timeout: 5))
+        app.buttons["Henüz hesabınız yok mu? Kayıt olun"].tap()
+        XCTAssertTrue(app.buttons["Google ile kayıt ol"].waitForExistence(timeout: 5))
+    }
+
     func testDrawerRoutesPresentContentShells() throws {
         let app = launchApp()
         let menuButton = app.buttons["Menü"]

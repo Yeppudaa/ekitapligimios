@@ -62,6 +62,8 @@ Regenerate routes after MobileApi reference updates:
 - `POST /ios-api/v1/auth/login|register` with mandatory `accepted_terms_version`
 - `POST /ios-api/v1/forums/{node_id}/threads` — create forum topic (IosApi `ForumThreads::actionPost`; requires v1.0.4+ deploy)
 - `GET|POST /ios-api/v1/threads/{thread_id}/posts` — list/reply (IosApi `ThreadPosts` + Pub wrapper; requires v1.0.5+ deploy)
+- `POST /ios-api/v1/me/presence` — mobile presence heartbeat (requires 1.0.16+)
+- `POST /ios-api/v1/member-visit/{user_id}` — record profile visit alert (requires 1.0.16+)
 
 IosApi 1.0.13 wraps every social create/edit action with a managed objectionable-content filter, Unicode/punctuation normalization, and XenForo spam checks before persistence. It returns `422 content_policy_violation` without saving rejected text. Authenticated social reads remove ignored users; one-to-one conversations with blocked members are refused while group conversations retain other participants and hide blocked messages. Forum posts expose edit/delete when XenForo permits it (`POST /posts/{id}/edit` and `POST /posts/{id}/delete`).
 

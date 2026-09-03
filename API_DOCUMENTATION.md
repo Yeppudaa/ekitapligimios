@@ -29,9 +29,9 @@ Response: new auth payload. The previous access and refresh tokens are revoked a
 
 ### POST `/auth/google`
 Auth: none.
-Body: `id_token`.
+Body: `id_token`; optional `username` when creating a new XenForo user.
 Response: auth payload.
-iOS note: if Google login remains available, add Sign in with Apple and a matching backend endpoint.
+iOS behavior: Google Sign-In requests a server ID token whose audience matches the Android-compatible backend web client. Existing connected accounts and matching-email users sign in directly. A new account receives `409 username_required` with `suggested_username`; the native app prompts for a forum username and retries without repeating Google authorization. Sign in with Apple remains available alongside Google login.
 
 ### POST `/auth/apple`
 Auth: none.
@@ -166,9 +166,12 @@ The iOS member UI uses collision-free routes because the original dynamic `membe
 
 - `GET /members` with `page`, `q`, and `sort` (`alphabetical`, `newest`, `active`).
 - `GET /member-detail/{user_id}`.
+- `POST /member-visit/{user_id}` records a profile visit and creates the same XenForo `profile_visit` alert the website sends (IosApi `1.0.16+`).
 - `POST /member-follow/{user_id}`.
 - `POST /member-unfollow/{user_id}`.
 - `POST /members/{user_id}/block` and `/unblock`.
+
+Member list and detail payloads include `is_online` / `isOnline` when served through IosApi `1.0.16+` (`GET /members`, `GET /member-detail/{user_id}`).
 
 The backend filters valid/viewable users and applies XenForo profile privacy, online-status, follow, and block permissions.
 
@@ -195,6 +198,11 @@ Auth: login required.
 Body: `current_password`, `new_password`.
 Response: a rotated mobile auth payload for the current device.
 Security: re-authenticates the existing password and uses XenForo `PasswordChangeService`. After a successful change, all active mobile sessions are revoked and a fresh access/refresh pair is issued for the current device.
+
+### POST `/me/presence`
+Auth: login required.
+Response: `{ "success": true }`.
+Behavior: updates XenForo session activity and `last_activity` for the current mobile visitor. IosApi `1.0.16+` also touches presence on authenticated API requests (throttled server-side). The iOS app calls this on login, foreground, and every ~150 seconds while active.
 
 ### GET `/me/notifications`
 Auth: login required.

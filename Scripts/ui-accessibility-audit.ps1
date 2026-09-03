@@ -24,6 +24,7 @@ foreach ($file in Get-SwiftFiles) {
             $windowEnd = [Math]::Min($i + 16, $lines.Count - 1)
             $window = ($lines[$i..$windowEnd] -join "`n")
             if ($window -match "Image\(systemName:" -and
+                $window -notmatch "Text\(" -and
                 $window -notmatch "Label\(" -and
                 $window -notmatch "\.accessibility(Label|Element|Hidden)\(") {
                 $relativePath = Resolve-Path -LiteralPath $file.FullName -Relative
@@ -140,6 +141,13 @@ foreach ($requiredLocalizationKey in @(
     "login.emailPlaceholder",
     "login.passwordConfirmation",
     "login.acceptLegal",
+    "login.google.signIn",
+    "login.google.register",
+    "login.google.usernameTitle",
+    "login.google.usernameMessage",
+    "login.google.usernamePlaceholder",
+    "login.google.usernameRequired",
+    "login.google.registrationFailed",
     "login.forgotPassword",
     "login.reset.submit",
     "login.reset.privacyNotice",

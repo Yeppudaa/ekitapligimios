@@ -2671,6 +2671,106 @@
         }
       }
     },
+    "login.google.signIn": {
+      "localizations": {
+        "tr": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Google ile giriş"
+          }
+        }
+      }
+    },
+    "login.google.register": {
+      "localizations": {
+        "tr": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Google ile kayıt ol"
+          }
+        }
+      }
+    },
+    "login.orDivider": {
+      "localizations": {
+        "tr": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "veya"
+          }
+        }
+      }
+    },
+    "login.google.failed": {
+      "localizations": {
+        "tr": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Google ile giriş tamamlanamadı."
+          }
+        }
+      }
+    },
+    "login.google.unavailable": {
+      "localizations": {
+        "tr": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Google ile giriş şu anda kullanılamıyor."
+          }
+        }
+      }
+    },
+    "login.google.usernameTitle": {
+      "localizations": {
+        "tr": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Kullanıcı Adı Seçin"
+          }
+        }
+      }
+    },
+    "login.google.usernameMessage": {
+      "localizations": {
+        "tr": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Google ile kayıt olmak için forumda kullanacağınız bir kullanıcı adı belirleyin."
+          }
+        }
+      }
+    },
+    "login.google.usernamePlaceholder": {
+      "localizations": {
+        "tr": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Kullanıcı Adı"
+          }
+        }
+      }
+    },
+    "login.google.usernameRequired": {
+      "localizations": {
+        "tr": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Kullanıcı adı zorunludur."
+          }
+        }
+      }
+    },
+    "login.google.registrationFailed": {
+      "localizations": {
+        "tr": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Google ile kayıt tamamlanamadı."
+          }
+        }
+      }
+    },
     "login.appleInvalid": {
       "localizations": {
         "tr": {
@@ -2943,12 +3043,12 @@
         }
       }
     },
-    "login.signal.api": {
+    "login.signal.chat": {
       "localizations": {
         "tr": {
           "stringUnit": {
             "state": "translated",
-            "value": "Güvenli API"
+            "value": "Canlı Sohbet"
           }
         }
       }

@@ -22,13 +22,15 @@ open Ekitapligim.xcodeproj
   - Production: `com.ekitapligim.app`
 
 ## Add Sources
-`project.yml` adds `App/Ekitapligim`, links the local `EkitapligimCore` package, and resolves Readium Shared/Streamer/Navigator exactly at `3.9.0`. Use Xcode 16.4 or newer and preserve the generated `Package.resolved` as release evidence.
+`project.yml` adds `App/Ekitapligim`, links the local `EkitapligimCore` package, resolves Readium Shared/Streamer/Navigator exactly at `3.9.0`, and resolves GoogleSignIn exactly at `9.2.0`. Use Xcode 16.4 or newer and preserve the generated `Package.resolved` as release evidence.
 
 ## Build Configurations
 Create or map Xcode configurations to:
 - `App/Ekitapligim/Config/Development.xcconfig`
 - `App/Ekitapligim/Config/Staging.xcconfig`
 - `App/Ekitapligim/Config/Production.xcconfig`
+
+Each configuration contains the public Google iOS client ID, the backend web/server client ID, and the reversed callback URL scheme. Keep those three values synchronized; do not add an OAuth client secret to the app bundle.
 
 ## Capabilities
 Required:
