@@ -389,6 +389,195 @@ public struct MemberEnvelopeDTO: Decodable, Equatable, Sendable {
     }
 }
 
+/// Full member-detail payload including public library snapshot (Android `MemberProfileDto` parity).
+public struct MemberProfileDTO: Decodable, Equatable, Sendable {
+    public let member: MemberDTO
+    public let library: [LibraryItemDTO]
+    public let lastReadBook: LibraryItemDTO?
+    public let readingCount: Int
+    public let readCount: Int
+    public let wantToReadCount: Int
+    public let favoriteCount: Int
+    public let listedCount: Int
+    public let canViewProfile: Bool
+    public let canConverse: Bool
+    public let isIgnored: Bool
+    public let canBlock: Bool
+    public let canUnblock: Bool
+
+    public var hasPublicLibrarySnapshot: Bool {
+        !library.isEmpty
+            || lastReadBook != nil
+            || listedCount > 0
+            || readingCount > 0
+            || readCount > 0
+            || wantToReadCount > 0
+            || favoriteCount > 0
+    }
+
+    public init(from decoder: Decoder) throws {
+        let container = try decoder.container(keyedBy: EnvelopeKeys.self)
+        if container.contains(.member) {
+            self = try MemberProfilePayload(from: container.superDecoder(forKey: .member)).asProfile()
+        } else if container.contains(.profile) {
+            self = try MemberProfilePayload(from: container.superDecoder(forKey: .profile)).asProfile()
+        } else {
+            self = try MemberProfilePayload(from: decoder).asProfile()
+        }
+    }
+
+    private enum EnvelopeKeys: String, CodingKey {
+        case member
+        case profile
+    }
+}
+
+private struct MemberProfilePayload: Decodable {
+    let member: MemberDTO
+    let library: [LibraryItemDTO]
+    let lastReadBook: LibraryItemDTO?
+    let readingCount: Int
+    let readCount: Int
+    let wantToReadCount: Int
+    let favoriteCount: Int
+    let listedCount: Int
+    let canViewProfile: Bool
+    let canConverse: Bool
+    let isIgnored: Bool
+    let canBlock: Bool
+    let canUnblock: Bool
+
+    init(from decoder: Decoder) throws {
+        let container = try decoder.container(keyedBy: CodingKeys.self)
+        self.member = try MemberDTO(from: decoder)
+        self.library = try container.decodeIfPresent([LibraryItemDTO].self, forKey: .library) ?? []
+        self.lastReadBook = try container.decodeIfPresent(LibraryItemDTO.self, forKey: .lastReadBook)
+            ?? container.decodeIfPresent(LibraryItemDTO.self, forKey: .last_read_book)
+        let counts: KeyedDecodingContainer<CountKeys>? = {
+            if let shelfCounts = try? container.nestedContainer(keyedBy: CountKeys.self, forKey: .shelfCounts) {
+                return shelfCounts
+            }
+            return try? container.nestedContainer(keyedBy: CountKeys.self, forKey: .shelf_counts)
+        }()
+        self.readingCount = try container.decodeIfPresent(Int.self, forKey: .readingCount)
+            ?? container.decodeIfPresent(Int.self, forKey: .reading_count)
+            ?? (try? counts?.decodeIfPresent(Int.self, forKey: .reading)) ?? 0
+        self.readCount = try container.decodeIfPresent(Int.self, forKey: .readCount)
+            ?? container.decodeIfPresent(Int.self, forKey: .read_count)
+            ?? (try? counts?.decodeIfPresent(Int.self, forKey: .read)) ?? 0
+        self.wantToReadCount = try container.decodeIfPresent(Int.self, forKey: .wantToReadCount)
+            ?? container.decodeIfPresent(Int.self, forKey: .want_to_read_count)
+            ?? (try? counts?.decodeIfPresent(Int.self, forKey: .want_to_read)) ?? 0
+        self.favoriteCount = try container.decodeIfPresent(Int.self, forKey: .favoriteCount)
+            ?? container.decodeIfPresent(Int.self, forKey: .favorite_count)
+            ?? (try? counts?.decodeIfPresent(Int.self, forKey: .favorite)) ?? 0
+        self.listedCount = try container.decodeIfPresent(Int.self, forKey: .listedCount)
+            ?? container.decodeIfPresent(Int.self, forKey: .listed_count)
+            ?? (try? counts?.decodeIfPresent(Int.self, forKey: .listed)) ?? 0
+        self.canViewProfile = try container.decodeIfPresent(Bool.self, forKey: .canViewProfile)
+            ?? container.decodeIfPresent(Bool.self, forKey: .can_view_profile)
+            ?? true
+        self.canConverse = try container.decodeIfPresent(Bool.self, forKey: .canConverse)
+            ?? container.decodeIfPresent(Bool.self, forKey: .can_converse)
+            ?? member.canConverse
+        self.isIgnored = try container.decodeIfPresent(Bool.self, forKey: .isIgnored)
+            ?? container.decodeIfPresent(Bool.self, forKey: .is_ignored)
+            ?? false
+        self.canBlock = try container.decodeIfPresent(Bool.self, forKey: .canBlock)
+            ?? container.decodeIfPresent(Bool.self, forKey: .can_block)
+            ?? false
+        self.canUnblock = try container.decodeIfPresent(Bool.self, forKey: .canUnblock)
+            ?? container.decodeIfPresent(Bool.self, forKey: .can_unblock)
+            ?? false
+    }
+
+    func asProfile() -> MemberProfileDTO {
+        MemberProfileDTO(
+            member: member,
+            library: library,
+            lastReadBook: lastReadBook,
+            readingCount: readingCount,
+            readCount: readCount,
+            wantToReadCount: wantToReadCount,
+            favoriteCount: favoriteCount,
+            listedCount: listedCount,
+            canViewProfile: canViewProfile,
+            canConverse: canConverse,
+            isIgnored: isIgnored,
+            canBlock: canBlock,
+            canUnblock: canUnblock
+        )
+    }
+
+    private enum CodingKeys: String, CodingKey {
+        case library
+        case lastReadBook
+        case last_read_book
+        case shelfCounts
+        case shelf_counts
+        case readingCount
+        case reading_count
+        case readCount
+        case read_count
+        case wantToReadCount
+        case want_to_read_count
+        case favoriteCount
+        case favorite_count
+        case listedCount
+        case listed_count
+        case canViewProfile
+        case can_view_profile
+        case canConverse
+        case can_converse
+        case isIgnored
+        case is_ignored
+        case canBlock
+        case can_block
+        case canUnblock
+        case can_unblock
+    }
+
+    private enum CountKeys: String, CodingKey {
+        case reading
+        case read
+        case want_to_read
+        case favorite
+        case listed
+    }
+}
+
+extension MemberProfileDTO {
+    init(
+        member: MemberDTO,
+        library: [LibraryItemDTO],
+        lastReadBook: LibraryItemDTO?,
+        readingCount: Int,
+        readCount: Int,
+        wantToReadCount: Int,
+        favoriteCount: Int,
+        listedCount: Int,
+        canViewProfile: Bool,
+        canConverse: Bool,
+        isIgnored: Bool,
+        canBlock: Bool,
+        canUnblock: Bool
+    ) {
+        self.member = member
+        self.library = library
+        self.lastReadBook = lastReadBook
+        self.readingCount = readingCount
+        self.readCount = readCount
+        self.wantToReadCount = wantToReadCount
+        self.favoriteCount = favoriteCount
+        self.listedCount = listedCount
+        self.canViewProfile = canViewProfile
+        self.canConverse = canConverse
+        self.isIgnored = isIgnored
+        self.canBlock = canBlock
+        self.canUnblock = canUnblock
+    }
+}
+
 public struct MemberFollowDTO: Decodable, Equatable, Sendable {
     public let success: Bool
     public let followed: Bool
@@ -1051,18 +1240,86 @@ public struct NotificationDTO: Decodable, Equatable, Identifiable, Sendable {
     public let title: String
     public let message: String
     public let actorUsername: String?
+    public let actorUserId: Int?
     public let targetUrl: String?
     public let appRoute: String?
     public let contentId: Int?
+    public let action: String?
     public let eventDate: Int?
     public let isRead: Bool?
     public let isViewed: Bool?
+
+    public init(from decoder: Decoder) throws {
+        let container = try decoder.container(keyedBy: CodingKeys.self)
+        self.id = try container.decodeFlexibleString(forKey: .id, fallbackKeys: [.alertId])
+        self.type = try container.decodeFlexibleString(forKey: .type, fallbackKeys: [.contentType])
+        self.title = try container.decodeIfPresent(String.self, forKey: .title) ?? "Bildirim"
+        self.message = try container.decodeIfPresent(String.self, forKey: .message) ?? ""
+        self.actorUsername = try container.decodeIfPresent(String.self, forKey: .actorUsername)
+        let actor = container.decodeFlexibleInt(forKey: .actorUserId, fallbackKeys: [.userId])
+        self.actorUserId = actor > 0 ? actor : nil
+        self.targetUrl = try container.decodeIfPresent(String.self, forKey: .targetUrl)
+        let route = try container.decodeIfPresent(String.self, forKey: .appRoute)
+        self.appRoute = route?.isEmpty == false ? route : nil
+        let content = container.decodeFlexibleInt(forKey: .contentId)
+        self.contentId = content > 0 ? content : nil
+        let action = try container.decodeIfPresent(String.self, forKey: .action)
+        self.action = action?.isEmpty == false ? action : nil
+        let eventDate = container.decodeFlexibleInt(forKey: .eventDate)
+        self.eventDate = eventDate > 0 ? eventDate : nil
+        if container.contains(.isRead) {
+            self.isRead = container.decodeFlexibleBool(forKey: .isRead)
+        } else {
+            self.isRead = container.decodeFlexibleInt(forKey: .readDate) > 0 ? true : nil
+        }
+        if container.contains(.isViewed) {
+            self.isViewed = container.decodeFlexibleBool(forKey: .isViewed)
+        } else {
+            self.isViewed = container.decodeFlexibleInt(forKey: .viewDate) > 0 ? true : nil
+        }
+    }
+
+    private enum CodingKeys: String, CodingKey {
+        case id
+        case alertId
+        case type
+        case contentType
+        case title
+        case message
+        case actorUsername
+        case actorUserId
+        case userId
+        case targetUrl
+        case appRoute
+        case contentId
+        case action
+        case eventDate
+        case isRead
+        case isViewed
+        case readDate
+        case viewDate
+    }
 }
 
 public struct NotificationCountsDTO: Decodable, Equatable, Sendable {
     public let unread: Int
     public let unviewed: Int?
     public let conversationsUnread: Int?
+
+    public init(from decoder: Decoder) throws {
+        let container = try decoder.container(keyedBy: CodingKeys.self)
+        self.unread = container.decodeFlexibleInt(forKey: .unread)
+        self.unviewed = container.contains(.unviewed) ? container.decodeFlexibleInt(forKey: .unviewed) : nil
+        self.conversationsUnread = container.contains(.conversationsUnread)
+            ? container.decodeFlexibleInt(forKey: .conversationsUnread)
+            : nil
+    }
+
+    private enum CodingKeys: String, CodingKey {
+        case unread
+        case unviewed
+        case conversationsUnread
+    }
 }
 
 extension KeyedDecodingContainer {

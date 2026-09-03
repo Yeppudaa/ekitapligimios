@@ -89,8 +89,12 @@ public struct MembersRepository: Sendable {
         try await apiClient.request(.members(page: page, query: query, sort: sort), as: MembersPageDTO.self)
     }
 
+    public func memberProfile(id: String) async throws -> MemberProfileDTO {
+        try await apiClient.request(.member(id: id), as: MemberProfileDTO.self)
+    }
+
     public func member(id: String) async throws -> MemberDTO {
-        try await apiClient.request(.member(id: id), as: MemberEnvelopeDTO.self).member
+        try await memberProfile(id: id).member
     }
 
     public func follow(id: String) async throws -> MemberFollowDTO {
@@ -771,6 +775,42 @@ public struct NotificationsPageDTO: Decodable, Equatable, Sendable {
     public let currentPage: Int?
     public let lastPage: Int?
     public let total: Int?
+
+    public init(from decoder: Decoder) throws {
+        let container = try decoder.container(keyedBy: CodingKeys.self)
+        let rawItems = (try? container.decode([LossyDecoded<NotificationDTO>].self, forKey: .items))
+            ?? (try? container.decode([LossyDecoded<NotificationDTO>].self, forKey: .notifications))
+            ?? []
+        self.items = rawItems.compactMap(\.value).filter { !$0.id.isEmpty }
+        self.counts = try container.decodeIfPresent(NotificationCountsDTO.self, forKey: .counts)
+        if let pagination = try container.decodeIfPresent(PaginationDTO.self, forKey: .pagination) {
+            self.currentPage = pagination.currentPage
+            self.lastPage = pagination.pages
+            self.total = pagination.total
+        } else {
+            self.currentPage = try container.decodeIfPresent(Int.self, forKey: .currentPage)
+            self.lastPage = try container.decodeIfPresent(Int.self, forKey: .lastPage)
+            self.total = try container.decodeIfPresent(Int.self, forKey: .total)
+        }
+    }
+
+    private enum CodingKeys: String, CodingKey {
+        case items
+        case notifications
+        case counts
+        case currentPage
+        case lastPage
+        case total
+        case pagination
+    }
+}
+
+private struct LossyDecoded<T: Decodable>: Decodable {
+    let value: T?
+
+    init(from decoder: Decoder) throws {
+        self.value = try? T(from: decoder)
+    }
 }
 
 public struct TermsStatusDTO: Decodable, Equatable, Sendable {

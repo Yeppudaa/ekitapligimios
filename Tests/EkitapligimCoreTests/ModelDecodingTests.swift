@@ -580,6 +580,38 @@ final class ModelDecodingTests: XCTestCase {
         XCTAssertEqual(notification.isRead, false)
     }
 
+    func testNotificationPageSkipsBrokenItemsAndAcceptsNotificationsKey() throws {
+        let data = Data("""
+        {
+          "notifications": [
+            {
+              "id": 41,
+              "type": "user",
+              "action": "profile_visit",
+              "title": "Profil ziyareti",
+              "message": "okur profilinizi ziyaret etti.",
+              "actor_user_id": 9,
+              "actor_username": "okur",
+              "app_route": "member/9",
+              "is_read": 0
+            },
+            { "title": "broken-row-without-id" }
+          ],
+          "counts": { "unread": "2", "unviewed": "1", "conversations_unread": "3" }
+        }
+        """.utf8)
+
+        let page = try JSONDecoder.ekitapligim.decode(NotificationsPageDTO.self, from: data)
+
+        XCTAssertEqual(page.items.count, 1)
+        XCTAssertEqual(page.items.first?.id, "41")
+        XCTAssertEqual(page.items.first?.action, "profile_visit")
+        XCTAssertEqual(page.items.first?.actorUserId, 9)
+        XCTAssertEqual(page.items.first?.isRead, false)
+        XCTAssertEqual(page.counts?.unread, 2)
+        XCTAssertEqual(page.counts?.conversationsUnread, 3)
+    }
+
     func testAuthResponseDecodesBackendShape() throws {
         let data = Data("""
         {
@@ -822,5 +854,75 @@ final class ModelDecodingTests: XCTestCase {
 
         XCTAssertEqual(page.members.first?.id, "4")
         XCTAssertEqual(page.members.first?.username, "Editor")
+    }
+
+    func testMemberProfileDecodesLibrarySnapshot() throws {
+        let data = Data("""
+        {
+          "member": {
+            "id": "42",
+            "username": "okur42",
+            "user_title": "Okur",
+            "message_count": 12,
+            "reaction_score": 5,
+            "register_date": 1700000000,
+            "last_activity": 1700100000,
+            "avatar_url": "https://cdn.example.com/a.jpg",
+            "is_staff": false,
+            "is_followed": false,
+            "can_follow": true,
+            "role_label": "Üye",
+            "show_verified_badge": true,
+            "about": "Kitap sever",
+            "location": "İstanbul",
+            "website": "",
+            "can_converse": true,
+            "can_view_profile": true,
+            "library": [
+              {
+                "book_id": "100",
+                "title": "Sinekli Bakkal",
+                "author": "Adalet Ağaoğlu",
+                "cover_url": "https://cdn.example.com/c.jpg",
+                "shelf_state": "OKUYORUM",
+                "progress_percent": 40,
+                "last_read_page": 80,
+                "is_favorite": false,
+                "is_downloaded": false,
+                "page_count": 200
+              }
+            ],
+            "last_read_book": {
+              "book_id": "100",
+              "title": "Sinekli Bakkal",
+              "author": "Adalet Ağaoğlu",
+              "cover_url": "https://cdn.example.com/c.jpg",
+              "shelf_state": "OKUYORUM",
+              "progress_percent": 40,
+              "last_read_page": 80,
+              "is_favorite": false,
+              "is_downloaded": false,
+              "page_count": 200
+            },
+            "reading_count": 1,
+            "read_count": 3,
+            "want_to_read_count": 2,
+            "favorite_count": 4,
+            "listed_count": 6
+          }
+        }
+        """.utf8)
+
+        let profile = try JSONDecoder.ekitapligim.decode(MemberProfileDTO.self, from: data)
+
+        XCTAssertEqual(profile.member.id, "42")
+        XCTAssertEqual(profile.member.username, "okur42")
+        XCTAssertEqual(profile.library.count, 1)
+        XCTAssertEqual(profile.library.first?.bookId, "100")
+        XCTAssertEqual(profile.lastReadBook?.title, "Sinekli Bakkal")
+        XCTAssertEqual(profile.readingCount, 1)
+        XCTAssertEqual(profile.favoriteCount, 4)
+        XCTAssertTrue(profile.canViewProfile)
+        XCTAssertTrue(profile.canConverse)
     }
 }

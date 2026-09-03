@@ -57,4 +57,9 @@ class Setup extends AbstractSetup
 	{
 		// Rebuilds ios-api forum post edit/delete public routes (POST /posts/{id}/edit|delete).
 	}
+
+	public function upgrade1000015Step1(): void
+	{
+		// Rebuilds ios-api notification routes onto IosApi-owned XenForo alert controllers.
+	}
 }

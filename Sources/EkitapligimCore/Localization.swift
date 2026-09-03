@@ -371,6 +371,29 @@ public enum L10n {
     public static let membersBlockConfirmation = localized("members.blockConfirmation", defaultValue: "Bu üyeyi engellemek istiyor musunuz?")
     public static let membersBlockCompleted = localized("members.blockCompleted", defaultValue: "Üye engellendi")
     public static let membersActionFailed = localized("members.actionFailed", defaultValue: "Üye işlemi tamamlanamadı.")
+    public static let membersSendMessage = localized("members.sendMessage", defaultValue: "Mesaj gönder")
+    public static let membersLibraryHidden = localized("members.libraryHidden", defaultValue: "Bu üyenin rafı gizli.")
+    public static let membersLastReadTitle = localized("members.lastReadTitle", defaultValue: "Son okuduğu kitap")
+    public static let membersShelvesTitle = localized("members.shelvesTitle", defaultValue: "Rafları")
+    public static let membersRecentBooksTitle = localized("members.recentBooksTitle", defaultValue: "Okuduğu kitaplar")
+    public static let membersLoginForActions = localized("members.loginForActions", defaultValue: "Takip ve mesaj için giriş yapmalısınız.")
+    public static let membersStatReading = localized("members.statReading", defaultValue: "Okuyor")
+    public static let membersStatRead = localized("members.statRead", defaultValue: "Okudu")
+    public static let membersStatListed = localized("members.statListed", defaultValue: "Listede")
+    public static let membersTabProfile = localized("members.tab.profile", defaultValue: "Profil")
+    public static let membersTabLibrary = localized("members.tab.library", defaultValue: "Kütüphane")
+    public static let membersTabAbout = localized("members.tab.about", defaultValue: "Hakkında")
+    public static let membersTabActivity = localized("members.tab.activity", defaultValue: "Son Aktivite")
+    public static let membersShelfReading = localized("members.shelf.reading", defaultValue: "Şu anda okuyor")
+    public static let membersShelfFinished = localized("members.shelf.finished", defaultValue: "Okuduğu kitaplar")
+    public static let membersShelfWantToRead = localized("members.shelf.wantToRead", defaultValue: "Okuyacakları")
+    public static let membersShelfFavorites = localized("members.shelf.favorites", defaultValue: "Favorileri")
+    public static let membersShelfEmpty = localized("members.shelf.empty", defaultValue: "Bu rafta kitap yok.")
+    public static let membersNoSharedBooks = localized("members.noSharedBooks", defaultValue: "Bu üyenin paylaşılmış kitabı yok.")
+    public static let membersFollowingBadge = localized("members.followingBadge", defaultValue: "Takip ediliyor")
+    public static let membersBlockedBadge = localized("members.blockedBadge", defaultValue: "Engellendi")
+    public static let membersMessagePrompt = localized("members.messagePrompt", defaultValue: "Mesajınızı yazın")
+    public static let membersMessageFailed = localized("members.messageFailed", defaultValue: "Mesaj gönderilemedi.")
     public static let communityDirectorySection = localized("community.directorySection", defaultValue: "Üyeler")
 
     public static func membersMessageCount(_ count: Int) -> String {
@@ -386,7 +409,7 @@ public enum L10n {
     public static let termsAccepted = localized("terms.accepted", defaultValue: "Topluluk kuralları kabul edildi.")
     public static let termsAcceptFailed = localized("terms.acceptFailed", defaultValue: "Kabul durumu kaydedilemedi.")
 
-    public static let tabHome = localized("tab.home", defaultValue: "Ana Sayfa")
+    public static let tabHome = localized("tab.home", defaultValue: "Ana sayfa")
     public static let tabCatalog = localized("tab.catalog", defaultValue: "Kitaplar")
     public static let tabLibrary = localized("tab.library", defaultValue: "Kütüphane")
     public static let tabCommunity = localized("tab.community", defaultValue: "Topluluk")
@@ -532,11 +555,26 @@ public enum L10n {
 
     public static let catalogTitle = localized("catalog.title", defaultValue: "Kitaplar")
     public static let catalogHeroTitle = localized("catalog.hero.title", defaultValue: "Kataloğu Keşfet")
-    public static func catalogHeroSubtitle(_ books: Int, _ pages: Int) -> String {
-        String(format: localized("catalog.hero.subtitle", defaultValue: "%1$d kitap · %2$d sayfa"), books, pages)
+    public static let catalogEyebrow = localized("catalog.eyebrow", defaultValue: "KATALOG")
+    public static let catalogHeroBooksCaption = localized("catalog.hero.booksCaption", defaultValue: "kitap")
+    public static func catalogHeroBookCount(_ formattedCount: String) -> String {
+        String(format: localized("catalog.hero.bookCount", defaultValue: "%@ kitap"), formattedCount)
     }
-    public static let catalogStatBooks = localized("catalog.stat.books", defaultValue: "Kitap")
-    public static let catalogStatPages = localized("catalog.stat.pages", defaultValue: "Sayfa")
+    public static func catalogHeroSubtitle(category: String, page: Int, lastPage: Int) -> String {
+        String(format: localized("catalog.hero.subtitle", defaultValue: "%1$@ · Sayfa %2$d / %3$d"), category, page, lastPage)
+    }
+    public static let catalogStatTotal = localized("catalog.stat.total", defaultValue: "Toplam")
+    public static let catalogStatLoaded = localized("catalog.stat.loaded", defaultValue: "Yüklenen")
+    public static let catalogStatCatalogPage = localized("catalog.stat.catalogPage", defaultValue: "Katalog sayfası")
+    public static func catalogPagePosition(_ current: Int, _ last: Int) -> String {
+        String(format: localized("catalog.page.position", defaultValue: "%1$d / %2$d"), current, last)
+    }
+    public static func catalogCategoryChip(_ title: String, countLabel: String) -> String {
+        String(format: localized("catalog.chip.withCount", defaultValue: "%1$@  %2$@"), title, countLabel)
+    }
+    public static func catalogBookPageCount(_ count: Int) -> String {
+        String(format: localized("catalog.book.pageCount", defaultValue: "%d syf"), count)
+    }
     public static let catalogLoading = localized("catalog.loading", defaultValue: "Kitaplar yükleniyor")
     public static let catalogUnavailableTitle = localized("catalog.unavailableTitle", defaultValue: "Katalog açılamadı")
     public static let catalogEmptyTitle = localized("catalog.emptyTitle", defaultValue: "Kitap bulunamadı")

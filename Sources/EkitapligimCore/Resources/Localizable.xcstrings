@@ -4427,7 +4427,27 @@
         "tr": {
           "stringUnit": {
             "state": "translated",
-            "value": "Ana Sayfa"
+            "value": "Ana sayfa"
+          }
+        }
+      }
+    },
+    "tab.agenda": {
+      "localizations": {
+        "tr": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Gündem"
+          }
+        }
+      }
+    },
+    "tab.flow": {
+      "localizations": {
+        "tr": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Akış"
           }
         }
       }

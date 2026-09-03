@@ -198,11 +198,11 @@ Security: re-authenticates the existing password and uses XenForo `PasswordChang
 
 ### GET `/me/notifications`
 Auth: login required.
-Response: notification page with counts.
+Response: XenForo alert page (`items`/`notifications`) with unread/unviewed/conversation counts. IosApi `1.0.15+` serializes the same site alerts the website shows (forum replies, private messages, chat, Kitap Gündemi, profile visits, and related types), skips a single broken alert instead of failing the whole list, and includes native `app_route` values.
 
 ### GET `/me/notifications/counts`
 Auth: login required.
-Response: unread/unviewed counts.
+Response: unread/unviewed alert counts plus `conversations_unread`.
 
 ### POST `/me/notifications/{alert_id}/mark`
 Auth: login required.

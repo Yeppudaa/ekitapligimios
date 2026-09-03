@@ -91,7 +91,7 @@ Latest gate: **PASS=303 WARN=1 FAIL=0** (only WARN = Mac visual manifest). When 
 | Members | `MembersScreen.kt`, member/follow routes | Directory/profile/follow/block | Native searchable directory, profile, follow and block implemented |
 | Messages | `MessagesScreen.kt`, conversation routes | Conversations | Native list/detail/new conversation/reply implemented |
 | My comments | `MyCommentsScreen.kt`, `/me/comments` | Authenticated comment history and thread navigation | Native paginated comment history with forum-thread navigation implemented |
-| Notifications | Notifications controllers and `AppRoutes.routeForNotification` | Native notification center and target routing | Native list/read actions plus trusted book/thread/forum/directory/request navigation implemented |
+| Notifications | Notifications controllers and `AppRoutes.routeForNotification` | Native notification center and target routing | Native list/read actions plus site-matching XenForo alerts (forum, messages, chat, Kitap Gündemi, profile visits) with trusted navigation |
 | Universal links | `AppRoutes.routeFromWebUrl` | Associated-domain native routing | `.onOpenURL` validates Ekitapligim URLs and opens native book/thread/forum/directory/request destinations |
 | Profile/settings | Profile and identity screens | Profile edit/settings/privacy/account access | Native profile/settings/privacy, registration, password reset, re-authenticated email change, and re-authenticated password change with mobile-session rotation implemented |
 | Account deletion | MobileApi endpoint exists | Settings flow using endpoint | Re-auth confirmation UI added |

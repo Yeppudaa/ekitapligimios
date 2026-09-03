@@ -116,8 +116,8 @@ $requiredFiles = @(
 )
 foreach ($relative in $requiredFiles) { Assert-Path (Join-Path $addonRoot $relative) }
 $addonManifest = Get-Content -Raw -LiteralPath (Join-Path $addonRoot "addon.json") | ConvertFrom-Json
-if ([int]$addonManifest.version_id -ne 1000014 -or $addonManifest.version_string -ne "1.0.14") {
-    throw "IosApi package must be exactly 1.0.14 / 1000014 for this release."
+if ([int]$addonManifest.version_id -ne 1000015 -or $addonManifest.version_string -ne "1.0.15") {
+    throw "IosApi package must be exactly 1.0.15 / 1000015 for this release."
 }
 $routeText = Get-Content -Raw -LiteralPath (Join-Path $addonRoot "_data\routes.xml")
 foreach ($requiredRoute in @(
@@ -128,7 +128,10 @@ foreach ($requiredRoute in @(
         'format="v1/posts/:int&lt;post_id&gt;/delete"',
         'controller="Ekitapligim\IosApi:AuthLogin"',
         'controller="Ekitapligim\IosApi:AuthRegister"',
-        'controller="Ekitapligim\IosApi:ForumPost"'
+        'controller="Ekitapligim\IosApi:ForumPost"',
+        'controller="Ekitapligim\IosApi:MeNotifications"',
+        'controller="Ekitapligim\IosApi:MeNotificationCounts"',
+        'controller="Ekitapligim\IosApi:MeNotificationMark"'
     )) {
     if ($routeText.IndexOf($requiredRoute, [System.StringComparison]::Ordinal) -lt 0) {
         throw "Guideline 1.2 route audit failed: $requiredRoute"

@@ -75,6 +75,11 @@ struct ProfileView: View {
                 }
             }
         }
+        .onChange(of: container.pendingProfileLibraryTab) { _, tab in
+            guard let tab else { return }
+            route = .library(tab)
+            container.pendingProfileLibraryTab = nil
+        }
         .task { await initialLoad() }
         .refreshable { await refresh() }
         .alert(L10n.profileDeleteRequest, isPresented: $showingDeleteConfirmation) {
@@ -229,7 +234,7 @@ struct ProfileView: View {
         VStack(alignment: .leading, spacing: 12) {
             ProfileSectionHeading(title: L10n.profileLibrarySectionTitle, subtitle: L10n.profileLibrarySectionSubtitle)
 
-            LazyVGrid(columns: [GridItem(.flexible(), spacing: 10), GridItem(.flexible(), spacing: 10)], spacing: 10) {
+            LazyVGrid(columns: [GridItem(.flexible(), spacing: 12), GridItem(.flexible(), spacing: 12)], spacing: 12) {
                 LibraryShelfCard(title: L10n.profileStatReading, count: container.currentlyReading.count, systemImage: "book.pages.fill") {
                     route = .library(.reading)
                 }
@@ -948,106 +953,7 @@ private struct ProfileInfoCard: View {
     }
 }
 
-// MARK: - Sekme içerikleri için ortak parçalar
-
-private struct ProfileSectionHeading: View {
-    let title: String
-    var subtitle: String?
-
-    var body: some View {
-        VStack(alignment: .leading, spacing: 3) {
-            Text(title)
-                .font(.headline)
-                .foregroundStyle(EKitapligimPalette.profileInk)
-            if let subtitle {
-                Text(subtitle)
-                    .font(.caption)
-                    .foregroundStyle(EKitapligimPalette.profileMuted)
-            }
-        }
-        .frame(maxWidth: .infinity, alignment: .leading)
-    }
-}
-
-private struct ProfileEmptyState: View {
-    let message: String
-
-    var body: some View {
-        Text(message)
-            .font(.subheadline)
-            .foregroundStyle(EKitapligimPalette.profileMuted)
-            .multilineTextAlignment(.center)
-            .frame(maxWidth: .infinity)
-            .padding(.vertical, 26)
-            .padding(.horizontal, 16)
-            .background(EKitapligimPalette.profileSurface)
-            .clipShape(RoundedRectangle(cornerRadius: 16, style: .continuous))
-    }
-}
-
-private struct LibraryShelfCard: View {
-    let title: String
-    let count: Int
-    let systemImage: String
-    let action: () -> Void
-
-    var body: some View {
-        Button(action: action) {
-            VStack(alignment: .leading, spacing: 7) {
-                Image(systemName: systemImage)
-                    .font(.subheadline)
-                    .foregroundStyle(EKitapligimPalette.profileTeal)
-                Text(EKitapligimFormat.count(count))
-                    .font(.title3.weight(.heavy))
-                    .foregroundStyle(EKitapligimPalette.profileInk)
-                Text(title)
-                    .font(.caption)
-                    .foregroundStyle(EKitapligimPalette.profileMuted)
-                    .lineLimit(1)
-            }
-            .frame(maxWidth: .infinity, alignment: .leading)
-            .padding(14)
-            .ekitapligimCard(radius: 15)
-        }
-        .buttonStyle(.plain)
-        .accessibilityElement(children: .combine)
-    }
-}
-
-private struct ProfileBookRow: View {
-    let item: LibraryItemDTO
-
-    var body: some View {
-        HStack(spacing: 12) {
-            EKitapligimRemoteCover(urlString: item.coverUrl)
-                .frame(width: 48, height: 70)
-                .clipShape(RoundedRectangle(cornerRadius: 9, style: .continuous))
-            VStack(alignment: .leading, spacing: 4) {
-                Text(item.title.isEmpty ? L10n.commonBookNumber(item.bookId) : item.title)
-                    .font(.subheadline.weight(.semibold))
-                    .foregroundStyle(EKitapligimPalette.profileInk)
-                    .lineLimit(2)
-                    .multilineTextAlignment(.leading)
-                if !item.author.isEmpty {
-                    Text(item.author)
-                        .font(.caption)
-                        .foregroundStyle(EKitapligimPalette.profileMuted)
-                        .lineLimit(1)
-                }
-                Text(L10n.commonPercent(min(max(item.progressPercent, 0), 100)))
-                    .font(.caption2.weight(.bold))
-                    .foregroundStyle(EKitapligimPalette.profileTealDeep)
-            }
-            Spacer(minLength: 0)
-            Image(systemName: "chevron.right")
-                .font(.caption)
-                .foregroundStyle(EKitapligimPalette.profileTeal)
-        }
-        .padding(12)
-        .frame(maxWidth: .infinity, alignment: .leading)
-        .ekitapligimCard(radius: 14)
-    }
-}
+// MARK: - Gönderi satırı
 
 private struct ProfilePostRow: View {
     let post: ForumPostDTO
@@ -1114,39 +1020,6 @@ private struct ProfileBadgeRow: View {
         .frame(maxWidth: .infinity, alignment: .leading)
         .ekitapligimCard(radius: 15)
         .accessibilityElement(children: .combine)
-    }
-}
-
-/// The "Son Aktivite" tab reuses the live-activity feed filtered to this member.
-@MainActor
-private struct ProfileActivityList: View {
-    @EnvironmentObject private var container: AppContainer
-    let userID: String?
-
-    @State private var items: [LiveActivityItemDTO] = []
-    @State private var isLoading = false
-
-    var body: some View {
-        VStack(spacing: 10) {
-            if isLoading && items.isEmpty {
-                EKSkeletonCard(height: 66)
-                EKSkeletonCard(height: 66)
-            } else if items.isEmpty {
-                ProfileEmptyState(message: L10n.profileActivityEmpty)
-            } else {
-                ForEach(items) { item in
-                    LiveActivityRow(item: item)
-                }
-            }
-        }
-        .task { await load() }
-    }
-
-    private func load() async {
-        guard let userID, !userID.isEmpty, items.isEmpty, !isLoading else { return }
-        isLoading = true
-        defer { isLoading = false }
-        items = (try? await container.liveActivity.activity(limit: 12, userID: userID).items) ?? []
     }
 }
 

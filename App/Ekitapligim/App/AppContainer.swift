@@ -7,8 +7,9 @@ final class AppContainer: ObservableObject {
     @Published var authState: AuthenticationState = .signedOut
     @Published var selectedTab: AppTab = .home
     @Published var presentedRoute: AppRoute?
-    /// Shelf index for the Library tab (`library/{tab}` deep links and menu shortcuts).
+    /// Shelf index for library deep links (`library/{tab}`) presented from profile or sheets.
     @Published var libraryShelfTab: Int = 0
+    @Published var pendingProfileLibraryTab: LibraryTab?
 
     // Android keeps this data at app level so the shell, menu and profile all read the same values.
     @Published private(set) var profileState: ProfileDTO?
@@ -353,8 +354,9 @@ final class AppContainer: ObservableObject {
     func open(route: AppRoute) {
         if case .library(let tab) = route {
             libraryShelfTab = tab
+            pendingProfileLibraryTab = LibraryTab(index: tab)
             presentedRoute = nil
-            selectedTab = .library
+            selectedTab = .profile
             return
         }
         if let tab = AppTab(route: route) {
@@ -366,19 +368,21 @@ final class AppContainer: ObservableObject {
     }
 }
 
-/// The five bottom-bar destinations. Katalog and Yazarlar stay in the side menu.
+/// The six bottom-bar destinations. Forum, personal library and directories stay in the side menu.
 enum AppTab: Hashable, CaseIterable {
     case home
-    case community
-    case library
+    case catalog
+    case agenda
+    case flow
     case requests
     case profile
 
     init?(route: AppRoute) {
         switch route {
         case .home: self = .home
-        case .forum: self = .community
-        case .library: self = .library
+        case .catalog: self = .catalog
+        case .bookAgenda: self = .agenda
+        case .liveActivity: self = .flow
         case .requests: self = .requests
         case .profile: self = .profile
         default: return nil
@@ -388,8 +392,9 @@ enum AppTab: Hashable, CaseIterable {
     var title: String {
         switch self {
         case .home: L10n.tabHome
-        case .community: L10n.tabCommunity
-        case .library: L10n.tabLibrary
+        case .catalog: L10n.tabCatalog
+        case .agenda: L10n.tabAgenda
+        case .flow: L10n.tabFlow
         case .requests: L10n.tabRequests
         case .profile: L10n.tabProfile
         }
@@ -398,10 +403,22 @@ enum AppTab: Hashable, CaseIterable {
     var systemImage: String {
         switch self {
         case .home: "house.fill"
-        case .community: "bubble.left.and.bubble.right.fill"
-        case .library: "books.vertical.circle.fill"
+        case .catalog: "books.vertical.fill"
+        case .agenda: "text.book.closed.fill"
+        case .flow: "bolt.fill"
         case .requests: "heart.fill"
         case .profile: "person.crop.circle.fill"
+        }
+    }
+
+    var accessibilityIdentifier: String {
+        switch self {
+        case .home: "primary-tab-home"
+        case .catalog: "primary-tab-catalog"
+        case .agenda: "primary-tab-agenda"
+        case .flow: "primary-tab-flow"
+        case .requests: "primary-tab-requests"
+        case .profile: "primary-tab-profile"
         }
     }
 }

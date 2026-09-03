@@ -335,13 +335,15 @@ struct EKScrollOffsetTracker: View {
 
 struct EKCollapsibleHero<Expanded: View, Collapsed: View>: View {
     let progress: CGFloat
+    var expandedHeight: CGFloat = EKCollapsibleHeroMetrics.expandedHeight
+    var collapsedHeight: CGFloat = EKCollapsibleHeroMetrics.collapsedHeight
     @ViewBuilder var expanded: () -> Expanded
     @ViewBuilder var collapsed: () -> Collapsed
 
     var body: some View {
         let clamped = min(max(progress, 0), 1)
-        let height = EKCollapsibleHeroMetrics.expandedHeight
-            - ((EKCollapsibleHeroMetrics.expandedHeight - EKCollapsibleHeroMetrics.collapsedHeight) * clamped)
+        let height = expandedHeight
+            - ((expandedHeight - collapsedHeight) * clamped)
 
         ZStack(alignment: .top) {
             expanded()

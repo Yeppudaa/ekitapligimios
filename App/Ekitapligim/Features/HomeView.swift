@@ -364,7 +364,7 @@ struct HomeView: View {
                         title: L10n.tabForum,
                         subtitle: L10n.homeDiscoveryForumSubtitle,
                         tint: Color(hex: 0x3D75C5)
-                    ) { container.selectedTab = .community }
+                    ) { container.open(route: .forum) }
 
                     discoveryCard(
                         badge: L10n.homeDiscoveryProfileBadge,

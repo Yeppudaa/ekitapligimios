@@ -54,8 +54,7 @@ struct LibraryView: View {
     }
 
     var body: some View {
-        ZStack {
-            Color(hex: 0xF6FAFA).ignoresSafeArea()
+        EKitapligimScreen {
             if container.isSignedIn {
                 ScrollView {
                     LazyVStack(spacing: 14) {
@@ -88,64 +87,51 @@ struct LibraryView: View {
             HStack(spacing: 12) {
                 Image(systemName: "books.vertical.fill")
                     .font(.title2)
-                    .foregroundStyle(Color(hex: 0x16756F))
+                    .foregroundStyle(.white)
                     .frame(width: 48, height: 48)
-                    .background(.white)
-                    .clipShape(RoundedRectangle(cornerRadius: 14, style: .continuous))
-                    .overlay { RoundedRectangle(cornerRadius: 14).stroke(Color(hex: 0xDDE8E8)) }
+                    .background(.white.opacity(0.14), in: RoundedRectangle(cornerRadius: 14, style: .continuous))
+                    .overlay {
+                        RoundedRectangle(cornerRadius: 14, style: .continuous)
+                            .stroke(.white.opacity(0.12))
+                    }
+
                 VStack(alignment: .leading, spacing: 3) {
                     Text(L10n.libraryHeaderTitle)
                         .font(.title3.weight(.heavy))
-                        .foregroundStyle(Color(hex: 0x18343A))
+                        .foregroundStyle(.white)
                     Text(L10n.libraryHeaderSubtitle)
                         .font(.caption)
-                        .foregroundStyle(Color(hex: 0x6C7C80))
+                        .foregroundStyle(.white.opacity(0.72))
                 }
                 Spacer()
-                VStack(spacing: 1) {
-                    Text(items.count, format: .number)
-                        .font(.title3.weight(.heavy))
-                        .foregroundStyle(Color(hex: 0x16756F))
-                    Text(L10n.libraryBookCountLabel)
-                        .font(.caption2)
-                        .foregroundStyle(Color(hex: 0x6C7C80))
-                }
-                .padding(.horizontal, 12)
-                .padding(.vertical, 8)
-                .background(.white, in: RoundedRectangle(cornerRadius: 12, style: .continuous))
-                .overlay {
-                    RoundedRectangle(cornerRadius: 12, style: .continuous)
-                        .stroke(Color(hex: 0xDDE8E8), lineWidth: 1)
-                }
+
+                LibraryHeroMetric(
+                    value: items.count.formatted(.number),
+                    label: L10n.libraryBookCountLabel
+                )
             }
 
             selectedShelfSummary
         }
         .padding(18)
-        .background(
-            LinearGradient(
-                colors: [Color(hex: 0xF4F9FF), Color(hex: 0xECF8F5)],
-                startPoint: .topLeading,
-                endPoint: .bottomTrailing
-            )
-        )
+        .background(EKitapligimPalette.profileBannerGradient)
         .clipShape(RoundedRectangle(cornerRadius: 18, style: .continuous))
-        .overlay { RoundedRectangle(cornerRadius: 18).stroke(Color(hex: 0xDDE8E8)) }
+        .shadow(color: Color(hex: 0x0B343B).opacity(0.22), radius: 16, y: 8)
     }
 
     private var guestPrompt: some View {
         VStack(spacing: 18) {
             Image(systemName: "books.vertical.fill")
                 .font(.system(size: 42, weight: .semibold))
-                .foregroundStyle(Color(hex: 0x16756F))
+                .foregroundStyle(EKitapligimPalette.profileTeal)
                 .frame(width: 88, height: 88)
-                .background(Color(hex: 0xEAF6F4), in: Circle())
+                .background(EKitapligimPalette.profileTealSoft, in: Circle())
             Text(L10n.libraryGuestTitle)
                 .font(.title3.weight(.heavy))
-                .foregroundStyle(Color(hex: 0x18343A))
+                .foregroundStyle(EKitapligimPalette.profileInk)
             Text(L10n.libraryGuestSubtitle)
                 .font(.subheadline)
-                .foregroundStyle(Color(hex: 0x6C7C80))
+                .foregroundStyle(EKitapligimPalette.profileMuted)
                 .multilineTextAlignment(.center)
             Button {
                 showingLogin = true
@@ -164,60 +150,78 @@ struct LibraryView: View {
     }
 
     private var selectedShelfSummary: some View {
-        HStack(spacing: 7) {
-            Text(L10n.librarySelectedShelfLabel)
-                .font(.caption)
-                .foregroundStyle(Color(hex: 0x6C7C80))
+        HStack(spacing: 8) {
+            EKPill(
+                title: selectedTab.title,
+                systemImage: selectedTab.icon,
+                foreground: .white,
+                background: .white.opacity(0.18)
+            )
             Spacer(minLength: 0)
             Text(L10n.librarySelectedShelfBooks(filteredItems.count))
-                .font(.caption.weight(.bold))
-                .foregroundStyle(Color(hex: 0x18343A))
-            Text(EKitapligimFormat.count(filteredItems.count))
-                .font(.system(size: 11, weight: .heavy))
-                .foregroundStyle(Color(hex: 0x16756F))
-                .padding(.horizontal, 8)
-                .padding(.vertical, 4)
-                .background(Color(hex: 0xEAF6F4), in: Capsule())
+                .font(.caption.weight(.semibold))
+                .foregroundStyle(.white.opacity(0.78))
+            EKPill(
+                title: EKitapligimFormat.count(filteredItems.count),
+                foreground: EKitapligimPalette.profileTealDeep,
+                background: .white
+            )
         }
         .padding(.horizontal, 13)
         .padding(.vertical, 10)
-        .background(.white.opacity(0.82), in: RoundedRectangle(cornerRadius: 12, style: .continuous))
+        .background(.white.opacity(0.1), in: RoundedRectangle(cornerRadius: 12, style: .continuous))
+        .overlay {
+            RoundedRectangle(cornerRadius: 12, style: .continuous)
+                .stroke(.white.opacity(0.1))
+        }
     }
 
     private var tabPicker: some View {
         ScrollView(.horizontal, showsIndicators: false) {
             HStack(spacing: 10) {
                 ForEach(LibraryTab.allCases) { tab in
-                    Button { selectedTab = tab } label: {
-                        let selected = selectedTab == tab
+                    let selected = selectedTab == tab
+                    Button {
+                        withAnimation(.spring(response: 0.35, dampingFraction: 0.8)) {
+                            selectedTab = tab
+                        }
+                    } label: {
                         HStack(spacing: 9) {
                             Image(systemName: tab.icon)
-                                .font(.body.weight(.semibold))
-                                .foregroundStyle(selected ? .white : Color(hex: 0x16756F))
-                                .frame(width: 36, height: 36)
+                                .font(.subheadline.weight(.semibold))
+                                .foregroundStyle(selected ? .white : EKitapligimPalette.profileTeal)
+                                .frame(width: 34, height: 34)
                                 .background(
-                                    selected ? Color(hex: 0x16756F) : Color(hex: 0xEAF6F4),
-                                    in: RoundedRectangle(cornerRadius: 11, style: .continuous)
+                                    selected ? EKitapligimPalette.profileTealDeep : EKitapligimPalette.profileTealSoft,
+                                    in: RoundedRectangle(cornerRadius: 10, style: .continuous)
                                 )
                                 .accessibilityHidden(true)
 
                             VStack(alignment: .leading, spacing: 1) {
                                 Text(tab.title)
                                     .font(.caption.weight(.bold))
-                                    .foregroundStyle(Color(hex: 0x18343A))
+                                    .foregroundStyle(EKitapligimPalette.profileInk)
                                 Text(L10n.libraryTabBookCount(tabCount(tab)))
                                     .font(.caption2)
-                                    .foregroundStyle(selected ? Color(hex: 0x16756F) : Color(hex: 0x6C7C80))
+                                    .foregroundStyle(selected ? EKitapligimPalette.profileTealDeep : EKitapligimPalette.profileMuted)
                             }
                         }
-                        .padding(.horizontal, 13)
-                        .frame(height: 64)
-                        .background(selected ? Color(hex: 0xF0FAF8) : .white)
-                        .clipShape(RoundedRectangle(cornerRadius: 16, style: .continuous))
+                        .padding(.horizontal, 12)
+                        .frame(height: 52)
+                        .background(selected ? EKitapligimPalette.profileTealSoft : EKitapligimPalette.paper)
+                        .clipShape(RoundedRectangle(cornerRadius: 14, style: .continuous))
                         .overlay {
-                            RoundedRectangle(cornerRadius: 16)
-                                .stroke(selected ? Color(hex: 0x16756F) : Color(hex: 0xDDE8E8), lineWidth: selected ? 2 : 1)
+                            RoundedRectangle(cornerRadius: 14, style: .continuous)
+                                .stroke(
+                                    selected ? EKitapligimPalette.profileTealDeep : EKitapligimPalette.profileBorder,
+                                    lineWidth: selected ? 1.5 : 1
+                                )
                         }
+                        .shadow(
+                            color: selected ? EKitapligimPalette.profileTeal.opacity(0.18) : .clear,
+                            radius: 8,
+                            y: 3
+                        )
                     }
                     .buttonStyle(.plain)
                     .accessibilityLabel(tab.title)
@@ -229,7 +233,9 @@ struct LibraryView: View {
 
     @ViewBuilder private var content: some View {
         if isLoading {
-            ProgressView(L10n.libraryLoading).tint(Color(hex: 0x16756F)).padding(.top, 60)
+            ProgressView(L10n.libraryLoading)
+                .tint(EKitapligimPalette.profileTeal)
+                .padding(.top, 60)
         } else if let errorMessage {
             ContentUnavailableView(L10n.libraryUnavailableTitle, systemImage: "wifi.exclamationmark", description: Text(errorMessage))
                 .padding(.top, 40)
@@ -257,25 +263,21 @@ struct LibraryView: View {
         VStack(spacing: 16) {
             Image(systemName: selectedTab.icon)
                 .font(.title2)
-                .foregroundStyle(Color(hex: 0x16756F))
+                .foregroundStyle(EKitapligimPalette.profileTeal)
                 .frame(width: 62, height: 62)
-                .background(Color(hex: 0xEAF6F4), in: Circle())
+                .background(EKitapligimPalette.profileTealSoft, in: Circle())
             Text(L10n.libraryEmptyTitle)
                 .font(.headline.weight(.bold))
-                .foregroundStyle(Color(hex: 0x18343A))
+                .foregroundStyle(EKitapligimPalette.profileInk)
             Text(L10n.libraryEmptyDescription)
                 .font(.subheadline)
-                .foregroundStyle(Color(hex: 0x6C7C80))
+                .foregroundStyle(EKitapligimPalette.profileMuted)
                 .multilineTextAlignment(.center)
         }
         .frame(maxWidth: .infinity)
         .padding(.horizontal, 28)
         .padding(.vertical, 30)
-        .background(.white, in: RoundedRectangle(cornerRadius: 18, style: .continuous))
-        .overlay {
-            RoundedRectangle(cornerRadius: 18, style: .continuous)
-                .stroke(Color(hex: 0xDDE8E8))
-        }
+        .ekitapligimCard(radius: 18)
     }
 
     private func items(for tab: LibraryTab) -> [LibraryItemDTO] {
@@ -343,19 +345,53 @@ struct LibraryView: View {
     }
 }
 
+private struct LibraryHeroMetric: View {
+    let value: String
+    let label: String
+
+    var body: some View {
+        VStack(spacing: 2) {
+            Text(value)
+                .font(.title3.weight(.heavy))
+                .foregroundStyle(.white)
+                .lineLimit(1)
+                .minimumScaleFactor(0.75)
+            Text(label)
+                .font(.caption2.weight(.semibold))
+                .foregroundStyle(.white.opacity(0.64))
+                .lineLimit(1)
+        }
+        .padding(.horizontal, 12)
+        .padding(.vertical, 8)
+        .background(.white.opacity(0.1), in: RoundedRectangle(cornerRadius: 12, style: .continuous))
+        .overlay {
+            RoundedRectangle(cornerRadius: 12, style: .continuous)
+                .stroke(.white.opacity(0.08))
+        }
+    }
+}
+
 private struct LibraryReadingProgressBar: View {
     let progress: Int
+
+    private var clampedProgress: Int { min(max(progress, 0), 100) }
 
     var body: some View {
         GeometryReader { geo in
             ZStack(alignment: .leading) {
-                Capsule().fill(Color(hex: 0xE3EEEE))
+                Capsule().fill(EKitapligimPalette.profileBorder.opacity(0.6))
                 Capsule()
-                    .fill(Color(hex: 0x16756F))
-                    .frame(width: geo.size.width * CGFloat(min(max(progress, 0), 100)) / 100)
+                    .fill(
+                        LinearGradient(
+                            colors: [EKitapligimPalette.profileTeal, EKitapligimPalette.profileSuccess],
+                            startPoint: .leading,
+                            endPoint: .trailing
+                        )
+                    )
+                    .frame(width: geo.size.width * CGFloat(clampedProgress) / 100)
             }
         }
-        .frame(height: 7)
+        .frame(height: 6)
     }
 }
 
@@ -374,61 +410,52 @@ private struct LibraryBookCard: View {
     }
 
     var body: some View {
-        HStack(spacing: 16) {
+        HStack(spacing: 14) {
             EKitapligimRemoteCover(urlString: item.coverUrl, accessibilityTitle: item.title)
                 .frame(width: 76, height: 112)
-                .background(Color(hex: 0xEDF4F4))
+                .background(EKitapligimPalette.profileTealSoft)
                 .clipShape(RoundedRectangle(cornerRadius: 12, style: .continuous))
+                .shadow(color: EKitapligimPalette.ink.opacity(0.14), radius: 10, y: 5)
 
             VStack(alignment: .leading, spacing: 5) {
                 Text(item.title.isEmpty ? L10n.commonBookNumber(item.bookId) : item.title)
-                    .font(.title3.weight(.heavy))
-                    .foregroundStyle(Color(hex: 0x18343A))
+                    .font(.headline.weight(.semibold))
+                    .foregroundStyle(EKitapligimPalette.profileInk)
                     .lineLimit(2)
                 Text(item.author.isEmpty ? L10n.libraryAuthorMissing : item.author)
                     .font(.subheadline)
-                    .foregroundStyle(Color(hex: 0x6C7C80))
+                    .foregroundStyle(EKitapligimPalette.profileMuted)
                     .lineLimit(1)
 
                 if !metaText.isEmpty {
-                    HStack(spacing: 6) {
-                        Image(systemName: metaIcon)
-                            .font(.caption.weight(.semibold))
-                            .foregroundStyle(Color(hex: 0x16756F))
-                        Text(metaText)
-                            .font(.subheadline)
-                            .foregroundStyle(Color(hex: 0x6C7C80))
-                            .lineLimit(1)
-                    }
-                    .padding(.top, 7)
+                    EKPill(
+                        title: metaText,
+                        systemImage: metaIcon,
+                        foreground: EKitapligimPalette.profileTealDeep,
+                        background: EKitapligimPalette.profileTealSoft
+                    )
+                    .padding(.top, 4)
                 }
 
                 HStack(spacing: 10) {
                     LibraryReadingProgressBar(progress: item.displayProgressPercent)
                         .accessibilityLabel(L10n.libraryReadingProgressLabel)
                     Text("%\(item.displayProgressPercent)")
-                        .font(.subheadline.weight(.heavy))
-                        .foregroundStyle(Color(hex: 0x16756F))
+                        .font(.caption.weight(.heavy))
+                        .foregroundStyle(EKitapligimPalette.profileTealDeep)
                         .monospacedDigit()
                 }
-                .padding(.top, 7)
+                .padding(.top, 6)
             }
 
             Image(systemName: "chevron.right")
-                .font(.body.weight(.semibold))
-                .foregroundStyle(Color(hex: 0x18343A))
-                .frame(width: 44, height: 44)
-                .background(Color(hex: 0xEAF6F4), in: Circle())
-                .overlay { Circle().stroke(Color(hex: 0xDDE8E8), lineWidth: 1) }
+                .font(.caption)
+                .foregroundStyle(EKitapligimPalette.profileTeal)
                 .accessibilityHidden(true)
         }
         .padding(14)
         .frame(maxWidth: .infinity, alignment: .leading)
-        .background(.white, in: RoundedRectangle(cornerRadius: 18, style: .continuous))
-        .overlay {
-            RoundedRectangle(cornerRadius: 18, style: .continuous)
-                .stroke(Color(hex: 0xDDE8E8), lineWidth: 1)
-        }
+        .ekitapligimCard(radius: 18)
         .contextMenu {
             if let onRemoveDownload {
                 Button(role: .destructive, action: onRemoveDownload) {

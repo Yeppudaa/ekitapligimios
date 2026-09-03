@@ -49,13 +49,70 @@ final class DeepLinkParserTests: XCTestCase {
             parser.parseNotification(appRoute: nil, targetURL: nil, contentID: 42, type: "post"),
             .thread(42)
         )
-        XCTAssertNil(
+        XCTAssertEqual(
             parser.parseNotification(
                 appRoute: nil,
                 targetURL: "https://evil.example/threads/topic.99/",
                 contentID: 42,
                 type: "user"
+            ),
+            .member(42)
+        )
+        XCTAssertNil(
+            parser.parseNotification(
+                appRoute: nil,
+                targetURL: "https://evil.example/threads/topic.99/",
+                contentID: 42,
+                type: "unknown"
             )
+        )
+    }
+
+    func testNotificationOpensVisitorProfileForProfileVisitAlerts() {
+        let parser = DeepLinkParser()
+
+        XCTAssertEqual(
+            parser.parseNotification(
+                appRoute: "notifications",
+                targetURL: nil,
+                contentID: 7,
+                type: "user",
+                action: "profile_visit",
+                actorUserID: 42
+            ),
+            .member(42)
+        )
+        XCTAssertEqual(
+            parser.parseNotification(
+                appRoute: "thread/99",
+                targetURL: nil,
+                contentID: 7,
+                type: "user",
+                action: "following",
+                actorUserID: 42
+            ),
+            .member(42)
+        )
+    }
+
+    func testNotificationRoutesConversationChatAndSocialAlerts() {
+        let parser = DeepLinkParser()
+
+        XCTAssertEqual(
+            parser.parseNotification(appRoute: "conversation/18", targetURL: nil, type: "conversation_message"),
+            .conversation(18)
+        )
+        XCTAssertEqual(
+            parser.parseNotification(appRoute: nil, targetURL: nil, contentID: 3, type: "siropu_chat_room_message"),
+            .chatRoom(3)
+        )
+        XCTAssertEqual(
+            parser.parseNotification(appRoute: nil, targetURL: nil, contentID: 19, type: "ek_social_post"),
+            .bookAgendaPost(19)
+        )
+        XCTAssertEqual(
+            parser.parseNotification(appRoute: "messages", targetURL: nil, type: "conversation_message"),
+            .messages
         )
     }
 }

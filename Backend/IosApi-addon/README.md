@@ -54,6 +54,7 @@ Regenerate routes after MobileApi reference updates:
 - `POST /ios-api/v1/members/{user_id}/block|unblock`
 - `GET|POST /ios-api/v1/me/terms`, `POST /ios-api/v1/me/terms/accept`
 - `POST /ios-api/v1/posts/{post_id}/report`
+- `GET /ios-api/v1/me/notifications`, `GET /ios-api/v1/me/notifications/counts`, `POST /ios-api/v1/me/notifications/{alert_id}/mark`, `POST /ios-api/v1/me/notifications/mark-all` — XenForo site alerts for the signed-in member (requires 1.0.15+)
 - `POST /ios-api/v1/posts/{post_id}/edit` — edit forum post (XenForo Post Editor; requires 1.0.14+)
 - `POST /ios-api/v1/posts/{post_id}/delete` — soft-delete forum post (POST, not HTTP DELETE; requires 1.0.14+)
 - `GET /ios-api/v1/legal/terms`

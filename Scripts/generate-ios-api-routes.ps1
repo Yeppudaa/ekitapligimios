@@ -44,6 +44,9 @@ $iosControllers = @{
     "BookReaderSource" = $true
     "ChatMessages" = $true
     "Conversations" = $true
+    "MeNotifications" = $true
+    "MeNotificationCounts" = $true
+    "MeNotificationMark" = $true
 }
 
 [xml]$source = Get-Content -Raw -LiteralPath $MobileApiRoutesPath

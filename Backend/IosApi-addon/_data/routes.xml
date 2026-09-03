@@ -54,10 +54,10 @@
   <route route_type="public" route_prefix="ios-api" sub_name="me-profile-avatar" format="v1/me/avatar" controller="Ekitapligim\IosApi:MeMedia" action_prefix="avatar" />
   <route route_type="public" route_prefix="ios-api" sub_name="me-profile-banner" format="v1/me/banner" controller="Ekitapligim\IosApi:MeMedia" action_prefix="banner" />
   <route route_type="public" route_prefix="ios-api" sub_name="me-reading-stats" format="v1/me/reading-stats" controller="Ekitapligim\IosApi:MeReadingStats" />
-  <route route_type="public" route_prefix="ios-api" sub_name="me-notification-counts" format="v1/me/notifications/counts" controller="Ekitapligim\MobileApi:MeNotificationCounts" />
-  <route route_type="public" route_prefix="ios-api" sub_name="me-notification-mark" format="v1/me/notifications/:int&lt;alert_id&gt;/mark" controller="Ekitapligim\MobileApi:MeNotificationMark" />
-  <route route_type="public" route_prefix="ios-api" sub_name="me-notification-mark-all" format="v1/me/notifications/mark-all" controller="Ekitapligim\MobileApi:MeNotifications" action_prefix="mark-all" />
-  <route route_type="public" route_prefix="ios-api" sub_name="me-notifications" format="v1/me/notifications" controller="Ekitapligim\MobileApi:MeNotifications" />
+  <route route_type="public" route_prefix="ios-api" sub_name="me-notification-counts" format="v1/me/notifications/counts" controller="Ekitapligim\IosApi:MeNotificationCounts" />
+  <route route_type="public" route_prefix="ios-api" sub_name="me-notification-mark" format="v1/me/notifications/:int&lt;alert_id&gt;/mark" controller="Ekitapligim\IosApi:MeNotificationMark" />
+  <route route_type="public" route_prefix="ios-api" sub_name="me-notification-mark-all" format="v1/me/notifications/mark-all" controller="Ekitapligim\IosApi:MeNotifications" action_prefix="mark-all" />
+  <route route_type="public" route_prefix="ios-api" sub_name="me-notifications" format="v1/me/notifications" controller="Ekitapligim\IosApi:MeNotifications" />
   <route route_type="public" route_prefix="ios-api" sub_name="me-password" format="v1/me/password" controller="Ekitapligim\MobileApi:Me" action_prefix="password" />
   <route route_type="public" route_prefix="ios-api" sub_name="me-subscription" format="v1/me/subscription" controller="Ekitapligim\MobileApi:MeSubscription" />
   <route route_type="public" route_prefix="ios-api" sub_name="me-terms" format="v1/me/terms" controller="Ekitapligim\IosApi:Terms" />

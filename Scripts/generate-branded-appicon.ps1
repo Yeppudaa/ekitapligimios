@@ -1,6 +1,8 @@
 param(
     [Parameter(Mandatory = $true)]
-    [string]$SourcePath
+    [string]$SourcePath,
+
+    [string]$SourceDescription = "User-provided brand artwork"
 )
 
 $ErrorActionPreference = "Stop"
@@ -37,6 +39,7 @@ try {
     foreach ($size in $sizes) {
         Write-OpaqueIcon -Image $image -Size $size -Path (Join-Path $iconSet "appicon-$size.png")
     }
+    $sourceDimensions = "$($image.Width) x $($image.Height)"
 } finally {
     $image.Dispose()
 }
@@ -45,11 +48,11 @@ $hash = (Get-FileHash -LiteralPath $source.Path -Algorithm SHA256).Hash.ToLowerI
 $evidence = @"
 # App Icon Source
 
-- Source: Android brand asset `drawable-nodpi/app_logo_round.png`
-- Source dimensions: 512 x 512
-- Source SHA-256: `$hash`
-- Output: opaque PNGs generated on white using high-quality bicubic scaling
-- Brand approval: required from the Ekitapligim rights holder before App Store submission
+- Source: $SourceDescription
+- Source dimensions: $sourceDimensions
+- Source SHA-256: $hash
+- Output: opaque RGB PNGs generated with high-quality bicubic scaling
+- App Store marketing icon: appicon-1024.png
 "@
 Set-Content -LiteralPath (Join-Path $repoRoot "APP_ICON_SOURCE.md") -Value $evidence -Encoding UTF8
 

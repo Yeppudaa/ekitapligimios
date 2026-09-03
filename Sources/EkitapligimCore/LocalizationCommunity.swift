@@ -40,6 +40,8 @@ public extension L10n {
 
     static var tabAuthors: String { tr("tab.authors", "Yazarlar") }
     static var tabRequests: String { tr("tab.requests", "İstekler") }
+    static var tabAgenda: String { tr("tab.agenda", "Gündem") }
+    static var tabFlow: String { tr("tab.flow", "Akış") }
     static var tabForum: String { tr("tab.forum", "Forum") }
     static var tabProfile: String { tr("tab.profile", "Profil") }
     static var tabCatalogShort: String { tr("tab.catalogShort", "Katalog") }

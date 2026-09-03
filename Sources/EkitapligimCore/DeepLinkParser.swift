@@ -162,23 +162,100 @@ public struct DeepLinkParser: Sendable {
         appRoute: String?,
         targetURL: String?,
         contentID: Int? = nil,
-        type: String? = nil
+        type: String? = nil,
+        action: String? = nil,
+        actorUserID: Int? = nil
     ) -> AppRoute? {
-        if let route = parseNativeRoute(appRoute) { return route }
-        if let targetURL, let route = parse(targetURL) { return route }
-        guard let contentID, contentID > 0 else {
-            return type?.lowercased().hasPrefix("chat") == true ? .chat : nil
+        let normalizedType = (type ?? "").lowercased()
+        let normalizedAction = (action ?? "").lowercased()
+
+        if normalizedAction == "book_request_new" { return .requests }
+
+        if let socialID = Self.socialPostID(type: normalizedType, contentID: contentID), socialID > 0 {
+            return .bookAgendaPost(socialID)
         }
-        switch type?.lowercased() {
+
+        if let route = parseNativeRoute(appRoute),
+           route != .notifications,
+           !Self.shouldIgnoreStaleAppRoute(route, type: normalizedType, action: normalizedAction) {
+            return route
+        }
+        if let targetURL, let route = parse(targetURL) { return route }
+
+        if let member = Self.memberRoute(
+            type: normalizedType,
+            action: normalizedAction,
+            contentID: contentID,
+            actorUserID: actorUserID
+        ) {
+            return member
+        }
+
+        if normalizedType.contains("conversation") {
+            if let contentID, contentID > 0, normalizedType == "conversation" {
+                return .conversation(contentID)
+            }
+            return .messages
+        }
+
+        if normalizedType.contains("chat") || normalizedType.contains("siropu_chat") {
+            if let contentID, contentID > 0 {
+                return .chatRoom(contentID)
+            }
+            return .chat
+        }
+
+        guard let contentID, contentID > 0 else {
+            return normalizedType.hasPrefix("chat") ? .chat : nil
+        }
+        switch normalizedType {
         case "post", "thread", "forum_post":
             return .thread(contentID)
-        case "book_agenda", "social_post", "kitap_gundemi":
+        case "book_agenda", "social_post", "kitap_gundemi", "ek_social_post", "ek_social_comment":
             return .bookAgendaPost(contentID)
         case "chat", "chat_message", "siropu_chat_room_message":
             return .chatRoom(contentID)
+        case "ek_reading_invitation":
+            return .bookDetail(contentID)
         default:
             return nil
         }
+    }
+
+    private static func socialPostID(type: String, contentID: Int?) -> Int? {
+        let isSocial = [
+            "ek_social_post", "ek_social_comment", "social_post", "book_agenda", "kitap_gundemi"
+        ].contains(type) || type.contains("social_post")
+        guard isSocial else { return nil }
+        if type == "ek_social_comment" { return nil }
+        return (contentID ?? 0) > 0 ? contentID : nil
+    }
+
+    private static func shouldIgnoreStaleAppRoute(_ route: AppRoute, type: String, action: String) -> Bool {
+        let isMemberAlert = ["user", "member", "profile_post", "profile_post_comment"].contains(type)
+            || type.contains("profile_visitor")
+            || ["following", "follow", "visit", "profile_view", "profile_visit", "profile_visitor"].contains(action)
+        if !isMemberAlert { return false }
+        switch route {
+        case .thread, .bookDetail: return true
+        default: return false
+        }
+    }
+
+    private static func memberRoute(
+        type: String,
+        action: String,
+        contentID: Int?,
+        actorUserID: Int?
+    ) -> AppRoute? {
+        if action == "book_request_new" { return nil }
+        let isMemberAlert = ["user", "member", "profile_post", "profile_post_comment"].contains(type)
+            || type.contains("profile_visitor")
+            || ["following", "follow", "visit", "profile_view", "profile_visit", "profile_visitor"].contains(action)
+        guard isMemberAlert else { return nil }
+        if let actorUserID, actorUserID > 0 { return .member(actorUserID) }
+        if ["user", "member"].contains(type), let contentID, contentID > 0 { return .member(contentID) }
+        return nil
     }
 
     private static func trailingID(_ value: String) -> Int? {

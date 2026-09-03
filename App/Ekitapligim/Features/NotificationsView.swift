@@ -60,6 +60,7 @@ struct NotificationsView: View {
             }
         }
         .task { await load() }
+        .refreshable { await load() }
     }
 
     private func notificationCountsCard(_ counts: NotificationCountsDTO) -> some View {
@@ -85,6 +86,8 @@ struct NotificationsView: View {
             let page = try await container.notifications.notifications()
             notifications = page.items
             counts = page.counts
+            errorMessage = nil
+            await container.refreshUnreadCounts()
         } catch {
             errorMessage = L10n.notificationsLoadFailed
         }
@@ -101,7 +104,9 @@ struct NotificationsView: View {
             appRoute: notification.appRoute,
             targetURL: notification.targetUrl,
             contentID: notification.contentId,
-            type: notification.type
+            type: notification.type,
+            action: notification.action,
+            actorUserID: notification.actorUserId
         ) else {
             navigationError = L10n.notificationsNoDestination
             return

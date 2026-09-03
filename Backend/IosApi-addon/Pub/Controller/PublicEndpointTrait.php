@@ -3,12 +3,14 @@
 namespace Ekitapligim\IosApi\Pub\Controller;
 
 use Ekitapligim\MobileApi\Service\MobileSession;
+use XF\Api\ErrorMessage;
 use XF\Api\Mvc\Reply\ApiResult;
 use XF\Entity\ResultInterface;
 use XF\Mvc\Entity\AbstractCollection;
 use XF\Mvc\Entity\Entity;
 use XF\Mvc\ParameterBag;
 use XF\Mvc\Reply\AbstractReply;
+use XF\Mvc\Reply\Error;
 use XF\Mvc\RouteMatch;
 
 trait PublicEndpointTrait
@@ -34,6 +36,37 @@ trait PublicEndpointTrait
 			]);
 			$reply->setViewOption('skipDefaultJsonParams', true);
 			$reply->setResponseType('json');
+			return;
+		}
+
+		if ($reply instanceof Error)
+		{
+			$responseCode = $reply->getResponseCode();
+			$errors = [];
+			foreach ($reply->getErrors() AS $error)
+			{
+				if ($error instanceof ErrorMessage)
+				{
+					$errors[] = [
+						'code' => $error->getCode(),
+						'message' => (string) $error->getMessage(),
+						'params' => $error->getParams(),
+					];
+				}
+				else
+				{
+					$errors[] = [
+						'code' => 'unknown_api_error',
+						'message' => (string) $error,
+						'params' => [],
+					];
+				}
+			}
+
+			$reply = $this->view('', '', ['innerContent' => ['errors' => $errors]]);
+			$reply->setViewOption('skipDefaultJsonParams', true);
+			$reply->setResponseType('json');
+			$reply->setResponseCode($responseCode);
 			return;
 		}
 

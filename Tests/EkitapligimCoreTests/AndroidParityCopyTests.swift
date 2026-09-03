@@ -315,4 +315,25 @@ final class AndroidParityCopyTests: XCTestCase {
         XCTAssertEqual(L10n.conversationsNew, "Yeni mesaj")
         XCTAssertEqual(L10n.conversationsSubject, "Konu")
     }
+
+    func testCatalogCopyShowsRealTotalsNotPageSize() {
+        XCTAssertEqual(L10n.catalogHeroTitle, "Kataloğu Keşfet")
+        XCTAssertEqual(L10n.catalogEyebrow, "KATALOG")
+        XCTAssertEqual(L10n.catalogHeroBooksCaption, "kitap")
+        XCTAssertEqual(L10n.catalogHeroBookCount("14.409"), "14.409 kitap")
+        XCTAssertEqual(
+            L10n.catalogHeroSubtitle(category: "Tüm kategoriler", page: 1, lastPage: 734),
+            "Tüm kategoriler · Sayfa 1 / 734"
+        )
+        XCTAssertFalse(
+            L10n.catalogHeroSubtitle(category: "Tüm kategoriler", page: 1, lastPage: 734)
+                .contains("20 kitap")
+        )
+        XCTAssertEqual(L10n.catalogStatTotal, "Toplam")
+        XCTAssertEqual(L10n.catalogStatLoaded, "Yüklenen")
+        XCTAssertEqual(L10n.catalogStatCatalogPage, "Katalog sayfası")
+        XCTAssertEqual(L10n.catalogPagePosition(1, 734), "1 / 734")
+        XCTAssertEqual(L10n.catalogCategoryChip("Roman", countLabel: "3.251"), "Roman  3.251")
+        XCTAssertEqual(L10n.catalogBookPageCount(240), "240 syf")
+    }
 }

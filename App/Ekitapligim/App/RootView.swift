@@ -37,42 +37,29 @@ struct RootView: View {
     }
 
     private var tabs: some View {
-        TabView(selection: $container.selectedTab) {
-            HomeView()
-                .tabItem {
-                    Label(AppTab.home.title, systemImage: AppTab.home.systemImage)
-                        .accessibilityIdentifier("primary-tab-home")
+        VStack(spacing: 0) {
+            Group {
+                switch container.selectedTab {
+                case .home:
+                    HomeView()
+                case .catalog:
+                    NavigationStack { CatalogView() }
+                case .agenda:
+                    NavigationStack { BookAgendaView() }
+                case .flow:
+                    NavigationStack { LiveActivityView() }
+                case .requests:
+                    NavigationStack { BookRequestsView() }
+                case .profile:
+                    NavigationStack { ProfileView() }
                 }
-                .tag(AppTab.home)
+            }
+            .frame(maxWidth: .infinity, maxHeight: .infinity)
 
-            CommunityView()
-                .tabItem {
-                    Label(AppTab.community.title, systemImage: AppTab.community.systemImage)
-                        .accessibilityIdentifier("primary-tab-community")
-                }
-                .tag(AppTab.community)
-
-            NavigationStack { LibraryView() }
-                .tabItem {
-                    Label(AppTab.library.title, systemImage: AppTab.library.systemImage)
-                        .accessibilityIdentifier("primary-tab-library")
-                }
-                .tag(AppTab.library)
-
-            NavigationStack { BookRequestsView() }
-                .tabItem {
-                    Label(AppTab.requests.title, systemImage: AppTab.requests.systemImage)
-                        .accessibilityIdentifier("primary-tab-requests")
-                }
-                .tag(AppTab.requests)
-
-            NavigationStack { ProfileView() }
-                .tabItem {
-                    Label(AppTab.profile.title, systemImage: AppTab.profile.systemImage)
-                        .accessibilityIdentifier("primary-tab-profile")
-                }
-                .badge(container.totalUnread)
-                .tag(AppTab.profile)
+            PrimaryTabBar(
+                selection: $container.selectedTab,
+                profileBadgeCount: container.totalUnread
+            )
         }
         .tint(EKitapligimPalette.teal)
     }
@@ -346,7 +333,9 @@ private struct AppRouteSheet: View {
 
     @ViewBuilder private var routeDestination: some View {
         switch route {
-        case .home, .forum, .requests, .profile:
+        case .forum:
+            CommunityView()
+        case .home, .requests, .profile, .catalog, .bookAgenda, .liveActivity:
             EKEmptyState(
                 title: L10n.commonClose,
                 message: L10n.menuTitle,

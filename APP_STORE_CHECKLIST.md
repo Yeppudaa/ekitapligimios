@@ -7,7 +7,7 @@
 - The review build uses first-party username/email and password authentication only. The incomplete Sign in with Apple client surface and entitlement were removed after App Review reproduced a failure; re-enable it only after a Developer key, server token exchange, signed-device login, and deletion-time revocation are proven end to end.
 - Visible report and block-and-report controls exist on every social UGC card; physical iPhone/iPad evidence and staging verification are still required.
 - Reviewer account must be created on public staging/production.
-- Xcode project generation, signing team, bundle ID, screenshots, and TestFlight validation must be completed on macOS. A branded opaque AppIcon set is generated from the Android brand source; rights-holder visual approval remains required.
+- Xcode project generation, signing team, bundle ID, screenshots, and TestFlight validation must be completed on macOS. A branded opaque AppIcon set is generated from the current user-provided artwork; rights-holder visual approval remains required.
 - Current repository has XcodeGen source scaffolding, not a verified `.xcodeproj` archive.
 
 ## Compliance Notes
