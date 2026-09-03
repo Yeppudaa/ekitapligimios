@@ -48,7 +48,7 @@ ekitap,kitap,pdf,epub,okuyucu,kütüphane,yazar,yayınevi,forum,türkçe
 © Ekitapligim.com. All rights reserved.
 
 ## Review Notes Draft
-GUIDELINE 1.2 RESUBMISSION — v1.0.0 (build 23)
+GUIDELINE 1.2 RESUBMISSION — v1.0.1 (build 24)
 
 - Before Sign In / Create Account: Apple Standard EULA + community rules must be accepted (controls stay disabled until accepted). Accepted terms version is recorded by the server with successful authentication.
 - Visible ellipsis safety menus on UGC: forum topic rows, individual forum posts, book comments, Book Agenda posts/comments, chat messages, private messages, and book requests → Report / Block & Report.
@@ -91,7 +91,7 @@ Hello App Review Team,
 
 Thank you for your review and for the clear guidance under Guideline 1.2 – Safety – User-Generated Content.
 
-We have revised the app and our backend moderation controls, and we are resubmitting a new binary (version 1.0.0, build 23).
+We have revised the app and our backend moderation controls, and we are resubmitting a new binary (version 1.0.1, build 24).
 
 How we address Guideline 1.2:
 
@@ -136,7 +136,7 @@ Ekitapligim Team
 
 ### App Review Information → Notes (short)
 
-Guideline 1.2 resubmission — v1.0.0 (build 23).
+Guideline 1.2 resubmission — v1.0.1 (build 24).
 Before login/register: EULA + community rules must be accepted.
 UGC: Report and Block & Report on forum topics/posts, comments, Book Agenda, chat, messages, and book requests. Member profile Block / Block & Report. Blocking notifies moderators and hides content immediately (client + server).
 Filtering: objectionable terms screened before save (HTTP 422 if rejected).

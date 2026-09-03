@@ -49,7 +49,7 @@
 - [ ] Export compliance answered.
 - [ ] Clean Debug build passed.
 - [ ] Clean Release build passed.
-- [ ] Build 18 (not rejected build 17) archived and uploaded.
+- [ ] Version 1.0.1 build 24 (not the closed 1.0.0 train) archived and uploaded.
 - [ ] `Scripts/validate-workspace.ps1` passed.
 - [ ] `Scripts/ui-accessibility-audit.ps1` passed.
 - [ ] `Scripts/appstore-preflight.ps1` passed with no placeholders.
