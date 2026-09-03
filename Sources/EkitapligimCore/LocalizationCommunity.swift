@@ -455,6 +455,7 @@ public extension L10n {
     static var chatRefresh: String { tr("chat.refresh", "Sohbeti yenile") }
     static var chatTimeNow: String { tr("chat.timeNow", "Şimdi") }
     static var chatEdited: String { tr("chat.edited", " · düzenlendi") }
+    static var chatAnnouncementLabel: String { tr("chat.announcement.label", "Duyuru") }
     static var chatRoleAdmin: String { tr("chat.role.admin", "YÖNETİCİ") }
     static var chatRoleModerator: String { tr("chat.role.moderator", "MODERATÖR") }
     static var chatRolePremium: String { tr("chat.role.premium", "Premium Üye") }
@@ -654,6 +655,13 @@ public extension L10n {
         )
     }
     static var homeRequestCenterAction: String { tr("home.requestCenter.action", "İstek Gönder") }
+    static var homeRequestCenterLatestLabel: String { tr("home.requestCenter.latestLabel", "Son İstek") }
+    static var homeRequestCenterEmpty: String {
+        tr("home.requestCenter.empty", "Henüz kitap isteği yok. Aradığınız kitabı ilk siz önerebilirsiniz.")
+    }
+    static var homeRequestCenterCommunityFeed: String {
+        tr("home.requestCenter.communityFeed", "Topluluk istekleri")
+    }
 
     // MARK: - Kütüphane sekmeleri
 

@@ -82,4 +82,26 @@ class Setup extends AbstractSetup
 	{
 		// Accepts the iOS Google client ID as a valid ID-token audience in addition to web clients.
 	}
+
+	public function upgrade1000020Step1(): void
+	{
+		self::ensureDeviceTokensTable();
+	}
+
+	public static function ensureDeviceTokensTable(): void
+	{
+		$db = \XF::db();
+		$db->query("
+			CREATE TABLE IF NOT EXISTS `xf_ios_device_tokens` (
+				`token_id` INT UNSIGNED NOT NULL AUTO_INCREMENT,
+				`user_id` INT UNSIGNED NOT NULL,
+				`device_token` VARCHAR(255) NOT NULL,
+				`platform` VARCHAR(20) NOT NULL DEFAULT 'ios',
+				`created_at` INT UNSIGNED NOT NULL DEFAULT 0,
+				PRIMARY KEY (`token_id`),
+				UNIQUE KEY `uk_device_token` (`device_token`),
+				KEY `idx_user_id` (`user_id`)
+			) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_general_ci
+		");
+	}
 }

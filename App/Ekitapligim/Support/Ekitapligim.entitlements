@@ -7,5 +7,7 @@
 		<string>applinks:ekitapligim.com</string>
 		<string>applinks:www.ekitapligim.com</string>
 	</array>
+	<key>aps-environment</key>
+	<string>development</string>
 </dict>
 </plist>

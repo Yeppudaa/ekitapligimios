@@ -32,8 +32,13 @@ function Find-TextMatches {
         $selectStringArguments.CaseSensitive = $true
     }
 
+    $rootPath = (Get-Location).Path.TrimEnd([IO.Path]::DirectorySeparatorChar, [IO.Path]::AltDirectorySeparatorChar) + [IO.Path]::DirectorySeparatorChar
     @(Select-String @selectStringArguments | ForEach-Object {
-        $displayPath = [IO.Path]::GetRelativePath((Get-Location).Path, $_.Path)
+        $displayPath = if ($_.Path.StartsWith($rootPath, [StringComparison]::OrdinalIgnoreCase)) {
+            $_.Path.Substring($rootPath.Length)
+        } else {
+            $_.Path
+        }
         "{0}:{1}:{2}" -f $displayPath, $_.LineNumber, $_.Line.Trim()
     })
 }

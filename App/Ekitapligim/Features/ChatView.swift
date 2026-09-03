@@ -283,7 +283,7 @@ struct ChatView: View {
     private var transcript: some View {
         ScrollViewReader { proxy in
             ScrollView {
-                LazyVStack(alignment: .leading, spacing: 10) {
+                LazyVStack(alignment: .leading, spacing: 12) {
                     if isLoadingRooms && rooms.isEmpty {
                         chatLoadingCard(title: L10n.chatRoomsLoading)
                     } else if rooms.isEmpty {
@@ -498,7 +498,8 @@ struct ChatView: View {
         .padding(.horizontal, 14)
         .padding(.top, 10)
         .padding(.bottom, 12)
-        .background(.white)
+        .background(.ultraThinMaterial)
+        .background(Color.white.opacity(0.92))
         .clipShape(
             UnevenRoundedRectangle(
                 topLeadingRadius: 22,
@@ -826,23 +827,45 @@ private struct ChatMessageBubble: View {
     }
 
     private var announcement: some View {
-        HStack(alignment: .top, spacing: 8) {
-            Image(systemName: "sparkles")
+        HStack(alignment: .top, spacing: 10) {
+            Image(systemName: "megaphone.fill")
                 .font(.body.weight(.semibold))
-                .foregroundStyle(EKitapligimPalette.chatAmber)
-            Text(EKitapligimFormat.plainText(message.message))
-                .font(.subheadline)
-                .foregroundStyle(EKitapligimPalette.chatAnnouncementInk)
-                .multilineTextAlignment(.leading)
-                .frame(maxWidth: .infinity, alignment: .leading)
+                .foregroundStyle(.white)
+                .frame(width: 34, height: 34)
+                .background(
+                    LinearGradient(
+                        colors: [EKitapligimPalette.chatAmber, Color(hex: 0xC47E0A)],
+                        startPoint: .topLeading,
+                        endPoint: .bottomTrailing
+                    ),
+                    in: RoundedRectangle(cornerRadius: 10, style: .continuous)
+                )
+            VStack(alignment: .leading, spacing: 4) {
+                Text(L10n.chatAnnouncementLabel)
+                    .font(.caption2.weight(.heavy))
+                    .foregroundStyle(EKitapligimPalette.chatAmber)
+                Text(EKitapligimFormat.plainText(message.message))
+                    .font(.subheadline)
+                    .foregroundStyle(EKitapligimPalette.chatAnnouncementInk)
+                    .multilineTextAlignment(.leading)
+                    .frame(maxWidth: .infinity, alignment: .leading)
+            }
         }
-        .padding(12)
+        .padding(13)
         .frame(maxWidth: .infinity, alignment: .leading)
-        .background(EKitapligimPalette.chatAnnouncement, in: RoundedRectangle(cornerRadius: 12, style: .continuous))
+        .background(
+            LinearGradient(
+                colors: [EKitapligimPalette.chatAnnouncement, Color(hex: 0xFFF0CC)],
+                startPoint: .topLeading,
+                endPoint: .bottomTrailing
+            ),
+            in: RoundedRectangle(cornerRadius: 16, style: .continuous)
+        )
         .overlay {
-            RoundedRectangle(cornerRadius: 12, style: .continuous)
+            RoundedRectangle(cornerRadius: 16, style: .continuous)
                 .stroke(EKitapligimPalette.chatAnnouncementBorder, lineWidth: 1)
         }
+        .shadow(color: EKitapligimPalette.chatAmber.opacity(0.12), radius: 8, y: 3)
     }
 
     private var bubble: some View {
@@ -850,10 +873,16 @@ private struct ChatMessageBubble: View {
             if message.isMine { Spacer(minLength: 40) }
 
             if !message.isMine {
-                EKAvatar(urlString: message.avatarUrl, username: message.username, size: 35)
+                EKAvatar(
+                    urlString: message.avatarUrl,
+                    username: message.username,
+                    size: 36,
+                    background: message.isBot ? EKitapligimPalette.chatBotBubble : EKitapligimPalette.chatTealSoft,
+                    foreground: message.isBot ? Color(hex: 0x95610A) : EKitapligimPalette.chatTeal
+                )
             }
 
-            VStack(alignment: message.isMine ? .trailing : .leading, spacing: 3) {
+            VStack(alignment: message.isMine ? .trailing : .leading, spacing: 4) {
                 if !message.isMine {
                     HStack(spacing: 6) {
                         Text(message.username)
@@ -862,7 +891,10 @@ private struct ChatMessageBubble: View {
                         if let roleBadge {
                             Text(roleBadge)
                                 .font(.system(size: 8, weight: .heavy))
-                                .foregroundStyle(EKitapligimPalette.chatAmber)
+                                .foregroundStyle(.white)
+                                .padding(.horizontal, 6)
+                                .padding(.vertical, 2)
+                                .background(EKitapligimPalette.chatAmber, in: Capsule())
                         }
                     }
                 }
@@ -872,21 +904,28 @@ private struct ChatMessageBubble: View {
                     .foregroundStyle(message.isMine ? .white : EKitapligimPalette.chatInk)
                     .multilineTextAlignment(.leading)
 
-                Text(EKitapligimFormat.clockTime(message.messageDate) + (message.isEdited ? L10n.chatEdited : ""))
-                    .font(.system(size: 10))
+                Text(timestampLabel)
+                    .font(.system(size: 10, weight: .medium))
                     .foregroundStyle(message.isMine ? Color.white.opacity(0.72) : EKitapligimPalette.chatMuted)
                     .frame(maxWidth: .infinity, alignment: .trailing)
             }
-            .padding(.horizontal, 13)
-            .padding(.vertical, 10)
+            .padding(.horizontal, 14)
+            .padding(.vertical, 11)
             .frame(maxWidth: 310, alignment: message.isMine ? .trailing : .leading)
-            .background(bubbleBackground)
+            .background { bubbleBackground }
             .clipShape(chatBubbleShape)
             .overlay {
                 if !message.isMine {
                     chatBubbleShape.stroke(EKitapligimPalette.chatBorder, lineWidth: 1)
                 }
             }
+            .shadow(
+                color: message.isMine
+                    ? EKitapligimPalette.chatTeal.opacity(0.22)
+                    : Color.black.opacity(0.05),
+                radius: message.isMine ? 8 : 4,
+                y: message.isMine ? 4 : 2
+            )
 
             if !message.isMine, let contentID = Int(message.id) {
                 UGCSafetyMenu(
@@ -903,10 +942,27 @@ private struct ChatMessageBubble: View {
         .accessibilityElement(children: .combine)
     }
 
-    private var bubbleBackground: Color {
-        if message.isMine { return EKitapligimPalette.chatTeal }
-        if message.isBot { return EKitapligimPalette.chatBotBubble }
-        return .white
+    private var timestampLabel: String {
+        EKitapligimFormat.relativeTime(message.messageDate) + (message.isEdited ? L10n.chatEdited : "")
+    }
+
+    @ViewBuilder
+    private var bubbleBackground: some View {
+        if message.isMine {
+            LinearGradient(
+                colors: [EKitapligimPalette.chatTeal, Color(hex: 0x046B70)],
+                startPoint: .topLeading,
+                endPoint: .bottomTrailing
+            )
+        } else if message.isBot {
+            LinearGradient(
+                colors: [EKitapligimPalette.chatBotBubble, Color(hex: 0xFFF0D4)],
+                startPoint: .topLeading,
+                endPoint: .bottomTrailing
+            )
+        } else {
+            Color.white
+        }
     }
 
     private var chatBubbleShape: UnevenRoundedRectangle {

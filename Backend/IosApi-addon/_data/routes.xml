@@ -47,6 +47,7 @@
   <route route_type="public" route_prefix="ios-api" sub_name="me" format="v1/me" controller="Ekitapligim\MobileApi:Me" />
   <route route_type="public" route_prefix="ios-api" sub_name="me-blocked-members" format="v1/me/blocked-members" controller="Ekitapligim\IosApi:BlockedMembers" />
   <route route_type="public" route_prefix="ios-api" sub_name="me-comments" format="v1/me/comments" controller="Ekitapligim\MobileApi:MeComments" />
+  <route route_type="public" route_prefix="ios-api" sub_name="me-device-token" format="v1/me/device-token" controller="Ekitapligim\IosApi:MeDeviceToken" />
   <route route_type="public" route_prefix="ios-api" sub_name="me-delete-request" format="v1/me/account-deletion-request" controller="Ekitapligim\IosApi:AccountDeletionRequest" />
   <route route_type="public" route_prefix="ios-api" sub_name="me-email" format="v1/me/email" controller="Ekitapligim\MobileApi:Me" action_prefix="email" />
   <route route_type="public" route_prefix="ios-api" sub_name="me-library" format="v1/me/library" controller="Ekitapligim\MobileApi:MeLibrary" />

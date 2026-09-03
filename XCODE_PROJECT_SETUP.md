@@ -17,15 +17,15 @@ open Ekitapligim.xcodeproj
 - Language: Swift
 - Minimum deployment: iOS 17
 - Bundle identifier:
-  - Development: `com.ekitapligim.app.dev`
-  - Staging: `com.ekitapligim.app.staging`
+  - Development: `com.ekitapligim.app`
+  - Staging: `com.ekitapligim.app`
   - Production: `com.ekitapligim.app`
 
 ## Add Sources
 `project.yml` adds `App/Ekitapligim`, links the local `EkitapligimCore` package, resolves Readium Shared/Streamer/Navigator exactly at `3.9.0`, and resolves GoogleSignIn exactly at `9.2.0`. Use Xcode 16.4 or newer and preserve the generated `Package.resolved` as release evidence.
 
 ## Build Configurations
-Create or map Xcode configurations to:
+`project.yml` maps the target's Xcode configurations through `configFiles` to:
 - `App/Ekitapligim/Config/Development.xcconfig`
 - `App/Ekitapligim/Config/Staging.xcconfig`
 - `App/Ekitapligim/Config/Production.xcconfig`

@@ -86,22 +86,18 @@ struct ForumThreadDetailView: View {
             .safeAreaInset(edge: .bottom, spacing: 0) {
                 if showsPinnedReply {
                     replySection
-                        .padding(12)
-                        .background(.white)
+                        .padding(.horizontal, 12)
+                        .padding(.top, 10)
+                        .padding(.bottom, 12)
+                        .background(.ultraThinMaterial)
+                        .background(Color.white.opacity(0.94))
                         .overlay(alignment: .top) {
-                            Rectangle().fill(EKitapligimPalette.border).frame(height: 1)
+                            Rectangle().fill(EKitapligimPalette.forumBorder).frame(height: 1)
                         }
                         .ekPinnedReplyBar()
                 }
             }
-            .background(
-                LinearGradient(
-                    colors: [Color(hex: 0xFFFCF4), Color(hex: 0xFAF6EC), Color(hex: 0xF5FBFA), .white],
-                    startPoint: .top,
-                    endPoint: .bottom
-                )
-                .ignoresSafeArea()
-            )
+            .forumPageBackground()
         }
         .navigationTitle(thread.title)
         .navigationBarTitleDisplayMode(.inline)
@@ -170,14 +166,18 @@ struct ForumThreadDetailView: View {
         EKCollapsibleHero(progress: heroCollapseProgress) {
             HStack(alignment: .center, spacing: 16) {
                 Image(systemName: "bubble.left.and.bubble.right.fill")
-                    .font(.system(size: 38, weight: .semibold))
-                    .foregroundStyle(Color(hex: 0x087A80))
+                    .font(.system(size: 34, weight: .semibold))
+                    .foregroundStyle(.white)
                     .frame(width: 68, height: 68)
-                    .background(Color(hex: 0xF1F8F7), in: RoundedRectangle(cornerRadius: 12, style: .continuous))
-                    .overlay {
-                        RoundedRectangle(cornerRadius: 12, style: .continuous)
-                            .stroke(Color(hex: 0xD9C79F), lineWidth: 1)
-                    }
+                    .background(
+                        LinearGradient(
+                            colors: [EKitapligimPalette.forumTeal, EKitapligimPalette.forumTealDeep],
+                            startPoint: .topLeading,
+                            endPoint: .bottomTrailing
+                        ),
+                        in: RoundedRectangle(cornerRadius: 14, style: .continuous)
+                    )
+                    .shadow(color: EKitapligimPalette.forumTeal.opacity(0.22), radius: 8, y: 4)
                 VStack(alignment: .leading, spacing: 8) {
                     Text(thread.title)
                         .font(.system(.title3, design: .serif).weight(.heavy))
@@ -202,14 +202,17 @@ struct ForumThreadDetailView: View {
         } collapsed: {
             HStack(spacing: 14) {
                 Image(systemName: "bubble.left.and.bubble.right.fill")
-                    .font(.system(size: 34, weight: .semibold))
-                    .foregroundStyle(Color(hex: 0x087A80))
-                    .frame(width: 58, height: 58)
-                    .background(Color(hex: 0xF1F8F7), in: RoundedRectangle(cornerRadius: 10, style: .continuous))
-                    .overlay {
-                        RoundedRectangle(cornerRadius: 10, style: .continuous)
-                            .stroke(Color(hex: 0xD9C79F), lineWidth: 1)
-                    }
+                    .font(.system(size: 28, weight: .semibold))
+                    .foregroundStyle(.white)
+                    .frame(width: 54, height: 54)
+                    .background(
+                        LinearGradient(
+                            colors: [EKitapligimPalette.forumTeal, EKitapligimPalette.forumTealDeep],
+                            startPoint: .topLeading,
+                            endPoint: .bottomTrailing
+                        ),
+                        in: RoundedRectangle(cornerRadius: 12, style: .continuous)
+                    )
                 VStack(alignment: .leading, spacing: 6) {
                     Text(thread.title)
                         .font(.system(.headline, design: .serif).weight(.heavy))
@@ -239,16 +242,16 @@ struct ForumThreadDetailView: View {
         HStack(spacing: 12) {
             Image(systemName: "person.badge.plus")
                 .font(.body.weight(.semibold))
-                .foregroundStyle(EKitapligimPalette.teal)
-                .frame(width: 36, height: 36)
-                .background(Color(hex: 0xE8F7F7), in: RoundedRectangle(cornerRadius: 8, style: .continuous))
+                .foregroundStyle(EKitapligimPalette.forumTeal)
+                .frame(width: 40, height: 40)
+                .background(EKitapligimPalette.forumTealSoft, in: RoundedRectangle(cornerRadius: 12, style: .continuous))
             VStack(alignment: .leading, spacing: 2) {
                 Text(L10n.forumThreadGuestReplyTitle)
                     .font(.subheadline.weight(.bold))
-                    .foregroundStyle(Color(hex: 0x1E2433))
+                    .foregroundStyle(EKitapligimPalette.forumInk)
                 Text(L10n.forumThreadGuestReplyMessage)
                     .font(.caption)
-                    .foregroundStyle(Color(hex: 0x6E7482))
+                    .foregroundStyle(EKitapligimPalette.forumMuted)
                     .multilineTextAlignment(.leading)
             }
             Spacer(minLength: 0)
@@ -260,12 +263,30 @@ struct ForumThreadDetailView: View {
                     .foregroundStyle(.white)
                     .padding(.horizontal, 12)
                     .padding(.vertical, 9)
-                    .background(EKitapligimPalette.teal, in: RoundedRectangle(cornerRadius: 8, style: .continuous))
+                    .background(
+                        LinearGradient(
+                            colors: [EKitapligimPalette.forumTeal, EKitapligimPalette.forumTealDeep],
+                            startPoint: .leading,
+                            endPoint: .trailing
+                        ),
+                        in: RoundedRectangle(cornerRadius: 10, style: .continuous)
+                    )
             }
             .buttonStyle(.plain)
         }
-        .padding(12)
-        .background(Color(hex: 0xF7F2EA), in: RoundedRectangle(cornerRadius: 8, style: .continuous))
+        .padding(14)
+        .background(
+            LinearGradient(
+                colors: [EKitapligimPalette.forumGoldSoft, .white],
+                startPoint: .topLeading,
+                endPoint: .bottomTrailing
+            ),
+            in: RoundedRectangle(cornerRadius: 14, style: .continuous)
+        )
+        .overlay {
+            RoundedRectangle(cornerRadius: 14, style: .continuous)
+                .stroke(EKitapligimPalette.forumBorder, lineWidth: 1)
+        }
         .contentShape(Rectangle())
         .onTapGesture { showingLogin = true }
     }
@@ -282,11 +303,14 @@ struct ForumThreadDetailView: View {
                 .focused($isReplyFocused)
                 .accessibilityLabel(L10n.forumThreadReplyPlaceholder)
                 .ekPinnedReplyEditor()
-                .padding(10)
+                .padding(12)
                 .background(.white, in: RoundedRectangle(cornerRadius: 16, style: .continuous))
                 .overlay {
                     RoundedRectangle(cornerRadius: 16, style: .continuous)
-                        .stroke(Color(hex: isReplyFocused ? 0x087A80 : 0xD7C59C), lineWidth: 1)
+                        .stroke(
+                            isReplyFocused ? EKitapligimPalette.forumTeal : EKitapligimPalette.forumBorder,
+                            lineWidth: isReplyFocused ? 1.5 : 1
+                        )
                 }
                 .overlay(alignment: .topLeading) {
                     if replyText.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty {
@@ -321,8 +345,12 @@ struct ForumThreadDetailView: View {
                 }
                 .background(
                     (isReplySending || replyText.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty)
-                        ? EKitapligimPalette.teal.opacity(0.45)
-                        : EKitapligimPalette.teal,
+                        ? AnyShapeStyle(EKitapligimPalette.forumTeal.opacity(0.45))
+                        : AnyShapeStyle(LinearGradient(
+                            colors: [EKitapligimPalette.forumTeal, EKitapligimPalette.forumTealDeep],
+                            startPoint: .leading,
+                            endPoint: .trailing
+                        )),
                     in: RoundedRectangle(cornerRadius: 14, style: .continuous)
                 )
                 .disabled(isReplySending || replyText.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty)
@@ -352,55 +380,57 @@ struct ForumThreadDetailView: View {
                 Spacer(minLength: 0)
                 postActions(post)
             }
+            .padding(.horizontal, 16)
+            .padding(.vertical, 14)
+            .background(
+                LinearGradient(
+                    colors: [EKitapligimPalette.forumTealSoft.opacity(0.55), Color(hex: 0xFFFCF6)],
+                    startPoint: .topLeading,
+                    endPoint: .bottomTrailing
+                )
+            )
 
-            Rectangle()
-                .fill(Color(hex: 0xE9D9BA))
-                .frame(height: 1.2)
-                .padding(.vertical, 14)
-
-            ForumMessageBody(message: post.message)
-            postImages(post)
-            postOwnActions(post)
-
+            VStack(alignment: .leading, spacing: 14) {
+                ForumMessageBody(message: post.message)
+                postImages(post)
+                postOwnActions(post)
+            }
+            .padding(.horizontal, 16)
+            .padding(.vertical, 16)
         }
-        .padding(16)
         .frame(maxWidth: .infinity, alignment: .leading)
-        .background(Color.white.opacity(0.99), in: RoundedRectangle(cornerRadius: 12, style: .continuous))
+        .background(.white, in: RoundedRectangle(cornerRadius: 18, style: .continuous))
+        .overlay {
+            RoundedRectangle(cornerRadius: 18, style: .continuous)
+                .stroke(EKitapligimPalette.forumBorder, lineWidth: 1)
+        }
+        .shadow(color: Color.black.opacity(0.04), radius: 10, y: 4)
     }
 
     private func postAuthorHeader(_ post: ForumPostDTO) -> some View {
-        HStack(spacing: 14) {
-            ZStack {
-                LinearGradient(
-                    colors: [Color(hex: 0xFFF7EA), Color(hex: 0xF5EDDC)],
-                    startPoint: .top,
-                    endPoint: .bottom
-                )
-                EKAvatar(
-                    urlString: post.avatarUrl,
-                    username: ForumMessageFormatting.displayUsername(post.username),
-                    size: 58,
-                    cornerRadius: 12,
-                    background: Color.clear,
-                    foreground: Color(hex: 0x087A80)
-                )
-            }
-            .frame(width: 58, height: 58)
-            .clipShape(RoundedRectangle(cornerRadius: 12, style: .continuous))
+        HStack(spacing: 12) {
+            EKAvatar(
+                urlString: post.avatarUrl,
+                username: ForumMessageFormatting.displayUsername(post.username),
+                size: 48,
+                cornerRadius: 14,
+                background: EKitapligimPalette.forumTealSoft,
+                foreground: EKitapligimPalette.forumTeal
+            )
             .overlay {
-                RoundedRectangle(cornerRadius: 12, style: .continuous)
-                    .stroke(Color(hex: 0xF5EDDC), lineWidth: 1)
+                RoundedRectangle(cornerRadius: 14, style: .continuous)
+                    .stroke(EKitapligimPalette.forumBorder, lineWidth: 0.75)
             }
             VStack(alignment: .leading, spacing: 4) {
                 HStack(spacing: 6) {
                     Text(ForumMessageFormatting.displayUsername(post.username))
-                        .font(.system(.title3, design: .serif).weight(.bold))
-                        .foregroundStyle(Color(hex: 0x0E1B2B))
+                        .font(.subheadline.weight(.heavy))
+                        .foregroundStyle(EKitapligimPalette.forumInk)
                         .lineLimit(1)
                     if post.isAdmin == true {
                         EKPill(title: L10n.chatRoleAdmin, foreground: .white, background: EKitapligimPalette.danger)
                     } else if post.isModerator == true {
-                        EKPill(title: L10n.chatRoleModerator, foreground: .white, background: EKitapligimPalette.teal)
+                        EKPill(title: L10n.chatRoleModerator, foreground: .white, background: EKitapligimPalette.forumTeal)
                     } else if post.isPremium == true {
                         EKPill(
                             title: L10n.chatRolePremium,
@@ -412,7 +442,7 @@ struct ForumThreadDetailView: View {
                 if post.postDate > 0 {
                     Text(EKitapligimFormat.relativeTime(post.postDate))
                         .font(.caption)
-                        .foregroundStyle(Color(hex: 0x687385))
+                        .foregroundStyle(EKitapligimPalette.forumMuted)
                 }
             }
         }
@@ -515,8 +545,12 @@ struct ForumThreadDetailView: View {
             }
             .frame(maxWidth: .infinity)
             .frame(minHeight: 120, maxHeight: 360)
-            .clipShape(RoundedRectangle(cornerRadius: 8, style: .continuous))
-            .background(Color(hex: 0xF2F4F7), in: RoundedRectangle(cornerRadius: 8, style: .continuous))
+            .clipShape(RoundedRectangle(cornerRadius: 12, style: .continuous))
+            .overlay {
+                RoundedRectangle(cornerRadius: 12, style: .continuous)
+                    .stroke(EKitapligimPalette.forumBorder, lineWidth: 1)
+            }
+            .shadow(color: Color.black.opacity(0.04), radius: 6, y: 3)
             .accessibilityLabel(L10n.forumThreadPostImage)
         }
     }

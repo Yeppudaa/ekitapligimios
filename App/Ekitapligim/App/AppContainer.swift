@@ -68,6 +68,7 @@ final class AppContainer: ObservableObject {
     let bookAgenda: BookAgendaRepository
     let chat: ChatRepository
     let liveActivity: LiveActivityRepository
+    let pushManager: PushNotificationManager
 
     init() {
         let apiURL = Bundle.main.urlValue(for: "EKITAPLIGIM_API_BASE_URL")
@@ -107,6 +108,10 @@ final class AppContainer: ObservableObject {
         self.bookAgenda = BookAgendaRepository(apiClient: apiClient)
         self.chat = ChatRepository(apiClient: apiClient)
         self.liveActivity = LiveActivityRepository(apiClient: apiClient)
+        self.pushManager = PushNotificationManager(apiClient: apiClient)
+        self.pushManager.setRouteHandler { [weak self] route in
+            self?.open(route: route)
+        }
         self.storeKit.entitlementDidChange = { [weak self] in
             await self?.refreshPremiumStatus()
         }
@@ -124,6 +129,7 @@ final class AppContainer: ObservableObject {
                 startUnreadPolling()
                 startPresencePolling()
                 await touchPresence()
+                await pushManager.requestPermissionAndRegister()
             }
         } catch {
             authState = .signedOut
@@ -382,6 +388,7 @@ final class AppContainer: ObservableObject {
         startUnreadPolling()
         startPresencePolling()
         await touchPresence()
+        await pushManager.requestPermissionAndRegister()
     }
 
     func logout() async {
@@ -390,6 +397,7 @@ final class AppContainer: ObservableObject {
     }
 
     private func clearLocalSession() async {
+        await pushManager.unregisterToken()
         storeKit.stopObservingTransactions()
         downloadManager.removeAllDownloads()
         try? await tokenStore.clear()

@@ -355,7 +355,7 @@ private struct BookRequestRow: View {
 
     private var bookInfo: some View {
         HStack(alignment: .center, spacing: 18) {
-            BookRequestCover(title: item.title, author: item.author, seed: item.id + item.title)
+            EKBookRequestCover(title: item.title, author: item.author, seed: item.id + item.title)
             VStack(alignment: .leading, spacing: 6) {
                 Text(item.title)
                     .font(.title3.weight(.heavy))
@@ -372,7 +372,7 @@ private struct BookRequestRow: View {
                         .foregroundStyle(Color(hex: 0x697386))
                         .lineLimit(1)
                 }
-                BookRequestStatusPill(status: item.status, showsBookHint: item.fulfilledBookID != nil)
+                EKBookRequestStatusPill(status: item.status, showsBookHint: item.fulfilledBookID != nil)
             }
         }
     }
@@ -398,96 +398,6 @@ private struct BookRequestRow: View {
                 .foregroundStyle(Color(hex: 0x697386))
                 .lineLimit(1)
         }
-    }
-}
-
-private struct BookRequestStatusPill: View {
-    let status: String
-    var showsBookHint: Bool = false
-
-    private var tone: Color {
-        switch status.uppercased() {
-        case "ACQUIRED": Color(hex: 0x07968E)
-        case "REJECTED": Color(hex: 0xD34B4B)
-        default: Color(hex: 0x3C73E8)
-        }
-    }
-
-    var body: some View {
-        HStack(spacing: 6) {
-            Image(systemName: iconName)
-                .font(.system(size: 15, weight: .bold))
-            Text(L10n.bookRequestsStatus(status))
-                .font(.subheadline.weight(.bold))
-                .lineLimit(1)
-            if showsBookHint {
-                Image(systemName: "chevron.right")
-                    .font(.caption.weight(.bold))
-            }
-        }
-        .foregroundStyle(tone)
-        .padding(.horizontal, 10)
-        .padding(.vertical, 5)
-        .background(tone.opacity(0.14))
-        .clipShape(RoundedRectangle(cornerRadius: 8, style: .continuous))
-    }
-
-    private var iconName: String {
-        switch status.uppercased() {
-        case "ACQUIRED": "checkmark.circle.fill"
-        case "REJECTED": "xmark.circle.fill"
-        default: "circle.fill"
-        }
-    }
-}
-
-private struct BookRequestCover: View {
-    let title: String
-    let author: String
-    let seed: String
-
-    private static let palettes: [(Color, Color)] = [
-        (Color(hex: 0xE9D2A0), Color(hex: 0x9D7444)),
-        (Color(hex: 0x7A1E1E), Color(hex: 0x2B1012)),
-        (Color(hex: 0x8FB2BE), Color(hex: 0x183140)),
-        (Color(hex: 0x102D5A), Color(hex: 0x051326)),
-        (Color(hex: 0xE5ECE9), Color(hex: 0x8A948D))
-    ]
-
-    var body: some View {
-        let palette = Self.palettes[abs(seed.hashValue) % Self.palettes.count]
-        ZStack {
-            RoundedRectangle(cornerRadius: 8, style: .continuous)
-                .fill(LinearGradient(colors: [palette.0, palette.1], startPoint: .top, endPoint: .bottom))
-            Canvas { context, size in
-                let glowRect = CGRect(
-                    x: size.width * 0.28,
-                    y: -size.height * 0.32,
-                    width: size.width,
-                    height: size.width
-                )
-                context.fill(Path(ellipseIn: glowRect), with: .color(.white.opacity(0.13)))
-                var highlight = Path()
-                highlight.move(to: CGPoint(x: 0, y: size.height * 0.72))
-                highlight.addLine(to: CGPoint(x: size.width, y: size.height * 0.52))
-                context.stroke(highlight, with: .color(.white.opacity(0.18)), lineWidth: 1)
-            }
-            .allowsHitTesting(false)
-            VStack(spacing: 8) {
-                Text(String(title.uppercased().prefix(38)))
-                    .font(.system(.subheadline, design: .serif).weight(.heavy))
-                    .foregroundStyle(.white.opacity(0.94))
-                    .multilineTextAlignment(.center)
-                    .lineLimit(4)
-                Spacer(minLength: 0)
-                Text(String(author.uppercased().prefix(20)))
-                    .font(.caption.weight(.bold))
-                    .foregroundStyle(.white.opacity(0.80))
-                    .lineLimit(1)
-            }
-            .padding(8)
-        }
-        .frame(width: 82, height: 116)
     }
 }
 

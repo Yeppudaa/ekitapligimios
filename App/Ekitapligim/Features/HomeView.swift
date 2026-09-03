@@ -15,6 +15,7 @@ struct HomeView: View {
     @State private var chatRoom: ChatRoomDTO?
     @State private var chatPreview: [ChatMessageDTO] = []
     @State private var chatNewestID: String?
+    @State private var bookRequestPreview: [BookRequestDTO] = []
     @State private var isLoading = true
     @State private var errorMessage: String?
 
@@ -478,51 +479,19 @@ struct HomeView: View {
     // MARK: - Sohbet önizlemesi
 
     @ViewBuilder private var chatPreviewCard: some View {
-        Button { container.open(route: .chat) } label: {
-            VStack(alignment: .leading, spacing: 10) {
-                HStack {
-                    VStack(alignment: .leading, spacing: 2) {
-                        Text(chatRoom?.name ?? L10n.menuChat)
-                            .font(.subheadline.weight(.heavy))
-                            .foregroundStyle(EKitapligimPalette.ink)
-                        Text(chatRoom?.description ?? L10n.homeChatCardSubtitle)
-                            .font(.caption)
-                            .foregroundStyle(EKitapligimPalette.muted)
-                            .lineLimit(1)
-                    }
-                    Spacer()
-                    EKPill(title: L10n.chatLiveBadge, foreground: EKitapligimPalette.liveBadgeInk, background: EKitapligimPalette.liveBadgeBackground)
-                }
-
-                if chatPreview.isEmpty {
-                    Text(L10n.homeChatCardEmpty)
-                        .font(.caption)
-                        .foregroundStyle(EKitapligimPalette.muted)
-                } else {
-                    ForEach(Array(chatPreview.suffix(2))) { message in
-                        Text(message.message)
-                            .font(.caption)
-                            .foregroundStyle(EKitapligimPalette.ink)
-                            .lineLimit(1)
-                    }
-                }
-
-                HStack {
-                    if let room = chatRoom, room.userCount > 0 {
-                        Text(L10n.chatOnlineCount(room.userCount))
-                            .font(.caption2.weight(.bold))
-                            .foregroundStyle(EKitapligimPalette.tealDark)
-                    }
-                    Spacer()
-                    Text(L10n.homeChatCardAction)
-                        .font(.caption.weight(.bold))
-                        .foregroundStyle(EKitapligimPalette.tealDark)
-                }
-            }
-            .padding(16)
-            .ekitapligimCard()
+        EKChatHomePreviewCard(
+            roomName: chatRoom?.name ?? L10n.menuChat,
+            roomDescription: {
+                let trimmed = chatRoom?.description.trimmingCharacters(in: .whitespacesAndNewlines) ?? ""
+                return trimmed.isEmpty ? L10n.homeChatCardSubtitle : trimmed
+            }(),
+            onlineCount: chatRoom?.userCount ?? 0,
+            messages: chatPreview,
+            emptyMessage: L10n.homeChatCardEmpty,
+            actionTitle: L10n.homeChatCardAction
+        ) {
+            container.open(route: .chat)
         }
-        .buttonStyle(.plain)
         .padding(.horizontal, 16)
     }
 
@@ -665,39 +634,17 @@ struct HomeView: View {
     // MARK: - Kitap istek merkezi
 
     private var requestCenterCard: some View {
-        Button { container.open(route: .requests) } label: {
-            HStack(spacing: 14) {
-                Image(systemName: "heart.text.square.fill")
-                    .accessibilityHidden(true)
-                    .font(.title2)
-                    .foregroundStyle(EKitapligimPalette.gold)
-                    .frame(width: 48, height: 48)
-                    .background(EKitapligimPalette.amberSoft)
-                    .clipShape(RoundedRectangle(cornerRadius: 14, style: .continuous))
-                VStack(alignment: .leading, spacing: 4) {
-                    Text(L10n.homeRequestCenterTitle)
-                        .font(.headline.weight(.heavy))
-                        .foregroundStyle(EKitapligimPalette.ink)
-                    Text(L10n.homeRequestCenterSubtitle)
-                        .font(.caption)
-                        .foregroundStyle(EKitapligimPalette.muted)
-                        .lineLimit(2)
-                }
-                Spacer()
-                Text(L10n.homeRequestCenterAction)
-                    .font(.caption.weight(.bold))
-                    .foregroundStyle(.white)
-                    .padding(.horizontal, 12)
-                    .padding(.vertical, 8)
-                    .background(EKitapligimPalette.profileGoldDeep)
-                    .clipShape(RoundedRectangle(cornerRadius: 10, style: .continuous))
-            }
-            .padding(16)
-            .ekitapligimCard()
+        EKBookRequestHomePreviewCard(
+            requests: bookRequestPreview,
+            title: L10n.homeRequestCenterTitle,
+            subtitle: L10n.homeRequestCenterSubtitle,
+            emptyMessage: L10n.homeRequestCenterEmpty,
+            actionTitle: L10n.homeRequestCenterAction
+        ) {
+            container.open(route: .requests)
         }
-        .buttonStyle(.plain)
-        .accessibilityLabel(L10n.homeRequestCenterTitle)
         .padding(.horizontal, 16)
+        .accessibilityLabel(L10n.homeRequestCenterTitle)
     }
 
     // MARK: - Veri
@@ -734,6 +681,18 @@ struct HomeView: View {
         }
 
         await loadChatPreview(reset: true)
+        await loadBookRequestPreview()
+    }
+
+    private func loadBookRequestPreview() async {
+        guard let page = try? await container.bookRequests.requests() else {
+            bookRequestPreview = []
+            return
+        }
+        bookRequestPreview = page.items.filter { item in
+            guard let userID = item.userId else { return true }
+            return !container.blockedUserIDs.contains(userID)
+        }.prefix(2).map { $0 }
     }
 
     private func load() async {

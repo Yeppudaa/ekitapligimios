@@ -123,6 +123,27 @@ enum EKitapligimPalette {
     static let successSoft = Color(hex: 0xE8F7F1)
     static let successInk = Color(hex: 0x16705D)
     static let danger = Color(hex: 0xB3261E)
+
+    // MARK: Forum
+
+    static let forumInk = Color(hex: 0x0E1B2B)
+    static let forumMuted = Color(hex: 0x687385)
+    static let forumTeal = Color(hex: 0x087A80)
+    static let forumTealDeep = Color(hex: 0x06656A)
+    static let forumTealSoft = Color(hex: 0xEDF7F5)
+    static let forumGold = Color(hex: 0xCF8A18)
+    static let forumGoldSoft = Color(hex: 0xF7F4EA)
+    static let forumBorder = Color(hex: 0xE1ECEA)
+    static let forumDivider = Color(hex: 0xE9D9BA)
+    static let forumBlue = Color(hex: 0x3D75C5)
+    static let forumBlueSoft = Color(hex: 0xEEF4FF)
+    static let forumSurface = Color(hex: 0xFFFCF4)
+
+    static let forumPageGradient = LinearGradient(
+        colors: [Color(hex: 0xFFFCF4), Color(hex: 0xFAF6EC), Color(hex: 0xF5FBFA), .white],
+        startPoint: .top,
+        endPoint: .bottom
+    )
 }
 
 extension Color {

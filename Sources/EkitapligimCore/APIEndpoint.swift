@@ -330,6 +330,24 @@ public extension APIEndpoint {
             requiresAuthentication: true
         )
     }
+    static func registerDeviceToken(_ token: String) -> APIEndpoint {
+        APIEndpoint(
+            method: .post,
+            path: "me/device-token",
+            body: .form(["device_token": token, "platform": "ios"]),
+            requiresAuthentication: true
+        )
+    }
+
+    static func unregisterDeviceToken(_ token: String) -> APIEndpoint {
+        APIEndpoint(
+            method: .delete,
+            path: "me/device-token",
+            body: .form(["device_token": token]),
+            requiresAuthentication: true
+        )
+    }
+
     static let notifications = APIEndpoint(method: .get, path: "me/notifications", requiresAuthentication: true)
     static let notificationCounts = APIEndpoint(method: .get, path: "me/notifications/counts", requiresAuthentication: true)
     static let termsStatus = APIEndpoint(method: .get, path: "me/terms", requiresAuthentication: true)

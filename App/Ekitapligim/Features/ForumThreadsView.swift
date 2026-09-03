@@ -37,30 +37,45 @@ struct ForumThreadsView: View {
                         Task { await load(reset: true) }
                     }
                 } else if threads.isEmpty {
-                    VStack(spacing: 0) {
+                    VStack(spacing: 16) {
                         Image(systemName: "text.bubble.fill")
-                            .font(.system(size: 48))
-                            .foregroundStyle(.primary)
-                        Spacer().frame(height: 12)
+                            .font(.system(size: 44, weight: .semibold))
+                            .foregroundStyle(.white)
+                            .frame(width: 78, height: 78)
+                            .background(
+                                LinearGradient(
+                                    colors: [EKitapligimPalette.forumTeal, EKitapligimPalette.forumTealDeep],
+                                    startPoint: .topLeading,
+                                    endPoint: .bottomTrailing
+                                ),
+                                in: RoundedRectangle(cornerRadius: 22, style: .continuous)
+                            )
+                            .shadow(color: EKitapligimPalette.forumTeal.opacity(0.25), radius: 12, y: 6)
                         Text(L10n.forumThreadsEmptyTitle)
-                            .font(.title3.weight(.semibold))
+                            .font(.title3.weight(.heavy))
+                            .foregroundStyle(EKitapligimPalette.forumInk)
                             .multilineTextAlignment(.center)
-                        Spacer().frame(height: 8)
                         Text(L10n.forumThreadsEmptyDescription)
                             .font(.subheadline)
-                            .foregroundStyle(.primary.opacity(0.7))
+                            .foregroundStyle(EKitapligimPalette.forumMuted)
                             .multilineTextAlignment(.center)
-                        Spacer().frame(height: 16)
                         Button(L10n.forumThreadsCreateDialogTitle) {
                             showCreateSheet = true
                         }
                         .font(.subheadline.weight(.bold))
                         .foregroundStyle(.white)
-                        .padding(.horizontal, 18)
-                        .padding(.vertical, 10)
-                        .background(EKitapligimPalette.teal, in: RoundedRectangle(cornerRadius: 12))
+                        .padding(.horizontal, 20)
+                        .padding(.vertical, 12)
+                        .background(
+                            LinearGradient(
+                                colors: [EKitapligimPalette.forumTeal, EKitapligimPalette.forumTealDeep],
+                                startPoint: .leading,
+                                endPoint: .trailing
+                            ),
+                            in: RoundedRectangle(cornerRadius: 14, style: .continuous)
+                        )
                     }
-                    .padding(24)
+                    .padding(28)
                     .frame(maxWidth: .infinity, maxHeight: .infinity)
                 } else {
                     ScrollView {
@@ -84,7 +99,7 @@ struct ForumThreadsView: View {
                                     NavigationLink {
                                         ForumThreadDetailView(thread: thread)
                                     } label: {
-                                        ForumThreadCard(thread: thread)
+                                        EKForumThreadRow(thread: thread)
                                     }
                                     .buttonStyle(.plain)
                                     if let firstPostID = thread.firstPostId {
@@ -117,14 +132,7 @@ struct ForumThreadsView: View {
                 }
             }
             .frame(maxWidth: .infinity, maxHeight: .infinity)
-            .background(
-                LinearGradient(
-                    colors: [Color(hex: 0xFFFCF4), Color(hex: 0xFAF6EC), Color(hex: 0xF5FBFA), .white],
-                    startPoint: .top,
-                    endPoint: .bottom
-                )
-                .ignoresSafeArea()
-            )
+            .forumPageBackground()
         }
         .navigationTitle(forum.title)
         .toolbar {
@@ -170,13 +178,17 @@ struct ForumThreadsView: View {
             HStack(alignment: .center, spacing: 12) {
                 Image(systemName: "text.bubble.fill")
                     .font(.title3)
-                    .foregroundStyle(EKitapligimPalette.teal)
+                    .foregroundStyle(.white)
                     .frame(width: 52, height: 52)
-                    .background(Color(hex: 0xF1F8F7), in: RoundedRectangle(cornerRadius: 13, style: .continuous))
-                    .overlay {
-                        RoundedRectangle(cornerRadius: 13, style: .continuous)
-                            .stroke(Color(hex: 0xD9C79F), lineWidth: 1)
-                    }
+                    .background(
+                        LinearGradient(
+                            colors: [EKitapligimPalette.forumTeal, EKitapligimPalette.forumTealDeep],
+                            startPoint: .topLeading,
+                            endPoint: .bottomTrailing
+                        ),
+                        in: RoundedRectangle(cornerRadius: 13, style: .continuous)
+                    )
+                    .shadow(color: EKitapligimPalette.forumTeal.opacity(0.22), radius: 6, y: 3)
 
                 VStack(alignment: .leading, spacing: 6) {
                     Text(forum.title)
@@ -209,7 +221,14 @@ struct ForumThreadsView: View {
                     .foregroundStyle(.white)
                     .padding(.horizontal, 12)
                     .padding(.vertical, 8)
-                    .background(EKitapligimPalette.teal, in: RoundedRectangle(cornerRadius: 12, style: .continuous))
+                    .background(
+                        LinearGradient(
+                            colors: [EKitapligimPalette.forumTeal, EKitapligimPalette.forumTealDeep],
+                            startPoint: .leading,
+                            endPoint: .trailing
+                        ),
+                        in: RoundedRectangle(cornerRadius: 12, style: .continuous)
+                    )
                 }
                 .buttonStyle(.plain)
                 .accessibilityLabel(L10n.forumThreadsCreate)
@@ -330,91 +349,6 @@ struct ForumThreadsView: View {
 }
 
 @MainActor
-private struct ForumThreadCard: View {
-    let thread: ForumThreadDTO
-
-    private var displayUsername: String {
-        ForumMessageFormatting.displayUsername(thread.username)
-    }
-
-    private var initial: String {
-        String(displayUsername.prefix(1)).uppercased()
-    }
-
-    var body: some View {
-        HStack(alignment: .center, spacing: 11) {
-            Text(initial)
-                .font(.system(.title3, design: .serif).weight(.heavy))
-                .foregroundStyle(Color(hex: 0x087A80))
-                .frame(width: 46, height: 46)
-                .background(
-                    LinearGradient(
-                        colors: [Color(hex: 0xEDF7F5), Color(hex: 0xFFF8EA)],
-                        startPoint: .top,
-                        endPoint: .bottom
-                    ),
-                    in: RoundedRectangle(cornerRadius: 13, style: .continuous)
-                )
-
-            VStack(alignment: .leading, spacing: 5) {
-                HStack(alignment: .center, spacing: 5) {
-                    if thread.isSticky {
-                        Image(systemName: "pin.fill")
-                            .font(.system(size: 15))
-                            .foregroundStyle(Color(hex: 0xCF8A18))
-                            .accessibilityLabel(L10n.forumThreadsSticky)
-                    }
-                    Text(thread.title)
-                        .font(.system(.headline, design: .serif).weight(.bold))
-                        .foregroundStyle(Color(hex: 0x0E1B2B))
-                        .lineLimit(2)
-                        .multilineTextAlignment(.leading)
-                        .frame(maxWidth: .infinity, alignment: .leading)
-                }
-                HStack(spacing: 6) {
-                    Text(displayUsername)
-                        .font(.caption.weight(.medium))
-                        .foregroundStyle(Color(hex: 0x687385))
-                        .lineLimit(1)
-                    Spacer(minLength: 4)
-                    metricPill(systemImage: "bubble.left", value: thread.replyCount)
-                    metricPill(systemImage: "eye", value: thread.viewCount)
-                }
-            }
-
-            Image(systemName: "chevron.right")
-                .font(.body.weight(.semibold))
-                .foregroundStyle(Color(hex: 0x87939D))
-        }
-        .padding(.horizontal, 11)
-        .padding(.vertical, 10)
-        .frame(maxWidth: .infinity, alignment: .leading)
-        .background(Color.white.opacity(0.99), in: RoundedRectangle(cornerRadius: 14, style: .continuous))
-        .overlay {
-            RoundedRectangle(cornerRadius: 14, style: .continuous)
-                .stroke(Color(hex: 0xE1ECEA), lineWidth: 1)
-        }
-    }
-
-    private func metricPill(systemImage: String, value: Int) -> some View {
-        HStack(spacing: 4) {
-            Image(systemName: systemImage)
-                .font(.system(size: 13, weight: .semibold))
-            Text("\(value)")
-                .font(.system(size: 10, weight: .bold))
-        }
-        .foregroundStyle(Color(hex: 0x087A80))
-        .padding(.horizontal, 7)
-        .padding(.vertical, 3)
-        .background(Color(hex: 0xF7F4EA), in: RoundedRectangle(cornerRadius: 10, style: .continuous))
-        .overlay {
-            RoundedRectangle(cornerRadius: 10, style: .continuous)
-                .stroke(Color(hex: 0xE8E2D2), lineWidth: 1)
-        }
-    }
-}
-
-@MainActor
 private struct ForumThreadCreateView: View {
     @Environment(\.dismiss) private var dismiss
     let isSubmitting: Bool
@@ -430,34 +364,64 @@ private struct ForumThreadCreateView: View {
     }
 
     var body: some View {
-        VStack(alignment: .leading, spacing: 14) {
-            Text(L10n.forumThreadsCreateDialogTitle)
-                .font(.title3.weight(.bold))
-                .frame(maxWidth: .infinity, alignment: .leading)
-            TextField(L10n.forumThreadsCreateTitlePlaceholder, text: $title)
-                .padding(12)
-                .background(Color(hex: 0xF7F2EA), in: RoundedRectangle(cornerRadius: 12, style: .continuous))
-                .textInputAutocapitalization(.sentences)
-            TextEditor(text: $message)
-                .accessibilityLabel(L10n.forumThreadsCreateMessageSection)
-                .frame(minHeight: 120)
-                .padding(8)
-                .background(Color(hex: 0xF7F2EA), in: RoundedRectangle(cornerRadius: 12, style: .continuous))
-                .overlay(alignment: .topLeading) {
-                    if message.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty {
-                        Text(L10n.forumThreadsCreateMessageSection)
-                            .foregroundStyle(EKitapligimPalette.muted)
-                            .padding(.horizontal, 12)
-                            .padding(.vertical, 16)
-                            .allowsHitTesting(false)
+        VStack(alignment: .leading, spacing: 16) {
+            HStack(spacing: 10) {
+                Image(systemName: "square.and.pencil")
+                    .font(.title3.weight(.semibold))
+                    .foregroundStyle(EKitapligimPalette.forumTeal)
+                    .frame(width: 42, height: 42)
+                    .background(EKitapligimPalette.forumTealSoft, in: RoundedRectangle(cornerRadius: 12, style: .continuous))
+                Text(L10n.forumThreadsCreateDialogTitle)
+                    .font(.title3.weight(.bold))
+                    .foregroundStyle(EKitapligimPalette.forumInk)
+            }
+            .frame(maxWidth: .infinity, alignment: .leading)
+
+            VStack(alignment: .leading, spacing: 8) {
+                Text(L10n.forumThreadsCreateTitlePlaceholder)
+                    .font(.caption.weight(.semibold))
+                    .foregroundStyle(EKitapligimPalette.forumMuted)
+                TextField(L10n.forumThreadsCreateTitlePlaceholder, text: $title)
+                    .padding(12)
+                    .background(.white, in: RoundedRectangle(cornerRadius: 12, style: .continuous))
+                    .overlay {
+                        RoundedRectangle(cornerRadius: 12, style: .continuous)
+                            .stroke(EKitapligimPalette.forumBorder, lineWidth: 1)
                     }
-                }
+                    .textInputAutocapitalization(.sentences)
+            }
+
+            VStack(alignment: .leading, spacing: 8) {
+                Text(L10n.forumThreadsCreateMessageSection)
+                    .font(.caption.weight(.semibold))
+                    .foregroundStyle(EKitapligimPalette.forumMuted)
+                TextEditor(text: $message)
+                    .accessibilityLabel(L10n.forumThreadsCreateMessageSection)
+                    .frame(minHeight: 120)
+                    .padding(8)
+                    .background(.white, in: RoundedRectangle(cornerRadius: 12, style: .continuous))
+                    .overlay {
+                        RoundedRectangle(cornerRadius: 12, style: .continuous)
+                            .stroke(EKitapligimPalette.forumBorder, lineWidth: 1)
+                    }
+                    .overlay(alignment: .topLeading) {
+                        if message.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty {
+                            Text(L10n.forumThreadsCreateMessageSection)
+                                .foregroundStyle(EKitapligimPalette.forumMuted)
+                                .padding(.horizontal, 12)
+                                .padding(.vertical, 16)
+                                .allowsHitTesting(false)
+                        }
+                    }
+            }
+
             HStack {
-                Text("\(message.count)")
+                Text("\(message.count) \(L10n.forumThreadReplyCountLabel)")
                     .font(.caption2.weight(.semibold))
-                    .foregroundStyle(EKitapligimPalette.muted)
+                    .foregroundStyle(EKitapligimPalette.forumMuted)
                 Spacer(minLength: 0)
                 Button(L10n.commonCancel) { dismiss() }
+                    .foregroundStyle(EKitapligimPalette.forumMuted)
                 Button {
                     Task {
                         let trimmedTitle = title.trimmingCharacters(in: .whitespacesAndNewlines)
@@ -474,12 +438,26 @@ private struct ForumThreadCreateView: View {
                     } else {
                         Text(L10n.forumThreadsCreateSubmit)
                             .font(.subheadline.weight(.bold))
+                            .foregroundStyle(.white)
+                            .padding(.horizontal, 14)
+                            .padding(.vertical, 8)
+                            .background(
+                                canSubmit
+                                    ? AnyShapeStyle(LinearGradient(
+                                        colors: [EKitapligimPalette.forumTeal, EKitapligimPalette.forumTealDeep],
+                                        startPoint: .leading,
+                                        endPoint: .trailing
+                                    ))
+                                    : AnyShapeStyle(EKitapligimPalette.forumTeal.opacity(0.45)),
+                                in: RoundedRectangle(cornerRadius: 12, style: .continuous)
+                            )
                     }
                 }
                 .disabled(!canSubmit)
             }
         }
         .padding(20)
+        .background(EKitapligimPalette.forumSurface)
         .presentationDetents([.medium, .large])
         .presentationDragIndicator(.visible)
     }

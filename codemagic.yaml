@@ -52,6 +52,21 @@ workflows:
         script: |
           xcodebuild -resolvePackageDependencies -project "$XCODE_PROJECT" -scheme "$XCODE_SCHEME"
 
+      - name: Verify Production Google Sign-In settings
+        script: |
+          set -euo pipefail
+          SETTINGS_FILE="$CM_BUILD_DIR/build/production-build-settings.log"
+          mkdir -p "$CM_BUILD_DIR/build"
+          xcodebuild -showBuildSettings \
+            -project "$XCODE_PROJECT" \
+            -scheme "$XCODE_SCHEME" \
+            -configuration "$XCODE_CONFIGURATION" > "$SETTINGS_FILE"
+          grep -Eq '^[[:space:]]*PRODUCT_BUNDLE_IDENTIFIER = com\.ekitapligim\.app$' "$SETTINGS_FILE"
+          grep -Eq '^[[:space:]]*EKITAPLIGIM_GOOGLE_IOS_CLIENT_ID = 258534406055-trcoiet648ohvijagtpli1h1556i2cjq\.apps\.googleusercontent\.com$' "$SETTINGS_FILE"
+          grep -Eq '^[[:space:]]*EKITAPLIGIM_GOOGLE_SERVER_CLIENT_ID = 258534406055-v8lmgd6moijakv1kcurgit788uk5v2el\.apps\.googleusercontent\.com$' "$SETTINGS_FILE"
+          grep -Eq '^[[:space:]]*EKITAPLIGIM_GOOGLE_URL_SCHEME = com\.googleusercontent\.apps\.258534406055-trcoiet648ohvijagtpli1h1556i2cjq$' "$SETTINGS_FILE"
+          grep -Eq '^[[:space:]]*EKITAPLIGIM_API_BASE_URL = https://ekitapligim\.com/ios-api/v1/$' "$SETTINGS_FILE"
+
       - name: Compile app tests for iPhone and iPad
         script: |
           set -euo pipefail

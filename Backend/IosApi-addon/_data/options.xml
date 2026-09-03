@@ -9,4 +9,24 @@
     <default_value></default_value>
     <relation group_id="ekitapligimIosApi" display_order="20"/>
   </option>
+  <option option_id="ekitapligimApnsKeyId" edit_format="textbox" data_type="string" advanced="0">
+    <default_value></default_value>
+    <relation group_id="ekitapligimIosApi" display_order="100"/>
+  </option>
+  <option option_id="ekitapligimApnsTeamId" edit_format="textbox" data_type="string" advanced="0">
+    <default_value></default_value>
+    <relation group_id="ekitapligimIosApi" display_order="110"/>
+  </option>
+  <option option_id="ekitapligimApnsKeyPath" edit_format="textbox" data_type="string" advanced="0">
+    <default_value></default_value>
+    <relation group_id="ekitapligimIosApi" display_order="120"/>
+  </option>
+  <option option_id="ekitapligimApnsTopic" edit_format="textbox" data_type="string" advanced="0">
+    <default_value>com.ekitapligim.app</default_value>
+    <relation group_id="ekitapligimIosApi" display_order="130"/>
+  </option>
+  <option option_id="ekitapligimApnsEnvironment" edit_format="textbox" data_type="string" advanced="0">
+    <default_value>production</default_value>
+    <relation group_id="ekitapligimIosApi" display_order="140"/>
+  </option>
 </options>

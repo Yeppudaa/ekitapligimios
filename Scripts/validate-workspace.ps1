@@ -188,7 +188,16 @@ if ($infoPlistGoogle -notmatch [regex]::Escape($expectedURLScheme)) {
 Write-Step "Checking entitlements are not broader than implemented features"
 $entitlements = Get-Content -Raw -LiteralPath "App/Ekitapligim/Support/Ekitapligim.entitlements"
 if ($entitlements -match "aps-environment") {
-    throw "Push notification entitlement is present before push is implemented"
+    $pushManagerPath = "App/Ekitapligim/Notifications/PushNotificationManager.swift"
+    $appDelegatePath = "App/Ekitapligim/App/AppDelegate.swift"
+    if (-not (Test-Path -LiteralPath $pushManagerPath) -or -not (Test-Path -LiteralPath $appDelegatePath)) {
+        throw "Push notification entitlement requires the push manager and app delegate implementation"
+    }
+    $pushManagerSource = Get-Content -Raw -LiteralPath $pushManagerPath
+    $appDelegateSource = Get-Content -Raw -LiteralPath $appDelegatePath
+    if ($pushManagerSource -notmatch "registerForRemoteNotifications" -or $appDelegateSource -notmatch "didRegisterForRemoteNotificationsWithDeviceToken") {
+        throw "Push notification entitlement requires APNs registration and device-token handling"
+    }
 }
 if ($entitlements -match "com\.apple\.developer\.in-app-payments") {
     throw "Apple Pay entitlement is present; StoreKit IAP does not use Apple Pay entitlement"

@@ -126,28 +126,41 @@ struct ForumMessageBody: View {
         if blocks.isEmpty {
             Text(L10n.forumMessageEmpty)
                 .font(.body)
-                .foregroundStyle(Color(hex: 0x6E7482))
+                .foregroundStyle(EKitapligimPalette.forumMuted)
         } else {
-            VStack(alignment: .leading, spacing: 11) {
+            VStack(alignment: .leading, spacing: 12) {
                 ForEach(blocks) { block in
                     if block.isSeparator {
                         Rectangle()
-                            .fill(Color(hex: 0x087A80))
+                            .fill(
+                                LinearGradient(
+                                    colors: [EKitapligimPalette.forumTeal.opacity(0.15), EKitapligimPalette.forumGold.opacity(0.35)],
+                                    startPoint: .leading,
+                                    endPoint: .trailing
+                                )
+                            )
                             .frame(height: 1.5)
-                            .padding(.vertical, 6)
+                            .padding(.vertical, 4)
                     } else if block.isHeading {
                         Text(block.text)
                             .font(.title3.weight(.bold))
-                            .foregroundStyle(Color(hex: 0x0E1B2B))
+                            .foregroundStyle(EKitapligimPalette.forumInk)
                     } else if block.isBullet {
-                        Text(block.text)
-                            .font(.body)
-                            .foregroundStyle(Color(hex: 0x242A38))
-                            .padding(.leading, 4)
+                        HStack(alignment: .top, spacing: 8) {
+                            Circle()
+                                .fill(EKitapligimPalette.forumTeal)
+                                .frame(width: 6, height: 6)
+                                .padding(.top, 7)
+                            Text(block.text)
+                                .font(.body)
+                                .foregroundStyle(EKitapligimPalette.forumInk.opacity(0.92))
+                                .frame(maxWidth: .infinity, alignment: .leading)
+                        }
                     } else {
                         Text(block.text)
                             .font(.body)
-                            .foregroundStyle(Color(hex: 0x242A38))
+                            .foregroundStyle(EKitapligimPalette.forumInk.opacity(0.92))
+                            .lineSpacing(3)
                             .frame(maxWidth: .infinity, alignment: .leading)
                     }
                 }
@@ -426,6 +439,11 @@ extension View {
     func ekPinnedReplyBar() -> some View {
         fixedSize(horizontal: false, vertical: true)
     }
+
+    /// Warm cream forum background used by community and thread screens.
+    func forumPageBackground() -> some View {
+        background(EKitapligimPalette.forumPageGradient.ignoresSafeArea())
+    }
 }
 
 /// The feeds page with an explicit button rather than scroll-edge loading, mirroring Android.
@@ -546,6 +564,793 @@ struct EKSkeletonCard: View {
             .fill(Color(hex: 0xEDF1F3))
             .frame(height: height)
             .accessibilityHidden(true)
+    }
+}
+
+// MARK: - Okur Sohbeti
+
+/// Compact message row used by the home-screen chat preview card.
+struct EKChatPreviewMessageRow: View {
+    let message: ChatMessageDTO
+
+    private var previewBubbleShape: UnevenRoundedRectangle {
+        UnevenRoundedRectangle(
+            topLeadingRadius: 12,
+            bottomLeadingRadius: 4,
+            bottomTrailingRadius: 12,
+            topTrailingRadius: 12,
+            style: .continuous
+        )
+    }
+
+    var body: some View {
+        HStack(alignment: .top, spacing: 9) {
+            EKAvatar(
+                urlString: message.avatarUrl,
+                username: message.username,
+                size: 30,
+                background: message.isMine ? EKitapligimPalette.chatTealSoft : Color(hex: 0xEDF4F4),
+                foreground: EKitapligimPalette.chatTeal
+            )
+
+            VStack(alignment: .leading, spacing: 4) {
+                HStack(spacing: 6) {
+                    Text(message.username)
+                        .font(.caption2.weight(.bold))
+                        .foregroundStyle(message.isBot ? Color(hex: 0x95610A) : EKitapligimPalette.chatTeal)
+                        .lineLimit(1)
+                    if message.isAdmin || message.isModerator || message.isStaff {
+                        Text(roleLabel)
+                            .font(.system(size: 7, weight: .heavy))
+                            .foregroundStyle(.white)
+                            .padding(.horizontal, 5)
+                            .padding(.vertical, 2)
+                            .background(EKitapligimPalette.chatAmber, in: Capsule())
+                    }
+                    Spacer(minLength: 0)
+                    Text(EKitapligimFormat.relativeTime(message.messageDate))
+                        .font(.system(size: 9, weight: .medium))
+                        .foregroundStyle(EKitapligimPalette.chatMuted)
+                }
+
+                Text(EKitapligimFormat.plainText(message.message))
+                    .font(.caption)
+                    .foregroundStyle(EKitapligimPalette.chatInk)
+                    .lineLimit(2)
+                    .multilineTextAlignment(.leading)
+                    .padding(.horizontal, 10)
+                    .padding(.vertical, 7)
+                    .frame(maxWidth: .infinity, alignment: .leading)
+                    .background(previewBubbleColor, in: previewBubbleShape)
+                    .overlay {
+                        if !message.isMine {
+                            previewBubbleShape.stroke(EKitapligimPalette.chatBorder, lineWidth: 0.75)
+                        }
+                    }
+            }
+        }
+        .accessibilityElement(children: .combine)
+    }
+
+    private var roleLabel: String {
+        if message.isAdmin { return L10n.chatRoleAdmin }
+        return L10n.chatRoleModerator
+    }
+
+    private var previewBubbleColor: Color {
+        if message.isMine { return EKitapligimPalette.chatTealSoft }
+        if message.isBot { return EKitapligimPalette.chatBotBubble }
+        return .white
+    }
+}
+
+/// Home-screen chat preview with a gradient header and live message snippets.
+struct EKChatHomePreviewCard: View {
+    let roomName: String
+    let roomDescription: String
+    let onlineCount: Int
+    let messages: [ChatMessageDTO]
+    let emptyMessage: String
+    let actionTitle: String
+    let action: () -> Void
+
+    var body: some View {
+        Button(action: action) {
+            VStack(alignment: .leading, spacing: 0) {
+                header
+                Divider().overlay(EKitapligimPalette.chatBorder)
+                messageSection
+                footer
+            }
+            .background(
+                LinearGradient(
+                    colors: [.white, Color(hex: 0xF4FBFB), Color(hex: 0xFFFCF6)],
+                    startPoint: .topLeading,
+                    endPoint: .bottomTrailing
+                )
+            )
+            .clipShape(RoundedRectangle(cornerRadius: 20, style: .continuous))
+            .overlay {
+                RoundedRectangle(cornerRadius: 20, style: .continuous)
+                    .stroke(
+                        LinearGradient(
+                            colors: [EKitapligimPalette.chatTeal.opacity(0.28), Color(hex: 0xE4C184).opacity(0.35)],
+                            startPoint: .topLeading,
+                            endPoint: .bottomTrailing
+                        ),
+                        lineWidth: 1
+                    )
+            }
+            .shadow(color: EKitapligimPalette.chatTeal.opacity(0.10), radius: 14, y: 6)
+        }
+        .buttonStyle(.plain)
+    }
+
+    private var header: some View {
+        HStack(alignment: .center, spacing: 12) {
+            Image(systemName: "bubble.left.and.bubble.right.fill")
+                .font(.body.weight(.semibold))
+                .foregroundStyle(.white)
+                .frame(width: 44, height: 44)
+                .background(
+                    LinearGradient(
+                        colors: [EKitapligimPalette.chatTeal, Color(hex: 0x046B70)],
+                        startPoint: .topLeading,
+                        endPoint: .bottomTrailing
+                    ),
+                    in: RoundedRectangle(cornerRadius: 14, style: .continuous)
+                )
+
+            VStack(alignment: .leading, spacing: 2) {
+                Text(roomName)
+                    .font(.subheadline.weight(.heavy))
+                    .foregroundStyle(EKitapligimPalette.chatInk)
+                    .lineLimit(1)
+                Text(roomDescription)
+                    .font(.caption2)
+                    .foregroundStyle(EKitapligimPalette.chatMuted)
+                    .lineLimit(1)
+            }
+
+            Spacer(minLength: 0)
+
+            EKLiveBadge(title: L10n.chatLiveBadge, onDark: false, showsPulse: true)
+        }
+        .padding(.horizontal, 16)
+        .padding(.vertical, 14)
+    }
+
+    @ViewBuilder
+    private var messageSection: some View {
+        if messages.isEmpty {
+            HStack(spacing: 10) {
+                Image(systemName: "ellipsis.bubble.fill")
+                    .font(.title3)
+                    .foregroundStyle(EKitapligimPalette.chatTeal.opacity(0.55))
+                Text(emptyMessage)
+                    .font(.caption)
+                    .foregroundStyle(EKitapligimPalette.chatMuted)
+                    .multilineTextAlignment(.leading)
+            }
+            .frame(maxWidth: .infinity, alignment: .leading)
+            .padding(16)
+        } else {
+            VStack(spacing: 10) {
+                ForEach(Array(messages.suffix(2))) { message in
+                    EKChatPreviewMessageRow(message: message)
+                }
+            }
+            .padding(.horizontal, 14)
+            .padding(.vertical, 12)
+        }
+    }
+
+    private var footer: some View {
+        HStack(spacing: 8) {
+            if onlineCount > 0 {
+                HStack(spacing: 5) {
+                    Circle()
+                        .fill(Color(hex: 0x1CB879))
+                        .frame(width: 6, height: 6)
+                    Text(L10n.chatOnlineCount(onlineCount))
+                        .font(.caption2.weight(.bold))
+                        .foregroundStyle(Color(hex: 0x08734E))
+                }
+                .padding(.horizontal, 9)
+                .padding(.vertical, 5)
+                .background(Color(hex: 0xE5FAF1), in: Capsule())
+            }
+
+            Spacer(minLength: 0)
+
+            HStack(spacing: 5) {
+                Text(actionTitle)
+                    .font(.caption.weight(.bold))
+                Image(systemName: "arrow.right")
+                    .font(.caption2.weight(.bold))
+            }
+            .foregroundStyle(EKitapligimPalette.chatTeal)
+            .padding(.horizontal, 12)
+            .padding(.vertical, 7)
+            .background(EKitapligimPalette.chatTealSoft, in: Capsule())
+        }
+        .padding(.horizontal, 14)
+        .padding(.vertical, 12)
+        .background(Color.white.opacity(0.72))
+    }
+}
+
+// MARK: - Kitap İstekleri
+
+/// Generated book cover tile used across request lists and the home preview card.
+struct EKBookRequestCover: View {
+    let title: String
+    let author: String
+    let seed: String
+    var width: CGFloat = 82
+    var height: CGFloat = 116
+
+    private static let palettes: [(Color, Color)] = [
+        (Color(hex: 0xE9D2A0), Color(hex: 0x9D7444)),
+        (Color(hex: 0x7A1E1E), Color(hex: 0x2B1012)),
+        (Color(hex: 0x8FB2BE), Color(hex: 0x183140)),
+        (Color(hex: 0x102D5A), Color(hex: 0x051326)),
+        (Color(hex: 0xE5ECE9), Color(hex: 0x8A948D))
+    ]
+
+    var body: some View {
+        let palette = Self.palettes[abs(seed.hashValue) % Self.palettes.count]
+        ZStack {
+            RoundedRectangle(cornerRadius: width > 70 ? 8 : 7, style: .continuous)
+                .fill(LinearGradient(colors: [palette.0, palette.1], startPoint: .top, endPoint: .bottom))
+            Canvas { context, size in
+                let glowRect = CGRect(
+                    x: size.width * 0.28,
+                    y: -size.height * 0.32,
+                    width: size.width,
+                    height: size.width
+                )
+                context.fill(Path(ellipseIn: glowRect), with: .color(.white.opacity(0.13)))
+                var highlight = Path()
+                highlight.move(to: CGPoint(x: 0, y: size.height * 0.72))
+                highlight.addLine(to: CGPoint(x: size.width, y: size.height * 0.52))
+                context.stroke(highlight, with: .color(.white.opacity(0.18)), lineWidth: 1)
+            }
+            .allowsHitTesting(false)
+            VStack(spacing: width > 70 ? 8 : 5) {
+                Text(String(title.uppercased().prefix(width > 70 ? 38 : 24)))
+                    .font(.system(width > 70 ? .subheadline : .caption2, design: .serif).weight(.heavy))
+                    .foregroundStyle(.white.opacity(0.94))
+                    .multilineTextAlignment(.center)
+                    .lineLimit(width > 70 ? 4 : 3)
+                Spacer(minLength: 0)
+                Text(String(author.uppercased().prefix(width > 70 ? 20 : 14)))
+                    .font(width > 70 ? .caption.weight(.bold) : .system(size: 8, weight: .bold))
+                    .foregroundStyle(.white.opacity(0.80))
+                    .lineLimit(1)
+            }
+            .padding(width > 70 ? 8 : 6)
+        }
+        .frame(width: width, height: height)
+        .shadow(color: palette.1.opacity(0.28), radius: 6, y: 3)
+        .accessibilityHidden(true)
+    }
+}
+
+struct EKBookRequestStatusPill: View {
+    let status: String
+    var compact: Bool = false
+    var showsBookHint: Bool = false
+
+    private var tone: Color {
+        switch status.uppercased() {
+        case "ACQUIRED": Color(hex: 0x07968E)
+        case "REJECTED": Color(hex: 0xD34B4B)
+        default: Color(hex: 0x3C73E8)
+        }
+    }
+
+    private var iconName: String {
+        switch status.uppercased() {
+        case "ACQUIRED": "checkmark.circle.fill"
+        case "REJECTED": "xmark.circle.fill"
+        default: "circle.fill"
+        }
+    }
+
+    var body: some View {
+        HStack(spacing: compact ? 4 : 6) {
+            Image(systemName: iconName)
+                .font(.system(size: compact ? 10 : 15, weight: .bold))
+            Text(L10n.bookRequestsStatus(status))
+                .font(compact ? .caption2.weight(.bold) : .subheadline.weight(.bold))
+                .lineLimit(1)
+            if showsBookHint {
+                Image(systemName: "chevron.right")
+                    .font(.caption2.weight(.bold))
+            }
+        }
+        .foregroundStyle(tone)
+        .padding(.horizontal, compact ? 7 : 10)
+        .padding(.vertical, compact ? 4 : 5)
+        .background(tone.opacity(0.14), in: RoundedRectangle(cornerRadius: compact ? 7 : 8, style: .continuous))
+    }
+}
+
+/// Compact featured request row for the home preview card.
+struct EKBookRequestPreviewRow: View {
+    let request: BookRequestDTO
+    var compact: Bool = false
+
+    var body: some View {
+        HStack(alignment: .top, spacing: compact ? 10 : 12) {
+            EKBookRequestCover(
+                title: request.title,
+                author: request.author,
+                seed: request.id + request.title,
+                width: compact ? 52 : 68,
+                height: compact ? 74 : 96
+            )
+
+            VStack(alignment: .leading, spacing: compact ? 4 : 6) {
+                if !compact {
+                    Text(L10n.homeRequestCenterLatestLabel)
+                        .font(.caption2.weight(.heavy))
+                        .foregroundStyle(Color(hex: 0xD45F7A))
+                        .textCase(.uppercase)
+                        .tracking(0.4)
+                }
+
+                Text(request.title)
+                    .font(compact ? .caption.weight(.bold) : .subheadline.weight(.heavy))
+                    .foregroundStyle(EKitapligimPalette.ink)
+                    .lineLimit(compact ? 1 : 2)
+                    .multilineTextAlignment(.leading)
+
+                Text(L10n.bookRequestsAuthorLine(request.author))
+                    .font(compact ? .caption2 : .caption)
+                    .foregroundStyle(EKitapligimPalette.muted)
+                    .lineLimit(1)
+
+                if !compact, !request.requestedBy.isEmpty {
+                    Text(L10n.bookRequestsRequestedBy(request.requestedBy))
+                        .font(.caption2)
+                        .foregroundStyle(EKitapligimPalette.muted)
+                        .lineLimit(1)
+                }
+
+                HStack(spacing: 8) {
+                    EKBookRequestStatusPill(
+                        status: request.status,
+                        compact: true,
+                        showsBookHint: request.fulfilledBookID != nil
+                    )
+                    HStack(spacing: 4) {
+                        Image(systemName: "hand.thumbsup.fill")
+                            .font(.caption2.weight(.semibold))
+                        Text(L10n.bookRequestsVoteCount(request.voteCount))
+                            .font(.caption2.weight(.bold))
+                    }
+                    .foregroundStyle(Color(hex: 0x1954C8))
+                    .padding(.horizontal, 8)
+                    .padding(.vertical, 4)
+                    .background(Color(hex: 0xF1F5FF), in: Capsule())
+                }
+            }
+            .frame(maxWidth: .infinity, alignment: .leading)
+        }
+        .accessibilityElement(children: .combine)
+    }
+}
+
+/// Home-screen book request center preview with the latest community requests.
+struct EKBookRequestHomePreviewCard: View {
+    let requests: [BookRequestDTO]
+    let title: String
+    let subtitle: String
+    let emptyMessage: String
+    let actionTitle: String
+    let action: () -> Void
+
+    private let accent = Color(hex: 0xD45F7A)
+    private let accentDeep = Color(hex: 0xB84562)
+
+    var body: some View {
+        Button(action: action) {
+            VStack(alignment: .leading, spacing: 0) {
+                header
+                Divider().overlay(Color(hex: 0xF0D8DF))
+                requestSection
+                footer
+            }
+            .background(
+                LinearGradient(
+                    colors: [.white, Color(hex: 0xFFF7F9), Color(hex: 0xFFFCF8)],
+                    startPoint: .topLeading,
+                    endPoint: .bottomTrailing
+                )
+            )
+            .clipShape(RoundedRectangle(cornerRadius: 20, style: .continuous))
+            .overlay {
+                RoundedRectangle(cornerRadius: 20, style: .continuous)
+                    .stroke(
+                        LinearGradient(
+                            colors: [accent.opacity(0.30), Color(hex: 0xE4C184).opacity(0.28)],
+                            startPoint: .topLeading,
+                            endPoint: .bottomTrailing
+                        ),
+                        lineWidth: 1
+                    )
+            }
+            .shadow(color: accent.opacity(0.12), radius: 14, y: 6)
+        }
+        .buttonStyle(.plain)
+    }
+
+    private var header: some View {
+        HStack(alignment: .center, spacing: 12) {
+            Image(systemName: "heart.text.square.fill")
+                .font(.body.weight(.semibold))
+                .foregroundStyle(.white)
+                .frame(width: 44, height: 44)
+                .background(
+                    LinearGradient(
+                        colors: [accent, accentDeep],
+                        startPoint: .topLeading,
+                        endPoint: .bottomTrailing
+                    ),
+                    in: RoundedRectangle(cornerRadius: 14, style: .continuous)
+                )
+
+            VStack(alignment: .leading, spacing: 2) {
+                Text(title)
+                    .font(.subheadline.weight(.heavy))
+                    .foregroundStyle(EKitapligimPalette.ink)
+                    .lineLimit(1)
+                Text(subtitle)
+                    .font(.caption2)
+                    .foregroundStyle(EKitapligimPalette.muted)
+                    .lineLimit(2)
+                    .multilineTextAlignment(.leading)
+            }
+
+            Spacer(minLength: 0)
+
+            EKPill(
+                title: L10n.homeDiscoveryRequestsBadge,
+                foreground: accentDeep,
+                background: accent.opacity(0.12)
+            )
+        }
+        .padding(.horizontal, 16)
+        .padding(.vertical, 14)
+    }
+
+    @ViewBuilder
+    private var requestSection: some View {
+        if let latest = requests.first {
+            VStack(spacing: 10) {
+                EKBookRequestPreviewRow(request: latest)
+
+                if requests.count > 1 {
+                    ForEach(Array(requests.dropFirst().prefix(1))) { request in
+                        EKBookRequestPreviewRow(request: request, compact: true)
+                            .padding(.top, 2)
+                            .overlay(alignment: .top) {
+                                Rectangle()
+                                    .fill(Color(hex: 0xF0D8DF))
+                                    .frame(height: 0.5)
+                                    .offset(y: -5)
+                            }
+                    }
+                }
+            }
+            .padding(.horizontal, 14)
+            .padding(.vertical, 12)
+        } else {
+            HStack(spacing: 12) {
+                ZStack {
+                    RoundedRectangle(cornerRadius: 10, style: .continuous)
+                        .fill(
+                            LinearGradient(
+                                colors: [Color(hex: 0xF8E8EC), Color(hex: 0xF2D4DC)],
+                                startPoint: .topLeading,
+                                endPoint: .bottomTrailing
+                            )
+                        )
+                    Image(systemName: "book.closed.fill")
+                        .font(.title3)
+                        .foregroundStyle(accent.opacity(0.55))
+                }
+                .frame(width: 52, height: 74)
+
+                Text(emptyMessage)
+                    .font(.caption)
+                    .foregroundStyle(EKitapligimPalette.muted)
+                    .multilineTextAlignment(.leading)
+                    .frame(maxWidth: .infinity, alignment: .leading)
+            }
+            .padding(16)
+        }
+    }
+
+    private var footer: some View {
+        HStack(spacing: 8) {
+            if !requests.isEmpty {
+                HStack(spacing: 5) {
+                    Image(systemName: "person.3.fill")
+                        .font(.caption2.weight(.semibold))
+                    Text(L10n.homeRequestCenterCommunityFeed)
+                        .font(.caption2.weight(.bold))
+                }
+                .foregroundStyle(accentDeep)
+                .padding(.horizontal, 9)
+                .padding(.vertical, 5)
+                .background(accent.opacity(0.10), in: Capsule())
+            }
+
+            Spacer(minLength: 0)
+
+            HStack(spacing: 5) {
+                Text(actionTitle)
+                    .font(.caption.weight(.bold))
+                Image(systemName: "plus")
+                    .font(.caption2.weight(.bold))
+            }
+            .foregroundStyle(.white)
+            .padding(.horizontal, 12)
+            .padding(.vertical, 7)
+            .background(
+                LinearGradient(
+                    colors: [Color(hex: 0xFFA122), Color(hex: 0xE07700)],
+                    startPoint: .leading,
+                    endPoint: .trailing
+                ),
+                in: Capsule()
+            )
+        }
+        .padding(.horizontal, 14)
+        .padding(.vertical, 12)
+        .background(Color.white.opacity(0.72))
+    }
+}
+
+// MARK: - Forum
+
+struct EKForumMetricPill: View {
+    let systemImage: String
+    let value: Int
+    var compact: Bool = false
+
+    var body: some View {
+        HStack(spacing: 4) {
+            Image(systemName: systemImage)
+                .font(.system(size: compact ? 10 : 13, weight: .semibold))
+            Text(EKitapligimFormat.count(value))
+                .font(.system(size: compact ? 9 : 10, weight: .bold))
+        }
+        .foregroundStyle(EKitapligimPalette.forumTeal)
+        .padding(.horizontal, compact ? 6 : 7)
+        .padding(.vertical, compact ? 3 : 4)
+        .background(EKitapligimPalette.forumGoldSoft, in: RoundedRectangle(cornerRadius: 10, style: .continuous))
+        .overlay {
+            RoundedRectangle(cornerRadius: 10, style: .continuous)
+                .stroke(Color(hex: 0xE8E2D2), lineWidth: 0.75)
+        }
+    }
+}
+
+/// Forum category card used on the community tab.
+struct EKForumListCard: View {
+    let forum: ForumDTO
+
+    private var iconName: String {
+        forum.isBookForum == true ? "books.vertical.fill" : "text.bubble.fill"
+    }
+
+    private var accent: Color {
+        forum.isBookForum == true ? EKitapligimPalette.forumBlue : EKitapligimPalette.forumTeal
+    }
+
+    var body: some View {
+        HStack(spacing: 14) {
+            RoundedRectangle(cornerRadius: 3, style: .continuous)
+                .fill(
+                    LinearGradient(
+                        colors: [accent, accent.opacity(0.55)],
+                        startPoint: .top,
+                        endPoint: .bottom
+                    )
+                )
+                .frame(width: 4, height: 58)
+
+            Image(systemName: iconName)
+                .font(.body.weight(.semibold))
+                .foregroundStyle(.white)
+                .frame(width: 46, height: 46)
+                .background(
+                    LinearGradient(
+                        colors: [accent, accent.opacity(0.78)],
+                        startPoint: .topLeading,
+                        endPoint: .bottomTrailing
+                    ),
+                    in: RoundedRectangle(cornerRadius: 14, style: .continuous)
+                )
+                .shadow(color: accent.opacity(0.22), radius: 6, y: 3)
+
+            VStack(alignment: .leading, spacing: 5) {
+                Text(forum.title)
+                    .font(.subheadline.weight(.heavy))
+                    .foregroundStyle(EKitapligimPalette.forumInk)
+                    .lineLimit(2)
+                    .multilineTextAlignment(.leading)
+
+                if !forum.description.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty {
+                    Text(forum.description)
+                        .font(.caption)
+                        .foregroundStyle(EKitapligimPalette.forumMuted)
+                        .lineLimit(2)
+                        .multilineTextAlignment(.leading)
+                }
+
+                if let count = forum.threadCount, count > 0 {
+                    HStack(spacing: 5) {
+                        Image(systemName: "text.alignleft")
+                            .font(.caption2.weight(.semibold))
+                        Text(L10n.forumThreadsHeroMetricLabel)
+                            .font(.caption2.weight(.bold))
+                        Text(EKitapligimFormat.count(count))
+                            .font(.caption2.weight(.heavy))
+                    }
+                    .foregroundStyle(accent)
+                    .padding(.horizontal, 8)
+                    .padding(.vertical, 4)
+                    .background(accent.opacity(0.10), in: Capsule())
+                }
+            }
+            .frame(maxWidth: .infinity, alignment: .leading)
+
+            Image(systemName: "chevron.right")
+                .font(.caption.weight(.bold))
+                .foregroundStyle(EKitapligimPalette.forumMuted.opacity(0.8))
+        }
+        .padding(14)
+        .background(
+            LinearGradient(
+                colors: [.white, accent.opacity(0.04)],
+                startPoint: .topLeading,
+                endPoint: .bottomTrailing
+            )
+        )
+        .clipShape(RoundedRectangle(cornerRadius: 18, style: .continuous))
+        .overlay {
+            RoundedRectangle(cornerRadius: 18, style: .continuous)
+                .stroke(EKitapligimPalette.forumBorder, lineWidth: 1)
+        }
+        .shadow(color: accent.opacity(0.08), radius: 10, y: 4)
+    }
+}
+
+/// Thread row card used in forum thread lists.
+struct EKForumThreadRow: View {
+    let thread: ForumThreadDTO
+
+    private var displayUsername: String {
+        ForumMessageFormatting.displayUsername(thread.username)
+    }
+
+    private var initial: String {
+        String(displayUsername.prefix(1)).uppercased(with: EKitapligimFormat.locale)
+    }
+
+    var body: some View {
+        HStack(alignment: .center, spacing: 12) {
+            Text(initial)
+                .font(.system(.title3, design: .serif).weight(.heavy))
+                .foregroundStyle(EKitapligimPalette.forumTeal)
+                .frame(width: 48, height: 48)
+                .background(
+                    LinearGradient(
+                        colors: [EKitapligimPalette.forumTealSoft, Color(hex: 0xFFF8EA)],
+                        startPoint: .topLeading,
+                        endPoint: .bottomTrailing
+                    ),
+                    in: RoundedRectangle(cornerRadius: 14, style: .continuous)
+                )
+                .overlay {
+                    RoundedRectangle(cornerRadius: 14, style: .continuous)
+                        .stroke(EKitapligimPalette.forumBorder, lineWidth: 0.75)
+                }
+
+            VStack(alignment: .leading, spacing: 6) {
+                HStack(alignment: .center, spacing: 6) {
+                    if thread.isSticky {
+                        Image(systemName: "pin.fill")
+                            .font(.system(size: 10, weight: .bold))
+                            .foregroundStyle(.white)
+                            .padding(.horizontal, 7)
+                            .padding(.vertical, 5)
+                            .background(EKitapligimPalette.forumGold, in: Capsule())
+                            .accessibilityLabel(L10n.forumThreadsSticky)
+                    }
+                    Text(thread.title)
+                        .font(.system(.headline, design: .serif).weight(.bold))
+                        .foregroundStyle(EKitapligimPalette.forumInk)
+                        .lineLimit(2)
+                        .multilineTextAlignment(.leading)
+                        .frame(maxWidth: .infinity, alignment: .leading)
+                }
+
+                HStack(spacing: 6) {
+                    Text(displayUsername)
+                        .font(.caption.weight(.semibold))
+                        .foregroundStyle(EKitapligimPalette.forumMuted)
+                        .lineLimit(1)
+                    if thread.postDate > 0 {
+                        Text("·")
+                            .foregroundStyle(EKitapligimPalette.forumMuted.opacity(0.6))
+                        Text(EKitapligimFormat.relativeTime(thread.postDate))
+                            .font(.caption2)
+                            .foregroundStyle(EKitapligimPalette.forumMuted)
+                            .lineLimit(1)
+                    }
+                    Spacer(minLength: 4)
+                    EKForumMetricPill(systemImage: "bubble.left", value: thread.replyCount, compact: true)
+                    EKForumMetricPill(systemImage: "eye", value: thread.viewCount, compact: true)
+                }
+            }
+
+            Image(systemName: "chevron.right")
+                .font(.caption.weight(.bold))
+                .foregroundStyle(EKitapligimPalette.forumMuted.opacity(0.75))
+        }
+        .padding(.horizontal, 13)
+        .padding(.vertical, 12)
+        .frame(maxWidth: .infinity, alignment: .leading)
+        .background(
+            LinearGradient(
+                colors: [.white, EKitapligimPalette.forumTealSoft.opacity(0.35)],
+                startPoint: .topLeading,
+                endPoint: .bottomTrailing
+            )
+        )
+        .clipShape(RoundedRectangle(cornerRadius: 16, style: .continuous))
+        .overlay {
+            RoundedRectangle(cornerRadius: 16, style: .continuous)
+                .stroke(EKitapligimPalette.forumBorder, lineWidth: 1)
+        }
+        .shadow(color: Color.black.opacity(0.04), radius: 8, y: 3)
+    }
+}
+
+/// Compact action row for community shortcuts.
+struct EKForumActionRow: View {
+    let title: String
+    let systemImage: String
+    var tint: Color = EKitapligimPalette.forumTeal
+
+    var body: some View {
+        HStack(spacing: 12) {
+            Image(systemName: systemImage)
+                .font(.subheadline.weight(.semibold))
+                .foregroundStyle(tint)
+                .frame(width: 38, height: 38)
+                .background(tint.opacity(0.10), in: RoundedRectangle(cornerRadius: 12, style: .continuous))
+            Text(title)
+                .font(.subheadline.weight(.semibold))
+                .foregroundStyle(EKitapligimPalette.forumInk)
+                .frame(maxWidth: .infinity, alignment: .leading)
+            Image(systemName: "chevron.right")
+                .font(.caption2.weight(.bold))
+                .foregroundStyle(EKitapligimPalette.forumMuted)
+        }
+        .padding(14)
+        .background(.white, in: RoundedRectangle(cornerRadius: 16, style: .continuous))
+        .overlay {
+            RoundedRectangle(cornerRadius: 16, style: .continuous)
+                .stroke(EKitapligimPalette.forumBorder, lineWidth: 1)
+        }
+        .shadow(color: Color.black.opacity(0.03), radius: 6, y: +2)
     }
 }
 

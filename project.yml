@@ -23,6 +23,10 @@ targets:
     type: application
     platform: iOS
     deploymentTarget: "17.0"
+    configFiles:
+      Development: App/Ekitapligim/Config/Development.xcconfig
+      Staging: App/Ekitapligim/Config/Staging.xcconfig
+      Production: App/Ekitapligim/Config/Production.xcconfig
     sources:
       - path: App/Ekitapligim
         excludes:
@@ -60,19 +64,17 @@ targets:
         SUPPORTS_MACCATALYST: NO
         TARGETED_DEVICE_FAMILY: "1,2"
         CODE_SIGN_ENTITLEMENTS: App/Ekitapligim/Support/Ekitapligim.entitlements
+    entitlements:
+      path: App/Ekitapligim/Support/Ekitapligim.entitlements
+      properties:
+        aps-environment: development
       configs:
         Development:
-          base:
-            PRODUCT_BUNDLE_IDENTIFIER: com.ekitapligim.app
-          xcconfig: App/Ekitapligim/Config/Development.xcconfig
+          PRODUCT_BUNDLE_IDENTIFIER: com.ekitapligim.app
         Staging:
-          base:
-            PRODUCT_BUNDLE_IDENTIFIER: com.ekitapligim.app
-          xcconfig: App/Ekitapligim/Config/Staging.xcconfig
+          PRODUCT_BUNDLE_IDENTIFIER: com.ekitapligim.app
         Production:
-          base:
-            PRODUCT_BUNDLE_IDENTIFIER: com.ekitapligim.app
-          xcconfig: App/Ekitapligim/Config/Production.xcconfig
+          PRODUCT_BUNDLE_IDENTIFIER: com.ekitapligim.app
   EkitapligimTests:
     type: bundle.unit-test
     platform: iOS
