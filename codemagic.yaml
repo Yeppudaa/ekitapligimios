@@ -40,13 +40,48 @@ workflows:
           echo "Building revision: $(git rev-parse --short HEAD)"
           xcodegen generate
 
+      - name: Synchronize Push Notifications signing capability
+        script: |
+          set -euo pipefail
+          BUNDLE_ID="com.ekitapligim.app"
+          SIGNING_DIR="$CM_BUILD_DIR/build/push-signing"
+          mkdir -p "$SIGNING_DIR/profiles" "$SIGNING_DIR/certificates"
+          BUNDLE_IDS_JSON=$(app-store-connect bundle-ids list \
+            --bundle-id-identifier "$BUNDLE_ID" \
+            --strict-match-identifier \
+            --json)
+          BUNDLE_RESOURCE_ID=$(printf '%s' "$BUNDLE_IDS_JSON" | jq -r --arg identifier "$BUNDLE_ID" '
+            (if type == "array" then . else (.data // [.] ) end)
+            | map(select((.attributes.identifier // .identifier) == $identifier))
+            | first
+            | .id // empty
+          ')
+          if [ -z "$BUNDLE_RESOURCE_ID" ]; then
+            echo "Could not resolve Apple bundle ID resource for $BUNDLE_ID"
+            exit 1
+          fi
+          CAPABILITIES_JSON=$(app-store-connect bundle-ids capabilities "$BUNDLE_RESOURCE_ID" --json)
+          if ! printf '%s' "$CAPABILITIES_JSON" | grep -Eq 'PUSH_NOTIFICATIONS|Push Notifications'; then
+            app-store-connect bundle-ids enable-capabilities \
+              "$BUNDLE_RESOURCE_ID" \
+              --capability "Push Notifications"
+          fi
+          app-store-connect fetch-signing-files "$BUNDLE_ID" \
+            --type IOS_APP_STORE \
+            --strict-match-identifier \
+            --create \
+            --profiles-dir "$SIGNING_DIR/profiles" \
+            --certificates-dir "$SIGNING_DIR/certificates"
+
       - name: Configure App Store code signing
         script: |
           set -euo pipefail
           mkdir -p "$CM_BUILD_DIR/build"
           echo "Available Apple signing identities:"
           security find-identity -v -p codesigning || true
-          xcode-project use-profiles 2>&1 | tee "$CM_BUILD_DIR/build/configure-code-signing.log"
+          xcode-project use-profiles \
+            --profile "$CM_BUILD_DIR/build/push-signing/profiles/*.mobileprovision" \
+            --archive-method app-store 2>&1 | tee "$CM_BUILD_DIR/build/configure-code-signing.log"
 
       - name: Resolve Swift Package dependencies
         script: |
