@@ -95,6 +95,11 @@ workflows:
         script: |
           set -euo pipefail
           mkdir -p "$CM_BUILD_DIR/build"
+          XCODE_PROFILES_DIR="$HOME/Library/Developer/Xcode/UserData/Provisioning Profiles"
+          LEGACY_PROFILES_DIR="$HOME/Library/MobileDevice/Provisioning Profiles"
+          mkdir -p "$XCODE_PROFILES_DIR" "$LEGACY_PROFILES_DIR"
+          cp "$CM_BUILD_DIR"/build/push-signing/profiles/*.mobileprovision "$XCODE_PROFILES_DIR/"
+          cp "$CM_BUILD_DIR"/build/push-signing/profiles/*.mobileprovision "$LEGACY_PROFILES_DIR/"
           echo "Available Apple signing identities:"
           security find-identity -v -p codesigning || true
           xcode-project use-profiles \
