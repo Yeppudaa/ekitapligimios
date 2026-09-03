@@ -113,7 +113,7 @@ foreach ($image in $appIcon.images) {
     }
 }
 $iconEvidence = Get-Content -Raw -LiteralPath "APP_ICON_SOURCE.md"
-if ($iconEvidence -notmatch "(?m)^- Source: .+" -or $iconEvidence -notmatch "(?m)^- Source SHA-256: [a-f0-9]{64}$") {
+if ($iconEvidence -notmatch "(?m)^- Source: .+" -or $iconEvidence -notmatch "(?m)^- Source SHA-256: [a-f0-9]{64}\r?$") {
     throw "App icon source evidence is missing or incomplete"
 }
 $marketingIconPath = "App/Ekitapligim/Assets.xcassets/AppIcon.appiconset/appicon-1024.png"

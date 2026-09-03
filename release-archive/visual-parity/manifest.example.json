@@ -1,0 +1,71 @@
+{
+  "version": 1,
+  "captured_at": "2026-08-26",
+  "devices": {
+    "ios": "iPhone 15 Simulator (iOS 17+)",
+    "android": "Android reference APK (same account/state where possible)"
+  },
+  "screens": [
+    {
+      "id": "book-detail-shelf",
+      "pass": false,
+      "ios": "ios/book-detail-shelf.png",
+      "android": "android/book-detail-shelf.png",
+      "notes": "Gold shelf menu + favorite heart"
+    },
+    {
+      "id": "forum-thread-list",
+      "pass": false,
+      "ios": "ios/forum-thread-list.png",
+      "android": "android/forum-thread-list.png"
+    },
+    {
+      "id": "forum-thread-detail",
+      "pass": false,
+      "ios": "ios/forum-thread-detail.png",
+      "android": "android/forum-thread-detail.png"
+    },
+    {
+      "id": "book-requests",
+      "pass": false,
+      "ios": "ios/book-requests.png",
+      "android": "android/book-requests.png"
+    },
+    {
+      "id": "chat",
+      "pass": false,
+      "ios": "ios/chat.png",
+      "android": "android/chat.png"
+    },
+    {
+      "id": "book-agenda",
+      "pass": false,
+      "ios": "ios/book-agenda.png",
+      "android": "android/book-agenda.png"
+    },
+    {
+      "id": "book-comments",
+      "pass": false,
+      "ios": "ios/book-comments.png",
+      "android": "android/book-comments.png"
+    },
+    {
+      "id": "library-shelves",
+      "pass": false,
+      "ios": "ios/library-shelves.png",
+      "android": "android/library-shelves.png"
+    },
+    {
+      "id": "book-detail-read",
+      "pass": false,
+      "ios": "ios/book-detail-read.png",
+      "android": "android/book-detail-read.png"
+    },
+    {
+      "id": "catalog-grid",
+      "pass": false,
+      "ios": "ios/catalog-grid.png",
+      "android": "android/catalog-grid.png"
+    }
+  ]
+}
