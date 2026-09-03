@@ -69,18 +69,23 @@ workflows:
           CERTIFICATES_JSON=$(app-store-connect certificates list \
             --profile-type IOS_APP_STORE \
             --json)
-          CERTIFICATE_RESOURCE_IDS=$(printf '%s' "$CERTIFICATES_JSON" | jq -r '
+          CERTIFICATE_RESOURCE_IDS=()
+          while IFS= read -r CERTIFICATE_RESOURCE_ID; do
+            if [ -n "$CERTIFICATE_RESOURCE_ID" ]; then
+              CERTIFICATE_RESOURCE_IDS+=("$CERTIFICATE_RESOURCE_ID")
+            fi
+          done < <(printf '%s' "$CERTIFICATES_JSON" | jq -r '
             (if type == "array" then . else (.data // [.] ) end)
             | map(.id // empty)
-            | join(",")
+            | .[]
           ')
-          if [ -z "$CERTIFICATE_RESOURCE_IDS" ]; then
+          if [ "${#CERTIFICATE_RESOURCE_IDS[@]}" -eq 0 ]; then
             echo "Could not resolve an Apple Distribution certificate for App Store signing"
             exit 1
           fi
           PROFILE_NAME="Ekitapligim App Store Push ${CM_BUILD_ID}"
           app-store-connect profiles create "$BUNDLE_RESOURCE_ID" \
-            --certificate-ids "$CERTIFICATE_RESOURCE_IDS" \
+            --certificate-ids "${CERTIFICATE_RESOURCE_IDS[@]}" \
             --type IOS_APP_STORE \
             --name "$PROFILE_NAME" \
             --save \
