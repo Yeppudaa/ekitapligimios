@@ -25,9 +25,9 @@
 	<key>EKITAPLIGIM_ENVIRONMENT</key>
 	<string>$(EKITAPLIGIM_ENVIRONMENT)</string>
 	<key>GIDClientID</key>
-	<string>$(EKITAPLIGIM_GOOGLE_IOS_CLIENT_ID)</string>
+	<string>258534406055-trcoiet648ohvijagtpli1h1556i2cjq.apps.googleusercontent.com</string>
 	<key>GIDServerClientID</key>
-	<string>$(EKITAPLIGIM_GOOGLE_SERVER_CLIENT_ID)</string>
+	<string>258534406055-v8lmgd6moijakv1kcurgit788uk5v2el.apps.googleusercontent.com</string>
 	<key>CFBundleURLTypes</key>
 	<array>
 		<dict>
@@ -35,7 +35,7 @@
 			<string>Editor</string>
 			<key>CFBundleURLSchemes</key>
 			<array>
-				<string>$(EKITAPLIGIM_GOOGLE_URL_SCHEME)</string>
+				<string>com.googleusercontent.apps.258534406055-trcoiet648ohvijagtpli1h1556i2cjq</string>
 			</array>
 		</dict>
 	</array>
@@ -59,6 +59,10 @@
 		<key>UIApplicationSupportsMultipleScenes</key>
 		<false/>
 	</dict>
+	<key>UIBackgroundModes</key>
+	<array>
+		<string>remote-notification</string>
+	</array>
 	<key>UISupportedInterfaceOrientations</key>
 	<array>
 		<string>UIInterfaceOrientationPortrait</string>

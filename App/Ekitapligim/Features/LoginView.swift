@@ -1,4 +1,5 @@
 import SwiftUI
+import UIKit
 import EkitapligimCore
 
 @MainActor
@@ -23,6 +24,7 @@ struct LoginView: View {
     @State private var googleUsername = ""
     @State private var googleUsernameError: String?
     @State private var showingGoogleUsernamePrompt = false
+    @State private var googlePresentationAnchor: UIViewController?
 
     init(initialMode: AuthFormMode = .login) {
         _mode = State(initialValue: initialMode)
@@ -68,6 +70,9 @@ struct LoginView: View {
                 Text(googleUsernameError ?? L10n.loginGoogleUsernameMessage)
             }
             .task { await loadLegalTerms() }
+            .background {
+                PresentationAnchor(viewController: $googlePresentationAnchor)
+            }
         }
     }
 
@@ -524,7 +529,7 @@ struct LoginView: View {
         do {
             // Present Google UI before flipping `isSubmitting` so SwiftUI does not
             // rebuild this sheet's hosting controller mid-presentation.
-            let idToken = try await GoogleSignInService.signIn()
+            let idToken = try await GoogleSignInService.signIn(presenting: googlePresentationAnchor)
             isSubmitting = true
             defer { isSubmitting = false }
             let requestedUsername = mode == .register
@@ -616,6 +621,26 @@ enum AuthFormMode: String, Hashable, Identifiable {
     case passwordReset
 
     var id: String { rawValue }
+}
+
+private struct PresentationAnchor: UIViewControllerRepresentable {
+    @Binding var viewController: UIViewController?
+
+    func makeUIViewController(context: Context) -> UIViewController {
+        let controller = UIViewController()
+        controller.view.isUserInteractionEnabled = false
+        controller.view.backgroundColor = .clear
+        DispatchQueue.main.async {
+            viewController = controller
+        }
+        return controller
+    }
+
+    func updateUIViewController(_ uiViewController: UIViewController, context: Context) {
+        DispatchQueue.main.async {
+            viewController = uiViewController
+        }
+    }
 }
 
 private struct GoogleGMark: View {

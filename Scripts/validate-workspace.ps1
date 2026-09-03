@@ -142,8 +142,13 @@ if ($productionApiUri.Scheme -ne "https" -or $productionApiUri.Host -ne "ekitapl
 
 Write-Step "Checking Google Sign-In configuration"
 $googleServerClientID = "258534406055-v8lmgd6moijakv1kcurgit788uk5v2el.apps.googleusercontent.com"
+$projectSpec = Get-Content -Raw -LiteralPath "project.yml"
 foreach ($configuration in @("Development", "Staging", "Production")) {
     $configPath = "App/Ekitapligim/Config/$configuration.xcconfig"
+    $configFilePattern = "(?ms)^\s{4}configFiles:\s*.*?^\s{6}${configuration}:\s+$([Regex]::Escape($configPath))\s*$"
+    if ($projectSpec -notmatch $configFilePattern) {
+        throw "project.yml does not attach $configuration.xcconfig to the Ekitapligim target via configFiles"
+    }
     $configContent = Get-Content -Raw -LiteralPath $configPath
     $iosClientID = Get-XcconfigValue $configContent "EKITAPLIGIM_GOOGLE_IOS_CLIENT_ID"
     $serverClientID = Get-XcconfigValue $configContent "EKITAPLIGIM_GOOGLE_SERVER_CLIENT_ID"
@@ -159,11 +164,25 @@ foreach ($configuration in @("Development", "Staging", "Production")) {
         throw "$configuration Google URL scheme does not match its reversed iOS client ID"
     }
 }
+if ($projectSpec -match "(?m)^\s{10}xcconfig:\s+") {
+    throw "project.yml nests xcconfig under settings.configs; XcodeGen requires target configFiles"
+}
 $infoPlistGoogle = Get-Content -Raw -LiteralPath "App/Ekitapligim/Support/Info.plist"
-foreach ($requiredGooglePlistKey in @("GIDClientID", "GIDServerClientID", "EKITAPLIGIM_GOOGLE_URL_SCHEME")) {
+if ($infoPlistGoogle -match '\$\(EKITAPLIGIM_GOOGLE') {
+    throw "Info.plist still contains unresolved Google OAuth build placeholders"
+}
+foreach ($requiredGooglePlistKey in @("GIDClientID", "GIDServerClientID", "CFBundleURLTypes")) {
     if ($infoPlistGoogle -notmatch [regex]::Escape($requiredGooglePlistKey)) {
         throw "Info.plist is missing Google Sign-In key: $requiredGooglePlistKey"
     }
+}
+$expectedIOSClientID = Get-XcconfigValue (Get-Content -Raw -LiteralPath "App/Ekitapligim/Config/Production.xcconfig") "EKITAPLIGIM_GOOGLE_IOS_CLIENT_ID"
+if ($infoPlistGoogle -notmatch [regex]::Escape($expectedIOSClientID)) {
+    throw "Info.plist GIDClientID must match the public Production Google iOS client ID"
+}
+$expectedURLScheme = "com.googleusercontent.apps." + $expectedIOSClientID.Replace(".apps.googleusercontent.com", "")
+if ($infoPlistGoogle -notmatch [regex]::Escape($expectedURLScheme)) {
+    throw "Info.plist CFBundleURLSchemes must include the reversed Google iOS client ID"
 }
 
 Write-Step "Checking entitlements are not broader than implemented features"

@@ -94,6 +94,16 @@ jobs:
           -clonedSourcePackagesDirPath .build/xcode-packages
           -disableAutomaticPackageResolution
           CODE_SIGNING_ALLOWED=NO
+      - name: Verify Production Google Sign-In plist values
+        run: |
+          APP_PLIST="$(find "$PWD/build" -path '*/Release-iphoneos/Ekitapligim.app/Info.plist' | head -n 1)"
+          if [ -z "$APP_PLIST" ]; then
+            echo "Built app Info.plist not found"
+            exit 1
+          fi
+          /usr/libexec/PlistBuddy -c 'Print :GIDClientID' "$APP_PLIST" | grep -q 'apps.googleusercontent.com'
+          /usr/libexec/PlistBuddy -c 'Print :CFBundleURLTypes:0:CFBundleURLSchemes:0' "$APP_PLIST" | grep -q 'com.googleusercontent.apps.'
+          echo "Resolved Google Sign-In values found in $APP_PLIST"
       - name: Upload XCTest result bundle
         if: always()
         uses: actions/upload-artifact@v4
