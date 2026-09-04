@@ -20,11 +20,12 @@ class ApnsPush
 	/**
 	 * Sends a push notification to all registered devices for a given user.
 	 */
-	public static function sendToUser(int $userId, array $payload): void
+	public static function sendToUser(int $userId, array $payload): array
 	{
+		$summary = ['attempted' => 0, 'sent' => 0, 'failed' => 0, 'removed' => 0];
 		if ($userId <= 0)
 		{
-			return;
+			return $summary;
 		}
 
 		$db = \XF::db();
@@ -35,26 +36,53 @@ class ApnsPush
 
 		if (empty($tokens))
 		{
-			return;
+			return $summary;
 		}
 
 		$jwt = self::generateJwt();
 		if ($jwt === null)
 		{
-			return;
+			$summary['failed'] = count($tokens);
+			return $summary;
 		}
 
 		$jsonPayload = json_encode($payload, JSON_UNESCAPED_UNICODE | JSON_UNESCAPED_SLASHES);
+		if (!is_string($jsonPayload))
+		{
+			\XF::logError('APNs payload encoding failed.');
+			$summary['failed'] = count($tokens);
+			return $summary;
+		}
 
 		foreach ($tokens as $token)
 		{
-			$responseCode = self::sendSingle($token, $jsonPayload, $jwt);
+			$summary['attempted']++;
+			$response = self::sendSingle($token, $jsonPayload, $jwt);
+			$responseCode = (int) $response['status'];
+			$reason = (string) $response['reason'];
 
-			if ($responseCode === 410 || $responseCode === 400)
+			if ($responseCode === 200)
+			{
+				$summary['sent']++;
+				continue;
+			}
+
+			$summary['failed']++;
+			self::logFailure($responseCode, $reason, (string) $response['apns_id']);
+
+			if (self::shouldRemoveToken($responseCode, $reason))
 			{
 				$db->delete('xf_ios_device_tokens', 'device_token = ?', [$token]);
+				$summary['removed']++;
 			}
 		}
+
+		return $summary;
+	}
+
+	public static function shouldRemoveToken(int $status, string $reason): bool
+	{
+		return $status === 410 || $reason === 'Unregistered' || $reason === 'BadDeviceToken';
 	}
 
 	/**
@@ -84,7 +112,7 @@ class ApnsPush
 		return array_merge(['aps' => $aps], $customData);
 	}
 
-	private static function sendSingle(string $deviceToken, string $jsonPayload, string $jwt): int
+	private static function sendSingle(string $deviceToken, string $jsonPayload, string $jwt): array
 	{
 		$options = \XF::options();
 		$topic = $options->ekitapligimApnsTopic ?? 'com.ekitapligim.app';
@@ -94,12 +122,21 @@ class ApnsPush
 		$url = $baseUrl . '/3/device/' . $deviceToken;
 
 		$ch = curl_init($url);
+		$apnsId = '';
 		curl_setopt_array($ch, [
 			CURLOPT_HTTP_VERSION => CURL_HTTP_VERSION_2_0,
 			CURLOPT_POST => true,
 			CURLOPT_POSTFIELDS => $jsonPayload,
 			CURLOPT_RETURNTRANSFER => true,
 			CURLOPT_TIMEOUT => 10,
+			CURLOPT_HEADERFUNCTION => static function ($curl, string $headerLine) use (&$apnsId): int
+			{
+				if (stripos($headerLine, 'apns-id:') === 0)
+				{
+					$apnsId = trim(substr($headerLine, strlen('apns-id:')));
+				}
+				return strlen($headerLine);
+			},
 			CURLOPT_HTTPHEADER => [
 				'authorization: bearer ' . $jwt,
 				'apns-topic: ' . $topic,
@@ -109,17 +146,41 @@ class ApnsPush
 			],
 		]);
 
-		curl_exec($ch);
+		$responseBody = curl_exec($ch);
 		$httpCode = (int) curl_getinfo($ch, CURLINFO_HTTP_CODE);
+		$reason = '';
 
 		if (curl_errno($ch))
 		{
-			\XF::logError('APNs curl error: ' . curl_error($ch));
+			$reason = 'curl_' . curl_errno($ch);
+			\XF::logError('APNs transport error (' . $reason . '): ' . curl_error($ch));
+		}
+		elseif (is_string($responseBody) && $responseBody !== '')
+		{
+			$decoded = json_decode($responseBody, true);
+			if (is_array($decoded))
+			{
+				$reason = (string) ($decoded['reason'] ?? '');
+			}
 		}
 
 		curl_close($ch);
 
-		return $httpCode;
+		return ['status' => $httpCode, 'reason' => $reason, 'apns_id' => $apnsId];
+	}
+
+	private static function logFailure(int $status, string $reason, string $apnsId): void
+	{
+		$message = 'APNs delivery failed: HTTP ' . $status;
+		if ($reason !== '')
+		{
+			$message .= ', reason=' . preg_replace('/[^A-Za-z0-9_-]/', '', $reason);
+		}
+		if ($apnsId !== '')
+		{
+			$message .= ', apns_id=' . preg_replace('/[^A-Fa-f0-9-]/', '', $apnsId);
+		}
+		\XF::logError($message . '.');
 	}
 
 	/**

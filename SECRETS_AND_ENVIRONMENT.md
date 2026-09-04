@@ -22,6 +22,7 @@ Google OAuth client IDs and the reversed URL scheme are public configuration, no
 - App Store Server API issuer ID, key ID, bundle ID, and private key must live only on the server secret store.
 - Apple Sign in keys and JWKS cache must live only on the server.
 - The web server must forward `Authorization` to PHP for mobile bearer tokens. On Apache/XenForo, enable `RewriteRule .* - [E=HTTP_AUTHORIZATION:%{HTTP:Authorization}]` or the equivalent virtual-host/FastCGI setting.
+- APNs provider values live only in XenForo options: Key ID, Team ID, `.p8` absolute path, topic `com.ekitapligim.app`, and environment `production`. Keep the `.p8` file outside the web root and never commit its contents.
 
 ## Reviewer Account
 Never commit reviewer credentials. Store them only in App Store Connect review notes.

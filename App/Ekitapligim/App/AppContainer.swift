@@ -251,6 +251,7 @@ final class AppContainer: ObservableObject {
         startUnreadPolling()
         startPresencePolling()
         Task {
+            await pushManager.retryPendingRegistration()
             await refreshUnreadCounts()
             await refreshLibrary()
             await touchPresence()

@@ -7,22 +7,33 @@ use Ekitapligim\IosApi\Service\ApnsPush;
 use XF\Entity\UserAlert;
 
 /**
- * Listens to XenForo's user_alert event and triggers an APNs push notification.
- *
- * Register in Admin CP > Development > Code Event Listeners:
- *   Event: user_alert
- *   Callback: Ekitapligim\IosApi\Listener\AlertCreated::onUserAlert
+ * Listens for newly persisted XenForo UserAlert entities and queues APNs delivery.
  */
 class AlertCreated
 {
 	public static function onUserAlert(UserAlert $alert): void
+	{
+		if (!$alert->isInsert() || !$alert->alert_id)
+		{
+			return;
+		}
+
+		\XF::app()->jobManager()->enqueueUnique(
+			'ekitapligimIosApnsAlert' . (int) $alert->alert_id,
+			'Ekitapligim\IosApi:SendAlertPush',
+			['alert_id' => (int) $alert->alert_id],
+			false
+		);
+	}
+
+	public static function deliver(UserAlert $alert): array
 	{
 		try
 		{
 			$userId = (int) $alert->alerted_user_id;
 			if ($userId <= 0)
 			{
-				return;
+				return ['attempted' => 0, 'sent' => 0, 'failed' => 0, 'removed' => 0];
 			}
 
 			$title = self::titleFromAlert($alert);
@@ -64,11 +75,12 @@ class AlertCreated
 			}
 
 			$payload = ApnsPush::buildPayload($title, $body, $badge, $customData);
-			ApnsPush::sendToUser($userId, $payload);
+			return ApnsPush::sendToUser($userId, $payload);
 		}
 		catch (\Throwable $e)
 		{
 			\XF::logException($e, false, 'IosApi push notification: ');
+			return ['attempted' => 0, 'sent' => 0, 'failed' => 1, 'removed' => 0];
 		}
 	}
 

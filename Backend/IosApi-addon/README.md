@@ -55,6 +55,7 @@ Regenerate routes after MobileApi reference updates:
 - `GET|POST /ios-api/v1/me/terms`, `POST /ios-api/v1/me/terms/accept`
 - `POST /ios-api/v1/posts/{post_id}/report`
 - `GET /ios-api/v1/me/notifications`, `GET /ios-api/v1/me/notifications/counts`, `POST /ios-api/v1/me/notifications/{alert_id}/mark`, `POST /ios-api/v1/me/notifications/mark-all` — XenForo site alerts for the signed-in member (requires 1.0.15+)
+- `POST|DELETE /ios-api/v1/me/device-token` — register or remove the signed-in member's APNs token (requires 1.0.22+)
 - `POST /ios-api/v1/posts/{post_id}/edit` — edit forum post (XenForo Post Editor; requires 1.0.14+)
 - `POST /ios-api/v1/posts/{post_id}/delete` — soft-delete forum post (POST, not HTTP DELETE; requires 1.0.14+)
 - `GET /ios-api/v1/legal/terms`
@@ -90,6 +91,15 @@ The verifier binds an Apple `originalTransactionId` to the first Ekitapligim acc
 a different account cannot claim the same subscription during restore.
 
 Sign in with Apple returns a service error when this configuration is incomplete.
+
+## APNs Push Configuration
+
+In XenForo Admin CP, configure `ekitapligimApnsKeyId`, `ekitapligimApnsTeamId`,
+`ekitapligimApnsKeyPath`, `ekitapligimApnsTopic=com.ekitapligim.app`, and
+`ekitapligimApnsEnvironment=production`. Store the `.p8` key outside the public web root
+with read access limited to the PHP process. After a signed-in device has opened the app,
+run `php cmd.php ekitapligim-ios:push-test USER_ID`. The command prints counts only and
+never prints a device token.
 
 ## Account Deletion CLI
 

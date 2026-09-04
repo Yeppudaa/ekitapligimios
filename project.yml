@@ -67,7 +67,7 @@ targets:
     entitlements:
       path: App/Ekitapligim/Support/Ekitapligim.entitlements
       properties:
-        aps-environment: development
+        aps-environment: $(APS_ENVIRONMENT)
       configs:
         Development:
           PRODUCT_BUNDLE_IDENTIFIER: com.ekitapligim.app

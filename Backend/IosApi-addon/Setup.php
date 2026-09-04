@@ -21,6 +21,7 @@ class Setup extends AbstractSetup
 		ReadingStats::ensureTables();
 		TermsAcceptance::ensureTable();
 		UgcModeration::ensureTable();
+		self::ensureDeviceTokensTable();
 	}
 
 	public function upgrade1000002Step1(): void
@@ -85,6 +86,12 @@ class Setup extends AbstractSetup
 
 	public function upgrade1000020Step1(): void
 	{
+		self::ensureDeviceTokensTable();
+	}
+
+	public function upgrade1000022Step1(): void
+	{
+		// Repairs fresh installs and imports the APNs route/listener data with this release.
 		self::ensureDeviceTokensTable();
 	}
 

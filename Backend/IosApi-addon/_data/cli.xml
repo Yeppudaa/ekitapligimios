@@ -2,4 +2,5 @@
 <cli_commands>
   <command class="Ekitapligim\IosApi\Cli\Command\CompleteAccountDeletion"/>
   <command class="Ekitapligim\IosApi\Cli\Command\ReleaseAudit"/>
+  <command class="Ekitapligim\IosApi\Cli\Command\PushTest"/>
 </cli_commands>

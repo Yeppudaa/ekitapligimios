@@ -212,6 +212,11 @@ Response: XenForo alert page (`items`/`notifications`) with unread/unviewed/conv
 Auth: login required.
 Response: unread/unviewed alert counts plus `conversations_unread`.
 
+### POST, DELETE `/me/device-token`
+Auth: login required.
+Body: `device_token`; registration also sends `platform=ios`.
+Response: registered/unregistered success. Tokens are never returned or logged. IosApi `1.0.22+` installs the token table on fresh installs and upgrades, queues newly inserted XenForo alerts through `entity_post_save`, and records redacted APNs response diagnostics.
+
 ### POST `/me/notifications/{alert_id}/mark`
 Auth: login required.
 Body: `unread`.

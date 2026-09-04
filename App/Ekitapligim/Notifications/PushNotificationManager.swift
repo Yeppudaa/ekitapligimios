@@ -7,13 +7,39 @@ import EkitapligimCore
 @MainActor
 final class PushNotificationManager: ObservableObject {
 
-    private let apiClient: APIClient
+    enum RegistrationStatus: Equatable {
+        case idle
+        case permissionDenied
+        case registering
+        case registered
+        case failed
+    }
+
+    @Published private(set) var registrationStatus: RegistrationStatus = .idle
+
+    private let registerToken: (String) async throws -> Void
+    private let unregisterTokenRequest: (String) async throws -> Void
     private let deepLinkParser = DeepLinkParser()
     private var onRoute: ((AppRoute) -> Void)?
-    private var currentToken: String?
+    private var registeredToken: String?
+    private var pendingToken: String?
+    private var isRegistering = false
 
     init(apiClient: APIClient) {
-        self.apiClient = apiClient
+        self.registerToken = { token in
+            let _: SuccessResponse = try await apiClient.request(.registerDeviceToken(token))
+        }
+        self.unregisterTokenRequest = { token in
+            let _: SuccessResponse = try await apiClient.request(.unregisterDeviceToken(token))
+        }
+    }
+
+    init(
+        registerToken: @escaping (String) async throws -> Void,
+        unregisterToken: @escaping (String) async throws -> Void = { _ in }
+    ) {
+        self.registerToken = registerToken
+        self.unregisterTokenRequest = unregisterToken
     }
 
     /// Assigns the deep-link handler called when the user taps a push notification.
@@ -28,9 +54,13 @@ final class PushNotificationManager: ObservableObject {
         let center = UNUserNotificationCenter.current()
         do {
             let granted = try await center.requestAuthorization(options: [.alert, .badge, .sound])
-            guard granted else { return }
+            guard granted else {
+                registrationStatus = .permissionDenied
+                return
+            }
             UIApplication.shared.registerForRemoteNotifications()
         } catch {
+            registrationStatus = .failed
             #if DEBUG
             print("[Push] Authorization error: \(error.localizedDescription)")
             #endif
@@ -40,36 +70,61 @@ final class PushNotificationManager: ObservableObject {
     // MARK: - Token Handling
 
     /// Called by AppDelegate when APNs delivers a device token.
-    func didReceiveDeviceToken(_ token: String) {
-        guard token != currentToken else { return }
-        currentToken = token
-        Task { await sendTokenToBackend(token) }
+    func didReceiveDeviceToken(_ token: String) async {
+        guard token != registeredToken else {
+            pendingToken = nil
+            registrationStatus = .registered
+            return
+        }
+        pendingToken = token
+        await retryPendingRegistration()
     }
 
-    /// Sends the device token to the backend for storage.
-    private func sendTokenToBackend(_ token: String) async {
+    /// Retries a token upload that previously failed without exposing the token in diagnostics.
+    func retryPendingRegistration() async {
+        guard let token = pendingToken,
+              token != registeredToken,
+              !isRegistering else { return }
+
+        isRegistering = true
+        registrationStatus = .registering
+        defer { isRegistering = false }
+
         do {
-            let _: SuccessResponse = try await apiClient.request(
-                .registerDeviceToken(token)
-            )
+            try await registerToken(token)
+            let previousToken = registeredToken
+            registeredToken = token
+            if pendingToken == token {
+                pendingToken = nil
+            }
+            registrationStatus = .registered
+
+            if let previousToken, previousToken != token {
+                try? await unregisterTokenRequest(previousToken)
+            }
         } catch {
+            registrationStatus = .failed
             #if DEBUG
-            print("[Push] Token registration failed: \(error)")
+            print("[Push] Token registration failed; it will be retried when the app becomes active.")
             #endif
         }
     }
 
     /// Removes the current device token from the backend (called on logout).
     func unregisterToken() async {
-        guard let token = currentToken else { return }
-        currentToken = nil
+        guard let token = registeredToken else {
+            pendingToken = nil
+            registrationStatus = .idle
+            return
+        }
+        registeredToken = nil
+        pendingToken = nil
+        registrationStatus = .idle
         do {
-            let _: SuccessResponse = try await apiClient.request(
-                .unregisterDeviceToken(token)
-            )
+            try await unregisterTokenRequest(token)
         } catch {
             #if DEBUG
-            print("[Push] Token unregister failed: \(error)")
+            print("[Push] Token unregister failed.")
             #endif
         }
     }

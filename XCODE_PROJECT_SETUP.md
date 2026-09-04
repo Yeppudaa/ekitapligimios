@@ -37,10 +37,9 @@ Required:
 - Associated Domains for universal links.
 - Sign in with Apple if Google login remains available.
 - In-App Purchase if premium/digital access is sold in app.
+- Push Notifications. Development builds use the sandbox APNs entitlement; Staging and Production archives use production APNs.
 
-Do not add push notifications until server/device-token handling is implemented and the permission prompt is contextual.
-
-The entitlement file intentionally does not include push notifications or Apple Pay.
+The entitlement file intentionally does not include Apple Pay. Codemagic verifies the signed Production IPA contains `aps-environment=production` before publishing.
 
 ## Validation Commands
 ```bash

@@ -90,15 +90,20 @@ foreach ($route in @($routes.routes.route | Where-Object { $_.controller -like "
 }
 
 Write-Step "Running PHP syntax checks"
-$php = Get-Command php -ErrorAction SilentlyContinue
-if ($php) {
+$phpCommand = Get-Command php -ErrorAction SilentlyContinue
+$phpPath = if ($phpCommand) { $phpCommand.Source } elseif (Test-Path -LiteralPath "C:\xampp\php\php.exe") { "C:\xampp\php\php.exe" } else { $null }
+if ($phpPath) {
     Get-ChildItem -LiteralPath $addonRoot -Filter "*.php" -Recurse | ForEach-Object {
-        & php -l $_.FullName | Out-Null
+        & $phpPath -l $_.FullName | Out-Null
         if ($LASTEXITCODE -ne 0) {
             throw "PHP syntax check failed: $($_.FullName)"
         }
     }
     Write-Host "PHP syntax checks passed."
+    & $phpPath (Join-Path $repoRoot "Tests\Backend\ApnsPushPolicyTest.php")
+    if ($LASTEXITCODE -ne 0) {
+        throw "APNs token removal policy tests failed."
+    }
 } else {
     Write-Warning "PHP not installed; skipped syntax checks."
 }
@@ -111,13 +116,19 @@ $requiredFiles = @(
     "Cron\UgcSla.php",
     "Api\Controller\LegalTerms.php",
     "Api\Controller\SafetyReports.php",
+    "Api\Controller\MeDeviceToken.php",
+    "Listener\AlertCreated.php",
+    "Job\SendAlertPush.php",
+    "Service\ApnsPush.php",
+    "Cli\Command\PushTest.php",
+    "_data\code_event_listeners.xml",
     "_data\options.xml",
     "_data\cron.xml"
 )
 foreach ($relative in $requiredFiles) { Assert-Path (Join-Path $addonRoot $relative) }
 $addonManifest = Get-Content -Raw -LiteralPath (Join-Path $addonRoot "addon.json") | ConvertFrom-Json
-if ([int]$addonManifest.version_id -ne 1000020 -or $addonManifest.version_string -ne "1.0.20") {
-    throw "IosApi package must be exactly 1.0.20 / 1000020 for this release."
+if ([int]$addonManifest.version_id -ne 1000022 -or $addonManifest.version_string -ne "1.0.22") {
+    throw "IosApi package must be exactly 1.0.22 / 1000022 for this release."
 }
 $routeText = Get-Content -Raw -LiteralPath (Join-Path $addonRoot "_data\routes.xml")
 foreach ($requiredRoute in @(
@@ -131,10 +142,22 @@ foreach ($requiredRoute in @(
         'controller="Ekitapligim\IosApi:ForumPost"',
         'controller="Ekitapligim\IosApi:MeNotifications"',
         'controller="Ekitapligim\IosApi:MeNotificationCounts"',
-        'controller="Ekitapligim\IosApi:MeNotificationMark"'
+        'controller="Ekitapligim\IosApi:MeNotificationMark"',
+        'format="v1/me/device-token"'
     )) {
     if ($routeText.IndexOf($requiredRoute, [System.StringComparison]::Ordinal) -lt 0) {
         throw "Guideline 1.2 route audit failed: $requiredRoute"
+    }
+}
+
+$listenerText = Get-Content -Raw -LiteralPath (Join-Path $addonRoot "_data\code_event_listeners.xml")
+foreach ($requiredListenerControl in @(
+        'event_id="entity_post_save"',
+        'hint="XF\Entity\UserAlert"',
+        'callback_class="Ekitapligim\IosApi\Listener\AlertCreated"'
+    )) {
+    if ($listenerText.IndexOf($requiredListenerControl, [System.StringComparison]::Ordinal) -lt 0) {
+        throw "Push listener audit failed: $requiredListenerControl"
     }
 }
 

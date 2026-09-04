@@ -163,6 +163,30 @@ workflows:
             --project "$CM_BUILD_DIR/$XCODE_PROJECT" \
             --scheme "$XCODE_SCHEME" 2>&1 | tee "$CM_BUILD_DIR/build/build-ipa.log"
 
+      - name: Verify signed Production push entitlement
+        script: |
+          set -euo pipefail
+          IPA_PATH=$(find "$CM_BUILD_DIR/build/ios/ipa" -maxdepth 1 -name '*.ipa' -print -quit)
+          if [ -z "$IPA_PATH" ]; then
+            echo "No IPA was produced for entitlement verification."
+            exit 1
+          fi
+          VERIFY_DIR=$(mktemp -d)
+          trap 'rm -rf "$VERIFY_DIR"' EXIT
+          unzip -q "$IPA_PATH" -d "$VERIFY_DIR"
+          APP_PATH=$(find "$VERIFY_DIR/Payload" -maxdepth 1 -name '*.app' -type d -print -quit)
+          if [ -z "$APP_PATH" ]; then
+            echo "Signed application bundle was not found in the IPA."
+            exit 1
+          fi
+          codesign -d --entitlements :- "$APP_PATH" > "$CM_BUILD_DIR/build/production-entitlements.plist" 2>/dev/null
+          PUSH_ENVIRONMENT=$(/usr/libexec/PlistBuddy -c 'Print :aps-environment' "$CM_BUILD_DIR/build/production-entitlements.plist")
+          if [ "$PUSH_ENVIRONMENT" != "production" ]; then
+            echo "Invalid signed aps-environment: $PUSH_ENVIRONMENT"
+            exit 1
+          fi
+          echo "Signed IPA uses the production APNs environment."
+
     artifacts:
       - build/**/*
       - build/ios/ipa/*.ipa

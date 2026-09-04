@@ -21,7 +21,7 @@ final class AppDelegate: NSObject, UIApplicationDelegate, UNUserNotificationCent
     ) {
         let token = deviceToken.map { String(format: "%02x", $0) }.joined()
         Task { @MainActor in
-            pushManager?.didReceiveDeviceToken(token)
+            await pushManager?.didReceiveDeviceToken(token)
         }
     }
 

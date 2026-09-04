@@ -1,0 +1,4 @@
+<?xml version="1.0" encoding="utf-8"?>
+<code_event_listeners>
+  <listener event_id="entity_post_save" execute_order="100" callback_class="Ekitapligim\IosApi\Listener\AlertCreated" callback_method="onUserAlert" active="1" hint="XF\Entity\UserAlert" description="Queue APNs delivery for newly created XenForo alerts."/>
+</code_event_listeners>

@@ -198,6 +198,20 @@ if ($entitlements -match "aps-environment") {
     if ($pushManagerSource -notmatch "registerForRemoteNotifications" -or $appDelegateSource -notmatch "didRegisterForRemoteNotificationsWithDeviceToken") {
         throw "Push notification entitlement requires APNs registration and device-token handling"
     }
+    foreach ($requiredRetryControl in @("pendingToken", "retryPendingRegistration", "registrationStatus = .registered")) {
+        if ($pushManagerSource -notmatch [regex]::Escape($requiredRetryControl)) {
+            throw "Push notification token retry control missing: $requiredRetryControl"
+        }
+    }
+    $productionConfig = Get-Content -Raw -LiteralPath "App/Ekitapligim/Config/Production.xcconfig"
+    $developmentConfig = Get-Content -Raw -LiteralPath "App/Ekitapligim/Config/Development.xcconfig"
+    if ($productionConfig -notmatch "APS_ENVIRONMENT\s*=\s*production" -or $developmentConfig -notmatch "APS_ENVIRONMENT\s*=\s*development") {
+        throw "APNs entitlement environment must be production for release and development for debug"
+    }
+    $pushListenerData = Get-Content -Raw -LiteralPath "Backend/IosApi-addon/_data/code_event_listeners.xml"
+    if ($pushListenerData -notmatch 'event_id="entity_post_save"' -or $pushListenerData -notmatch 'hint="XF\\Entity\\UserAlert"') {
+        throw "IosApi must register the XenForo UserAlert entity_post_save listener"
+    }
 }
 if ($entitlements -match "com\.apple\.developer\.in-app-payments") {
     throw "Apple Pay entitlement is present; StoreKit IAP does not use Apple Pay entitlement"
