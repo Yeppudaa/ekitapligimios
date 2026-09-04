@@ -1,7 +1,7 @@
 // Development-signed builds use the production app record so Apple Sandbox
 // can resolve the same subscription products when local StoreKit mode is off.
 PRODUCT_BUNDLE_IDENTIFIER = com.ekitapligim.app
-MARKETING_VERSION = 1.0.1
+MARKETING_VERSION = 1.0.2
 CURRENT_PROJECT_VERSION = 18
 EKITAPLIGIM_ENVIRONMENT = development
 APS_ENVIRONMENT = development
