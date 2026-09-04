@@ -2,6 +2,7 @@
 
 namespace Ekitapligim\IosApi\Api\Controller;
 
+use Ekitapligim\IosApi\Service\NotificationCounts;
 use XF\Entity\UserAlert;
 use XF\Mvc\ParameterBag;
 use XF\Repository\UserAlertRepository;
@@ -27,7 +28,7 @@ class MeNotificationMark extends \Ekitapligim\MobileApi\Api\Controller\AbstractM
 			$this->getAlertRepo()->markUserAlertRead($alert);
 		}
 
-		return $this->apiSuccess();
+		return $this->apiResult(NotificationCounts::forUser((int) $visitor->user_id));
 	}
 
 	protected function assertOwnedAlert(int $alertId, int $userId): UserAlert

@@ -7,6 +7,11 @@ import EkitapligimCore
 @MainActor
 final class PushNotificationManager: ObservableObject {
 
+    enum ReadTarget: Equatable, Sendable {
+        case alert(Int)
+        case conversation(Int)
+    }
+
     enum RegistrationStatus: Equatable {
         case idle
         case permissionDenied
@@ -21,6 +26,7 @@ final class PushNotificationManager: ObservableObject {
     private let unregisterTokenRequest: (String) async throws -> Void
     private let deepLinkParser = DeepLinkParser()
     private var onRoute: ((AppRoute) -> Void)?
+    private var onRead: ((ReadTarget) -> Void)?
     private var registeredToken: String?
     private var pendingToken: String?
     private var isRegistering = false
@@ -45,6 +51,10 @@ final class PushNotificationManager: ObservableObject {
     /// Assigns the deep-link handler called when the user taps a push notification.
     func setRouteHandler(_ handler: @escaping (AppRoute) -> Void) {
         onRoute = handler
+    }
+
+    func setReadHandler(_ handler: @escaping (ReadTarget) -> Void) {
+        onRead = handler
     }
 
     // MARK: - Permission & Registration
@@ -142,6 +152,23 @@ final class PushNotificationManager: ObservableObject {
         if let route {
             onRoute?(route)
         }
+        if let target = extractReadTarget(from: userInfo) {
+            onRead?(target)
+        }
+    }
+
+    private func extractReadTarget(from userInfo: [AnyHashable: Any]) -> ReadTarget? {
+        if let alertID = integerValue(userInfo["alert_id"]), alertID > 0 {
+            return .alert(alertID)
+        }
+        if let conversationID = integerValue(userInfo["conversation_id"]), conversationID > 0 {
+            return .conversation(conversationID)
+        }
+        return nil
+    }
+
+    private func integerValue(_ value: Any?) -> Int? {
+        (value as? Int) ?? (value as? NSNumber)?.intValue ?? (value as? String).flatMap(Int.init)
     }
 
     private func extractRoute(from userInfo: [AnyHashable: Any]) -> AppRoute? {

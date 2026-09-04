@@ -55,6 +55,7 @@ Regenerate routes after MobileApi reference updates:
 - `GET|POST /ios-api/v1/me/terms`, `POST /ios-api/v1/me/terms/accept`
 - `POST /ios-api/v1/posts/{post_id}/report`
 - `GET /ios-api/v1/me/notifications`, `GET /ios-api/v1/me/notifications/counts`, `POST /ios-api/v1/me/notifications/{alert_id}/mark`, `POST /ios-api/v1/me/notifications/mark-all` — XenForo site alerts for the signed-in member (requires 1.0.15+)
+- `POST /ios-api/v1/me/conversations/{conversation_id}/read` — idempotently marks an owned conversation read and returns authoritative alert/conversation counts (requires 1.0.23+)
 - `POST|DELETE /ios-api/v1/me/device-token` — register or remove the signed-in member's APNs token (requires 1.0.22+)
 - `POST /ios-api/v1/posts/{post_id}/edit` — edit forum post (XenForo Post Editor; requires 1.0.14+)
 - `POST /ios-api/v1/posts/{post_id}/delete` — soft-delete forum post (POST, not HTTP DELETE; requires 1.0.14+)

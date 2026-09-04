@@ -2,6 +2,8 @@
 
 namespace Ekitapligim\IosApi\Api\Controller;
 
+use Ekitapligim\IosApi\Service\NotificationCounts;
+
 class MeNotificationCounts extends \Ekitapligim\MobileApi\Api\Controller\AbstractMobileController
 {
 	public function actionGet()
@@ -9,11 +11,6 @@ class MeNotificationCounts extends \Ekitapligim\MobileApi\Api\Controller\Abstrac
 		$this->assertMobileScope('alert:read');
 		$visitor = $this->assertRegisteredApiUser();
 
-		return $this->apiResult([
-			'unread' => (int) $visitor->alerts_unread,
-			'unviewed' => (int) $visitor->alerts_unviewed,
-			'conversations_unread' => (int) $visitor->conversations_unread,
-			'conversationsUnread' => (int) $visitor->conversations_unread,
-		]);
+		return $this->apiResult(NotificationCounts::forUser((int) $visitor->user_id));
 	}
 }

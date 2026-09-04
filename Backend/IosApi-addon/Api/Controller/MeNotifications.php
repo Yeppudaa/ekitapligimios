@@ -3,6 +3,7 @@
 namespace Ekitapligim\IosApi\Api\Controller;
 
 use Ekitapligim\IosApi\Service\AlertAppRoute;
+use Ekitapligim\IosApi\Service\NotificationCounts;
 use XF\Entity\UserAlert;
 use XF\Repository\UserAlertRepository;
 
@@ -94,7 +95,7 @@ class MeNotifications extends \Ekitapligim\MobileApi\Api\Controller\AbstractMobi
 			$this->getAlertRepo()->markUserAlertsRead($visitor);
 		}
 
-		return $this->apiSuccess();
+		return $this->apiResult(NotificationCounts::forUser((int) $visitor->user_id));
 	}
 
 	protected function serializeAlert(UserAlert $alert): array

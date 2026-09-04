@@ -58,6 +58,7 @@ class AlertCreated
 			$badge = self::unreadCount($userId);
 
 			$customData = [
+				'alert_id' => (int) $alert->alert_id,
 				'type' => (string) $alert->content_type,
 				'action' => (string) $alert->action,
 				'content_id' => (int) $alert->content_id,

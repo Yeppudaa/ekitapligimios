@@ -3473,6 +3473,16 @@
         }
       }
     },
+    "notifications.readSyncFailed": {
+      "localizations": {
+        "tr": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Okundu bilgisi sunucuyla eşitlenemedi. Uygulama yeniden açıldığında tekrar denenecek."
+          }
+        }
+      }
+    },
     "premium.benefit.reading": {
       "localizations": { "tr": { "stringUnit": { "state": "translated", "value": "Premium kitaplara ve geniş okuma haklarına erişim" } } }
     },

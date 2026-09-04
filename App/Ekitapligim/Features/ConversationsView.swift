@@ -382,6 +382,9 @@ struct ConversationDetailView: View {
         defer { isLoading = false }
         do {
             detail = try await container.conversations.conversation(id: conversationID)
+            if let id = Int(conversationID) {
+                try? await container.notificationReadSync.markConversationRead(id)
+            }
         } catch {
             errorMessage = L10n.conversationsLoadFailed
         }

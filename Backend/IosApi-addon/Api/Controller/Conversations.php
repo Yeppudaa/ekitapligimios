@@ -3,6 +3,7 @@
 namespace Ekitapligim\IosApi\Api\Controller;
 
 use Ekitapligim\IosApi\Service\IgnoredUsers;
+use Ekitapligim\IosApi\Service\NotificationCounts;
 
 class Conversations extends \Ekitapligim\MobileApi\Api\Controller\Conversations
 {
@@ -51,6 +52,47 @@ class Conversations extends \Ekitapligim\MobileApi\Api\Controller\Conversations
 			return $this->apiError('Engellenen kullanıcıyla bire bir konuşmaya yanıt verilemez.', 'blocked_member', null, 403);
 		}
 		return $this->filterConversationReply(parent::actionReply($params));
+	}
+
+	public function actionRead(\XF\Mvc\ParameterBag $params)
+	{
+		$this->assertMobileWriteScope();
+		$visitor = $this->assertRegisteredApiUser();
+		$userId = (int) $visitor->user_id;
+		$conversationId = (int) $params->conversation_id;
+		$userConversation = $this->assertViewableConversation($conversationId, $visitor);
+
+		$db = \XF::db();
+		$db->beginTransaction();
+		try
+		{
+			$db->update(
+				'xf_conversation_recipient',
+				['last_read_date' => \XF::$time],
+				'conversation_id = ? AND user_id = ?',
+				[$conversationId, $userId]
+			);
+			$db->update(
+				'xf_conversation_user',
+				['is_unread' => 0],
+				'conversation_id = ? AND owner_user_id = ?',
+				[$conversationId, $userId]
+			);
+
+			$unread = (int) $db->fetchOne(
+				'SELECT COUNT(*) FROM xf_conversation_user WHERE owner_user_id = ? AND is_unread = 1',
+				[$userId]
+			);
+			$db->update('xf_user', ['conversations_unread' => $unread], 'user_id = ?', [$userId]);
+			$db->commit();
+		}
+		catch (\Throwable $e)
+		{
+			$db->rollback();
+			throw $e;
+		}
+
+		return $this->apiResult(NotificationCounts::forUser($userId));
 	}
 
 	protected function filterConversationReply($reply)

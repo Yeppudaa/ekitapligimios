@@ -95,6 +95,12 @@ class Setup extends AbstractSetup
 		self::ensureDeviceTokensTable();
 	}
 
+	public function upgrade1000023Step1(): void
+	{
+		// Imports the conversation notifier extension and read-state route for iOS.
+		self::ensureDeviceTokensTable();
+	}
+
 	public static function ensureDeviceTokensTable(): void
 	{
 		$db = \XF::db();

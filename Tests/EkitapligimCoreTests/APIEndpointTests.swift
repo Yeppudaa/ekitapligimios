@@ -337,6 +337,11 @@ final class APIEndpointTests: XCTestCase {
 
         XCTAssertEqual(APIEndpoint.markAllNotificationsRead().path, "me/notifications/mark-all")
         XCTAssertTrue(APIEndpoint.markAllNotificationsRead().requiresAuthentication)
+
+        let conversationRead = APIEndpoint.markConversationRead(id: 42)
+        XCTAssertEqual(conversationRead.method, .post)
+        XCTAssertEqual(conversationRead.path, "me/conversations/42/read")
+        XCTAssertTrue(conversationRead.requiresAuthentication)
     }
 
     func testTermsEndpointsRequireAuthentication() {

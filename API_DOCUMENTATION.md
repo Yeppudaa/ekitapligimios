@@ -153,6 +153,7 @@ Behavior: toggles the current user's support vote and returns `voted` plus the c
 - `POST /posts/{post_id}/report`
 - `GET /conversations` (authenticated paged list)
 - `POST /conversations` (create with `recipient`, `title`, `message`)
+- `POST /me/conversations/{conversation_id}/read` (authenticated, idempotent; returns current notification and conversation counts)
 - `GET /conversation-detail/{conversation_id}` (collision-free iOS detail route)
 - `POST /conversation-reply/{conversation_id}` (collision-free iOS reply route)
 

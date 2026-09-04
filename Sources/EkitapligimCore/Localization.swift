@@ -802,6 +802,7 @@ public enum L10n {
     public static let notificationsUnavailableTitle = localized("notifications.unavailableTitle", defaultValue: "Bildirimler alınamadı")
     public static let notificationsEmptyTitle = localized("notifications.emptyTitle", defaultValue: "Bildirim yok")
     public static let notificationsUnread = localized("notifications.unread", defaultValue: "Okunmamış")
+    public static let notificationsReadSyncFailed = localized("notifications.readSyncFailed", defaultValue: "Okundu bilgisi sunucuyla eşitlenemedi. Uygulama yeniden açıldığında tekrar denenecek.")
     public static let notificationsNew = localized("notifications.new", defaultValue: "Yeni")
     public static let notificationsMarkAllRead = localized("notifications.markAllRead", defaultValue: "Tümünü oku")
     public static let notificationsNoDestination = localized("notifications.noDestination", defaultValue: "Bu bildirim için açılabilecek bir içerik bulunamadı.")

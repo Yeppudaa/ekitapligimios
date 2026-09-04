@@ -10,6 +10,7 @@ struct NotificationsView: View {
     @State private var isLoading = false
     @State private var errorMessage: String?
     @State private var navigationError: String?
+    @State private var optimisticallyReadIDs: Set<Int> = []
 
     var body: some View {
         EKitapligimScreen {
@@ -29,7 +30,10 @@ struct NotificationsView: View {
                                 notificationCountsCard(counts)
                             }
                             ForEach(notifications) { item in
-                                NotificationRow(notification: item) {
+                                NotificationRow(
+                                    notification: item,
+                                    isRead: item.isRead == true || Int(item.id).map(optimisticallyReadIDs.contains) == true
+                                ) {
                                     await open(item)
                                 }
                                 .padding(14)
@@ -96,8 +100,12 @@ struct NotificationsView: View {
     @MainActor
     private func open(_ notification: NotificationDTO) async {
         if notification.isRead != true, let id = Int(notification.id) {
-            try? await container.notifications.markRead(id: id)
-            await load()
+            optimisticallyReadIDs.insert(id)
+            do {
+                try await container.notificationReadSync.markAlertRead(id)
+            } catch {
+                navigationError = L10n.notificationsReadSyncFailed
+            }
         }
 
         guard let route = DeepLinkParser().parseNotification(
@@ -116,8 +124,13 @@ struct NotificationsView: View {
     }
 
     private func markAllRead() async {
-        try? await container.notifications.markAllRead()
-        await load()
+        do {
+            try await container.notificationReadSync.markAllAlertsRead()
+            optimisticallyReadIDs.formUnion(notifications.compactMap { Int($0.id) })
+            await load()
+        } catch {
+            navigationError = L10n.notificationsReadSyncFailed
+        }
     }
 
 }
@@ -125,6 +138,7 @@ struct NotificationsView: View {
 @MainActor
 private struct NotificationRow: View {
     let notification: NotificationDTO
+    let isRead: Bool
     let markRead: () async -> Void
 
     var body: some View {
@@ -135,7 +149,7 @@ private struct NotificationRow: View {
                 HStack {
                     Text(notification.title)
                         .font(.headline)
-                    if notification.isRead != true {
+                    if !isRead {
                         Image(systemName: "circle.fill")
                             .font(.caption2)
                             .foregroundStyle(.blue)

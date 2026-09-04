@@ -104,6 +104,10 @@ if ($phpPath) {
     if ($LASTEXITCODE -ne 0) {
         throw "APNs token removal policy tests failed."
     }
+    & $phpPath (Join-Path $repoRoot "Tests\Backend\PushIntegrationContractTest.php")
+    if ($LASTEXITCODE -ne 0) {
+        throw "Push integration contract tests failed."
+    }
 } else {
     Write-Warning "PHP not installed; skipped syntax checks."
 }
@@ -119,7 +123,10 @@ $requiredFiles = @(
     "Api\Controller\MeDeviceToken.php",
     "Listener\AlertCreated.php",
     "Job\SendAlertPush.php",
+    "Job\SendConversationPush.php",
     "Service\ApnsPush.php",
+    "Service\NotificationCounts.php",
+    "XF\Service\Conversation\Notifier.php",
     "Cli\Command\PushTest.php",
     "_data\code_event_listeners.xml",
     "_data\options.xml",
@@ -127,8 +134,8 @@ $requiredFiles = @(
 )
 foreach ($relative in $requiredFiles) { Assert-Path (Join-Path $addonRoot $relative) }
 $addonManifest = Get-Content -Raw -LiteralPath (Join-Path $addonRoot "addon.json") | ConvertFrom-Json
-if ([int]$addonManifest.version_id -ne 1000022 -or $addonManifest.version_string -ne "1.0.22") {
-    throw "IosApi package must be exactly 1.0.22 / 1000022 for this release."
+if ([int]$addonManifest.version_id -ne 1000023 -or $addonManifest.version_string -ne "1.0.23") {
+    throw "IosApi package must be exactly 1.0.23 / 1000023 for this release."
 }
 $routeText = Get-Content -Raw -LiteralPath (Join-Path $addonRoot "_data\routes.xml")
 foreach ($requiredRoute in @(
@@ -143,7 +150,8 @@ foreach ($requiredRoute in @(
         'controller="Ekitapligim\IosApi:MeNotifications"',
         'controller="Ekitapligim\IosApi:MeNotificationCounts"',
         'controller="Ekitapligim\IosApi:MeNotificationMark"',
-        'format="v1/me/device-token"'
+        'format="v1/me/device-token"',
+        'format="v1/me/conversations/:int&lt;conversation_id&gt;/read"'
     )) {
     if ($routeText.IndexOf($requiredRoute, [System.StringComparison]::Ordinal) -lt 0) {
         throw "Guideline 1.2 route audit failed: $requiredRoute"

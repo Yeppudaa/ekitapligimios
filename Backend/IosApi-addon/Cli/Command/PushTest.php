@@ -14,7 +14,8 @@ class PushTest extends AbstractCommand
 	{
 		$this->setName('ekitapligim-ios:push-test')
 			->setDescription('Send a privacy-safe APNs diagnostic notification to an iOS user')
-			->addArgument('user-id', InputArgument::REQUIRED, 'XenForo user ID');
+			->addArgument('user-id', InputArgument::REQUIRED, 'XenForo user ID')
+			->addArgument('scenario', InputArgument::OPTIONAL, 'generic-alert, forum, profile, conversation, chat, book-agenda, reading, or system', 'generic-alert');
 	}
 
 	protected function execute(InputInterface $input, OutputInterface $output): int
@@ -26,12 +27,29 @@ class PushTest extends AbstractCommand
 			return 1;
 		}
 
-		$payload = ApnsPush::buildPayload(
-			'Ekitaplığım test bildirimi',
-			'APNs bağlantısı başarıyla sınanıyor.',
-			0,
-			['route' => 'notifications', 'type' => 'diagnostic']
-		);
+		$scenario = strtolower(trim((string) $input->getArgument('scenario')));
+		$scenarios = [
+			'generic-alert' => ['Bildirim testi', 'notifications', 'diagnostic'],
+			'forum' => ['Forum bildirimi testi', 'forum', 'post'],
+			'profile' => ['Profil bildirimi testi', 'profile', 'user'],
+			'conversation' => ['Özel mesaj bildirimi testi', 'messages', 'conversation_message'],
+			'chat' => ['Sohbet bildirimi testi', 'chat', 'siropu_chat_room_message'],
+			'book-agenda' => ['Kitap Gündemi bildirimi testi', 'book-agenda', 'ek_social_post'],
+			'reading' => ['Okuma bildirimi testi', 'library/0', 'ek_reading_invitation'],
+			'system' => ['Sistem bildirimi testi', 'notifications', 'system'],
+		];
+		if (!isset($scenarios[$scenario]))
+		{
+			$output->writeln('<error>Unknown scenario.</error>');
+			return 4;
+		}
+
+		[$title, $route, $type] = $scenarios[$scenario];
+		$payload = ApnsPush::buildPayload($title, 'APNs bağlantısı başarıyla sınanıyor.', 0, [
+			'route' => $route,
+			'type' => $type,
+			'action' => 'diagnostic',
+		]);
 		$summary = ApnsPush::sendToUser($userId, $payload);
 
 		$output->writeln(sprintf(

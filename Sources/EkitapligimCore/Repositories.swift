@@ -544,12 +544,16 @@ public struct NotificationsRepository: Sendable {
         try await apiClient.request(.notificationCounts, as: NotificationCountsDTO.self)
     }
 
-    public func markRead(id: Int) async throws {
-        let _: SuccessResponse = try await apiClient.request(.markNotificationRead(id: id))
+    public func markRead(id: Int) async throws -> NotificationCountsDTO {
+        try await apiClient.request(.markNotificationRead(id: id), as: NotificationCountsDTO.self)
     }
 
-    public func markAllRead() async throws {
-        let _: SuccessResponse = try await apiClient.request(.markAllNotificationsRead())
+    public func markAllRead() async throws -> NotificationCountsDTO {
+        try await apiClient.request(.markAllNotificationsRead(), as: NotificationCountsDTO.self)
+    }
+
+    public func markConversationRead(id: Int) async throws -> NotificationCountsDTO {
+        try await apiClient.request(.markConversationRead(id: id), as: NotificationCountsDTO.self)
     }
 }
 

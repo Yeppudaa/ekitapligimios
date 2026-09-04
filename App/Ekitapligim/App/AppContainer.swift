@@ -1,5 +1,6 @@
 import Foundation
 import SwiftUI
+import UserNotifications
 import EkitapligimCore
 
 @MainActor
@@ -63,6 +64,7 @@ final class AppContainer: ObservableObject {
     let community: CommunityRepository
     let profile: ProfileRepository
     let notifications: NotificationsRepository
+    let notificationReadSync: NotificationReadSyncService
     let subscriptions: SubscriptionRepository
     let readingStatsRepository: ReadingStatsRepository
     let bookAgenda: BookAgendaRepository
@@ -102,7 +104,9 @@ final class AppContainer: ObservableObject {
         self.storeKit = StoreKitPurchaseService(purchaseRepository: purchases)
         self.community = CommunityRepository(apiClient: apiClient)
         self.profile = ProfileRepository(apiClient: apiClient)
-        self.notifications = NotificationsRepository(apiClient: apiClient)
+        let notifications = NotificationsRepository(apiClient: apiClient)
+        self.notifications = notifications
+        self.notificationReadSync = NotificationReadSyncService(repository: notifications)
         self.subscriptions = SubscriptionRepository(apiClient: apiClient)
         self.readingStatsRepository = ReadingStatsRepository(apiClient: apiClient)
         self.bookAgenda = BookAgendaRepository(apiClient: apiClient)
@@ -111,6 +115,20 @@ final class AppContainer: ObservableObject {
         self.pushManager = PushNotificationManager(apiClient: apiClient)
         self.pushManager.setRouteHandler { [weak self] route in
             self?.open(route: route)
+        }
+        self.pushManager.setReadHandler { [weak self] target in
+            Task { @MainActor in
+                guard let self else { return }
+                switch target {
+                case .alert(let id):
+                    try? await self.notificationReadSync.markAlertRead(id)
+                case .conversation(let id):
+                    try? await self.notificationReadSync.markConversationRead(id)
+                }
+            }
+        }
+        self.notificationReadSync.countsDidChange = { [weak self] counts in
+            self?.applyCounts(counts)
         }
         self.storeKit.entitlementDidChange = { [weak self] in
             await self?.refreshPremiumStatus()
@@ -206,6 +224,10 @@ final class AppContainer: ObservableObject {
     private func applyCounts(_ counts: NotificationCountsDTO) {
         unreadNotifications = max(counts.unread, 0)
         unreadMessages = max(counts.conversationsUnread ?? 0, 0)
+        let total = totalUnread
+        Task {
+            try? await UNUserNotificationCenter.current().setBadgeCount(total)
+        }
     }
 
     func startUnreadPolling() {
@@ -252,6 +274,7 @@ final class AppContainer: ObservableObject {
         startPresencePolling()
         Task {
             await pushManager.retryPendingRegistration()
+            await notificationReadSync.retryPending()
             await refreshUnreadCounts()
             await refreshLibrary()
             await touchPresence()
@@ -272,6 +295,10 @@ final class AppContainer: ObservableObject {
         unreadNotifications = 0
         unreadMessages = 0
         blockedUserIDs = []
+        notificationReadSync.clear()
+        Task {
+            try? await UNUserNotificationCenter.current().setBadgeCount(0)
+        }
     }
 
     func signIn(username: String, password: String, acceptedTermsVersion: String) async throws {

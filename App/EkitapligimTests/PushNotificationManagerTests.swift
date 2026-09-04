@@ -1,4 +1,5 @@
 import XCTest
+import EkitapligimCore
 @testable import Ekitapligim
 
 @MainActor
@@ -50,5 +51,37 @@ final class PushNotificationManagerTests: XCTestCase {
         XCTAssertEqual(unregistered, ["device-token"])
         let idleStatus = manager.registrationStatus
         XCTAssertEqual(idleStatus, .idle)
+    }
+
+    func testNotificationTapRoutesAndAcknowledgesAlert() {
+        let manager = PushNotificationManager(registerToken: { _ in })
+        var route: AppRoute?
+        var readTarget: PushNotificationManager.ReadTarget?
+        manager.setRouteHandler { route = $0 }
+        manager.setReadHandler { readTarget = $0 }
+
+        manager.handleNotificationTap(userInfo: [
+            "route": "thread/15",
+            "type": "post",
+            "content_id": 99,
+            "alert_id": "73"
+        ])
+
+        XCTAssertEqual(route, .thread(15))
+        XCTAssertEqual(readTarget, .alert(73))
+    }
+
+    func testConversationPushUsesConversationAcknowledgement() {
+        let manager = PushNotificationManager(registerToken: { _ in })
+        var readTarget: PushNotificationManager.ReadTarget?
+        manager.setReadHandler { readTarget = $0 }
+
+        manager.handleNotificationTap(userInfo: [
+            "route": "conversation/12",
+            "type": "conversation_message",
+            "conversation_id": 12
+        ])
+
+        XCTAssertEqual(readTarget, .conversation(12))
     }
 }

@@ -394,6 +394,14 @@ public extension APIEndpoint {
         APIEndpoint(method: .post, path: "me/notifications/mark-all", requiresAuthentication: true)
     }
 
+    static func markConversationRead(id: Int) -> APIEndpoint {
+        APIEndpoint(
+            method: .post,
+            path: "me/conversations/\(id)/read",
+            requiresAuthentication: true
+        )
+    }
+
     static func acceptTerms(version: String) -> APIEndpoint {
         APIEndpoint(
             method: .post,
