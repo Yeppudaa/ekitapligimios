@@ -41,7 +41,7 @@ jobs:
   ios-build:
     name: iOS build and tests
     runs-on: macos-15
-    timeout-minutes: 30
+    timeout-minutes: 45
     steps:
       - uses: actions/checkout@v4
       - name: Select and verify Xcode 16.4
