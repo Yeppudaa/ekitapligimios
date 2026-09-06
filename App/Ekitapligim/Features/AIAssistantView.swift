@@ -3,10 +3,10 @@ import EkitapligimCore
 
 enum AIStyle {
     static let navy = Color(hex: 0x103848)
-    static let teal = Color(hex: 0x087F86)
+    static let teal = Color(hex: 0x006E73)
     static let muted = Color(hex: 0x536B75)
     static let background = Color(hex: 0xF4F9F9)
-    static let border = Color(hex: 0xDCE9EB)
+    static let border = Color(hex: 0x789198)
     static let gradient = LinearGradient(colors: [navy, teal], startPoint: .topLeading, endPoint: .bottomTrailing)
 }
 
