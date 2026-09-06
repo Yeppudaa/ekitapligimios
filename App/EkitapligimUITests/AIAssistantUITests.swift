@@ -22,7 +22,7 @@ final class AIAssistantUITests: XCTestCase {
         XCTAssertTrue(app.buttons["ai-send"].isHittable)
         capture(app, name: "ai-keyboard")
         app.buttons["ai-send"].tap()
-        XCTAssertTrue(app.staticTexts["Sen"].waitForExistence(timeout: 10))
+        XCTAssertTrue(app.staticTexts["ai-user-message"].waitForExistence(timeout: 10))
         capture(app, name: "ai-response")
     }
     func testQuotaAndConnectionErrorPreventSend() throws {

@@ -17,4 +17,7 @@ public enum AIL10n {
     public static func quota(_ remaining: Int, _ limit: Int) -> String {
         String(format: text("quotaFormat"), remaining, limit)
     }
+    public static func remaining(_ remaining: Int, _ limit: Int) -> String {
+        String(format: text("remainingFormat"), remaining, limit)
+    }
 }

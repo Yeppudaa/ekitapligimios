@@ -1,8 +1,12 @@
 "title" = "AI Asistan";
 "subtitle" = "Okuma yolculuğuna eşlik eder";
 "menuSubtitle" = "Kitap keşfi ve akıllı okuma yardımcısı";
-"welcome" = "Bir sonraki favorini\nbirlikte keşfedelim.";
-"welcomeMessage" = "Ne okumak istediğini anlat. Kütüphanemizden sana uygun kitapları birlikte bulalım.";
+"online" = "Çevrimiçi";
+"dailyUsage" = "Günlük kullanım";
+"quotaLoading" = "Kota yükleniyor…";
+"remainingFormat" = "%d/%d kaldı";
+"welcome" = "Ne okumak istersiniz?";
+"welcomeMessage" = "Kitap keşfi, karşılaştırma ve kütüphane işlemlerinde yanınızdayım.";
 "newConversation" = "Yeni sohbet";
 "history" = "Sohbet geçmişi";
 "preferences" = "AI tercihleri";

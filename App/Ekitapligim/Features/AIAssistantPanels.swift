@@ -140,7 +140,7 @@ struct AIModelFeedback: View {
     var body: some View {
         if model.busy { ProgressView().frame(maxWidth: .infinity).padding() }
         if let error = model.error { Text(error).foregroundStyle(AIStyle.navy) }
-        if let notice = model.notice { Label(notice, systemImage: "checkmark.circle").foregroundStyle(AIStyle.teal) }
+        if let notice = model.notice { Label(notice, systemImage: "checkmark.circle").foregroundStyle(AIStyle.success) }
     }
 }
 
@@ -161,11 +161,13 @@ struct AIAssistantLauncher: View {
                 Button(action: action) {
                     HStack(spacing: 9) {
                         AIEmblem(size: 38)
-                        Text(AIL10n.text("title")).font(.subheadline.weight(.semibold)).foregroundStyle(AIStyle.navy)
-                        Image(systemName: "sparkles").foregroundStyle(AIStyle.teal)
-                    }.padding(7).padding(.trailing, 9).background(.regularMaterial, in: Capsule())
-                        .overlay(Capsule().stroke(AIStyle.border))
-                        .shadow(color: AIStyle.navy.opacity(0.10), radius: 10, y: 3)
+                        VStack(alignment: .leading, spacing: 0) {
+                            Text(AIL10n.text("title")).font(.subheadline.weight(.bold)).foregroundStyle(.white)
+                            Text(AIL10n.text("online")).font(.caption2).foregroundStyle(.white.opacity(0.9))
+                        }
+                        Image(systemName: "sparkles").foregroundStyle(.white)
+                    }.padding(7).padding(.trailing, 9).background(AIStyle.gradient, in: RoundedRectangle(cornerRadius: 22))
+                        .shadow(color: AIStyle.navy.opacity(0.20), radius: 10, y: 4)
                 }.buttonStyle(.plain).accessibilityIdentifier("ai-launcher")
             }.padding(.horizontal, 16).padding(.vertical, 5)
         }
@@ -188,7 +190,7 @@ struct AIBookEntry: View {
                         Text(AIL10n.text("menuSubtitle")).font(.caption).foregroundStyle(AIStyle.muted)
                     }
                     Spacer()
-                    Image(systemName: "arrow.up.right").foregroundStyle(AIStyle.teal)
+                    Image(systemName: "arrow.up.right").foregroundStyle(AIStyle.blue)
                 }.padding(16).aiCard()
             }.buttonStyle(.plain).accessibilityIdentifier("ai-book-entry")
         }
