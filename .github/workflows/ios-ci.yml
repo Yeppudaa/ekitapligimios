@@ -113,7 +113,7 @@ jobs:
           CODE_SIGNING_ALLOWED=NO
       - name: Verify Production Google Sign-In plist values
         run: |
-          APP_PLIST="$(find "$PWD/build" -path '*/Release-iphoneos/Ekitapligim.app/Info.plist' | head -n 1)"
+          APP_PLIST="$(find "$PWD/build/Build/Products" -path '*/Ekitapligim.app/Info.plist' | head -n 1)"
           if [ -z "$APP_PLIST" ]; then
             echo "Built app Info.plist not found"
             exit 1
