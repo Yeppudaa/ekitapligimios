@@ -8,14 +8,16 @@ struct PrimaryTabBar: View {
     var profileBadgeCount: Int = 0
 
     var body: some View {
+        GeometryReader { proxy in
+            let tabWidth = proxy.size.width / CGFloat(AppTab.allCases.count)
             HStack(spacing: 0) {
                 ForEach(AppTab.allCases) { tab in
                     tabButton(tab)
+                        .frame(width: tabWidth, minHeight: 60)
                 }
             }
-            .padding(.horizontal, 6)
-            .padding(.vertical, 8)
-            .frame(maxWidth: .infinity)
+        }
+        .frame(height: 60)
         .background {
             Rectangle()
                 .fill(Color(red: 251 / 255, green: 254 / 255, blue: 254 / 255))
@@ -57,16 +59,16 @@ struct PrimaryTabBar: View {
                     .minimumScaleFactor(0.8)
             }
             .foregroundStyle(isSelected ? EKitapligimPalette.teal : EKitapligimPalette.muted)
-            .frame(maxWidth: .infinity, minHeight: 44)
+            .frame(maxWidth: .infinity, minHeight: 52)
             .padding(.horizontal, 4)
-            .padding(.vertical, 4)
             .background(
                 isSelected ? EKitapligimPalette.tealSoft.opacity(0.65) : Color.clear,
                 in: RoundedRectangle(cornerRadius: 12, style: .continuous)
             )
         }
         .buttonStyle(.plain)
-        .frame(maxWidth: .infinity)
+        .frame(maxWidth: .infinity, minHeight: 60)
+        .contentShape(Rectangle())
         .accessibilityIdentifier(tab.accessibilityIdentifier)
         .accessibilityLabel(accessibilityTitle)
     }
