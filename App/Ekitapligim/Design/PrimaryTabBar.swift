@@ -13,7 +13,7 @@ struct PrimaryTabBar: View {
             HStack(spacing: 0) {
                 ForEach(AppTab.allCases) { tab in
                     tabButton(tab)
-                        .frame(width: tabWidth, minHeight: 60)
+                        .frame(width: tabWidth, height: 60)
                 }
             }
         }
