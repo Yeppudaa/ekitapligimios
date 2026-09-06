@@ -165,3 +165,9 @@ xcodebuild test -scheme Ekitapligim -destination 'platform=iOS Simulator,name=iP
 - `.github/workflows/ios-ci.yml` now runs Windows source validation, App Store preflight with placeholders allowed, XcodeGen generation, `swift test`, and unsigned Development/Production iOS builds on macOS.
 - The macOS CI job explicitly selects Xcode 16.4, resolves packages once, verifies Readium is exactly `3.9.0` in `Package.resolved`, disables automatic resolution during test/build, executes both unit and UI test targets, performs a clean Production build, and uploads XCTest/package-resolution evidence.
 - Privacy manifest validation now checks no-tracking declaration, App Store data type coverage, and required-reason API entries for UserDefaults and file timestamps.
+
+## AI Assistant
+
+Run the new core `AIAssistantTests` and `AITransportTests`, app `AIAssistantModelTests`, and `AIAssistantUITests` alongside existing regression suites. UI fixtures are compiled only in DEBUG and opened exclusively by `-ai-ui-fixture`; Production never selects fake services. Attachments cover welcome, keyboard, answer, exhausted quota, connection failure and accessibility text sizing.
+
+Manual integration: a guest prompt consumes one request; deleting history does not restore it. Reopen the app with the same Keychain identity. Verify account changes cancel old responses, feature switches hide collections/profiles/digest, book navigation retains the current conversation, and action proposals require confirmation. Use real test accounts for shared Android/iOS quota checks. `Scripts/test-ai-assistant-guest.ps1` creates and removes only its own disposable conversation and records metadata without credentials or content.

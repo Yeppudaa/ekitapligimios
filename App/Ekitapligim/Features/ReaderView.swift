@@ -75,6 +75,7 @@ struct ReaderView: View {
             refreshBookmarks()
             await loadReaderSession()
         }
+        .preference(key: AILauncherHiddenKey.self, value: true)
         .onDisappear {
             loadGeneration = UUID()
             flushProgress()
@@ -193,7 +194,6 @@ struct ReaderView: View {
         let write = container.readerWrites.enqueue {
             await promoteReadingShelfIfNeeded(username: username)
         }
-        .preference(key: AILauncherHiddenKey.self, value: true)
         // Refresh may flush pending progress through readerWrites; never await it inside that queue.
         Task {
             await write.value

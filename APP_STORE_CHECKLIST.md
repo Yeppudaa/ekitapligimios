@@ -52,3 +52,12 @@
 - Apple account deletion support: https://developer.apple.com/support/offering-account-deletion-in-your-app/
 - Apple App Privacy Details: https://developer.apple.com/app-store/app-privacy-details/
 - App Store Server Notifications: https://developer.apple.com/documentation/appstoreservernotifications
+
+## AI Assistant release gate
+
+- [ ] Final native AI assistant iPhone/iPad tests, screenshots and accessibility audit passed on macOS.
+- [ ] Real guest/member/Premium/VIP/admin quota and cross-platform usage verified.
+- [ ] AI history is covered by server account deletion and disclosed retention behavior.
+- [ ] Enabled weekly digest preferences verified against actual iOS notification delivery.
+
+See AI_ASSISTANT_VALIDATION.md for executed evidence and outstanding checks. No new StoreKit product or entitlement is required.
