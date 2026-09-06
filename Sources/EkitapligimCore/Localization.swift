@@ -529,6 +529,12 @@ public enum L10n {
     public static let settingsPrivacyPreferences = localized("settings.privacyPreferences", defaultValue: "Gizlilik tercihleri")
 
     public static let premiumTitle = localized("premium.title", defaultValue: "Ekitaplığım Premium")
+    public static let premiumEyebrow = localized("premium.eyebrow", defaultValue: "OKUMANIN AYRICALIKLI HALİ")
+    public static let premiumHeroSubtitle = localized("premium.heroSubtitle", defaultValue: "Kütüphane deneyimini bir adım öteye taşı.")
+    public static let premiumBenefitsTitle = localized("premium.benefitsTitle", defaultValue: "Ayrıcalıklarınız")
+    public static let premiumReadingTitle = localized("premium.readingTitle", defaultValue: "Okuma keyfi")
+    public static let premiumDownloadsTitle = localized("premium.downloadsTitle", defaultValue: "Kitapların yanında")
+    public static let premiumPurchaseAction = localized("premium.purchaseAction", defaultValue: "Satın al")
     public static let premiumDescription = localized("premium.description", defaultValue: "Premium üyelik, sunucu tarafından belirlenen daha yüksek veya sınırsız okuma ve indirme hakları sağlar.")
     public static let premiumPlans = localized("premium.plans", defaultValue: "Abonelik Planları")
     public static let premiumLoading = localized("premium.loading", defaultValue: "Apple ürünleri yükleniyor")

@@ -10,6 +10,22 @@ on:
       - "codex/**"
 
 jobs:
+  reader-contracts:
+    name: Reader API and EPUB interoperability
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: '20'
+      - name: Reader backend service and controller tests
+        run: |
+          php Tests/Backend/ReaderProgressTest.php
+          php Tests/Backend/ReaderProgressControllerTest.php
+      - name: EPUB.js and Readium position contract
+        run: |
+          npm install --prefix "$RUNNER_TEMP/reader-test-runtime" jsdom@26.1.0 epubjs@0.3.93 --no-audit --no-fund
+          node Tests/Reader/EPUBCFIBridgeTests.cjs "$RUNNER_TEMP/reader-test-runtime/node_modules"
   source-validation:
     name: Source validation
     runs-on: windows-latest

@@ -507,24 +507,41 @@ struct HomeView: View {
             .padding(.horizontal, 16)
 
             if agendaPosts.isEmpty {
-                Text(L10n.homeAgendaRailEmpty)
-                    .font(.caption)
-                    .foregroundStyle(EKitapligimPalette.muted)
-                    .padding(.horizontal, 16)
+                HStack(alignment: .top, spacing: 14) {
+                    Image(systemName: "text.quote")
+                        .font(.title2)
+                        .foregroundStyle(HomeAgendaStyle.accent)
+                        .accessibilityHidden(true)
+                    Text(L10n.homeAgendaRailEmpty)
+                        .font(.subheadline)
+                        .foregroundStyle(HomeAgendaStyle.muted)
+                        .fixedSize(horizontal: false, vertical: true)
+                }
+                .frame(maxWidth: .infinity, alignment: .leading)
+                .padding(20)
+                .background(HomeAgendaStyle.paper, in: RoundedRectangle(cornerRadius: 24))
+                .padding(.horizontal, 16)
             } else {
                 ScrollView(.horizontal, showsIndicators: false) {
-                    LazyHStack(spacing: 12) {
+                    HStack(alignment: .top, spacing: 14) {
                         ForEach(agendaPosts.prefix(4)) { post in
                             Button {
                                 guard let postID = Int(post.id), postID > 0 else { return }
                                 container.open(route: .bookAgendaPost(postID))
                             } label: {
                                 HomeAgendaCard(post: post)
+                                    .containerRelativeFrame(.horizontal) { length, _ in
+                                        min(340, max(1, length - 52))
+                                    }
                             }
                             .buttonStyle(.plain)
+                            .accessibilityHint(L10n.homeAgendaOpenPost)
+                            .accessibilityIdentifier("home.agenda.\(post.id)")
                         }
                     }
+                    .fixedSize(horizontal: false, vertical: true)
                     .padding(.horizontal, 16)
+                    .padding(.vertical, 8)
                 }
             }
         }
@@ -850,31 +867,248 @@ private struct HomeBookCard: View {
 }
 
 private struct HomeAgendaCard: View {
+    @Environment(\.dynamicTypeSize) private var dynamicTypeSize
     let post: BookAgendaPostDTO
 
-    var body: some View {
-        VStack(alignment: .leading, spacing: 8) {
-            HStack(spacing: 6) {
-                EKAvatar(urlString: post.actor.avatarUrl, username: post.actor.username, size: 28)
-                Text(post.actor.username)
-                    .font(.caption.weight(.bold))
-                    .foregroundStyle(EKitapligimPalette.ink)
-                    .lineLimit(1)
-            }
-            Text(EKitapligimFormat.plainText(post.message))
-                .font(.caption)
-                .foregroundStyle(EKitapligimPalette.muted)
-                .lineLimit(3)
-            HStack(spacing: 12) {
-                Label("\(post.reactionScore)", systemImage: "heart")
-                Label("\(post.commentCount)", systemImage: "bubble.left")
-            }
-            .font(.caption2)
-            .foregroundStyle(EKitapligimPalette.muted)
-        }
-        .padding(14)
-        .frame(width: 260, alignment: .topLeading)
-        .frame(minHeight: 130, alignment: .topLeading)
-        .ekitapligimCard(radius: 16)
+    private var previewLineLimit: Int? { dynamicTypeSize.isAccessibilitySize ? nil : 5 }
+    private var isQuotation: Bool { post.type == "quotation" }
+
+    private var quotedMessage: String {
+        plainText(post.quotedPost?.message ?? "")
     }
+
+    private var preview: String {
+        for candidate in [post.message, post.reviewTitle, quotedMessage] {
+            let text = plainText(candidate)
+            if !text.isEmpty { return text }
+        }
+        return L10n.homeAgendaEmptyPost
+    }
+
+    private var typeTitle: String {
+        switch post.type {
+        case "quotation": L10n.agendaTypeQuotation
+        case "quote": L10n.agendaTypeQuote
+        case "review": L10n.agendaTypeReview
+        case "book": L10n.agendaTypeBook
+        case "progress": L10n.agendaTypeProgress
+        case "note": L10n.agendaTypeNote
+        default: L10n.agendaTypeStandard
+        }
+    }
+
+    private var typeIcon: String {
+        switch post.type {
+        case "quotation": "quote.opening"
+        case "quote": "arrowshape.turn.up.left"
+        case "review": "text.book.closed"
+        case "book": "book.closed"
+        case "progress": "bookmark"
+        default: "text.alignleft"
+        }
+    }
+
+    var body: some View {
+        VStack(alignment: .leading, spacing: 18) {
+            header
+            Label(typeTitle, systemImage: typeIcon)
+                .font(.caption.weight(.semibold))
+                .foregroundStyle(HomeAgendaStyle.accent)
+                .padding(.horizontal, 11)
+                .padding(.vertical, 7)
+                .background(HomeAgendaStyle.badge, in: Capsule())
+
+            VStack(alignment: .leading, spacing: 10) {
+                if isQuotation {
+                    Image(systemName: "quote.opening")
+                        .font(.system(size: 34, weight: .bold, design: .serif))
+                        .foregroundStyle(HomeAgendaStyle.accent.opacity(0.6))
+                        .accessibilityHidden(true)
+                }
+                if post.type == "review", !plainText(post.reviewTitle).isEmpty,
+                   plainText(post.reviewTitle) != preview {
+                    Text(plainText(post.reviewTitle))
+                        .font(.headline)
+                        .lineLimit(dynamicTypeSize.isAccessibilitySize ? nil : 2)
+                }
+                Text(preview)
+                    .font(isQuotation ? .system(.title3, design: .serif, weight: .medium) : .subheadline)
+                    .lineSpacing(isQuotation ? 5 : 3)
+                    .lineLimit(previewLineLimit)
+                    .fixedSize(horizontal: false, vertical: true)
+                if isQuotation, post.pageNumber > 0 {
+                    Text(L10n.agendaPageLabel(post.pageNumber))
+                        .font(.caption.weight(.semibold))
+                        .foregroundStyle(HomeAgendaStyle.accent)
+                }
+            }
+
+            if post.type == "quote", let quoted = post.quotedPost {
+                quotedContext(quoted)
+            }
+            if let book = post.book, !plainText(book.title).isEmpty {
+                bookContext(book)
+            }
+            Spacer(minLength: 0)
+            footer
+        }
+        .foregroundStyle(HomeAgendaStyle.ink)
+        .multilineTextAlignment(.leading)
+        .padding(20)
+        .frame(maxWidth: .infinity, maxHeight: .infinity, alignment: .topLeading)
+        .background {
+            RoundedRectangle(cornerRadius: 24, style: .continuous)
+                .fill(LinearGradient(
+                    colors: [HomeAgendaStyle.paper, .white],
+                    startPoint: .topLeading, endPoint: .bottomTrailing
+                ))
+                .overlay(alignment: .topTrailing) {
+                    Circle()
+                        .fill(HomeAgendaStyle.badge.opacity(0.5))
+                        .frame(width: 150, height: 150)
+                        .offset(x: 65, y: -80)
+                }
+                .clipShape(RoundedRectangle(cornerRadius: 24, style: .continuous))
+                .overlay {
+                    RoundedRectangle(cornerRadius: 24, style: .continuous)
+                        .strokeBorder(HomeAgendaStyle.border, lineWidth: 1)
+                }
+                .shadow(color: HomeAgendaStyle.accent.opacity(0.07), radius: 6, y: 3)
+        }
+        .contentShape(RoundedRectangle(cornerRadius: 24, style: .continuous))
+        .accessibilityElement(children: .combine)
+    }
+
+    private var header: some View {
+        HStack(alignment: .top, spacing: 10) {
+            EKAvatar(urlString: post.actor.avatarUrl, username: post.actor.username, size: 36)
+                .accessibilityHidden(true)
+            VStack(alignment: .leading, spacing: 4) {
+                Text(post.actor.username)
+                    .font(.subheadline.weight(.bold))
+                    .lineLimit(dynamicTypeSize.isAccessibilitySize ? nil : 2)
+                if post.createdAt > 0 {
+                    Text(EKitapligimFormat.relativeTime(post.createdAt))
+                        .font(.caption2)
+                        .foregroundStyle(HomeAgendaStyle.muted)
+                }
+            }
+            .frame(maxWidth: .infinity, alignment: .leading)
+            .fixedSize(horizontal: false, vertical: true)
+        }
+    }
+
+    @ViewBuilder
+    private func quotedContext(_ quoted: BookAgendaQuotedPostDTO) -> some View {
+        if !quoted.username.isEmpty || (!quotedMessage.isEmpty && quotedMessage != preview)
+            || !plainText(quoted.bookTitle ?? "").isEmpty {
+            VStack(alignment: .leading, spacing: 8) {
+                if !quoted.username.isEmpty {
+                    Text(L10n.agendaQuotedFrom(quoted.username))
+                        .font(.caption.weight(.semibold))
+                        .foregroundStyle(HomeAgendaStyle.accent)
+                }
+                if !quotedMessage.isEmpty, quotedMessage != preview {
+                    Text(quotedMessage)
+                        .font(.subheadline)
+                        .lineSpacing(3)
+                        .lineLimit(previewLineLimit)
+                }
+                if let title = quoted.bookTitle, !plainText(title).isEmpty {
+                    Text(plainText(title))
+                        .font(.caption)
+                        .foregroundStyle(HomeAgendaStyle.muted)
+                        .lineLimit(dynamicTypeSize.isAccessibilitySize ? nil : 2)
+                }
+            }
+            .fixedSize(horizontal: false, vertical: true)
+            .frame(maxWidth: .infinity, alignment: .leading)
+            .padding(12)
+            .background(HomeAgendaStyle.badge.opacity(0.5), in: RoundedRectangle(cornerRadius: 14))
+        }
+    }
+
+    private func bookContext(_ book: BookAgendaBookDTO) -> some View {
+        HStack(alignment: .top, spacing: 12) {
+            EKitapligimRemoteCover(urlString: book.coverUrl ?? "")
+                .frame(width: 42, height: 60)
+                .clipShape(RoundedRectangle(cornerRadius: 7))
+                .accessibilityHidden(true)
+            VStack(alignment: .leading, spacing: 5) {
+                Text(plainText(book.title))
+                    .font(.subheadline.weight(.semibold))
+                    .lineLimit(dynamicTypeSize.isAccessibilitySize ? nil : 2)
+                if !plainText(book.author).isEmpty {
+                    Text(plainText(book.author))
+                        .font(.caption)
+                        .foregroundStyle(HomeAgendaStyle.muted)
+                        .lineLimit(dynamicTypeSize.isAccessibilitySize ? nil : 2)
+                }
+            }
+            .fixedSize(horizontal: false, vertical: true)
+            .frame(maxWidth: .infinity, alignment: .leading)
+        }
+        .padding(12)
+        .background(.white.opacity(0.8), in: RoundedRectangle(cornerRadius: 16))
+        .overlay {
+            RoundedRectangle(cornerRadius: 16)
+                .strokeBorder(HomeAgendaStyle.border.opacity(0.75), lineWidth: 1)
+        }
+    }
+
+    private var footer: some View {
+        VStack(spacing: 14) {
+            Rectangle()
+                .fill(HomeAgendaStyle.border)
+                .frame(height: 1)
+                .accessibilityHidden(true)
+            ViewThatFits(in: .horizontal) {
+                HStack(spacing: 14) {
+                    metrics
+                    Spacer(minLength: 8)
+                    openIndicator
+                }
+                VStack(alignment: .leading, spacing: 10) {
+                    metrics
+                    openIndicator
+                }
+                .frame(maxWidth: .infinity, alignment: .leading)
+            }
+        }
+    }
+
+    @ViewBuilder private var metrics: some View {
+        Label(EKitapligimFormat.count(post.reactionScore), systemImage: "heart")
+            .accessibilityLabel(L10n.homeAgendaReactionCount(post.reactionScore))
+            .font(.caption)
+            .foregroundStyle(HomeAgendaStyle.muted)
+            .fixedSize()
+        Label(EKitapligimFormat.count(post.commentCount), systemImage: "bubble.left")
+            .accessibilityLabel(L10n.homeAgendaCommentCount(post.commentCount))
+            .font(.caption)
+            .foregroundStyle(HomeAgendaStyle.muted)
+            .fixedSize()
+    }
+
+    private var openIndicator: some View {
+        Image(systemName: "arrow.up.right")
+            .font(.subheadline.weight(.semibold))
+            .foregroundStyle(HomeAgendaStyle.accent)
+            .frame(width: 32, height: 32)
+            .background(HomeAgendaStyle.badge, in: Circle())
+            .accessibilityHidden(true)
+    }
+
+    private func plainText(_ value: String) -> String {
+        EKitapligimFormat.plainText(value).trimmingCharacters(in: .whitespacesAndNewlines)
+    }
+}
+
+private enum HomeAgendaStyle {
+    static let paper = Color(hex: 0xF6F2FF)
+    static let badge = Color(hex: 0xEBE3FA)
+    static let border = Color(hex: 0xDDD3EE)
+    static let ink = Color(hex: 0x252139)
+    static let muted = Color(hex: 0x655D76)
+    static let accent = Color(hex: 0x684399)
 }

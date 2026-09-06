@@ -27,24 +27,25 @@ struct BookDetailView: View {
     @Environment(\.dismiss) private var dismiss
     let bookID: Int
 
-    @State private var book: BookDTO?
-    @State private var access: ReaderAccessDTO?
-    @State private var similarBooks: [BookDTO] = []
-    @State private var isLoading = true
-    @State private var errorMessage: String?
+    @StateObject private var loading = BookDetailLoadingModel()
+    private var book: BookDTO? { loading.book }
+    private var access: ReaderAccessDTO? { loading.access }
+    private var similarBooks: [BookDTO] { loading.similarBooks }
+    private var isLoading: Bool { loading.isLoading }
+    private var errorMessage: String? { loading.errorMessage }
     @State private var downloadStatusMessage: String?
     @State private var shelfStatusMessage: String?
     @State private var currentShelfState = ""
     @State private var isFavorite = false
     @State private var isUpdatingShelf = false
-    @State private var comments: [BookCommentDTO] = []
-    @State private var commentsPage = 0
-    @State private var commentsLastPage = 1
+    private var comments: [BookCommentDTO] { loading.comments }
+    private var commentsPage: Int { loading.commentsPage }
+    private var commentsLastPage: Int { loading.commentsLastPage }
     @State private var commentText = ""
     @FocusState private var isCommentFocused: Bool
     @State private var commentRating = 5
     @State private var isSubmittingComment = false
-    @State private var commentsError: String?
+    private var commentsError: String? { loading.commentsError }
     @State private var showingCommentLoginAlert = false
     @State private var showingReaderLoginAlert = false
     @State private var showingReport = false
@@ -97,6 +98,8 @@ struct BookDetailView: View {
             androidBookTopBar
         }
         .task(id: bookID) { await load() }
+        .onDisappear { loading.cancel() }
+        .onChange(of: loading.book?.id) { _, _ in syncShelfFromLibrary() }
         .sheet(isPresented: $showingReport) {
             ReportContentView(kind: .book(bookID: bookID), initialType: selectedIssueType) { success in
                 if success {
@@ -128,6 +131,7 @@ struct BookDetailView: View {
             LazyVStack(alignment: .leading, spacing: 16) {
                 heroSection(book)
                 actionsSection(book)
+                AIBookEntry(model: container.assistantModel, book: book)
                 statusBanners
                 infoCard(book)
                 synopsisCard(book)
@@ -664,12 +668,13 @@ struct BookDetailView: View {
             }) { comment in
                 BookCommentRow(comment: comment) {
                     if let userID = comment.userId {
-                        comments.removeAll { $0.userId == userID }
+                        loading.comments.removeAll { $0.userId == userID }
                     }
                 }
             }
             if commentsPage < commentsLastPage {
                 Button(L10n.commonLoadMore) { Task { await loadComments(reset: false) } }
+                    .disabled(loading.isLoadingComments)
                     .font(.caption.weight(.bold))
                     .foregroundStyle(EKitapligimPalette.tealDark)
             }
@@ -753,33 +758,23 @@ struct BookDetailView: View {
 
     @ViewBuilder
     private var commentsFeedback: some View {
+        if loading.isLoadingComments {
+            ProgressView(L10n.commonLoading)
+        }
         if let commentsError {
             Text(commentsError).font(.footnote).foregroundStyle(EKitapligimPalette.danger)
         }
     }
 
     private func load() async {
-        guard bookID > 0 else {
-            isLoading = false
-            errorMessage = L10n.bookDetailInvalidId
-            return
-        }
-        isLoading = true
-        errorMessage = nil
-        defer { isLoading = false }
-        do {
-            async let detailResult = container.books.bookDetail(id: bookID)
-            async let accessResult = container.books.readerAccess(bookID: bookID)
-            let detail = try await detailResult
-            book = detail.book
-            similarBooks = Array(detail.similarBooks.filter { Int($0.id) != bookID }.prefix(8))
-            access = try? await accessResult
-            syncShelfFromLibrary()
-            await loadComments(reset: true)
-        } catch {
-            book = nil
-            errorMessage = L10n.bookDetailLoadFailed
-        }
+        let repository = container.books
+        let id = bookID
+        await loading.load(
+            bookID: id,
+            detail: { try await repository.bookDetail(id: id) },
+            access: { try await repository.readerAccess(bookID: id) },
+            comments: { try await repository.comments(bookID: id, page: $0) }
+        )
     }
 
     private func syncShelfFromLibrary() {
@@ -899,25 +894,16 @@ struct BookDetailView: View {
     }
 
     private func loadComments(reset: Bool) async {
-        let page = reset ? 1 : commentsPage + 1
-        commentsError = nil
-        do {
-            let result = try await container.books.comments(bookID: bookID, page: page)
-            comments = reset ? result.comments : comments + result.comments.filter { item in
-                !comments.contains(where: { $0.id == item.id })
-            }
-            commentsPage = result.currentPage
-            commentsLastPage = result.lastPage
-        } catch {
-            commentsError = L10n.bookCommentsLoadFailed
-        }
+        let repository = container.books
+        let id = bookID
+        await loading.loadComments(reset: reset) { try await repository.comments(bookID: id, page: $0) }
     }
 
     private func submitComment() async {
         let message = commentText.trimmed
         guard isSignedIn, !message.isEmpty, !isSubmittingComment else { return }
         if case .rejected(let reason) = contentSafety.validateUserGeneratedText(message) {
-            commentsError = reason.userMessage
+            loading.commentsError = reason.userMessage
             return
         }
         isSubmittingComment = true
@@ -927,26 +913,26 @@ struct BookDetailView: View {
             commentText = ""
             await loadComments(reset: true)
         } catch {
-            commentsError = L10n.bookCommentsSubmitFailed
+            loading.commentsError = L10n.bookCommentsSubmitFailed
         }
     }
 
     private func download(_ book: BookDTO) async {
-        guard let resolvedID = Int(book.id) else {
+        guard let bookID = Int(book.id) else {
             downloadStatusMessage = L10n.bookDetailInvalidId
             return
         }
-        let currentAccess = (try? await container.books.readerAccess(bookID: resolvedID)) ?? access
-        access = currentAccess
+        let currentAccess = (try? await container.books.readerAccess(bookID: bookID)) ?? access
+        loading.access = currentAccess
         guard let currentAccess, currentAccess.canDownload else {
             downloadStatusMessage = downloadDenialMessage(from: currentAccess)
             return
         }
         do {
-            let session = try await container.books.createReaderSession(bookID: resolvedID, purpose: .download)
+            let session = try await container.books.createReaderSession(bookID: bookID, purpose: .download)
             guard let url = ReaderSourcePolicy.nativeContentURL(
                 session: session,
-                bookID: resolvedID,
+                bookID: bookID,
                 apiBaseURL: container.config.apiBaseURL
             ) else {
                 downloadStatusMessage = L10n.readerAtsLinkMissing

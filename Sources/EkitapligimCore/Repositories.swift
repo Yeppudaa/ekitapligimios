@@ -135,7 +135,7 @@ public protocol BookRepositoryProtocol: Sendable {
     func createComment(bookID: Int, message: String, rating: Int) async throws -> BookCommentCreateDTO
 }
 
-public struct BookRepository: BookRepositoryProtocol {
+public struct BookRepository: BookRepositoryProtocol, ReaderProgressRepositoryProtocol {
     private let apiClient: APIClient
 
     public init(apiClient: APIClient) {
@@ -176,6 +176,14 @@ public struct BookRepository: BookRepositoryProtocol {
 
     public func updateProgress(bookID: Int, page: Int, percent: Double) async throws {
         let _: SuccessResponse = try await apiClient.request(.updateReaderProgress(bookID: bookID, page: page, percent: percent))
+    }
+
+    public func readerProgress(bookID: Int) async throws -> ReaderProgressResponseDTO {
+        try await apiClient.request(.readerProgress(bookID: bookID), as: ReaderProgressResponseDTO.self)
+    }
+
+    public func saveReaderProgress(bookID: Int, position: ReaderPositionDTO, baseRevision: String, accountName: String) async throws -> ReaderProgressResponseDTO {
+        try await apiClient.request(.saveReaderProgress(bookID: bookID, position: position, baseRevision: baseRevision, accountName: accountName), as: ReaderProgressResponseDTO.self)
     }
 
     public func library() async throws -> LibraryPageDTO {

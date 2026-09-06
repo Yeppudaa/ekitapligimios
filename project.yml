@@ -33,6 +33,9 @@ targets:
           - Config
           - Support
           - StoreKit
+          - Reader/EPUBCFIBridge.js
+      - path: App/Ekitapligim/Reader/EPUBCFIBridge.js
+        buildPhase: resources
       - path: App/Ekitapligim/Support/PrivacyInfo.xcprivacy
         buildPhase: resources
       - path: App/Ekitapligim/StoreKit/Ekitapligim.storekit
@@ -81,6 +84,10 @@ targets:
     deploymentTarget: "17.0"
     sources:
       - path: App/EkitapligimTests
+        excludes:
+          - Fixtures
+      - path: App/EkitapligimTests/Fixtures/ReadingSync.epub
+        buildPhase: resources
       - path: App/Ekitapligim/StoreKit/Ekitapligim.storekit
         buildPhase: resources
     dependencies:

@@ -7,7 +7,12 @@ public enum HTTPMethod: String, Sendable {
     case delete = "DELETE"
 }
 
+public enum APIService: Sendable, Equatable { case primary, assistant }
+
 public struct APIEndpoint: Sendable, Equatable {
+    public let service: APIService
+    public let guestKey: String?
+    public let timeout: TimeInterval?
     public let method: HTTPMethod
     public let path: String
     public let queryItems: [URLQueryItem]
@@ -19,13 +24,19 @@ public struct APIEndpoint: Sendable, Equatable {
         path: String,
         queryItems: [URLQueryItem] = [],
         body: RequestBody? = nil,
-        requiresAuthentication: Bool = false
+        requiresAuthentication: Bool = false,
+        service: APIService = .primary,
+        guestKey: String? = nil,
+        timeout: TimeInterval? = nil
     ) {
         self.method = method
         self.path = path
         self.queryItems = queryItems
         self.body = body
         self.requiresAuthentication = requiresAuthentication
+        self.service = service
+        self.guestKey = guestKey
+        self.timeout = timeout
     }
 
     public func url(relativeTo baseURL: URL) throws -> URL {
@@ -279,7 +290,7 @@ public extension APIEndpoint {
             method: .post,
             path: "books/\(bookID)/reader/progress",
             queryItems: [
-                URLQueryItem(name: "position_type", value: "page"),
+                URLQueryItem(name: "position_type", value: "pdf"),
                 URLQueryItem(name: "position_value", value: String(page)),
                 URLQueryItem(name: "progress_percent", value: String(percent))
             ],

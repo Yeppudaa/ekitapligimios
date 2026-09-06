@@ -107,15 +107,15 @@ final class LibraryShelfTests: XCTestCase {
         XCTAssertEqual([reading, want].continueReadingItem()?.bookId, "want")
     }
 
-    func testMergingRecencyKeepsNewerLocalProgress() {
+    func testLibraryFetchDoesNotLetClientClockOverrideServerProgress() {
         let server = makeItem(bookId: "1", shelfState: "OKUYORUM", progressPercent: 10, lastReadPage: 8, lastReadAt: 50)
         let local = makeItem(bookId: "1", shelfState: "OKUYORUM", progressPercent: 22, lastReadPage: 18, lastReadAt: 80)
 
         let merged = LibraryItemDTO.mergingRecency(server: [server], local: [local])
 
-        XCTAssertEqual(merged.first?.progressPercent, 22)
-        XCTAssertEqual(merged.first?.lastReadPage, 18)
-        XCTAssertEqual(merged.first?.lastReadAt, 80)
+        XCTAssertEqual(merged.first?.progressPercent, 10)
+        XCTAssertEqual(merged.first?.lastReadPage, 8)
+        XCTAssertEqual(merged.first?.lastReadAt, 50)
     }
 
     func testLibraryItemDecodesStringProgressAndLastReadAt() throws {

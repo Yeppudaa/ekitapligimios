@@ -67,10 +67,11 @@ try {
     $previousEAP = $ErrorActionPreference
     $ErrorActionPreference = "SilentlyContinue"
     $testOutput = & cmd.exe /v:on /d /s /c $command 2>&1 | Out-String
+    $testExitCode = $LASTEXITCODE
     $ErrorActionPreference = $previousEAP
     Write-Host $testOutput
-    if ($testOutput -match "Test Suite '[^']+' failed") {
-        throw "swift test failed with exit code $LASTEXITCODE"
+    if ($testExitCode -ne 0 -or $testOutput -match "Test Suite '[^']+' failed|(?m)^error:|:\d+:\d+: error:") {
+        throw "swift test failed with exit code $testExitCode"
     }
 } finally {
     Pop-Location

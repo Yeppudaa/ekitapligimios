@@ -5,7 +5,12 @@ import EkitapligimCore
 
 @MainActor
 final class AppContainer: ObservableObject {
-    @Published var authState: AuthenticationState = .signedOut
+    @Published var authState: AuthenticationState = .signedOut {
+        didSet {
+            activateReaderAccount()
+            activateAssistantAccount()
+        }
+    }
     @Published var selectedTab: AppTab = .home
     @Published var presentedRoute: AppRoute?
     /// Shelf index for library deep links (`library/{tab}`) presented from profile or sheets.
@@ -17,6 +22,9 @@ final class AppContainer: ObservableObject {
     @Published private(set) var subscription: SubscriptionDTO?
     @Published private(set) var readingStats: ReadingStatsDTO?
     @Published private(set) var libraryItems: [LibraryItemDTO] = []
+    @Published private(set) var readerSyncStates: [Int: ReaderProgressSyncState] = [:]
+    private var libraryGeneration = UUID()
+    private let readerConnectivity = ReaderProgressConnectivity()
     @Published private(set) var unreadNotifications = 0
     @Published private(set) var unreadMessages = 0
     @Published private(set) var isRefreshingSession = false
@@ -46,9 +54,73 @@ final class AppContainer: ObservableObject {
     let downloadManager: DownloadManager
     let readerContentLoader: ReaderContentLoader
     let readerBookmarks = ReaderBookmarkStore()
+    let readerWrites = ReaderWriteQueue()
+    lazy var readerProgressSync: ReaderProgressSync = {
+        let directory = (FileManager.default.urls(for: .applicationSupportDirectory, in: .userDomainMask).first
+            ?? URL(fileURLWithPath: NSHomeDirectory()).appendingPathComponent("Library/Application Support"))
+            .appendingPathComponent("ReaderProgress", isDirectory: true)
+        let sync = ReaderProgressSync(repository: books, storage: FileReaderProgressStorage(directory: directory), queue: readerWrites)
+        sync.didChange = { [weak self] bookID, record, state in
+            guard let self else { return }
+            self.readerSyncStates[bookID] = state
+            self.libraryGeneration = UUID()
+            if let record { self.applyReaderRecord(bookID: bookID, record: record) }
+        }
+        return sync
+    }()
+
+    private func activateReaderAccount() {
+        let name: String?
+        if case .signedIn(let session) = authState { name = session.username } else { name = nil }
+        readerProgressSync.activate(account: name)
+        if name != nil {
+            readerConnectivity.start { [weak self] in await self?.readerProgressSync.retryPending() }
+        } else { readerConnectivity.stop() }
+        readerSyncStates = [:]
+        libraryGeneration = UUID()
+    }
+
+    func prepareReaderProgress(book: BookDTO) async throws -> ReaderPositionDTO? {
+        guard let id = Int(book.id) else { throw APIClientError.invalidResponse }
+        let position = try await readerProgressSync.prepare(bookID: id)
+        readerProgressSync.register(bookID: id, metadata: ReaderBookMetadata(title: book.title, author: book.author,
+            coverURL: book.coverUrl, pageCount: book.pageCount))
+        return position
+    }
+
+    private func applyReaderRecord(bookID: Int, record: SavedReaderProgress) {
+        let id = String(bookID)
+        let existing = libraryItems.first { $0.bookId == id }
+        guard let position = record.position else {
+            if let existing { upsertLibraryItem(existing.updating(progressPercent: 0, lastReadPage: 0, lastReadAt: 0)) }
+            return
+        }
+        let date = record.pending ? record.changedAt : position.lastReadDate
+        if let existing {
+            upsertLibraryItem(existing.updating(progressPercent: Int(position.progressPercent.rounded()),
+                lastReadPage: position.page ?? 0, lastReadAt: date, positionType: position.positionType))
+        } else if let book = record.book {
+            upsertLibraryItem(LibraryItemDTO(bookId: id, shelfState: "NONE", progressPercent: Int(position.progressPercent.rounded()),
+                lastReadPage: position.page ?? 0, isDownloaded: downloadManager.localFile(for: id) != nil,
+                isFavorite: false, title: book.title, author: book.author, coverUrl: book.coverURL,
+                pageCount: book.pageCount, lastReadAt: date, positionType: position.positionType))
+        }
+    }
+
+    private func applyLibrary(_ items: [LibraryItemDTO]) {
+        libraryItems = items
+        for (id, record) in readerProgressSync.records where record.pending { applyReaderRecord(bookID: id, record: record) }
+    }
     let config: AppConfig
     let tokenStore: TokenStore
     let apiClient: APIClient
+    let assistant: AIAssistantRepository
+    lazy var assistantModel = AIAssistantModel(repository: assistant)
+
+    func activateAssistantAccount() {
+        if case .signedIn(let session) = authState { assistantModel.activate(account: session.username) }
+        else { assistantModel.activate(account: nil) }
+    }
     let books: BookRepository
     let site: SiteRepository
     let directories: DirectoryRepository
@@ -87,6 +159,7 @@ final class AppContainer: ObservableObject {
         self.config = config
         self.tokenStore = tokenStore
         self.apiClient = apiClient
+        self.assistant = AIAssistantRepository(client: apiClient, guestKeys: AIGuestKeyStore())
         self.downloadManager = DownloadManager(transfer: fileTransfer)
         self.readerContentLoader = ReaderContentLoader(transfer: fileTransfer)
         self.books = BookRepository(apiClient: apiClient)
@@ -159,6 +232,7 @@ final class AppContainer: ObservableObject {
     /// Loads everything the shell and profile need in one pass; each call degrades independently.
     func refreshSessionData() async {
         guard isSignedIn else { return }
+        let readingGeneration = libraryGeneration
         isRefreshingSession = true
         defer { isRefreshingSession = false }
 
@@ -175,8 +249,8 @@ final class AppContainer: ObservableObject {
 
         if let loadedProfile { profileState = loadedProfile }
         if let loadedSubscription { subscription = loadedSubscription }
-        if let loadedLibrary {
-            libraryItems = LibraryItemDTO.mergingRecency(server: loadedLibrary.items, local: libraryItems)
+        if let loadedLibrary, readingGeneration == libraryGeneration {
+            applyLibrary(loadedLibrary.items)
         }
         // The dedicated route may not be deployed yet, in which case the profile payload carries the stats.
         readingStats = loadedStats.flatMap { $0 } ?? loadedProfile?.readingStats ?? readingStats
@@ -198,8 +272,12 @@ final class AppContainer: ObservableObject {
 
     @discardableResult
     func refreshLibrary() async -> Bool {
-        guard isSignedIn, let page = try? await books.library() else { return false }
-        libraryItems = LibraryItemDTO.mergingRecency(server: page.items, local: libraryItems)
+        guard isSignedIn else { return false }
+        await readerProgressSync.retryPending()
+        let generation = UUID()
+        libraryGeneration = generation
+        guard let page = try? await books.library(), generation == libraryGeneration, isSignedIn else { return false }
+        applyLibrary(page.items)
         return true
     }
 
@@ -283,6 +361,7 @@ final class AppContainer: ObservableObject {
 
     func handleScenePhaseBackground() {
         stopPresencePolling()
+        ReaderBackgroundCheckpoint.run { await self.readerProgressSync.retryPending() }
     }
 
     private func clearSessionData() {
@@ -397,6 +476,7 @@ final class AppContainer: ObservableObject {
 
     func requestAccountDeletion(currentPassword: String?, reason: String?) async throws {
         try await account.requestAccountDeletion(currentPassword: currentPassword, reason: reason)
+        try? readerProgressSync.eraseCurrentAccount()
         await clearLocalSession()
         presentedRoute = nil
         selectedTab = .profile

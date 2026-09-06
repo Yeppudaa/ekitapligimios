@@ -88,10 +88,19 @@ Response: temporary reader token, source URL, file type.
 
 The client must create a purpose-specific session before opening content, including when a validated offline copy exists. This keeps read/download quota enforcement on the server. Remote PDF/EPUB responses are downloaded to protected local storage and validated by file signature before native rendering; Google Drive sharing URLs are converted to binary download URLs without exposing the underlying URL to the reader UI.
 
-### POST `/books/{thread_id}/reader/progress`
-Auth: login required.
-Body/query: `position_type`, `position_value`, `progress_percent`.
-Response: empty success.
+### GET / POST `/books/{thread_id}/reader/progress` (IosApi 1.0.24+)
+Auth: login and XenForo visibility permission for this book. Both methods use the website's existing `xf_codex_book_reader_progress` record, keyed by authenticated user and thread. No schema migration.
+
+GET response: `{ "progress": null | { "position_type": "pdf" | "epub", "position_value": "...", "progress_percent": 25.5, "last_read_date": 1700000000 }, "revision": "opaque-string", "saved": false, "success": true, "conflict": false }`.
+
+POST form: `position_type`, `position_value`, `progress_percent`, `base_revision` (from GET/last acknowledged POST), `account_name` (the signed-in session's canonical username). PDF positions are 1-based decimal page numbers; EPUB positions are EPUB CFI strings compatible with the web reader, not Readium numeric positions. The value must fit the existing 255-byte storage limit; percent must be finite and in 0...100.
+
+POST compares the revision under a database row lock and returns the stored representation with `saved: true`. A changed server record returns `saved: false`, `success: false`, `conflict: true` plus current progress/revision (HTTP 200); the client adopts that record. A different authenticated account returns HTTP 409 `reader_account_changed`. Invalid input returns HTTP 400; missing storage or failed save/readback returns HTTP 503. Legacy PDF POSTs without `base_revision` remain compatible; legacy `position_type=page` is normalized to `pdf`.
+
+New clients retain account-scoped pending records locally, serialize writes and retry them when connectivity returns. A lost acknowledgement is reconciled before retransmission. GETs bypass local HTTP caching; bootstrap restoration never writes a temporary page 1. The service's opaque revision includes the stored position, percentage and server date, so same-second page changes still conflict.
+
+### GET `/me/library` / PUT `/me/library/{thread_id}` (IosApi 1.0.24+)
+The library includes viewable books with progress even without shelf membership. Items include `position_type` and `last_read_date` and are ordered by server reading recency. Shelf updates preserve all reader progress; callers must use the reader progress endpoint to change position. The existing shelf/favorite operation itself is unchanged.
 
 ### GET `/books/{thread_id}/reader/source`
 Auth: login/session token required.
@@ -283,3 +292,22 @@ Current backend behavior: verifies the outer, transaction, and renewal JWS certi
 - Deploy standalone IosApi `1.0.13` (SHA-256 verified; MobileApi 1.0.136 unchanged) to public HTTPS staging, configure moderator emails and managed filter terms, run `php cmd.php ekitapligim-ios:release-audit`, then promote the identical ZIP to production.
 - Configure the Apple root CA and verify StoreKit sandbox transactions and App Store Server Notifications.
 - Exercise Apple login, identity changes, blocking, reporting, terms acceptance, account deletion, reader access, and subscription state with the App Review account.
+
+## Native AI Assistant (2026-09-06)
+
+The SwiftUI assistant uses the existing public HTTPS `mobile-api/v1/ai/` service. All other requests and token refresh remain on `ios-api/v1/`. `APIEndpoint.service` defaults to `.primary`; `.assistant` selects the AI base URL and an ephemeral, cookie-free, disk-cache-free transport. Message requests have a 180-second resource limit. AI mutations are never automatically replayed after an authentication error or timeout.
+
+| Method | AI path | Request / response |
+|---|---|---|
+| GET | bootstrap | Feature flags, identity, server quota, constraints, recent conversations and discovery |
+| POST | conversations | Form: title, optional context_thread_id, entry_point=ios/book_detail; conversation envelope |
+| GET / POST / DELETE | conversations/{id} | Conversation envelope / message form and structured answer / success |
+| DELETE | conversations | Delete this identity's history; does not reset quota or guest identity |
+| GET / POST | preferences | Personalization and feature-gated digest settings; POST returns success and digest |
+| POST | actions/{id}/confirm | confirmation_token, only after explicit preview and user confirmation |
+| GET | collections, collections/{slug} | Feature-gated published collections |
+| GET | books/{id}/profile | Feature-gated reading profile |
+
+Signed-in requests use the existing Keychain bearer session. Anonymous requests send a cryptographically random, persistent 64-character hexadecimal `X-Guest-Key` held in a separate Keychain item. Neither this header nor conversation content may be logged. Bootstrap identity mismatch blocks sending and permits one coordinated refresh through the iOS auth endpoint. Quotas and features are never inferred from local group names or StoreKit products.
+
+Routes: `ai-assistant`, `ai-assistant/{positiveBookID}`, `ai-collections`, `ai-collections/{slug}`, and the web `/asistan/` entry. Existing routes retain their behavior. No server quota rules or Android sources were changed.

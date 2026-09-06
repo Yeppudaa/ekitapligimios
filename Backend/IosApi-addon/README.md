@@ -1,5 +1,11 @@
 # Ekitapligim iOS API XenForo Add-on
 
+## 1.0.24 — reader progress synchronization
+
+Install this upgrade before the matching iOS build. The GET/POST reader-progress and library routes now use IosApi controllers while sharing the website's existing reader-progress table. No Android source changes or database migration are required. Shelf updates no longer overwrite reader positions. POST acknowledgements contain the stored position/date/revision and report conflicts or storage failures explicitly. See `API_DOCUMENTATION.md` in the iOS repository for the wire contract.
+
+Run `php Tests/Backend/ReaderProgressTest.php` and the iOS reader tests before rollout. Verify PDF 25 → 40 → 12 and EPUB text anchors in both directions on authenticated HTTPS staging before claiming completion. Billing, purchases, access checks, entitlements and StoreKit configuration are unchanged.
+
 Standalone XenForo add-on for the native iOS app. Public routes live under `/ios-api/v1/` and do not share a route prefix with the Android `Ekitapligim/MobileApi` add-on (`/mobile-api/v1/`).
 
 ## Architecture

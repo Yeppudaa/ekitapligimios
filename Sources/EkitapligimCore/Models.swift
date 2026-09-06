@@ -790,6 +790,7 @@ public struct LibraryItemDTO: Decodable, Equatable, Sendable {
     public let progressPercent: Int
     public let lastReadPage: Int
     public let lastReadAt: Int
+    public let positionType: String
     public let isDownloaded: Bool
     public let isFavorite: Bool
     public let title: String
@@ -803,7 +804,8 @@ public struct LibraryItemDTO: Decodable, Equatable, Sendable {
         self.shelfState = try container.decodeIfPresent(String.self, forKey: .shelfState) ?? ""
         self.progressPercent = container.decodeFlexibleInt(forKey: .progressPercent)
         self.lastReadPage = container.decodeFlexibleInt(forKey: .lastReadPage)
-        self.lastReadAt = container.decodeFlexibleInt(forKey: .lastReadAt, fallbackKeys: [.updatedAt])
+        self.lastReadAt = container.decodeFlexibleInt(forKey: .lastReadAt, fallbackKeys: [.lastReadDate, .updatedAt])
+        self.positionType = try container.decodeIfPresent(String.self, forKey: .positionType) ?? "pdf"
         self.isDownloaded = container.decodeFlexibleBool(forKey: .isDownloaded)
         self.isFavorite = container.decodeFlexibleBool(forKey: .isFavorite)
         self.title = try container.decodeIfPresent(String.self, forKey: .title) ?? ""
@@ -820,6 +822,8 @@ public struct LibraryItemDTO: Decodable, Equatable, Sendable {
         case progressPercent
         case lastReadPage
         case lastReadAt
+        case lastReadDate
+        case positionType
         case updatedAt
         case isDownloaded
         case isFavorite
@@ -840,13 +844,15 @@ public struct LibraryItemDTO: Decodable, Equatable, Sendable {
         author: String,
         coverUrl: String,
         pageCount: Int,
-        lastReadAt: Int = 0
+        lastReadAt: Int = 0,
+        positionType: String = "pdf"
     ) {
         self.bookId = bookId
         self.shelfState = shelfState
         self.progressPercent = progressPercent
         self.lastReadPage = lastReadPage
         self.lastReadAt = lastReadAt
+        self.positionType = positionType
         self.isDownloaded = isDownloaded
         self.isFavorite = isFavorite
         self.title = title
@@ -861,7 +867,8 @@ public struct LibraryItemDTO: Decodable, Equatable, Sendable {
         lastReadPage: Int? = nil,
         isDownloaded: Bool? = nil,
         isFavorite: Bool? = nil,
-        lastReadAt: Int? = nil
+        lastReadAt: Int? = nil,
+        positionType: String? = nil
     ) -> LibraryItemDTO {
         LibraryItemDTO(
             bookId: bookId,
@@ -874,7 +881,8 @@ public struct LibraryItemDTO: Decodable, Equatable, Sendable {
             author: author,
             coverUrl: coverUrl,
             pageCount: pageCount,
-            lastReadAt: lastReadAt ?? self.lastReadAt
+            lastReadAt: lastReadAt ?? self.lastReadAt,
+            positionType: positionType ?? self.positionType
         )
     }
 }
@@ -908,22 +916,12 @@ public extension LibraryItemDTO {
     /// Home/profile "continue reading" should follow the most recently opened unfinished book.
     var isContinueReadingCandidate: Bool {
         if isOnFinishedShelf { return false }
-        return isOnReadingShelf || progressPercent > 0 || lastReadPage > 0
+        return isOnReadingShelf || progressPercent > 0 || lastReadPage > 0 || (positionType == "epub" && lastReadAt > 0)
     }
 
-    /// Keeps a fresher local snapshot when the server library payload has no recency timestamps.
+    /// A fetched library is authoritative. Pending writes are overlaid separately by the sync service.
     static func mergingRecency(server: [LibraryItemDTO], local: [LibraryItemDTO]) -> [LibraryItemDTO] {
-        let localByID = Dictionary(local.map { ($0.bookId, $0) }, uniquingKeysWith: { first, _ in first })
-        return server.map { item in
-            guard let localItem = localByID[item.bookId], localItem.lastReadAt > item.lastReadAt else {
-                return item
-            }
-            return item.updating(
-                progressPercent: localItem.progressPercent,
-                lastReadPage: localItem.lastReadPage,
-                lastReadAt: localItem.lastReadAt
-            )
-        }
+        server
     }
 
     /// Values Android sends when changing shelf/favorite without resetting reader progress.
@@ -948,6 +946,7 @@ public extension LibraryItemDTO {
     func libraryMetaText(treatingAsDownloaded downloaded: Bool) -> String {
         if isOnFinishedShelf { return L10n.libraryMetaFinished }
         if progressPercent > 0 || lastReadPage > 1 {
+            if positionType == "epub" { return L10n.commonPercent(displayProgressPercent) }
             return L10n.libraryMetaLastPage(max(1, lastReadPage))
         }
         if downloaded || isDownloaded { return L10n.libraryMetaDownloaded }

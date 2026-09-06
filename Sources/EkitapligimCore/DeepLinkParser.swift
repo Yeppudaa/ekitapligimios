@@ -3,6 +3,8 @@ import Foundation
 /// Mirrors the Android `AppRoutes` table so both apps resolve the same deep links.
 public enum AppRoute: Hashable, Identifiable, Sendable {
     case home
+    case aiAssistant(bookID: Int?)
+    case aiCollections(slug: String?)
     case login
     case register
     case catalog
@@ -37,6 +39,8 @@ public enum AppRoute: Hashable, Identifiable, Sendable {
     public var nativeRoute: String {
         switch self {
         case .home: "home"
+        case .aiAssistant(let id): id.map { "ai-assistant/\($0)" } ?? "ai-assistant"
+        case .aiCollections(let slug): slug.map { "ai-collections/\($0)" } ?? "ai-collections"
         case .login: "login"
         case .register: "register"
         case .catalog: "catalog"
@@ -90,6 +94,10 @@ public struct DeepLinkParser: Sendable {
         let id = segments.last.flatMap(Self.trailingID)
 
         switch first {
+        case "asistan":
+            return segments.count == 1 ? .aiAssistant(bookID: nil) : nil
+        case "ai-collections":
+            return parseNativeRoute(segments.joined(separator: "/"))
         case "books", "konular":
             return id.map(AppRoute.bookDetail) ?? .catalog
         case "threads":
@@ -132,6 +140,12 @@ public struct DeepLinkParser: Sendable {
         if normalized == "live-activity" { return .liveActivity }
 
         switch first {
+        case "ai-assistant":
+            if segments.count == 1 { return .aiAssistant(bookID: nil) }
+            return id.flatMap { $0 > 0 ? .aiAssistant(bookID: $0) : nil }
+        case "ai-collections":
+            if segments.count == 1 { return .aiCollections(slug: nil) }
+            return segments.count == 2 && AIPolicy.validSlug(segments[1]) ? .aiCollections(slug: segments[1]) : nil
         case "home": return .home
         case "login": return .login
         case "register": return .register
@@ -168,6 +182,9 @@ public struct DeepLinkParser: Sendable {
     ) -> AppRoute? {
         let normalizedType = (type ?? "").lowercased()
         let normalizedAction = (action ?? "").lowercased()
+        if normalizedType.contains("ai_assistant") || normalizedType.hasPrefix("ek_ai_") || normalizedAction.hasPrefix("ai_") {
+            return .aiAssistant(bookID: nil)
+        }
 
         if normalizedAction == "book_request_new" { return .requests }
 

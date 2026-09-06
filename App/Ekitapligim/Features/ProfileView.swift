@@ -775,7 +775,7 @@ private struct ContinueReadingCard: View {
                                     .foregroundStyle(EKitapligimPalette.profileMuted)
                                     .lineLimit(1)
                             }
-                            Text(L10n.continueReadingFromPage(max(item.lastReadPage, 1)))
+                            Text(item.positionType == "epub" ? L10n.commonPercent(item.displayProgressPercent) : L10n.continueReadingFromPage(max(item.lastReadPage, 1)))
                                 .font(.caption2.weight(.semibold))
                                 .foregroundStyle(EKitapligimPalette.profileTealDeep)
                             ProgressView(value: Double(item.displayProgressPercent), total: 100)
@@ -911,13 +911,9 @@ private struct ProfileInfoCard: View {
     let profile: ProfileDTO?
 
     private var profileOnlineStatusValue: String {
-        if profile?.isOnline == true {
-            return L10n.profileOnline
-        }
-        if profile?.activityVisible == false {
-            return L10n.profileInfoHidden
-        }
-        return L10n.profileOffline
+        // This row describes the saved visibility preference, not live session presence.
+        // Match ProfileEditView's default when older profile responses omit the setting.
+        (profile?.activityVisible ?? true) ? L10n.profileInfoVisible : L10n.profileInfoHidden
     }
 
     var body: some View {

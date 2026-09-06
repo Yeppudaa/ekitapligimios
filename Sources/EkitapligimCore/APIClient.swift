@@ -16,13 +16,20 @@ public protocol SessionTokenManaging: AccessTokenProviding {
 public final class APIClient: Sendable {
     private let config: AppConfig
     private let session: URLSession
+    private let assistantSession: URLSession
     private let tokenProvider: AccessTokenProviding?
     private let decoder: JSONDecoder
     private let refreshCoordinator = TokenRefreshCoordinator()
 
-    public init(config: AppConfig, session: URLSession = .shared, tokenProvider: AccessTokenProviding? = nil) {
+    public init(config: AppConfig, session: URLSession = .shared, tokenProvider: AccessTokenProviding? = nil, assistantSession: URLSession? = nil) {
         self.config = config
         self.session = session
+        let aiConfiguration = URLSessionConfiguration.ephemeral
+        aiConfiguration.timeoutIntervalForResource = 180
+        aiConfiguration.urlCache = nil
+        aiConfiguration.httpCookieStorage = nil
+        aiConfiguration.httpShouldSetCookies = false
+        self.assistantSession = assistantSession ?? URLSession(configuration: aiConfiguration)
         self.tokenProvider = tokenProvider
         self.decoder = JSONDecoder.ekitapligim
     }
@@ -37,11 +44,13 @@ public final class APIClient: Sendable {
         allowsTokenRefresh: Bool
     ) async throws -> T {
         let request = try await authenticatedRequest(endpoint)
-        let (data, response) = try await session.data(for: request)
+        let transport = endpoint.service == .assistant ? assistantSession : session
+        let (data, response) = try await transport.data(for: request)
         guard let http = response as? HTTPURLResponse else { throw APIClientError.invalidResponse }
         if http.statusCode == 401,
            request.value(forHTTPHeaderField: "Authorization") != nil,
            allowsTokenRefresh,
+           (endpoint.service != .assistant || endpoint.method == .get),
            let tokenManager = tokenProvider as? any SessionTokenManaging {
             do {
                 _ = try await refreshCoordinator.refresh { [self] in
@@ -103,9 +112,22 @@ public final class APIClient: Sendable {
     }
 
     public func makeURLRequest(_ endpoint: APIEndpoint) throws -> URLRequest {
-        var request = URLRequest(url: try endpoint.url(relativeTo: config.apiBaseURL))
+        let baseURL = endpoint.service == .assistant
+            ? config.webBaseURL.appendingPathComponent("mobile-api/v1/ai/") : config.apiBaseURL
+        if endpoint.service == .assistant, baseURL.scheme?.lowercased() != "https" {
+            throw APIClientError.invalidURL
+        }
+        var request = URLRequest(url: try endpoint.url(relativeTo: baseURL))
+        if endpoint.service == .assistant {
+            request.cachePolicy = .reloadIgnoringLocalCacheData
+            request.setValue("no-cache, no-store", forHTTPHeaderField: "Cache-Control")
+        }
+        if endpoint.path.hasSuffix("/reader/progress") || endpoint.path == "me/library" {
+            request.cachePolicy = .reloadIgnoringLocalCacheData
+            request.setValue("no-cache, no-store", forHTTPHeaderField: "Cache-Control")
+        }
         request.httpMethod = endpoint.method.rawValue
-        request.timeoutInterval = 30
+        request.timeoutInterval = endpoint.timeout ?? 30
         request.setValue("application/json", forHTTPHeaderField: "Accept")
         switch endpoint.body {
         case .json(let data):
@@ -150,7 +172,22 @@ public final class APIClient: Sendable {
         } else if endpoint.requiresAuthentication {
             throw APIClientError.authenticationRequired
         }
+        if endpoint.service == .assistant,
+           request.value(forHTTPHeaderField: "Authorization") == nil,
+           let key = endpoint.guestKey,
+           key.count == 64, key.allSatisfy({ "0123456789abcdef".contains($0) }) {
+            request.setValue(key, forHTTPHeaderField: "X-Guest-Key")
+        }
         return request
+    }
+
+    /// A successful anonymous bootstrap can indicate an expired bearer on older MobileApi servers.
+    /// Refresh only after this read-only probe; never replay an AI mutation for this condition.
+    public func refreshAssistantIdentity() async throws {
+        guard let manager = tokenProvider as? any SessionTokenManaging else {
+            throw APIClientError.authenticationRequired
+        }
+        _ = try await refreshCoordinator.refresh { [self] in try await refreshSession(using: manager) }
     }
 
     private static func formEscape(_ value: String) -> String {

@@ -105,3 +105,9 @@ Latest gate: **PASS=303 WARN=1 FAIL=0** (only WARN = Mac visual manifest). When 
 - PDF and EPUB reader sources are quota-authorized through the existing Android-compatible reader session API, downloaded to protected temporary storage, signature-validated, and opened natively with PDFKit/Readium. Google Drive preview/share URLs are resolved to binary downloads. PDF supports continuous/paged layouts, page scrubbing, thumbnails, bookmarks, and saved-position restore.
 - Ekitapligim includes user-generated forum content through XenForo.
 - Premium affects online reading/download quotas and may be a digital subscription on iOS.
+
+## AI Assistant addition (2026-09-06)
+
+Native SwiftUI coverage includes anonymous/member conversations, history deletion, contextual book questions, structured recommendations/evidence/comparisons/follow-ups, personalized preferences, weekly digest preferences, published collections, book profiles and explicit pending-action confirmation. Collection/profile/digest visibility follows the server's feature flags. The side menu, reserved-space floating launcher and book-detail entry preserve the six existing primary tabs. The reader, login, premium screens and assistant suppress the root launcher.
+
+The UI is implemented and local core tests execute on Windows. Device screenshots, SwiftUI builds and live member/group parity require the evidence recorded in AI_ASSISTANT_VALIDATION.md; this entry is not an App Store readiness claim.

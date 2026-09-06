@@ -622,6 +622,18 @@ public extension L10n {
     static var homeAgendaRailEmpty: String {
         tr("home.agendaRail.empty", "Kitap Gündemi'ni aç ve okurların paylaşımlarını keşfet.")
     }
+    static var homeAgendaEmptyPost: String {
+        tr("home.agendaRail.emptyPost", "Yeni bir kitap paylaşımı")
+    }
+    static var homeAgendaOpenPost: String {
+        tr("home.agendaRail.openPost", "Paylaşımın tamamını açar.")
+    }
+    static func homeAgendaReactionCount(_ count: Int) -> String {
+        String(format: tr("home.agendaRail.reactionCount", "%d beğeni"), count)
+    }
+    static func homeAgendaCommentCount(_ count: Int) -> String {
+        String(format: tr("home.agendaRail.commentCount", "%d yorum"), count)
+    }
     static var homeChatCardSubtitle: String { tr("home.chatCard.subtitle", "Okurlar şimdi ne konuşuyor?") }
     static var homeChatCardEmpty: String {
         tr("home.chatCard.empty", "Sohbet odasını aç, kitaplardan konuşmaya hemen katıl.")

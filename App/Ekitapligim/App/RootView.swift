@@ -7,6 +7,8 @@ struct RootView: View {
     @EnvironmentObject private var container: AppContainer
     @Environment(\.scenePhase) private var scenePhase
     @State private var isMenuPresented = false
+    @State private var assistantHidden = false
+    @State private var keyboardVisible = false
 
     init() {
         EKitapligimAppearance.configure()
@@ -32,6 +34,10 @@ struct RootView: View {
             container.open(route: route)
         }
         .onAppear { GoogleSignInService.configureIfNeeded() }
+        .task { container.activateAssistantAccount() }
+        .onPreferenceChange(AILauncherHiddenKey.self) { assistantHidden = $0 }
+        .onReceive(NotificationCenter.default.publisher(for: UIResponder.keyboardWillShowNotification)) { _ in keyboardVisible = true }
+        .onReceive(NotificationCenter.default.publisher(for: UIResponder.keyboardWillHideNotification)) { _ in keyboardVisible = false }
         .onChange(of: scenePhase) { _, phase in
             if phase == .active { container.handleScenePhaseActive() }
             if phase == .background { container.handleScenePhaseBackground() }
@@ -60,6 +66,13 @@ struct RootView: View {
                 }
             }
             .frame(maxWidth: .infinity, maxHeight: .infinity)
+            .safeAreaInset(edge: .bottom, spacing: 0) {
+                if !isMenuPresented && !assistantHidden && !keyboardVisible && container.presentedRoute == nil {
+                    AIAssistantLauncher(model: container.assistantModel) {
+                        container.open(route: .aiAssistant(bookID: nil))
+                    }
+                }
+            }
 
             PrimaryTabBar(
                 selection: $container.selectedTab,
@@ -136,6 +149,7 @@ private struct AppSideMenu: View {
     private var primaryItems: [AppMenuItem] {
         [
             AppMenuItem(route: .home, title: L10n.menuHome, subtitle: L10n.menuHomeSubtitle, icon: "house.fill"),
+            AppMenuItem(route: .aiAssistant(bookID: nil), title: AIL10n.text("title"), subtitle: AIL10n.text("menuSubtitle"), icon: "sparkles"),
             AppMenuItem(route: .catalog, title: L10n.menuBooks, subtitle: L10n.menuBooksSubtitle, icon: "books.vertical.fill"),
             AppMenuItem(route: .bookAgenda, title: L10n.menuBookAgenda, subtitle: L10n.menuBookAgendaSubtitle, icon: "text.book.closed.fill"),
             AppMenuItem(route: .chat, title: L10n.menuChat, subtitle: L10n.menuChatSubtitle, icon: "bubble.left.and.text.bubble.right.fill"),
@@ -342,6 +356,10 @@ private struct AppRouteSheet: View {
 
     @ViewBuilder private var routeDestination: some View {
         switch route {
+        case .aiAssistant(let bookID):
+            AIAssistantDestination(bookID: bookID)
+        case .aiCollections(let slug):
+            AICollectionsDestination(slug: slug)
         case .forum:
             CommunityView()
         case .home, .requests, .profile, .catalog, .bookAgenda, .liveActivity:

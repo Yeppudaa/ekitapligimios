@@ -1,6 +1,18 @@
 {
   "sourceLanguage": "tr",
   "strings": {
+    "home.agendaRail.emptyPost": {
+      "localizations": { "tr": { "stringUnit": { "state": "translated", "value": "Yeni bir kitap paylaşımı" } } }
+    },
+    "home.agendaRail.openPost": {
+      "localizations": { "tr": { "stringUnit": { "state": "translated", "value": "Paylaşımın tamamını açar." } } }
+    },
+    "home.agendaRail.reactionCount": {
+      "localizations": { "tr": { "stringUnit": { "state": "translated", "value": "%d beğeni" } } }
+    },
+    "home.agendaRail.commentCount": {
+      "localizations": { "tr": { "stringUnit": { "state": "translated", "value": "%d yorum" } } }
+    },
     "app.name": {
       "localizations": {
         "tr": {
@@ -3482,6 +3494,24 @@
           }
         }
       }
+    },
+    "premium.eyebrow": {
+      "localizations": { "tr": { "stringUnit": { "state": "translated", "value": "OKUMANIN AYRICALIKLI HALİ" } } }
+    },
+    "premium.heroSubtitle": {
+      "localizations": { "tr": { "stringUnit": { "state": "translated", "value": "Kütüphane deneyimini bir adım öteye taşı." } } }
+    },
+    "premium.benefitsTitle": {
+      "localizations": { "tr": { "stringUnit": { "state": "translated", "value": "Ayrıcalıklarınız" } } }
+    },
+    "premium.readingTitle": {
+      "localizations": { "tr": { "stringUnit": { "state": "translated", "value": "Okuma keyfi" } } }
+    },
+    "premium.downloadsTitle": {
+      "localizations": { "tr": { "stringUnit": { "state": "translated", "value": "Kitapların yanında" } } }
+    },
+    "premium.purchaseAction": {
+      "localizations": { "tr": { "stringUnit": { "state": "translated", "value": "Satın al" } } }
     },
     "premium.benefit.reading": {
       "localizations": { "tr": { "stringUnit": { "state": "translated", "value": "Premium kitaplara ve geniş okuma haklarına erişim" } } }
