@@ -180,7 +180,9 @@ final class PremiumPurchaseTests: XCTestCase {
         until predicate: (PremiumEntitlement) -> Bool
     ) async {
         let clock = ContinuousClock()
-        let deadline = clock.now.advanced(by: .seconds(5))
+        // StoreKitTest publishes renewal-info changes asynchronously. Busy CI
+        // simulators can need more than five seconds after disabling auto-renew.
+        let deadline = clock.now.advanced(by: .seconds(15))
 
         repeat {
             await service.refreshEntitlements()

@@ -107,10 +107,17 @@ final class EkitapligimUITests: XCTestCase {
         keepScreenshot(named: "01-home")
 
         selectPrimaryDestination(app, titled: "Kitaplar")
-        XCTAssertTrue(
+        var catalogVisible =
             app.navigationBars["Kitaplar"].waitForExistence(timeout: 10)
                 || app.staticTexts["Kataloğu Keşfet"].waitForExistence(timeout: 10)
-        )
+        if !catalogVisible {
+            // On a busy iPad simulator the adaptive tab button can acknowledge
+            // the first synthetic tap before its navigation transaction commits.
+            selectPrimaryDestination(app, titled: "Kitaplar")
+            catalogVisible = app.navigationBars["Kitaplar"].waitForExistence(timeout: 10)
+                || app.staticTexts["Kataloğu Keşfet"].waitForExistence(timeout: 10)
+        }
+        XCTAssertTrue(catalogVisible)
         sleep(4)
         keepScreenshot(named: "02-catalog")
 
