@@ -73,9 +73,9 @@ struct AIUITestHost: View {
                 VStack(spacing: 0) {
                     NavigationStack {
                         ScrollView(.horizontal) {
-                            HStack(alignment: .top, spacing: 14) {
+                            HStack(alignment: .center, spacing: 14) {
                                 ForEach(layoutPosts) { post in
-                                    HomeAgendaCard(post: post) { showAssistant = true }
+                                    HomeAgendaCard(post: post, layout: .rail) { showAssistant = true }
                                         .frame(width: 270)
                                         .accessibilityIdentifier("layout-card-\(post.id)")
                                 }

@@ -21,7 +21,8 @@ final class AIAssistantUITests: XCTestCase {
         XCTAssertGreaterThan(tabs[5].frame.maxX, app.frame.width - 12)
         let shortCard = app.descendants(matching: .any)["layout-card-1"].firstMatch
         let longCard = app.descendants(matching: .any)["layout-card-2"].firstMatch
-        XCTAssertGreaterThan(longCard.frame.height, shortCard.frame.height + 30)
+        XCTAssertEqual(longCard.frame.height, shortCard.frame.height, accuracy: 2)
+        XCTAssertEqual(longCard.frame.width, shortCard.frame.width, accuracy: 2)
         XCTAssertTrue(app.buttons["agenda-author-1"].exists)
         capture(app, name: "layout-tabs-and-agenda")
 

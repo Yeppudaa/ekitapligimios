@@ -523,9 +523,9 @@ struct HomeView: View {
                 .padding(.horizontal, 16)
             } else {
                 ScrollView(.horizontal, showsIndicators: false) {
-                    HStack(alignment: .top, spacing: 14) {
+                    HStack(alignment: .center, spacing: 14) {
                         ForEach(agendaPosts.prefix(4)) { post in
-                            HomeAgendaCard(post: post) {
+                            HomeAgendaCard(post: post, layout: .rail) {
                                 guard let postID = Int(post.id), postID > 0 else { return }
                                 container.open(route: .bookAgendaPost(postID))
                             }
@@ -862,11 +862,20 @@ private struct HomeBookCard: View {
     }
 }
 
+enum HomeAgendaCardLayout {
+    case adaptive
+    case rail
+}
+
 struct HomeAgendaCard: View {
     @Environment(\.dynamicTypeSize) private var dynamicTypeSize
     let post: BookAgendaPostDTO
+    var layout: HomeAgendaCardLayout = .adaptive
     let onOpen: () -> Void
     private var style: AgendaCardPalette { AgendaCardPalette(type: post.type) }
+
+    static let railHeight: CGFloat = 360
+    private var isRailLayout: Bool { layout == .rail }
 
     private var previewLineLimit: Int? { dynamicTypeSize.isAccessibilitySize ? nil : 5 }
     private var isQuotation: Bool { post.type == "quotation" }
@@ -910,7 +919,43 @@ struct HomeAgendaCard: View {
         VStack(alignment: .leading, spacing: 12) {
             header
             Button(action: onOpen) {
-            VStack(alignment: .leading, spacing: 12) {
+                cardButtonContent
+            }
+            .buttonStyle(.plain)
+            .accessibilityHint(L10n.homeAgendaOpenPost)
+            .frame(maxHeight: isRailLayout ? .infinity : nil, alignment: .topLeading)
+        }
+        .foregroundStyle(style.ink)
+        .multilineTextAlignment(.leading)
+        .padding(16)
+        .frame(maxWidth: .infinity, alignment: .topLeading)
+        .frame(height: isRailLayout ? Self.railHeight : nil)
+        .fixedSize(horizontal: false, vertical: !isRailLayout)
+        .background {
+            RoundedRectangle(cornerRadius: 24, style: .continuous)
+                .fill(LinearGradient(
+                    colors: [style.paper, .white],
+                    startPoint: .topLeading, endPoint: .bottomTrailing
+                ))
+                .overlay(alignment: .topTrailing) {
+                    Circle()
+                        .fill(style.badge.opacity(0.5))
+                        .frame(width: 150, height: 150)
+                        .offset(x: 65, y: -80)
+                }
+                .clipShape(RoundedRectangle(cornerRadius: 24, style: .continuous))
+                .overlay {
+                    RoundedRectangle(cornerRadius: 24, style: .continuous)
+                        .strokeBorder(style.border, lineWidth: 1)
+                }
+                .shadow(color: style.accent.opacity(0.07), radius: 6, y: 3)
+        }
+        .contentShape(RoundedRectangle(cornerRadius: 24, style: .continuous))
+        .accessibilityElement(children: .contain)
+    }
+
+    private var cardButtonContent: some View {
+        VStack(alignment: .leading, spacing: 12) {
             Label(typeTitle, systemImage: typeIcon)
                 .font(.caption.weight(.semibold))
                 .foregroundStyle(style.accent)
@@ -935,13 +980,15 @@ struct HomeAgendaCard: View {
                     .font(isQuotation ? .system(.title3, design: .serif, weight: .medium) : .subheadline)
                     .lineSpacing(isQuotation ? 5 : 3)
                     .lineLimit(previewLineLimit)
-                    .fixedSize(horizontal: false, vertical: true)
+                    .fixedSize(horizontal: false, vertical: !isRailLayout)
                 if isQuotation, post.pageNumber > 0 {
                     Text(L10n.agendaPageLabel(post.pageNumber))
                         .font(.caption.weight(.semibold))
                         .foregroundStyle(style.accent)
                 }
             }
+            .frame(maxWidth: .infinity, maxHeight: isRailLayout ? .infinity : nil, alignment: .topLeading)
+            .clipped()
 
             if post.type == "quote", let quoted = post.quotedPost {
                 quotedContext(quoted)
@@ -949,40 +996,15 @@ struct HomeAgendaCard: View {
             if let book = post.book, !plainText(book.title).isEmpty {
                 bookContext(book)
             }
+
+            if isRailLayout {
+                Spacer(minLength: 0)
+            }
+
             footer
-            }
-            .frame(maxWidth: .infinity, alignment: .leading)
-            .contentShape(Rectangle())
-            }
-            .buttonStyle(.plain)
-            .accessibilityHint(L10n.homeAgendaOpenPost)
         }
-        .foregroundStyle(style.ink)
-        .multilineTextAlignment(.leading)
-        .padding(16)
-        .frame(maxWidth: .infinity, alignment: .topLeading)
-        .fixedSize(horizontal: false, vertical: true)
-        .background {
-            RoundedRectangle(cornerRadius: 24, style: .continuous)
-                .fill(LinearGradient(
-                    colors: [style.paper, .white],
-                    startPoint: .topLeading, endPoint: .bottomTrailing
-                ))
-                .overlay(alignment: .topTrailing) {
-                    Circle()
-                        .fill(style.badge.opacity(0.5))
-                        .frame(width: 150, height: 150)
-                        .offset(x: 65, y: -80)
-                }
-                .clipShape(RoundedRectangle(cornerRadius: 24, style: .continuous))
-                .overlay {
-                    RoundedRectangle(cornerRadius: 24, style: .continuous)
-                        .strokeBorder(style.border, lineWidth: 1)
-                }
-                .shadow(color: style.accent.opacity(0.07), radius: 6, y: 3)
-        }
-        .contentShape(RoundedRectangle(cornerRadius: 24, style: .continuous))
-        .accessibilityElement(children: .contain)
+        .frame(maxWidth: .infinity, maxHeight: isRailLayout ? .infinity : nil, alignment: .topLeading)
+        .contentShape(Rectangle())
     }
 
     private var header: some View {
