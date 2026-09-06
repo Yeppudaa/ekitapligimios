@@ -58,7 +58,7 @@ struct AIAssistantView: View {
                     ForEach(model.messages) { message in
                         AIMessageView(message: message, features: model.bootstrap?.features ?? AIFeaturesDTO(),
                             canSend: model.canSend, confirmed: model.confirmedActions,
-                            onPrompt: { model.send($0) }, onAction: { pendingAction = $0 })
+                            onPrompt: { send($0) }, onAction: { pendingAction = $0 })
                     }
                     if model.sending {
                         HStack(spacing: 10) { ProgressView(); Text(AIL10n.text("thinking")).font(.subheadline) }
@@ -204,13 +204,13 @@ struct AIAssistantView: View {
     }
     @ViewBuilder private var suggestionButtons: some View {
         AISuggestion(title: AIL10n.text(model.contextBookID == nil ? "suggestDiscover" : "suggestBook"), icon: "sparkles") {
-            model.send(AIL10n.text(model.contextBookID == nil ? "promptDiscover" : "promptBook"))
+            send(AIL10n.text(model.contextBookID == nil ? "promptDiscover" : "promptBook"))
         }.disabled(!model.canSend)
         if model.bootstrap?.features.suitability == true {
-            AISuggestion(title: AIL10n.text("suggestMood"), icon: "sun.max") { model.send(AIL10n.text("promptMood")) }.disabled(!model.canSend)
+            AISuggestion(title: AIL10n.text("suggestMood"), icon: "sun.max") { send(AIL10n.text("promptMood")) }.disabled(!model.canSend)
         }
         if model.bootstrap?.features.comparison == true {
-            AISuggestion(title: AIL10n.text("suggestCompare"), icon: "books.vertical") { model.send(AIL10n.text("promptCompare")) }.disabled(!model.canSend)
+            AISuggestion(title: AIL10n.text("suggestCompare"), icon: "books.vertical") { send(AIL10n.text("promptCompare")) }.disabled(!model.canSend)
         }
     }
     @ViewBuilder private var feedback: some View {
@@ -238,7 +238,7 @@ struct AIAssistantView: View {
                     .lineLimit(1...5).focused($composerFocused).padding(.vertical, 12).padding(.leading, 16)
                     .foregroundStyle(AIStyle.navy)
                     .accessibilityIdentifier("ai-input")
-                Button { model.send(); composerFocused = false } label: {
+                Button { send(); composerFocused = false } label: {
                     Image(systemName: "arrow.up").font(.title3.weight(.bold))
                         .frame(width: 46, height: 46).foregroundStyle(.white)
                         .background(model.canSend ? AIStyle.teal : AIStyle.muted, in: RoundedRectangle(cornerRadius: 16))
@@ -256,6 +256,13 @@ struct AIAssistantView: View {
             }
         }.frame(maxWidth: 760).padding(.horizontal, 16).padding(.vertical, 10)
             .frame(maxWidth: .infinity).background(.regularMaterial)
+    }
+
+    private func send(_ prompt: String? = nil) {
+        // A deliberate send follows the newly appended exchange. Passive incoming
+        // changes still respect `atBottom`, so reading older messages is undisturbed.
+        atBottom = true
+        model.send(prompt)
     }
 }
 
