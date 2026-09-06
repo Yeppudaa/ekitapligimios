@@ -6,12 +6,13 @@ enum AIStyle {
     static let navy = Color(hex: 0x0F3D64)
     static let blue = Color(hex: 0x126DA6)
     static let cyan = Color(hex: 0x16A7D8)
+    static let accessibleCyan = Color(hex: 0x08799E)
     static let muted = Color(hex: 0x687784)
     static let background = Color.white
     static let surface = Color(hex: 0xF5FAFD)
     static let border = Color(hex: 0x526B78)
     static let success = Color(hex: 0x117A56)
-    static let gradient = LinearGradient(colors: [navy, blue, cyan], startPoint: .leading, endPoint: .trailing)
+    static let gradient = LinearGradient(colors: [navy, blue, accessibleCyan], startPoint: .leading, endPoint: .trailing)
 }
 
 struct AIEmblem: View {
