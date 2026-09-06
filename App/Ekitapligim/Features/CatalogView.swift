@@ -43,7 +43,6 @@ struct CatalogView: View {
                 EKitapligimPageBackground()
                 ScrollView {
                     LazyVStack(spacing: 18) {
-                        EKScrollOffsetTracker()
                         catalogHero
                         categoryChips
                         if isLoading || isRefreshing {
@@ -57,11 +56,12 @@ struct CatalogView: View {
                     }
                     .padding(.horizontal, 16)
                     .padding(.bottom, 28)
+                    .background(alignment: .top) { EKScrollOffsetTracker() }
                 }
                 .ekCollapsibleScrollTracking { heroCollapseProgress = $0 }
             }
             .navigationTitle(L10n.catalogTitle)
-            .navigationBarTitleDisplayMode(.large)
+            .navigationBarTitleDisplayMode(.inline)
             .searchable(text: $query, prompt: L10n.catalogSearchPrompt)
             .tint(EKitapligimPalette.teal)
             .toolbar {

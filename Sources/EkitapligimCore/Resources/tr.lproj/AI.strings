@@ -73,3 +73,8 @@
 "jumpLatest" = "Son mesaja git";
 "you" = "Sen";
 "charactersFormat" = "%d / %d karakter";
+
+"launcherCollapsed" = "Küçültülmüş";
+"launcherExpanded" = "Genişletilmiş";
+"collapseLauncher" = "Asistan düğmesini küçült";
+"expandLauncher" = "Asistan düğmesini genişlet";

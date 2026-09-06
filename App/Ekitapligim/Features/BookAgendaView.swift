@@ -517,6 +517,7 @@ struct BookAgendaPostCard: View {
     var body: some View {
         VStack(alignment: .leading, spacing: 11) {
             header
+            VStack(alignment: .leading, spacing: 11) {
             typeBadges
             bodyContent
             if let quotedPost = post.quotedPost {
@@ -526,21 +527,27 @@ struct BookAgendaPostCard: View {
                 BookAgendaBookChip(book: book)
             }
             attachments
+            }
+            .contentShape(Rectangle())
+            .onTapGesture(perform: onOpen)
             actionsRow
         }
         .padding(15)
         .frame(maxWidth: .infinity, alignment: .leading)
-        .background(.white, in: RoundedRectangle(cornerRadius: 18, style: .continuous))
+        .background(AgendaCardPalette(type: post.type).paper, in: RoundedRectangle(cornerRadius: 18, style: .continuous))
         .overlay {
             RoundedRectangle(cornerRadius: 18, style: .continuous)
-                .stroke(post.isFeatured ? Color(hex: 0xE6C878) : EKitapligimPalette.agendaBorder, lineWidth: 1)
+                .stroke(post.isFeatured ? Color(hex: 0xE6C878) : AgendaCardPalette(type: post.type).border, lineWidth: 1)
         }
         .contentShape(Rectangle())
-        .onTapGesture(perform: onOpen)
     }
 
     private var header: some View {
         HStack(spacing: 11) {
+            NavigationLink {
+                MemberProfileView(memberID: post.actor.id)
+            } label: {
+            HStack(spacing: 11) {
             EKAvatar(urlString: post.actor.avatarUrl, username: post.actor.username, size: 44, cornerRadius: 15, background: Color(hex: 0xE7F7F7))
             VStack(alignment: .leading, spacing: 2) {
                 HStack(spacing: 5) {
@@ -560,6 +567,13 @@ struct BookAgendaPostCard: View {
                     .foregroundStyle(EKitapligimPalette.agendaMuted)
                     .lineLimit(1)
             }
+            }
+            .frame(minHeight: 44, alignment: .leading)
+            .contentShape(Rectangle())
+            }
+            .buttonStyle(.plain)
+            .disabled(Int(post.actor.id).map { $0 <= 0 } ?? true)
+            .accessibilityIdentifier("agenda-author-\(post.id)")
             Spacer(minLength: 0)
 
             HStack(spacing: 4) {
@@ -634,16 +648,7 @@ struct BookAgendaPostCard: View {
         }
     }
 
-    private var typeAccent: Color {
-        if post.type == "quote" { return Color(hex: 0x5A67B7) }
-        return switch kind {
-        case .book: EKitapligimPalette.agendaTeal
-        case .quotation: EKitapligimPalette.agendaPurple
-        case .review: EKitapligimPalette.agendaGold
-        case .progress: Color(hex: 0x27875F)
-        case .standard: EKitapligimPalette.agendaMuted
-        }
-    }
+    private var typeAccent: Color { AgendaCardPalette(type: post.type).accent }
 
     @ViewBuilder private var bodyContent: some View {
         switch kind {

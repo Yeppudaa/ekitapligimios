@@ -200,7 +200,8 @@ private struct PremiumContentView: View {
                         PremiumPlanCard(
                             name: product.displayName,
                             price: product.displayPrice,
-                            period: product.id.hasSuffix("yearly") ? L10n.premiumYearlyPeriod : L10n.premiumMonthlyPeriod
+                            period: product.id.hasSuffix("yearly") ? L10n.premiumYearlyPeriod : L10n.premiumMonthlyPeriod,
+                            tagline: product.id.hasSuffix("yearly") ? nil : L10n.premiumMonthlyTagline
                         )
                     }
                     .buttonStyle(PremiumPressStyle())
@@ -428,6 +429,7 @@ private struct PremiumPlanCard: View {
     let name: String
     let price: String
     let period: String
+    var tagline: String? = nil
 
     var body: some View {
         VStack(alignment: .leading, spacing: 16) {
@@ -444,6 +446,11 @@ private struct PremiumPlanCard: View {
             }
             Text(price)
                 .font(.system(.largeTitle, design: .serif, weight: .bold))
+            if let tagline {
+                Text(tagline)
+                    .font(.subheadline.weight(.semibold))
+                    .foregroundStyle(PremiumStyle.accent)
+            }
             Text(period)
                 .font(.subheadline)
                 .foregroundStyle(PremiumStyle.muted)

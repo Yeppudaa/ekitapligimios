@@ -8,6 +8,7 @@ struct RootView: View {
     @Environment(\.scenePhase) private var scenePhase
     @State private var isMenuPresented = false
     @State private var assistantHidden = false
+    @State private var assistantCollapsed = false
     @State private var keyboardVisible = false
 
     init() {
@@ -68,7 +69,7 @@ struct RootView: View {
             .frame(maxWidth: .infinity, maxHeight: .infinity)
             .overlay(alignment: .bottomTrailing) {
                 if !isMenuPresented && !assistantHidden && !keyboardVisible && container.presentedRoute == nil {
-                    AIAssistantLauncher(model: container.assistantModel) {
+                    AIAssistantLauncher(model: container.assistantModel, isCollapsed: $assistantCollapsed) {
                         container.open(route: .aiAssistant(bookID: nil))
                     }
                     .padding(.trailing, 16)

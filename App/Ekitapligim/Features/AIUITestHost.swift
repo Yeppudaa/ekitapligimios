@@ -59,13 +59,58 @@ actor AIFixtureService: AIAssistantServing {
 @MainActor
 struct AIUITestHost: View {
     @StateObject private var model: AIAssistantModel
+    @State private var collapsed = false
+    @State private var showAssistant = false
+    @State private var selection: AppTab = .home
+    private var layoutMode: Bool { ProcessInfo.processInfo.environment["AI_FIXTURE_MODE"] == "layout" }
     init() {
         let mode = ProcessInfo.processInfo.environment["AI_FIXTURE_MODE"] ?? "welcome"
         _model = StateObject(wrappedValue: AIAssistantModel(repository: AIFixtureService(mode: mode)))
     }
     var body: some View {
-        NavigationStack { AIAssistantView(model: model) }
-            .task { model.activate(account: nil) }
+        Group {
+            if layoutMode {
+                VStack(spacing: 0) {
+                    NavigationStack {
+                        ScrollView(.horizontal) {
+                            HStack(alignment: .top, spacing: 14) {
+                                ForEach(layoutPosts) { post in
+                                    HomeAgendaCard(post: post) { showAssistant = true }
+                                        .frame(width: 270)
+                                        .accessibilityIdentifier("layout-card-\(post.id)")
+                                }
+                            }
+                            .padding(16)
+                        }
+                        .frame(maxHeight: .infinity, alignment: .top)
+                    }
+                    .overlay(alignment: .bottomTrailing) {
+                        AIAssistantLauncher(model: model, isCollapsed: $collapsed) { showAssistant = true }
+                            .padding(16)
+                    }
+                    PrimaryTabBar(selection: $selection)
+                }
+                .sheet(isPresented: $showAssistant) {
+                    NavigationStack {
+                        AIAssistantView(model: model)
+                            .toolbar {
+                                ToolbarItem(placement: .cancellationAction) {
+                                    Button(L10n.commonClose) { showAssistant = false }
+                                        .accessibilityIdentifier("layout-close-assistant")
+                                }
+                            }
+                    }
+                }
+            } else {
+                NavigationStack { AIAssistantView(model: model) }
+            }
+        }
+        .task { model.activate(account: nil) }
+    }
+
+    private var layoutPosts: [BookAgendaPostDTO] {
+        let json = #"[{"id":"1","type":"standard","message":"Bugün yeni bir kitaba başladım.","actor":{"id":"1","username":"Okur"}},{"id":"2","type":"quotation","message":"Bir kitabın sayfaları arasında yeni dünyalar buluruz. Her okuma başka bir yolculuk, her satır başka bir keşif. Okumak hayatın içindeki küçük güzellikleri fark etmemizi sağlar.","actor":{"id":"1","username":"Okur"}},{"id":"3","type":"review","message":"Sürükleyici bir kitap.","actor":{"id":"1","username":"Okur"}},{"id":"4","type":"progress","message":"Yarısını bitirdim.","actor":{"id":"1","username":"Okur"}}]"#
+        return (try? JSONDecoder.ekitapligim.decode([BookAgendaPostDTO].self, from: Data(json.utf8))) ?? []
     }
 }
 #endif

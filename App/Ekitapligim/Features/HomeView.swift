@@ -525,17 +525,13 @@ struct HomeView: View {
                 ScrollView(.horizontal, showsIndicators: false) {
                     HStack(alignment: .top, spacing: 14) {
                         ForEach(agendaPosts.prefix(4)) { post in
-                            Button {
+                            HomeAgendaCard(post: post) {
                                 guard let postID = Int(post.id), postID > 0 else { return }
                                 container.open(route: .bookAgendaPost(postID))
-                            } label: {
-                                HomeAgendaCard(post: post)
-                                    .containerRelativeFrame(.horizontal) { length, _ in
-                                        min(340, max(1, length - 52))
-                                    }
                             }
-                            .buttonStyle(.plain)
-                            .accessibilityHint(L10n.homeAgendaOpenPost)
+                            .containerRelativeFrame(.horizontal) { length, _ in
+                                min(340, max(1, length - 52))
+                            }
                             .accessibilityIdentifier("home.agenda.\(post.id)")
                         }
                     }
@@ -866,9 +862,11 @@ private struct HomeBookCard: View {
     }
 }
 
-private struct HomeAgendaCard: View {
+struct HomeAgendaCard: View {
     @Environment(\.dynamicTypeSize) private var dynamicTypeSize
     let post: BookAgendaPostDTO
+    let onOpen: () -> Void
+    private var style: AgendaCardPalette { AgendaCardPalette(type: post.type) }
 
     private var previewLineLimit: Int? { dynamicTypeSize.isAccessibilitySize ? nil : 5 }
     private var isQuotation: Bool { post.type == "quotation" }
@@ -909,20 +907,22 @@ private struct HomeAgendaCard: View {
     }
 
     var body: some View {
-        VStack(alignment: .leading, spacing: 18) {
+        VStack(alignment: .leading, spacing: 12) {
             header
+            Button(action: onOpen) {
+            VStack(alignment: .leading, spacing: 12) {
             Label(typeTitle, systemImage: typeIcon)
                 .font(.caption.weight(.semibold))
-                .foregroundStyle(HomeAgendaStyle.accent)
+                .foregroundStyle(style.accent)
                 .padding(.horizontal, 11)
                 .padding(.vertical, 7)
-                .background(HomeAgendaStyle.badge, in: Capsule())
+                .background(style.badge, in: Capsule())
 
             VStack(alignment: .leading, spacing: 10) {
                 if isQuotation {
                     Image(systemName: "quote.opening")
-                        .font(.system(size: 34, weight: .bold, design: .serif))
-                        .foregroundStyle(HomeAgendaStyle.accent.opacity(0.6))
+                        .font(.system(size: 24, weight: .bold, design: .serif))
+                        .foregroundStyle(style.accent.opacity(0.6))
                         .accessibilityHidden(true)
                 }
                 if post.type == "review", !plainText(post.reviewTitle).isEmpty,
@@ -939,7 +939,7 @@ private struct HomeAgendaCard: View {
                 if isQuotation, post.pageNumber > 0 {
                     Text(L10n.agendaPageLabel(post.pageNumber))
                         .font(.caption.weight(.semibold))
-                        .foregroundStyle(HomeAgendaStyle.accent)
+                        .foregroundStyle(style.accent)
                 }
             }
 
@@ -949,37 +949,46 @@ private struct HomeAgendaCard: View {
             if let book = post.book, !plainText(book.title).isEmpty {
                 bookContext(book)
             }
-            Spacer(minLength: 0)
             footer
+            }
+            .frame(maxWidth: .infinity, alignment: .leading)
+            .contentShape(Rectangle())
+            }
+            .buttonStyle(.plain)
+            .accessibilityHint(L10n.homeAgendaOpenPost)
         }
-        .foregroundStyle(HomeAgendaStyle.ink)
+        .foregroundStyle(style.ink)
         .multilineTextAlignment(.leading)
-        .padding(20)
-        .frame(maxWidth: .infinity, maxHeight: .infinity, alignment: .topLeading)
+        .padding(16)
+        .frame(maxWidth: .infinity, alignment: .topLeading)
+        .fixedSize(horizontal: false, vertical: true)
         .background {
             RoundedRectangle(cornerRadius: 24, style: .continuous)
                 .fill(LinearGradient(
-                    colors: [HomeAgendaStyle.paper, .white],
+                    colors: [style.paper, .white],
                     startPoint: .topLeading, endPoint: .bottomTrailing
                 ))
                 .overlay(alignment: .topTrailing) {
                     Circle()
-                        .fill(HomeAgendaStyle.badge.opacity(0.5))
+                        .fill(style.badge.opacity(0.5))
                         .frame(width: 150, height: 150)
                         .offset(x: 65, y: -80)
                 }
                 .clipShape(RoundedRectangle(cornerRadius: 24, style: .continuous))
                 .overlay {
                     RoundedRectangle(cornerRadius: 24, style: .continuous)
-                        .strokeBorder(HomeAgendaStyle.border, lineWidth: 1)
+                        .strokeBorder(style.border, lineWidth: 1)
                 }
-                .shadow(color: HomeAgendaStyle.accent.opacity(0.07), radius: 6, y: 3)
+                .shadow(color: style.accent.opacity(0.07), radius: 6, y: 3)
         }
         .contentShape(RoundedRectangle(cornerRadius: 24, style: .continuous))
-        .accessibilityElement(children: .combine)
+        .accessibilityElement(children: .contain)
     }
 
     private var header: some View {
+        NavigationLink {
+            MemberProfileView(memberID: post.actor.id)
+        } label: {
         HStack(alignment: .top, spacing: 10) {
             EKAvatar(urlString: post.actor.avatarUrl, username: post.actor.username, size: 36)
                 .accessibilityHidden(true)
@@ -990,12 +999,18 @@ private struct HomeAgendaCard: View {
                 if post.createdAt > 0 {
                     Text(EKitapligimFormat.relativeTime(post.createdAt))
                         .font(.caption2)
-                        .foregroundStyle(HomeAgendaStyle.muted)
+                        .foregroundStyle(style.muted)
                 }
             }
             .frame(maxWidth: .infinity, alignment: .leading)
             .fixedSize(horizontal: false, vertical: true)
         }
+        .frame(minHeight: 44)
+        .contentShape(Rectangle())
+        }
+        .buttonStyle(.plain)
+        .disabled(Int(post.actor.id).map { $0 <= 0 } ?? true)
+        .accessibilityIdentifier("agenda-author-\(post.id)")
     }
 
     @ViewBuilder
@@ -1006,7 +1021,7 @@ private struct HomeAgendaCard: View {
                 if !quoted.username.isEmpty {
                     Text(L10n.agendaQuotedFrom(quoted.username))
                         .font(.caption.weight(.semibold))
-                        .foregroundStyle(HomeAgendaStyle.accent)
+                        .foregroundStyle(style.accent)
                 }
                 if !quotedMessage.isEmpty, quotedMessage != preview {
                     Text(quotedMessage)
@@ -1017,14 +1032,14 @@ private struct HomeAgendaCard: View {
                 if let title = quoted.bookTitle, !plainText(title).isEmpty {
                     Text(plainText(title))
                         .font(.caption)
-                        .foregroundStyle(HomeAgendaStyle.muted)
+                        .foregroundStyle(style.muted)
                         .lineLimit(dynamicTypeSize.isAccessibilitySize ? nil : 2)
                 }
             }
             .fixedSize(horizontal: false, vertical: true)
             .frame(maxWidth: .infinity, alignment: .leading)
             .padding(12)
-            .background(HomeAgendaStyle.badge.opacity(0.5), in: RoundedRectangle(cornerRadius: 14))
+            .background(style.badge.opacity(0.5), in: RoundedRectangle(cornerRadius: 14))
         }
     }
 
@@ -1041,7 +1056,7 @@ private struct HomeAgendaCard: View {
                 if !plainText(book.author).isEmpty {
                     Text(plainText(book.author))
                         .font(.caption)
-                        .foregroundStyle(HomeAgendaStyle.muted)
+                        .foregroundStyle(style.muted)
                         .lineLimit(dynamicTypeSize.isAccessibilitySize ? nil : 2)
                 }
             }
@@ -1052,14 +1067,14 @@ private struct HomeAgendaCard: View {
         .background(.white.opacity(0.8), in: RoundedRectangle(cornerRadius: 16))
         .overlay {
             RoundedRectangle(cornerRadius: 16)
-                .strokeBorder(HomeAgendaStyle.border.opacity(0.75), lineWidth: 1)
+                .strokeBorder(style.border.opacity(0.75), lineWidth: 1)
         }
     }
 
     private var footer: some View {
         VStack(spacing: 14) {
             Rectangle()
-                .fill(HomeAgendaStyle.border)
+                .fill(style.border)
                 .frame(height: 1)
                 .accessibilityHidden(true)
             ViewThatFits(in: .horizontal) {
@@ -1081,21 +1096,21 @@ private struct HomeAgendaCard: View {
         Label(EKitapligimFormat.count(post.reactionScore), systemImage: "heart")
             .accessibilityLabel(L10n.homeAgendaReactionCount(post.reactionScore))
             .font(.caption)
-            .foregroundStyle(HomeAgendaStyle.muted)
+            .foregroundStyle(style.muted)
             .fixedSize()
         Label(EKitapligimFormat.count(post.commentCount), systemImage: "bubble.left")
             .accessibilityLabel(L10n.homeAgendaCommentCount(post.commentCount))
             .font(.caption)
-            .foregroundStyle(HomeAgendaStyle.muted)
+            .foregroundStyle(style.muted)
             .fixedSize()
     }
 
     private var openIndicator: some View {
         Image(systemName: "arrow.up.right")
             .font(.subheadline.weight(.semibold))
-            .foregroundStyle(HomeAgendaStyle.accent)
+            .foregroundStyle(style.accent)
             .frame(width: 32, height: 32)
-            .background(HomeAgendaStyle.badge, in: Circle())
+            .background(style.badge, in: Circle())
             .accessibilityHidden(true)
     }
 

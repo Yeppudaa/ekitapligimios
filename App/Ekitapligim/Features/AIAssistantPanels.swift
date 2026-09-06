@@ -153,23 +153,56 @@ struct AILauncherHiddenKey: PreferenceKey {
 @MainActor
 struct AIAssistantLauncher: View {
     @ObservedObject var model: AIAssistantModel
+    @Binding var isCollapsed: Bool
+    @Environment(\.accessibilityReduceMotion) private var reduceMotion
     let action: () -> Void
+
     var body: some View {
         if model.showLauncher {
-            HStack {
-                Spacer()
-                Button(action: action) {
-                    HStack(spacing: 9) {
-                        AIEmblem(size: 38)
+            Button {
+                setCollapsed(false)
+                action()
+            } label: {
+                HStack(spacing: 9) {
+                    AIEmblem(size: 38)
+                    if !isCollapsed {
                         VStack(alignment: .leading, spacing: 0) {
-                            Text(AIL10n.text("title")).font(.subheadline.weight(.bold)).foregroundStyle(.white)
+                            Text(AIL10n.text("title")).font(.subheadline.weight(.bold))
                             Text(AIL10n.text("online")).font(.caption2).foregroundStyle(.white.opacity(0.9))
                         }
-                        Image(systemName: "sparkles").foregroundStyle(.white)
-                    }.padding(7).padding(.trailing, 9).background(AIStyle.gradient, in: RoundedRectangle(cornerRadius: 22))
-                        .shadow(color: AIStyle.navy.opacity(0.20), radius: 10, y: 4)
-                }.buttonStyle(.plain).accessibilityIdentifier("ai-launcher")
-            }.padding(.horizontal, 16).padding(.vertical, 5)
+                        Image(systemName: "sparkles").accessibilityHidden(true)
+                    }
+                }
+                .foregroundStyle(.white)
+                .padding(7)
+                .padding(.trailing, isCollapsed ? 0 : 9)
+                .frame(minWidth: 52, minHeight: 52)
+                .background(AIStyle.gradient, in: RoundedRectangle(cornerRadius: isCollapsed ? 26 : 22))
+                .contentShape(RoundedRectangle(cornerRadius: 22))
+                .shadow(color: AIStyle.navy.opacity(0.20), radius: 10, y: 4)
+            }
+            .buttonStyle(.plain)
+            .accessibilityIdentifier("ai-launcher")
+            .accessibilityLabel(AIL10n.text("title"))
+            .accessibilityValue(AIL10n.text(isCollapsed ? "launcherCollapsed" : "launcherExpanded"))
+            .accessibilityAction(named: Text(AIL10n.text(isCollapsed ? "expandLauncher" : "collapseLauncher"))) {
+                setCollapsed(!isCollapsed)
+            }
+            .highPriorityGesture(
+                DragGesture(minimumDistance: 20)
+                    .onEnded { value in
+                        let horizontal = value.translation.width
+                        guard abs(horizontal) >= 40,
+                              abs(horizontal) > abs(value.translation.height) else { return }
+                        setCollapsed(horizontal > 0)
+                    }
+            )
+        }
+    }
+
+    private func setCollapsed(_ collapsed: Bool) {
+        withAnimation(reduceMotion ? nil : .easeInOut(duration: 0.2)) {
+            isCollapsed = collapsed
         }
     }
 }

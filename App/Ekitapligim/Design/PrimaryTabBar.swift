@@ -1,22 +1,21 @@
 import SwiftUI
 import EkitapligimCore
 
-/// Horizontally scrollable bottom navigation for six primary destinations on iPhone.
+/// Six equally sized destinations spanning the available safe-area width.
 @MainActor
 struct PrimaryTabBar: View {
     @Binding var selection: AppTab
     var profileBadgeCount: Int = 0
 
     var body: some View {
-        ScrollView(.horizontal, showsIndicators: false) {
-            HStack(spacing: 4) {
+            HStack(spacing: 0) {
                 ForEach(AppTab.allCases) { tab in
                     tabButton(tab)
                 }
             }
-            .padding(.horizontal, 10)
+            .padding(.horizontal, 6)
             .padding(.vertical, 8)
-        }
+            .frame(maxWidth: .infinity)
         .background {
             Rectangle()
                 .fill(Color(red: 251 / 255, green: 254 / 255, blue: 254 / 255))
@@ -58,7 +57,7 @@ struct PrimaryTabBar: View {
                     .minimumScaleFactor(0.8)
             }
             .foregroundStyle(isSelected ? EKitapligimPalette.teal : EKitapligimPalette.muted)
-            .frame(minWidth: 44)
+            .frame(maxWidth: .infinity, minHeight: 44)
             .padding(.horizontal, 4)
             .padding(.vertical, 4)
             .background(
@@ -67,6 +66,7 @@ struct PrimaryTabBar: View {
             )
         }
         .buttonStyle(.plain)
+        .frame(maxWidth: .infinity)
         .accessibilityIdentifier(tab.accessibilityIdentifier)
         .accessibilityLabel(accessibilityTitle)
     }

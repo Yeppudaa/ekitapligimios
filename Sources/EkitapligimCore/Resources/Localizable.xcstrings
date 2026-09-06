@@ -3525,8 +3525,11 @@
     "premium.plan": {
       "localizations": { "tr": { "stringUnit": { "state": "translated", "value": "Plan" } } }
     },
+    "premium.monthlyTagline": {
+      "localizations": { "tr": { "stringUnit": { "state": "translated", "value": "Kitaplar beklemez. Sen de bekleme..." } } }
+    },
     "premium.period.monthly": {
-      "localizations": { "tr": { "stringUnit": { "state": "translated", "value": "Her ay otomatik yenilenir" } } }
+      "localizations": { "tr": { "stringUnit": { "state": "translated", "value": "Aylık abonelik" } } }
     },
     "premium.period.yearly": {
       "localizations": { "tr": { "stringUnit": { "state": "translated", "value": "Her yıl otomatik yenilenir" } } }
