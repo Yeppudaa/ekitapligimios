@@ -279,6 +279,42 @@ struct EKAvatar: View {
     }
 }
 
+/// Opens `MemberProfileView` for a valid member id; otherwise renders the label unchanged.
+struct MemberProfileLink<Label: View>: View {
+    private let memberID: String?
+    private let label: Label
+
+    init(memberID: String?, @ViewBuilder label: () -> Label) {
+        self.memberID = memberID
+        self.label = label()
+    }
+
+    init(memberID: Int?, @ViewBuilder label: () -> Label) {
+        self.memberID = memberID.map(String.init)
+        self.label = label()
+    }
+
+    private var resolvedID: String? {
+        guard let memberID else { return nil }
+        let trimmed = memberID.trimmingCharacters(in: .whitespacesAndNewlines)
+        guard let value = Int(trimmed), value > 0 else { return nil }
+        return String(value)
+    }
+
+    var body: some View {
+        if let resolvedID {
+            NavigationLink {
+                MemberProfileView(memberID: resolvedID)
+            } label: {
+                label
+            }
+            .buttonStyle(.plain)
+        } else {
+            label
+        }
+    }
+}
+
 struct EKProgressRing: View {
     let progress: Double
     var size: CGFloat = 70
@@ -913,10 +949,12 @@ struct EKBookRequestPreviewRow: View {
                     .lineLimit(1)
 
                 if !compact, !request.requestedBy.isEmpty {
-                    Text(L10n.bookRequestsRequestedBy(request.requestedBy))
-                        .font(.caption2)
-                        .foregroundStyle(EKitapligimPalette.muted)
-                        .lineLimit(1)
+                    MemberProfileLink(memberID: request.userId) {
+                        Text(L10n.bookRequestsRequestedBy(request.requestedBy))
+                            .font(.caption2)
+                            .foregroundStyle(EKitapligimPalette.muted)
+                            .lineLimit(1)
+                    }
                 }
 
                 HStack(spacing: 8) {
@@ -1282,10 +1320,12 @@ struct EKForumThreadRow: View {
                 }
 
                 HStack(spacing: 6) {
-                    Text(displayUsername)
-                        .font(.caption.weight(.semibold))
-                        .foregroundStyle(EKitapligimPalette.forumMuted)
-                        .lineLimit(1)
+                    MemberProfileLink(memberID: thread.userId) {
+                        Text(displayUsername)
+                            .font(.caption.weight(.semibold))
+                            .foregroundStyle(EKitapligimPalette.forumMuted)
+                            .lineLimit(1)
+                    }
                     if thread.postDate > 0 {
                         Text("·")
                             .foregroundStyle(EKitapligimPalette.forumMuted.opacity(0.6))

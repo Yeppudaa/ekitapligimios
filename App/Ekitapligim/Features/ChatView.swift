@@ -818,6 +818,11 @@ private struct ChatMessageBubble: View {
     let message: ChatMessageDTO
     let onBlocked: () -> Void
 
+    private var profileMemberID: String? {
+        guard !message.isBot else { return nil }
+        return message.userId
+    }
+
     var body: some View {
         if message.isAnnouncement {
             announcement
@@ -873,21 +878,25 @@ private struct ChatMessageBubble: View {
             if message.isMine { Spacer(minLength: 40) }
 
             if !message.isMine {
-                EKAvatar(
-                    urlString: message.avatarUrl,
-                    username: message.username,
-                    size: 36,
-                    background: message.isBot ? EKitapligimPalette.chatBotBubble : EKitapligimPalette.chatTealSoft,
-                    foreground: message.isBot ? Color(hex: 0x95610A) : EKitapligimPalette.chatTeal
-                )
+                MemberProfileLink(memberID: profileMemberID) {
+                    EKAvatar(
+                        urlString: message.avatarUrl,
+                        username: message.username,
+                        size: 36,
+                        background: message.isBot ? EKitapligimPalette.chatBotBubble : EKitapligimPalette.chatTealSoft,
+                        foreground: message.isBot ? Color(hex: 0x95610A) : EKitapligimPalette.chatTeal
+                    )
+                }
             }
 
             VStack(alignment: message.isMine ? .trailing : .leading, spacing: 4) {
                 if !message.isMine {
                     HStack(spacing: 6) {
-                        Text(message.username)
-                            .font(.system(size: 12, weight: .bold))
-                            .foregroundStyle(message.isBot ? Color(hex: 0x95610A) : EKitapligimPalette.chatTeal)
+                        MemberProfileLink(memberID: profileMemberID) {
+                            Text(message.username)
+                                .font(.system(size: 12, weight: .bold))
+                                .foregroundStyle(message.isBot ? Color(hex: 0x95610A) : EKitapligimPalette.chatTeal)
+                        }
                         if let roleBadge {
                             Text(roleBadge)
                                 .font(.system(size: 8, weight: .heavy))

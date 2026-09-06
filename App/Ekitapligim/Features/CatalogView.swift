@@ -707,29 +707,32 @@ private struct BookCover: View {
     let book: BookDTO
 
     var body: some View {
-        Group {
-            if let secureCoverURL {
-                AsyncImage(url: secureCoverURL) { phase in
-                    switch phase {
-                    case .success(let image):
-                        image.resizable().scaledToFill()
-                    case .empty:
-                        ZStack {
-                            Rectangle().fill(.quaternary)
-                            ProgressView()
+        Color.clear
+            .overlay {
+                Group {
+                    if let secureCoverURL {
+                        AsyncImage(url: secureCoverURL) { phase in
+                            switch phase {
+                            case .success(let image):
+                                image.resizable().scaledToFill()
+                            case .empty:
+                                ZStack {
+                                    Rectangle().fill(.quaternary)
+                                    ProgressView()
+                                }
+                            default:
+                                coverPlaceholder
+                            }
                         }
-                    default:
+                    } else {
                         coverPlaceholder
                     }
                 }
-            } else {
-                coverPlaceholder
             }
-        }
-        .clipped()
-        .background(EKitapligimPalette.tealSoft)
-        .clipShape(RoundedRectangle(cornerRadius: 10, style: .continuous))
-        .accessibilityHidden(true)
+            .clipped()
+            .background(EKitapligimPalette.tealSoft)
+            .clipShape(RoundedRectangle(cornerRadius: 10, style: .continuous))
+            .accessibilityHidden(true)
     }
 
     private var secureCoverURL: URL? {

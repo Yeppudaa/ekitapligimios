@@ -470,4 +470,45 @@ final class CommunityModelDecodingTests: XCTestCase {
         XCTAssertEqual(updated.message, original.message)
         XCTAssertEqual(updated.reactionScore, original.reactionScore)
     }
+
+    func testBookAgendaQuotedPostKeepsActorUserID() throws {
+        let json = """
+        {
+            "id": "88",
+            "username": "Ada",
+            "message": "alıntı",
+            "actor": {"id": "42", "username": "Ada"}
+        }
+        """
+        let quoted = try decoder.decode(BookAgendaQuotedPostDTO.self, from: Data(json.utf8))
+        XCTAssertEqual(quoted.id, "88")
+        XCTAssertEqual(quoted.username, "Ada")
+        XCTAssertEqual(quoted.userId, "42")
+    }
+
+    func testBookAgendaQuotedPostWithoutActorHasNoUserID() throws {
+        let json = """
+        {
+            "id": "88",
+            "username": "Ada",
+            "message": "alıntı"
+        }
+        """
+        let quoted = try decoder.decode(BookAgendaQuotedPostDTO.self, from: Data(json.utf8))
+        XCTAssertEqual(quoted.username, "Ada")
+        XCTAssertNil(quoted.userId)
+    }
+
+    func testBookAgendaQuotedPostIgnoresNonPositiveActorID() throws {
+        let json = """
+        {
+            "id": "88",
+            "message": "alıntı",
+            "actor": {"id": "0", "username": "Ada"}
+        }
+        """
+        let quoted = try decoder.decode(BookAgendaQuotedPostDTO.self, from: Data(json.utf8))
+        XCTAssertEqual(quoted.username, "Ada")
+        XCTAssertNil(quoted.userId)
+    }
 }

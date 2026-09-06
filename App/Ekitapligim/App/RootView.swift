@@ -24,7 +24,7 @@ struct RootView: View {
     var body: some View {
         ZStack(alignment: .topTrailing) {
             tabs
-            if container.selectedTab != .catalog {
+            if container.isForumPresented || container.selectedTab != .catalog {
                 menuButton
             }
             drawer
@@ -51,19 +51,23 @@ struct RootView: View {
     private var tabs: some View {
         VStack(spacing: 0) {
             Group {
-                switch container.selectedTab {
-                case .home:
-                    HomeView()
-                case .catalog:
-                    CatalogView(onOpenMenu: openMenu)
-                case .agenda:
-                    NavigationStack { BookAgendaView() }
-                case .flow:
-                    NavigationStack { LiveActivityView() }
-                case .requests:
-                    NavigationStack { BookRequestsView() }
-                case .profile:
-                    NavigationStack { ProfileView() }
+                if container.isForumPresented {
+                    CommunityView()
+                } else {
+                    switch container.selectedTab {
+                    case .home:
+                        HomeView()
+                    case .catalog:
+                        CatalogView(onOpenMenu: openMenu)
+                    case .agenda:
+                        NavigationStack { BookAgendaView() }
+                    case .flow:
+                        NavigationStack { LiveActivityView() }
+                    case .requests:
+                        NavigationStack { BookRequestsView() }
+                    case .profile:
+                        NavigationStack { ProfileView() }
+                    }
                 }
             }
             .frame(maxWidth: .infinity, maxHeight: .infinity)

@@ -572,8 +572,8 @@ public extension L10n {
         tr("home.hero.subtitle", "Kütüphaneye yeni katılan kitapları keşfet, okumaya hemen başla.")
     }
     static var homeHeroPrimaryAction: String { tr("home.hero.primaryAction", "Yeni Kitaplar") }
-    static var homeSignalFormats: String { tr("home.signal.formats", "PDF & EPUB") }
-    static var homeSignalShelfSync: String { tr("home.signal.shelfSync", "Raf senkronu") }
+    static var homeSignalFormats: String { tr("home.signal.formats", "En Güncel Kitaplar") }
+    static var homeSignalShelfSync: String { tr("home.signal.shelfSync", "Kitap İstekleri") }
     static var homeSignalEverywhere: String { tr("home.signal.everywhere", "Her yerde oku") }
     static var homeSearchPlaceholder: String {
         tr("home.searchPlaceholder", "Kitap, yazar, yayınevi veya ISBN ara...")

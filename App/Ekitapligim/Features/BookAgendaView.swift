@@ -666,9 +666,11 @@ struct BookAgendaPostCard: View {
     private func quotedPostCard(_ quoted: BookAgendaQuotedPostDTO) -> some View {
         VStack(alignment: .leading, spacing: 6) {
             if !quoted.username.isEmpty {
-                Text(L10n.agendaQuotedFrom(quoted.username))
-                    .font(.caption2.weight(.bold))
-                    .foregroundStyle(EKitapligimPalette.agendaPurple)
+                MemberProfileLink(memberID: quoted.userId) {
+                    Text(L10n.agendaQuotedFrom(quoted.username))
+                        .font(.caption2.weight(.bold))
+                        .foregroundStyle(EKitapligimPalette.agendaPurple)
+                }
             }
             Text(EKitapligimFormat.plainText(quoted.message))
                 .font(.caption)
@@ -1234,12 +1236,16 @@ private struct BookAgendaCommentRow: View {
 
     var body: some View {
         HStack(alignment: .top, spacing: 10) {
-            EKAvatar(urlString: comment.actor.avatarUrl, username: comment.actor.username, size: 38, cornerRadius: 13, background: Color(hex: 0xE7F7F7))
+            MemberProfileLink(memberID: comment.actor.id) {
+                EKAvatar(urlString: comment.actor.avatarUrl, username: comment.actor.username, size: 38, cornerRadius: 13, background: Color(hex: 0xE7F7F7))
+            }
             VStack(alignment: .leading, spacing: 4) {
                 HStack {
-                    Text(comment.actor.username)
-                        .font(.subheadline.weight(.bold))
-                        .foregroundStyle(EKitapligimPalette.agendaInk)
+                    MemberProfileLink(memberID: comment.actor.id) {
+                        Text(comment.actor.username)
+                            .font(.subheadline.weight(.bold))
+                            .foregroundStyle(EKitapligimPalette.agendaInk)
+                    }
                     Spacer(minLength: 0)
                     Text(EKitapligimFormat.relativeTime(comment.createdAt))
                         .font(.system(size: 10))

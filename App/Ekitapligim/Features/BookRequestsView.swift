@@ -367,10 +367,12 @@ private struct BookRequestRow: View {
                     .foregroundStyle(Color(hex: 0x697386))
                     .lineLimit(1)
                 if !item.requestedBy.isEmpty {
-                    Text(L10n.bookRequestsRequestedBy(item.requestedBy))
-                        .font(.subheadline)
-                        .foregroundStyle(Color(hex: 0x697386))
-                        .lineLimit(1)
+                    MemberProfileLink(memberID: item.userId) {
+                        Text(L10n.bookRequestsRequestedBy(item.requestedBy))
+                            .font(.subheadline)
+                            .foregroundStyle(Color(hex: 0x697386))
+                            .lineLimit(1)
+                    }
                 }
                 EKBookRequestStatusPill(status: item.status, showsBookHint: item.fulfilledBookID != nil)
             }

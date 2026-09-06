@@ -1082,10 +1082,12 @@ private struct BookCommentRow: View {
     var body: some View {
         VStack(alignment: .leading, spacing: 6) {
             HStack(alignment: .center, spacing: 8) {
-                Text(comment.username)
-                    .font(.subheadline.weight(.bold))
-                    .foregroundStyle(Color(hex: 0x0D3037))
-                    .lineLimit(1)
+                MemberProfileLink(memberID: comment.userId) {
+                    Text(comment.username)
+                        .font(.subheadline.weight(.bold))
+                        .foregroundStyle(Color(hex: 0x0D3037))
+                        .lineLimit(1)
+                }
                 Spacer(minLength: 0)
                 HStack(spacing: 2) {
                     ForEach(1...5, id: \.self) { value in

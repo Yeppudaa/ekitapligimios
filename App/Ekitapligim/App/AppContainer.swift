@@ -11,8 +11,12 @@ final class AppContainer: ObservableObject {
             activateAssistantAccount()
         }
     }
-    @Published var selectedTab: AppTab = .home
+    @Published var selectedTab: AppTab = .home {
+        didSet { isForumPresented = false }
+    }
     @Published var presentedRoute: AppRoute?
+    /// Forum opens as main content (not a sheet) when chosen from the menu or discovery.
+    @Published var isForumPresented = false
     /// Shelf index for library deep links (`library/{tab}`) presented from profile or sheets.
     @Published var libraryShelfTab: Int = 0
     @Published var pendingProfileLibraryTab: LibraryTab?
@@ -524,6 +528,11 @@ final class AppContainer: ObservableObject {
         if let tab = AppTab(route: route) {
             presentedRoute = nil
             selectedTab = tab
+            return
+        }
+        if route == .forum {
+            presentedRoute = nil
+            isForumPresented = true
             return
         }
         presentedRoute = route
