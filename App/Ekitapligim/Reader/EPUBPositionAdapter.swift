@@ -37,7 +37,8 @@ final class EPUBPositionAdapter {
               let link = publication.readingOrder.first(where: { EPUBPackageIndex.normalizedPath($0.href) == item.href }) else {
             throw EPUBPositionError.missingResource
         }
-        return Locator(href: link.href, mediaType: link.mediaType ?? .xhtml, locations: .init(otherLocations: ["cssSelector": .string(cfi.cssSelector)]))
+        guard let href = URL(string: link.href) else { throw EPUBPositionError.missingResource }
+        return Locator(href: href, mediaType: link.mediaType ?? .xhtml, locations: .init(otherLocations: ["cssSelector": .string(cfi.cssSelector)]))
     }
 
     func restore(_ position: ReaderPositionDTO, navigator: EPUBNavigatorViewController) async throws {
