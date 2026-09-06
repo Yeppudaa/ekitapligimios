@@ -34,7 +34,7 @@ final class EPUBPositionAdapter {
         guard package.items.indices.contains(cfi.spineIndex) else { throw EPUBPositionError.missingResource }
         let item = package.items[cfi.spineIndex]
         guard item.cfiBase == "/\(cfi.packageSteps[0])/\(cfi.packageSteps[1])",
-              let link = publication.readingOrder.first(where: { EPUBPackageIndex.normalizedPath($0.href.string) == item.href }) else {
+              let link = publication.readingOrder.first(where: { EPUBPackageIndex.normalizedPath($0.href) == item.href }) else {
             throw EPUBPositionError.missingResource
         }
         return Locator(href: link.href, mediaType: link.mediaType ?? .xhtml, locations: .init(otherLocations: ["cssSelector": .string(cfi.cssSelector)]))

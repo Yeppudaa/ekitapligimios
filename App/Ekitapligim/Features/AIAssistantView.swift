@@ -133,6 +133,9 @@ struct AIAssistantView: View {
         }
         .onChange(of: scenePhase) { _, phase in if phase == .active { model.refresh() } }
         .onChange(of: container.authState) { _, _ in panel = nil; pendingAction = nil }
+        .onChange(of: model.confirmedActions) { old, new in
+            if new.count > old.count { Task { await container.refreshSessionData() } }
+        }
         .tint(AIStyle.teal)
         .foregroundStyle(AIStyle.navy)
         .environment(\.colorScheme, .light)

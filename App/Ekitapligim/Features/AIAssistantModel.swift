@@ -174,6 +174,10 @@ final class AIAssistantModel: ObservableObject {
             try await model.repository.confirm(action)
             guard model.current(stamp) else { return }
             model.confirmedActions.insert(action.id); model.notice = AIL10n.text("actionDone")
+            if let id = model.conversation?.conversationId {
+                let updated = try await model.repository.conversation(id)
+                guard model.current(stamp) else { return }; model.conversation = updated
+            }
         }
     }
     func loadCollections(slug: String? = nil) {

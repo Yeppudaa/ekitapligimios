@@ -98,6 +98,9 @@ public struct DeepLinkParser: Sendable {
             return segments.count == 1 ? .aiAssistant(bookID: nil) : nil
         case "ai-collections":
             return parseNativeRoute(segments.joined(separator: "/"))
+        case "koleksiyonlar":
+            if segments.count == 1 { return .aiCollections(slug: nil) }
+            return segments.count == 2 && AIPolicy.validSlug(segments[1]) ? .aiCollections(slug: segments[1]) : nil
         case "books", "konular":
             return id.map(AppRoute.bookDetail) ?? .catalog
         case "threads":

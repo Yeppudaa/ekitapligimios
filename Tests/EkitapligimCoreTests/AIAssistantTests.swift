@@ -97,6 +97,7 @@ final class AIAssistantTests: XCTestCase {
         XCTAssertNil(p.parseNativeRoute("ai-assistant/1/2"))
         XCTAssertEqual(p.parse("https://ekitapligim.com/asistan/"), .aiAssistant(bookID: nil))
         XCTAssertEqual(p.parseNativeRoute("ai-collections/kisa-kitaplar"), .aiCollections(slug: "kisa-kitaplar"))
+        XCTAssertEqual(p.parse("https://ekitapligim.com/koleksiyonlar/kisa-kitaplar/"), .aiCollections(slug: "kisa-kitaplar"))
         XCTAssertNil(p.parseNativeRoute("ai-collections/../preferences"))
         XCTAssertNil(AIPolicy.secureSource("javascript:alert(1)"))
         XCTAssertNil(AIPolicy.secureSource("http://ekitapligim.com"))

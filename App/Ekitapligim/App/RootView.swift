@@ -143,6 +143,7 @@ struct RootView: View {
 @MainActor
 private struct AppSideMenu: View {
     @EnvironmentObject private var container: AppContainer
+    @State private var assistantAvailable = true
     let onSelect: (AppRoute) -> Void
     let onClose: () -> Void
 
@@ -201,7 +202,7 @@ private struct AppSideMenu: View {
             ScrollView {
                 LazyVStack(alignment: .leading, spacing: 4) {
                     ForEach(primaryItems) { item in
-                        menuRow(item)
+                        if item.route != .aiAssistant(bookID: nil) || assistantAvailable { menuRow(item) }
                     }
 
                     premiumCard
@@ -225,6 +226,7 @@ private struct AppSideMenu: View {
         .frame(maxHeight: .infinity)
         .background(EKitapligimPalette.pageGradient)
         .ignoresSafeArea(edges: .bottom)
+        .onReceive(container.assistantModel.$bootstrap) { assistantAvailable = $0?.enabled ?? true }
     }
 
     private var header: some View {
