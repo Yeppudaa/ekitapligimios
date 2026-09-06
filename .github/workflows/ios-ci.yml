@@ -107,6 +107,7 @@ jobs:
           -scheme Ekitapligim
           -configuration Production
           -destination generic/platform=iOS
+          -derivedDataPath build
           -clonedSourcePackagesDirPath .build/xcode-packages
           -disableAutomaticPackageResolution
           CODE_SIGNING_ALLOWED=NO
