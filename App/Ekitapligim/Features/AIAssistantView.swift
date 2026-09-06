@@ -37,7 +37,6 @@ struct AIAssistantDestination: View {
 @MainActor
 struct AIAssistantView: View {
     @EnvironmentObject private var container: AppContainer
-    @Environment(\.accessibilityReduceMotion) private var reduceMotion
     @Environment(\.scenePhase) private var scenePhase
     @ObservedObject var model: AIAssistantModel
     var initialBook: BookDTO?
@@ -75,7 +74,10 @@ struct AIAssistantView: View {
             .scrollDismissesKeyboard(.interactively)
             .onChange(of: model.messages.count) { _, _ in
                 guard atBottom else { return }
-                withAnimation(reduceMotion ? nil : .easeOut(duration: 0.2)) { proxy.scrollTo("ai-bottom", anchor: .bottom) }
+                // Long, dynamically laid-out answers can continuously retarget an animated
+                // ScrollViewReader transition. An immediate move keeps the composer visible
+                // and avoids trapping accessibility/UI automation in a non-idle animation.
+                proxy.scrollTo("ai-bottom", anchor: .bottom)
             }
             .overlay(alignment: .bottomTrailing) {
                 if !atBottom && !model.messages.isEmpty {
