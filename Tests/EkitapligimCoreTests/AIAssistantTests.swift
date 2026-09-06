@@ -61,6 +61,12 @@ final class AIAssistantTests: XCTestCase {
         """)
         XCTAssertFalse(action.canConfirm(at: Date(timeIntervalSince1970: 1)))
     }
+    func testServerFollowUpSuggestionsAlias() throws {
+        let presentation: AIPresentationDTO = try decode("""
+        {"follow_up_suggestions":[{"label":"Benzer kitaplar","prompt":"Benzer kitaplar öner."}]}
+        """)
+        XCTAssertEqual(presentation.followUps.first?.prompt, "Benzer kitaplar öner.")
+    }
     func testGuestHeaderOnlyGoesToAnonymousAssistantRequests() async throws {
         let config = try AppConfig.production()
         let key = String(repeating: "a", count: 64)

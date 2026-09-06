@@ -327,7 +327,10 @@ struct AIMessageView: View {
                         ForEach(Array(p.comparison.enumerated()), id: \.offset) { _, row in
                             VStack(alignment: .leading, spacing: 6) {
                                 ForEach(row.keys.sorted(), id: \.self) { key in
-                                    Text(row[key] ?? "").font(.subheadline).foregroundStyle(AIStyle.navy)
+                                    VStack(alignment: .leading, spacing: 3) {
+                                        Text(key).font(.caption.weight(.semibold)).foregroundStyle(AIStyle.teal)
+                                        Text(row[key] ?? "").font(.subheadline).foregroundStyle(AIStyle.navy)
+                                    }
                                 }
                             }.padding(12).background(AIStyle.background, in: RoundedRectangle(cornerRadius: 12))
                         }

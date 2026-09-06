@@ -17,7 +17,7 @@ final class AITransportTests: XCTestCase {
         AIStubProtocol.handler = { request in
             XCTAssertEqual(request.url?.path, "/mobile-api/v1/ai/preferences")
             XCTAssertEqual(request.httpMethod, "POST")
-            let body = String(data: request.httpBody ?? Data(), encoding: .utf8) ?? ""
+            let body = request.aiTestBody
             XCTAssertTrue(body.contains("personalization_enabled=1"))
             XCTAssertTrue(body.contains("category_ids%5B0%5D=8") || body.contains("category_ids[0]=8"))
             return (200, "{\"success\":true,\"digest\":null}")
@@ -102,4 +102,18 @@ private final class AIStubProtocol: URLProtocol, @unchecked Sendable {
         client?.urlProtocolDidFinishLoading(self)
     }
     override func stopLoading() {}
+}
+
+private extension URLRequest {
+    var aiTestBody: String {
+        if let httpBody { return String(data: httpBody, encoding: .utf8) ?? "" }
+        guard let stream = httpBodyStream else { return "" }
+        stream.open(); defer { stream.close() }
+        var result = Data(); var buffer = [UInt8](repeating: 0, count: 1024)
+        while stream.hasBytesAvailable {
+            let count = stream.read(&buffer, maxLength: buffer.count)
+            if count <= 0 { break }; result.append(contentsOf: buffer.prefix(count))
+        }
+        return String(data: result, encoding: .utf8) ?? ""
+    }
 }

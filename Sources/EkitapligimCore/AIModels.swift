@@ -104,7 +104,8 @@ public struct AIPresentationDTO: Decodable, Equatable, Sendable {
     public init(from decoder: Decoder) throws {
         let f = try AIFields(decoder)
         type = f.text("type"); title = f.text("title"); summary = f.text("summary")
-        facts = f.list("facts"); comparison = f.list("comparison"); followUps = f.list("followUps")
+        facts = f.list("facts"); comparison = f.list("comparison")
+        followUps = f.get("followUps") ?? f.get("followUpSuggestions") ?? []
     }
 }
 public struct AIEvidenceDTO: Decodable, Equatable, Sendable {
