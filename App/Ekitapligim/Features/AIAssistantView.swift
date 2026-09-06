@@ -242,12 +242,11 @@ struct AIAssistantView: View {
                     Image(systemName: "arrow.up").font(.title3.weight(.bold))
                         .frame(width: 46, height: 46).foregroundStyle(.white)
                         .background(model.canSend ? AIStyle.teal : AIStyle.muted, in: RoundedRectangle(cornerRadius: 16))
+                        .accessibilityLabel(AIL10n.text("send"))
+                        .accessibilityIdentifier("ai-send")
                 }
                 .disabled(!model.canSend || model.input.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty
                     || model.input.unicodeScalars.count > (model.bootstrap?.constraints.maxMessageLength ?? 0))
-                .accessibilityElement(children: .ignore)
-                .accessibilityLabel(AIL10n.text("send"))
-                .accessibilityIdentifier("ai-send")
                 .padding(5)
             }.background(.white, in: RoundedRectangle(cornerRadius: 22))
                 .overlay(RoundedRectangle(cornerRadius: 22).stroke(AIStyle.border))

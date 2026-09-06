@@ -58,8 +58,8 @@ struct PrimaryTabBar: View {
                     .minimumScaleFactor(0.8)
             }
             .foregroundStyle(isSelected ? EKitapligimPalette.teal : EKitapligimPalette.muted)
-            .frame(minWidth: 58)
-            .padding(.horizontal, 6)
+            .frame(minWidth: 44)
+            .padding(.horizontal, 4)
             .padding(.vertical, 4)
             .background(
                 isSelected ? EKitapligimPalette.tealSoft.opacity(0.65) : Color.clear,
