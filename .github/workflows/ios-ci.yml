@@ -120,6 +120,24 @@ jobs:
           /usr/libexec/PlistBuddy -c 'Print :GIDClientID' "$APP_PLIST" | grep -q 'apps.googleusercontent.com'
           /usr/libexec/PlistBuddy -c 'Print :CFBundleURLTypes:0:CFBundleURLSchemes:0' "$APP_PLIST" | grep -q 'com.googleusercontent.apps.'
           echo "Resolved Google Sign-In values found in $APP_PLIST"
+      - name: Export simulator screenshot attachments
+        if: always()
+        run: |
+          mkdir -p AISimulatorEvidence/iPhone AISimulatorEvidence/iPad
+          if [ -d TestResults.xcresult ]; then
+            xcrun xcresulttool export attachments --path TestResults.xcresult --output-path AISimulatorEvidence/iPhone
+          fi
+          if [ -d TestResults-iPad.xcresult ]; then
+            xcrun xcresulttool export attachments --path TestResults-iPad.xcresult --output-path AISimulatorEvidence/iPad
+          fi
+      - name: Upload simulator screenshot evidence
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: ai-simulator-evidence
+          path: AISimulatorEvidence
+          if-no-files-found: warn
+          retention-days: 14
       - name: Upload XCTest result bundle
         if: always()
         uses: actions/upload-artifact@v4
