@@ -139,7 +139,6 @@ struct AIAssistantView: View {
         .tint(AIStyle.teal)
         .foregroundStyle(AIStyle.navy)
         .environment(\.colorScheme, .light)
-        .accessibilityIdentifier("ai-assistant-screen")
         .preference(key: AILauncherHiddenKey.self, value: true)
     }
 
@@ -234,8 +233,10 @@ struct AIAssistantView: View {
     private var composer: some View {
         VStack(spacing: 7) {
             HStack(alignment: .bottom, spacing: 10) {
-                TextField(AIL10n.text("compose"), text: $model.input, axis: .vertical)
+                TextField("", text: $model.input,
+                    prompt: Text(AIL10n.text("compose")).foregroundStyle(AIStyle.muted), axis: .vertical)
                     .lineLimit(1...5).focused($composerFocused).padding(.vertical, 12).padding(.leading, 16)
+                    .foregroundStyle(AIStyle.navy)
                     .accessibilityIdentifier("ai-input")
                 Button { model.send(); composerFocused = false } label: {
                     Image(systemName: "arrow.up").font(.title3.weight(.bold))
@@ -244,7 +245,10 @@ struct AIAssistantView: View {
                 }
                 .disabled(!model.canSend || model.input.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty
                     || model.input.unicodeScalars.count > (model.bootstrap?.constraints.maxMessageLength ?? 0))
-                .accessibilityLabel(AIL10n.text("send")).accessibilityIdentifier("ai-send").padding(5)
+                .accessibilityElement(children: .ignore)
+                .accessibilityLabel(AIL10n.text("send"))
+                .accessibilityIdentifier("ai-send")
+                .padding(5)
             }.background(.white, in: RoundedRectangle(cornerRadius: 22))
                 .overlay(RoundedRectangle(cornerRadius: 22).stroke(AIStyle.border))
             if !model.input.isEmpty, let max = model.bootstrap?.constraints.maxMessageLength {

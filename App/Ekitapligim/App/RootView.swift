@@ -66,11 +66,13 @@ struct RootView: View {
                 }
             }
             .frame(maxWidth: .infinity, maxHeight: .infinity)
-            .safeAreaInset(edge: .bottom, spacing: 0) {
+            .overlay(alignment: .bottomTrailing) {
                 if !isMenuPresented && !assistantHidden && !keyboardVisible && container.presentedRoute == nil {
                     AIAssistantLauncher(model: container.assistantModel) {
                         container.open(route: .aiAssistant(bookID: nil))
                     }
+                    .padding(.trailing, 16)
+                    .padding(.bottom, 16)
                 }
             }
 

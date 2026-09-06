@@ -98,7 +98,15 @@ final class BookDetailLoadingModelTests: XCTestCase {
     }
 
     private func book(_ id: Int) throws -> BookEnvelope {
-        try JSONDecoder.ekitapligim.decode(BookEnvelope.self, from: Data("{\"book\":{\"id\":\"\(id)\",\"title\":\"Book\"}}".utf8))
+        let json = """
+        {"book":{
+          "id":"\(id)","title":"Book","author":"Author","publisher":"Publisher",
+          "isbn":"","category":"Novel","language":"tr","publish_year":"2026",
+          "description":"Description","cover_url":"","pdf_url":"","page_count":100,
+          "is_premium_only":false
+        }}
+        """
+        return try JSONDecoder.ekitapligim.decode(BookEnvelope.self, from: Data(json.utf8))
     }
 
     private func accessResult() throws -> ReaderAccessDTO {
