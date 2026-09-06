@@ -324,6 +324,7 @@ struct AIMessageView: View {
             }.foregroundStyle(isUser ? .white.opacity(0.8) : AIStyle.teal)
             Text(message.content).font(.body).textSelection(.enabled)
                 .foregroundStyle(isUser ? .white : AIStyle.navy).fixedSize(horizontal: false, vertical: true)
+                .accessibilityIdentifier(isUser ? "ai-user-message" : "ai-assistant-message")
             if !isUser {
                 if let p = message.presentation {
                     if !p.title.isEmpty { Text(p.title).font(.headline).foregroundStyle(AIStyle.navy) }

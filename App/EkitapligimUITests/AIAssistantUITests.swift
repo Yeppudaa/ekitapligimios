@@ -43,7 +43,7 @@ final class AIAssistantUITests: XCTestCase {
         let input = app.textFields["ai-input"].exists ? app.textFields["ai-input"] : app.textViews["ai-input"]
         input.tap(); input.typeText("Bir kitap öner")
         app.buttons["ai-send"].tap()
-        XCTAssertTrue(app.staticTexts["Sen"].waitForExistence(timeout: 10))
+        XCTAssertTrue(app.staticTexts["ai-assistant-message"].waitForExistence(timeout: 10))
         app.swipeUp()
         XCTAssertTrue(app.buttons["ai-send"].isHittable)
         capture(app, name: "ai-long-response")
