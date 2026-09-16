@@ -10,6 +10,22 @@ on:
       - "codex/**"
 
 jobs:
+  reader-contracts:
+    name: Reader API and EPUB interoperability
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: '20'
+      - name: Reader backend service and controller tests
+        run: |
+          php Tests/Backend/ReaderProgressTest.php
+          php Tests/Backend/ReaderProgressControllerTest.php
+      - name: EPUB.js and Readium position contract
+        run: |
+          npm install --prefix "$RUNNER_TEMP/reader-test-runtime" jsdom@26.1.0 epubjs@0.3.93 --no-audit --no-fund
+          node Tests/Reader/EPUBCFIBridgeTests.cjs "$RUNNER_TEMP/reader-test-runtime/node_modules"
   source-validation:
     name: Source validation
     runs-on: windows-latest
@@ -25,7 +41,7 @@ jobs:
   ios-build:
     name: iOS build and tests
     runs-on: macos-15
-    timeout-minutes: 30
+    timeout-minutes: 45
     steps:
       - uses: actions/checkout@v4
       - name: Select and verify Xcode 16.4
@@ -91,12 +107,13 @@ jobs:
           -scheme Ekitapligim
           -configuration Production
           -destination generic/platform=iOS
+          -derivedDataPath build
           -clonedSourcePackagesDirPath .build/xcode-packages
           -disableAutomaticPackageResolution
           CODE_SIGNING_ALLOWED=NO
       - name: Verify Production Google Sign-In plist values
         run: |
-          APP_PLIST="$(find "$PWD/build" -path '*/Release-iphoneos/Ekitapligim.app/Info.plist' | head -n 1)"
+          APP_PLIST="$(find "$PWD/build/Build/Products" -path '*/Ekitapligim.app/Info.plist' | head -n 1)"
           if [ -z "$APP_PLIST" ]; then
             echo "Built app Info.plist not found"
             exit 1
@@ -104,6 +121,24 @@ jobs:
           /usr/libexec/PlistBuddy -c 'Print :GIDClientID' "$APP_PLIST" | grep -q 'apps.googleusercontent.com'
           /usr/libexec/PlistBuddy -c 'Print :CFBundleURLTypes:0:CFBundleURLSchemes:0' "$APP_PLIST" | grep -q 'com.googleusercontent.apps.'
           echo "Resolved Google Sign-In values found in $APP_PLIST"
+      - name: Export simulator screenshot attachments
+        if: always()
+        run: |
+          mkdir -p AISimulatorEvidence/iPhone AISimulatorEvidence/iPad
+          if [ -d TestResults.xcresult ]; then
+            xcrun xcresulttool export attachments --path TestResults.xcresult --output-path AISimulatorEvidence/iPhone
+          fi
+          if [ -d TestResults-iPad.xcresult ]; then
+            xcrun xcresulttool export attachments --path TestResults-iPad.xcresult --output-path AISimulatorEvidence/iPad
+          fi
+      - name: Upload simulator screenshot evidence
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: ai-simulator-evidence
+          path: AISimulatorEvidence
+          if-no-files-found: warn
+          retention-days: 14
       - name: Upload XCTest result bundle
         if: always()
         uses: actions/upload-artifact@v4

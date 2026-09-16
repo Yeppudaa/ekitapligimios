@@ -25,7 +25,7 @@
   <route route_type="public" route_prefix="ios-api" sub_name="book-id" format="v1/books/:+int&lt;thread_id&gt;" controller="Ekitapligim\MobileApi:Book" />
   <route route_type="public" route_prefix="ios-api" sub_name="book-issue-report" format="v1/books/:int&lt;thread_id&gt;/issue-report" controller="Ekitapligim\MobileApi:BookIssueReport" />
   <route route_type="public" route_prefix="ios-api" sub_name="book-reader-access" format="v1/books/:int&lt;thread_id&gt;/reader/access" controller="Ekitapligim\MobileApi:BookReaderAccess" />
-  <route route_type="public" route_prefix="ios-api" sub_name="book-reader-progress" format="v1/books/:int&lt;thread_id&gt;/reader/progress" controller="Ekitapligim\MobileApi:BookReaderProgress" />
+  <route route_type="public" route_prefix="ios-api" sub_name="book-reader-progress" format="v1/books/:int&lt;thread_id&gt;/reader/progress" controller="Ekitapligim\IosApi:BookReaderProgress" />
   <route route_type="public" route_prefix="ios-api" sub_name="book-reader-session" format="v1/books/:int&lt;thread_id&gt;/reader/session" controller="Ekitapligim\MobileApi:BookReaderSession" />
   <route route_type="public" route_prefix="ios-api" sub_name="book-reader-source" format="v1/books/:int&lt;thread_id&gt;/reader/source" controller="Ekitapligim\IosApi:BookReaderSource" />
   <route route_type="public" route_prefix="ios-api" sub_name="book-request-vote" format="v1/book-requests/:int&lt;request_id&gt;/vote" controller="Ekitapligim\MobileApi:BookRequestVote" />
@@ -51,8 +51,8 @@
   <route route_type="public" route_prefix="ios-api" sub_name="me-device-token" format="v1/me/device-token" controller="Ekitapligim\IosApi:MeDeviceToken" />
   <route route_type="public" route_prefix="ios-api" sub_name="me-delete-request" format="v1/me/account-deletion-request" controller="Ekitapligim\IosApi:AccountDeletionRequest" />
   <route route_type="public" route_prefix="ios-api" sub_name="me-email" format="v1/me/email" controller="Ekitapligim\MobileApi:Me" action_prefix="email" />
-  <route route_type="public" route_prefix="ios-api" sub_name="me-library" format="v1/me/library" controller="Ekitapligim\MobileApi:MeLibrary" />
-  <route route_type="public" route_prefix="ios-api" sub_name="me-library-item" format="v1/me/library/:int&lt;thread_id&gt;/" controller="Ekitapligim\MobileApi:MeLibraryItem" />
+  <route route_type="public" route_prefix="ios-api" sub_name="me-library" format="v1/me/library" controller="Ekitapligim\IosApi:MeLibrary" />
+  <route route_type="public" route_prefix="ios-api" sub_name="me-library-item" format="v1/me/library/:int&lt;thread_id&gt;/" controller="Ekitapligim\IosApi:MeLibraryItem" />
   <route route_type="public" route_prefix="ios-api" sub_name="me-profile-avatar" format="v1/me/avatar" controller="Ekitapligim\IosApi:MeMedia" action_prefix="avatar" />
   <route route_type="public" route_prefix="ios-api" sub_name="me-profile-banner" format="v1/me/banner" controller="Ekitapligim\IosApi:MeMedia" action_prefix="banner" />
   <route route_type="public" route_prefix="ios-api" sub_name="me-reading-stats" format="v1/me/reading-stats" controller="Ekitapligim\IosApi:MeReadingStats" />

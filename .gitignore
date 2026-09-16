@@ -33,3 +33,8 @@ Backend/deployment/
 Thumbs.db
 .idea/
 .vscode/
+
+# Local Codex working data and generated release evidence
+.codex-artifacts/
+.codex-temp/
+release-archive/

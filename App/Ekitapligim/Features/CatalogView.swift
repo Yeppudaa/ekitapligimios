@@ -43,7 +43,6 @@ struct CatalogView: View {
                 EKitapligimPageBackground()
                 ScrollView {
                     LazyVStack(spacing: 18) {
-                        EKScrollOffsetTracker()
                         catalogHero
                         categoryChips
                         if isLoading || isRefreshing {
@@ -57,11 +56,12 @@ struct CatalogView: View {
                     }
                     .padding(.horizontal, 16)
                     .padding(.bottom, 28)
+                    .background(alignment: .top) { EKScrollOffsetTracker() }
                 }
                 .ekCollapsibleScrollTracking { heroCollapseProgress = $0 }
             }
             .navigationTitle(L10n.catalogTitle)
-            .navigationBarTitleDisplayMode(.large)
+            .navigationBarTitleDisplayMode(.inline)
             .searchable(text: $query, prompt: L10n.catalogSearchPrompt)
             .tint(EKitapligimPalette.teal)
             .toolbar {
@@ -707,29 +707,32 @@ private struct BookCover: View {
     let book: BookDTO
 
     var body: some View {
-        Group {
-            if let secureCoverURL {
-                AsyncImage(url: secureCoverURL) { phase in
-                    switch phase {
-                    case .success(let image):
-                        image.resizable().scaledToFill()
-                    case .empty:
-                        ZStack {
-                            Rectangle().fill(.quaternary)
-                            ProgressView()
+        Color.clear
+            .overlay {
+                Group {
+                    if let secureCoverURL {
+                        AsyncImage(url: secureCoverURL) { phase in
+                            switch phase {
+                            case .success(let image):
+                                image.resizable().scaledToFill()
+                            case .empty:
+                                ZStack {
+                                    Rectangle().fill(.quaternary)
+                                    ProgressView()
+                                }
+                            default:
+                                coverPlaceholder
+                            }
                         }
-                    default:
+                    } else {
                         coverPlaceholder
                     }
                 }
-            } else {
-                coverPlaceholder
             }
-        }
-        .clipped()
-        .background(EKitapligimPalette.tealSoft)
-        .clipShape(RoundedRectangle(cornerRadius: 10, style: .continuous))
-        .accessibilityHidden(true)
+            .clipped()
+            .background(EKitapligimPalette.tealSoft)
+            .clipShape(RoundedRectangle(cornerRadius: 10, style: .continuous))
+            .accessibilityHidden(true)
     }
 
     private var secureCoverURL: URL? {

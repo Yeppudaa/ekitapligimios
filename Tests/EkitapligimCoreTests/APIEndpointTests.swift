@@ -137,7 +137,7 @@ final class APIEndpointTests: XCTestCase {
         XCTAssertEqual(endpoint.method, .post)
         XCTAssertTrue(endpoint.requiresAuthentication)
         XCTAssertEqual(endpoint.path, "books/15582/reader/progress")
-        XCTAssertEqual(endpoint.queryItems.first(where: { $0.name == "position_type" })?.value, "page")
+        XCTAssertEqual(endpoint.queryItems.first(where: { $0.name == "position_type" })?.value, "pdf")
         XCTAssertEqual(endpoint.queryItems.first(where: { $0.name == "position_value" })?.value, "12")
         XCTAssertEqual(endpoint.queryItems.first(where: { $0.name == "progress_percent" })?.value, "25.0")
     }

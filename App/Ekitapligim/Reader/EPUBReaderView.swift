@@ -10,6 +10,11 @@ struct EPUBReaderView: View {
     let sourceURL: URL
     @Binding var progressPercent: Double
     @Binding var position: Int
+    var initialPosition: ReaderPositionDTO? = nil
+    var onPositionChange: (ReaderPositionDTO) -> Void = { _ in }
+    var onFlush: () async -> Void = {}
+    var onCaptureFailure: () -> Void = {}
+    @Environment(\.scenePhase) private var scenePhase
 
     @StateObject private var model = EPUBReaderModel()
 
@@ -28,9 +33,21 @@ struct EPUBReaderView: View {
                 EPUBNavigatorContainer(navigator: navigator)
             }
         }
-        .task(id: sourceURL) { await model.open(sourceURL: sourceURL) }
+        .task(id: sourceURL) {
+            await model.open(sourceURL: sourceURL, initialPosition: initialPosition,
+                onPositionChange: onPositionChange, onCaptureFailure: onCaptureFailure)
+        }
         .onChange(of: model.progressPercent) { _, value in progressPercent = value }
         .onChange(of: model.position) { _, value in position = value }
+        .onChange(of: scenePhase) { _, phase in if phase != .active { checkpoint() } }
+        .onDisappear { checkpoint() }
+    }
+
+    private func checkpoint() {
+        ReaderBackgroundCheckpoint.run {
+            await model.checkpoint()
+            await onFlush()
+        }
     }
 }
 
@@ -49,6 +66,15 @@ private final class EPUBReaderModel: NSObject, ObservableObject, EPUBNavigatorDe
     private let publicationOpener: PublicationOpener
     private var publication: Publication?
     private var temporaryPublicationURL: URL?
+    private var positionAdapter: EPUBPositionAdapter?
+    private var savedPosition: ReaderPositionDTO?
+    private var initialLocator: Locator?
+    private var restored = false
+    private var restoring = false
+    private var lastCFI: String?
+    private var locationGeneration = UUID()
+    private var onPositionChange: (ReaderPositionDTO) -> Void = { _ in }
+    private var onCaptureFailure: () -> Void = {}
 
     override init() {
         let httpClient = DefaultHTTPClient()
@@ -72,7 +98,8 @@ private final class EPUBReaderModel: NSObject, ObservableObject, EPUBNavigatorDe
         }
     }
 
-    func open(sourceURL: URL) async {
+    func open(sourceURL: URL, initialPosition: ReaderPositionDTO?, onPositionChange: @escaping (ReaderPositionDTO) -> Void,
+              onCaptureFailure: @escaping () -> Void) async {
         guard sourceURL.scheme?.lowercased() == "https" || sourceURL.isFileURL else {
             fail(with: L10n.readerAtsLinkMissing)
             return
@@ -80,12 +107,19 @@ private final class EPUBReaderModel: NSObject, ObservableObject, EPUBNavigatorDe
 
         isLoading = true
         errorMessage = nil
+        self.onPositionChange = onPositionChange
+        self.onCaptureFailure = onCaptureFailure
+        savedPosition = initialPosition
+        restored = false
+        restoring = false
+        lastCFI = nil
         do {
             let localURL = try await downloadAndValidate(sourceURL)
             guard let fileURL = FileURL(url: localURL) else {
                 throw EPUBReaderError.invalidLocalURL
             }
             let asset = try await assetRetriever.retrieve(url: fileURL).get()
+            let adapter = try await EPUBPositionAdapter(asset: asset)
             let publication = try await publicationOpener.open(
                 asset: asset,
                 allowUserInteraction: false,
@@ -94,13 +128,16 @@ private final class EPUBReaderModel: NSObject, ObservableObject, EPUBNavigatorDe
             guard publication.conforms(to: .epub) else {
                 throw EPUBReaderError.unsupportedPublication
             }
+            let initialLocator = try adapter.initialLocator(initialPosition, publication: publication)
             let navigator = try EPUBNavigatorViewController(
                 publication: publication,
-                initialLocation: nil,
+                initialLocation: initialLocator,
                 config: EPUBNavigatorViewController.Configuration()
             )
             navigator.delegate = self
             self.publication = publication
+            self.positionAdapter = adapter
+            self.initialLocator = initialLocator
             self.navigator = navigator
             isLoading = false
         } catch {
@@ -109,12 +146,63 @@ private final class EPUBReaderModel: NSObject, ObservableObject, EPUBNavigatorDe
     }
 
     func navigator(_ navigator: Navigator, locationDidChange locator: Locator) {
-        progressPercent = ((locator.locations.totalProgression ?? 0) * 100).clamped(to: 0...100)
-        position = max(1, locator.locations.position ?? 1)
+        let nextPercent = ((locator.locations.totalProgression ?? 0) * 100).clamped(to: 0...100)
+        let nextPosition = max(1, locator.locations.position ?? 1)
+        if progressPercent != nextPercent { progressPercent = nextPercent }
+        if position != nextPosition { position = nextPosition }
+        guard let navigator = self.navigator, let adapter = positionAdapter, !restoring else { return }
+        let generation = UUID()
+        locationGeneration = generation
+        if !restored {
+            restoring = true
+            Task {
+                do {
+                    if let savedPosition, initialLocator != nil {
+                        try await adapter.restore(savedPosition, navigator: navigator)
+                    }
+                    // Establish the rendered starting anchor without writing it back to the server.
+                    let current = try await adapter.current(locator: navigator.currentLocation ?? locator, navigator: navigator)
+                    lastCFI = current.positionValue
+                    restored = true
+                    restoring = false
+                } catch {
+                    // A bad CFI must never silently overwrite the user's position with chapter/page 1.
+                    fail(with: L10n.readerEPUBOpenFailed)
+                }
+            }
+            return
+        }
+        Task {
+            do {
+                let current = try await adapter.current(locator: locator, navigator: navigator)
+                guard locationGeneration == generation, current.positionValue != lastCFI else { return }
+                lastCFI = current.positionValue
+                onPositionChange(current)
+            } catch {
+                guard locationGeneration == generation else { return }
+                fail(with: L10n.readerEPUBOpenFailed)
+            }
+        }
     }
 
     func navigator(_ navigator: Navigator, presentError error: NavigatorError) {
         fail(with: L10n.readerEPUBOpenFailed)
+    }
+
+    func checkpoint() async {
+        guard restored, !restoring, let adapter = positionAdapter, let navigator,
+              let locator = navigator.currentLocation else { return }
+        let generation = UUID()
+        locationGeneration = generation
+        do {
+            let current = try await adapter.current(locator: locator, navigator: navigator)
+            guard locationGeneration == generation, current.positionValue != lastCFI else { return }
+            lastCFI = current.positionValue
+            onPositionChange(current)
+        } catch {
+            // Keep the last valid durable position; never replace it with a guessed anchor.
+            onCaptureFailure()
+        }
     }
 
     private func downloadAndValidate(_ sourceURL: URL) async throws -> URL {

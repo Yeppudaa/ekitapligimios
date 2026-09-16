@@ -108,6 +108,12 @@ if ($phpPath) {
     if ($LASTEXITCODE -ne 0) {
         throw "Push integration contract tests failed."
     }
+    & $phpPath (Join-Path $repoRoot "Tests\Backend\ReaderProgressTest.php")
+    if ($LASTEXITCODE -ne 0) {
+        throw "Reader progress service tests failed."
+    }
+    & $phpPath (Join-Path $repoRoot "Tests\Backend\ReaderProgressControllerTest.php")
+    if ($LASTEXITCODE -ne 0) { throw "Reader progress controller tests failed." }
 } else {
     Write-Warning "PHP not installed; skipped syntax checks."
 }
@@ -134,8 +140,8 @@ $requiredFiles = @(
 )
 foreach ($relative in $requiredFiles) { Assert-Path (Join-Path $addonRoot $relative) }
 $addonManifest = Get-Content -Raw -LiteralPath (Join-Path $addonRoot "addon.json") | ConvertFrom-Json
-if ([int]$addonManifest.version_id -ne 1000023 -or $addonManifest.version_string -ne "1.0.23") {
-    throw "IosApi package must be exactly 1.0.23 / 1000023 for this release."
+if ([int]$addonManifest.version_id -ne 1000024 -or $addonManifest.version_string -ne "1.0.24") {
+    throw "IosApi package must be exactly 1.0.24 / 1000024 for this release."
 }
 $routeText = Get-Content -Raw -LiteralPath (Join-Path $addonRoot "_data\routes.xml")
 foreach ($requiredRoute in @(

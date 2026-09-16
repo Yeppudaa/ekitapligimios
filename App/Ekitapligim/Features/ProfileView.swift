@@ -28,6 +28,10 @@ struct ProfileView: View {
                 signedInContent
             } else {
                 GuestProfilePrompt(
+                    statusMessage: {
+                        if case .expired = container.authState { return L10n.profileSessionExpired }
+                        return nil
+                    }(),
                     onLogin: { authSheetMode = .login },
                     onRegister: { authSheetMode = .register }
                 )
@@ -775,7 +779,7 @@ private struct ContinueReadingCard: View {
                                     .foregroundStyle(EKitapligimPalette.profileMuted)
                                     .lineLimit(1)
                             }
-                            Text(L10n.continueReadingFromPage(max(item.lastReadPage, 1)))
+                            Text(item.positionType == "epub" ? L10n.commonPercent(item.displayProgressPercent) : L10n.continueReadingFromPage(max(item.lastReadPage, 1)))
                                 .font(.caption2.weight(.semibold))
                                 .foregroundStyle(EKitapligimPalette.profileTealDeep)
                             ProgressView(value: Double(item.displayProgressPercent), total: 100)
@@ -911,13 +915,9 @@ private struct ProfileInfoCard: View {
     let profile: ProfileDTO?
 
     private var profileOnlineStatusValue: String {
-        if profile?.isOnline == true {
-            return L10n.profileOnline
-        }
-        if profile?.activityVisible == false {
-            return L10n.profileInfoHidden
-        }
-        return L10n.profileOffline
+        // This row describes the saved visibility preference, not live session presence.
+        // Match ProfileEditView's default when older profile responses omit the setting.
+        (profile?.activityVisible ?? true) ? L10n.profileInfoVisible : L10n.profileInfoHidden
     }
 
     var body: some View {
@@ -1045,6 +1045,7 @@ private struct ProfileBadgeRow: View {
 // MARK: - Misafir görünümü
 
 private struct GuestProfilePrompt: View {
+    var statusMessage: String?
     let onLogin: () -> Void
     let onRegister: () -> Void
 
@@ -1080,6 +1081,14 @@ private struct GuestProfilePrompt: View {
                         .multilineTextAlignment(.center)
                         .padding(.horizontal, 8)
                         .padding(.top, 10)
+                    if let statusMessage {
+                        Text(statusMessage)
+                            .font(.system(size: 14, weight: .semibold))
+                            .foregroundStyle(Color(hex: 0xB45309))
+                            .multilineTextAlignment(.center)
+                            .padding(.horizontal, 12)
+                            .padding(.top, 12)
+                    }
 
                     LazyVGrid(
                         columns: [GridItem(.flexible(), spacing: 12), GridItem(.flexible(), spacing: 12)],

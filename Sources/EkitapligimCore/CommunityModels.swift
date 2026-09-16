@@ -328,18 +328,24 @@ public struct BookAgendaQuotedPostDTO: Decodable, Equatable, Identifiable, Senda
     public let username: String
     public let message: String
     public let bookTitle: String?
+    public let userId: String?
 
     public init(from decoder: Decoder) throws {
         let container = try decoder.container(keyedBy: CodingKeys.self)
         self.id = try container.decodeFlexibleString(forKey: .id, fallbackKeys: [.postId])
         self.message = try container.decodeIfPresent(String.self, forKey: .message) ?? ""
         self.bookTitle = try container.decodeIfPresent(String.self, forKey: .bookTitle)
-        if let username = try container.decodeIfPresent(String.self, forKey: .username) {
+        let actor = try container.decodeIfPresent(BookAgendaActorDTO.self, forKey: .actor)
+        if let username = try container.decodeIfPresent(String.self, forKey: .username), !username.isEmpty {
             self.username = username
-        } else if let actor = try container.decodeIfPresent(BookAgendaActorDTO.self, forKey: .actor) {
-            self.username = actor.username
         } else {
-            self.username = ""
+            self.username = actor?.username ?? ""
+        }
+        let parsedID = try container.decodeFlexibleStringIfPresent(forKey: .userId) ?? actor?.id
+        if let parsedID, let value = Int(parsedID), value > 0 {
+            self.userId = String(value)
+        } else {
+            self.userId = nil
         }
     }
 
@@ -350,6 +356,7 @@ public struct BookAgendaQuotedPostDTO: Decodable, Equatable, Identifiable, Senda
         case actor
         case message
         case bookTitle
+        case userId
     }
 }
 

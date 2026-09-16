@@ -3,6 +3,9 @@ import Foundation
 public struct RedactedLogger: Sendable {
     private let sensitiveKeys = [
         "authorization",
+        "x-guest-key",
+        "guest_key",
+        "confirmation_token",
         "cookie",
         "password",
         "access_token",

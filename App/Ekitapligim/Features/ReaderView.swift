@@ -3,6 +3,8 @@ import SwiftUI
 @preconcurrency import UIKit
 import EkitapligimCore
 
+private let standardPreviewLimit = 10
+
 @MainActor
 struct ReaderView: View {
     @EnvironmentObject private var container: AppContainer
@@ -23,8 +25,12 @@ struct ReaderView: View {
     @State private var showsReaderSettings = false
     @State private var pdfLayout: PDFReadingLayout = .continuous
     @State private var bookmarks: [ReaderBookmark] = []
-    @State private var progressSyncTask: Task<Void, Never>?
-    @State private var syncState: ReaderSyncState = .idle
+    @State private var initialPosition: ReaderPositionDTO?
+    @Environment(\.scenePhase) private var scenePhase
+    @State private var loadGeneration = UUID()
+    @State private var hasScheduledShelfPromotion = false
+    @State private var showsPreviewLimitDialog = false
+    @State private var previewLimitNoticeShown = false
 
     init(book: BookDTO) {
         self.book = book
@@ -32,6 +38,24 @@ struct ReaderView: View {
     }
 
     private var bookID: Int? { Int(book.id) }
+
+    private var isPreviewMode: Bool { !container.isPremium }
+
+    private var accessiblePageLimit: Int {
+        accessiblePageLimit(for: progress.totalPages)
+    }
+
+    private var hasLockedContent: Bool {
+        hasLockedContent(totalPages: progress.totalPages)
+    }
+
+    private var previewFinished: Bool {
+        isPreviewMode && hasLockedContent && activeReaderPage >= accessiblePageLimit
+    }
+
+    private var activeReaderPage: Int {
+        readerFileType == "epub" ? epubPosition : progress.currentPage
+    }
 
     var body: some View {
         VStack(spacing: 0) {
@@ -45,7 +69,7 @@ struct ReaderView: View {
             ReaderBookmarksView(
                 bookmarks: bookmarks,
                 onSelect: { bookmark in
-                    requestedPage = bookmark.page
+                    requestPage(bookmark.page)
                     showsBookmarks = false
                 },
                 onDelete: removeBookmarks
@@ -57,8 +81,9 @@ struct ReaderView: View {
                 PDFPagePickerView(
                     url: readerURL,
                     selectedPage: progress.currentPage,
+                    maxSelectablePage: hasLockedContent ? accessiblePageLimit : nil,
                     onSelect: { page in
-                        requestedPage = page
+                        requestPage(page)
                         showsPagePicker = false
                     }
                 )
@@ -73,14 +98,34 @@ struct ReaderView: View {
             refreshBookmarks()
             await loadReaderSession()
         }
+        .preference(key: AILauncherHiddenKey.self, value: true)
         .onDisappear {
-            progressSyncTask?.cancel()
-            saveProgress()
+            loadGeneration = UUID()
+            flushProgress()
             container.readerContentLoader.removePreparedFile(at: temporaryReaderURL)
             temporaryReaderURL = nil
         }
-        .onChange(of: progress.currentPage) { _, _ in scheduleProgressSync() }
-        .onChange(of: epubPosition) { _, _ in scheduleProgressSync() }
+        .onChange(of: scenePhase) { _, phase in
+            if phase != .active { flushProgress() }
+        }
+        .onChange(of: epubPosition) { _, position in
+            handleEPUBPositionChange(position)
+        }
+        .onChange(of: isLoading) { _, loading in
+            guard !loading, readerURL != nil else { return }
+            evaluatePreviewLimitNotice(for: activeReaderPage, totalPages: progress.totalPages)
+        }
+        .alert(L10n.readerPreviewLimitTitle, isPresented: $showsPreviewLimitDialog) {
+            Button(L10n.readerPreviewLimitUpgrade) {
+                showsPreviewLimitDialog = false
+                openPremium()
+            }
+            Button(L10n.readerPreviewLimitDismiss, role: .cancel) {
+                showsPreviewLimitDialog = false
+            }
+        } message: {
+            Text(L10n.readerPreviewLimitMessage(pages: accessiblePageLimit))
+        }
     }
 
     @ViewBuilder
@@ -88,7 +133,7 @@ struct ReaderView: View {
         ReaderToolbar(
             title: book.title,
             progressPercent: displayedProgressPercent,
-            detail: readerFileType == "epub" ? L10n.readerEPUBFormat : L10n.readerPage(progress.currentPage, progress.totalPages),
+            detail: readerToolbarDetail,
             author: book.author,
             isBookmarked: isCurrentPageBookmarked,
             bookmarkCount: bookmarks.count,
@@ -109,20 +154,38 @@ struct ReaderView: View {
         } else if let errorMessage {
             ContentUnavailableView(errorTitle, systemImage: "lock.shield", description: Text(errorMessage))
         } else if let url = readerURL, readerFileType == "epub" {
-            EPUBReaderView(sourceURL: url, progressPercent: $epubProgressPercent, position: $epubPosition)
+            EPUBReaderView(sourceURL: url, progressPercent: $epubProgressPercent, position: $epubPosition,
+                initialPosition: initialPosition, onPositionChange: recordPosition, onFlush: {
+                    if let bookID { await container.readerProgressSync.flush(bookID: bookID) }
+                }, onCaptureFailure: {
+                    if let bookID { container.readerProgressSync.captureFailed(bookID: bookID) }
+                })
         } else if let url = readerURL {
             VStack(spacing: 0) {
                 PDFReader(
                     url: url,
                     progress: $progress,
                     requestedPage: $requestedPage,
-                    layout: pdfLayout
+                    layout: pdfLayout,
+                    initialPage: clampedInitialPage,
+                    onPageChange: { value in
+                        let limit = accessiblePageLimit(for: value.totalPages)
+                        if hasLockedContent(totalPages: value.totalPages), value.currentPage > limit {
+                            requestPage(limit)
+                            return
+                        }
+                        evaluatePreviewLimitNotice(for: value.currentPage, totalPages: value.totalPages)
+                        recordPosition(ReaderPositionDTO(positionType: "pdf", positionValue: String(value.currentPage), progressPercent: value.percent))
+                    }
                 )
                 Divider()
                 PDFReaderControls(
                     progress: progress,
+                    accessiblePageLimit: accessiblePageLimit,
+                    isPreviewMode: isPreviewMode,
+                    hasLockedContent: hasLockedContent,
                     layout: $pdfLayout,
-                    onRequestPage: { requestedPage = $0 }
+                    onRequestPage: requestPage
                 )
             }
         } else {
@@ -137,6 +200,68 @@ struct ReaderView: View {
 
     private var displayedProgressPercent: Double {
         readerFileType == "epub" ? epubProgressPercent : progress.percent
+    }
+
+    private var readerToolbarDetail: String {
+        if readerFileType == "epub" {
+            if isPreviewMode, hasLockedContent {
+                return L10n.readerPreviewLimitActive(limit: accessiblePageLimit) + " • " + L10n.readerPage(epubPosition, accessiblePageLimit)
+            }
+            return L10n.readerEPUBFormat
+        }
+        if isPreviewMode, hasLockedContent {
+            if previewFinished {
+                return L10n.readerPage(progress.currentPage, progress.totalPages) + " • " + L10n.readerPreviewLimitContinuePremium
+            }
+            return L10n.readerPage(progress.currentPage, progress.totalPages) + " • Önizleme"
+        }
+        return L10n.readerPage(progress.currentPage, progress.totalPages)
+    }
+
+    private var clampedInitialPage: Int {
+        let requested = initialPosition?.page ?? 1
+        return min(max(1, requested), accessiblePageLimit(for: book.pageCount))
+    }
+
+    private func accessiblePageLimit(for totalPages: Int) -> Int {
+        guard isPreviewMode else { return max(totalPages, 1) }
+        return min(standardPreviewLimit, max(totalPages, 1))
+    }
+
+    private func hasLockedContent(totalPages: Int) -> Bool {
+        isPreviewMode && totalPages > accessiblePageLimit(for: totalPages)
+    }
+
+    private func evaluatePreviewLimitNotice(for page: Int, totalPages: Int) {
+        guard hasLockedContent(totalPages: totalPages),
+              page >= accessiblePageLimit(for: totalPages),
+              !previewLimitNoticeShown else { return }
+        previewLimitNoticeShown = true
+        showsPreviewLimitDialog = true
+    }
+
+    private func handleEPUBPositionChange(_ position: Int) {
+        let limit = accessiblePageLimit(for: progress.totalPages)
+        if hasLockedContent, position > limit {
+            epubPosition = limit
+            openPremium()
+            return
+        }
+        evaluatePreviewLimitNotice(for: position, totalPages: progress.totalPages)
+    }
+
+    private func requestPage(_ target: Int) {
+        let limit = accessiblePageLimit
+        if target > limit, hasLockedContent {
+            openPremium()
+            return
+        }
+        requestedPage = min(max(1, target), limit)
+        evaluatePreviewLimitNotice(for: min(max(1, target), limit), totalPages: progress.totalPages)
+    }
+
+    private func openPremium() {
+        container.open(route: .premium)
     }
 
     private func toggleCurrentBookmark() {
@@ -159,80 +284,38 @@ struct ReaderView: View {
         bookmarks = container.readerBookmarks.bookmarks(for: bookID)
     }
 
-    private func saveProgress() {
-        guard let bookID, readerURL != nil else { return }
-        let latestPage = readerFileType == "epub" ? epubPosition : progress.currentPage
-        let latestPercent = displayedProgressPercent
-        let percentInt = Int(latestPercent.rounded())
-        progressSyncTask?.cancel()
-        progressSyncTask = Task {
-            await syncProgress(page: latestPage, percent: latestPercent, percentInt: percentInt, bookID: bookID)
+    private var syncState: ReaderProgressSyncState {
+        guard let bookID else { return .idle }
+        return container.readerSyncStates[bookID] ?? .idle
+    }
+
+    private func recordPosition(_ position: ReaderPositionDTO) {
+        guard let bookID else { return }
+        container.readerProgressSync.record(bookID: bookID, position: position)
+    }
+
+    private func flushProgress() {
+        guard let bookID else { return }
+        Task { await container.readerProgressSync.flush(bookID: bookID) }
+    }
+
+    private func scheduleShelfPromotion() {
+        guard !hasScheduledShelfPromotion, case .signedIn(let session) = container.authState else { return }
+        hasScheduledShelfPromotion = true
+        let username = session.username
+        let write = container.readerWrites.enqueue {
+            await promoteReadingShelfIfNeeded(username: username)
+        }
+        // Refresh may flush pending progress through readerWrites; never await it inside that queue.
+        Task {
+            await write.value
+            guard case .signedIn(let current) = container.authState, current.username == username else { return }
+            await container.refreshLibrary()
         }
     }
 
-    private func scheduleProgressSync() {
-        guard !isLoading, readerURL != nil, let bookID else { return }
-        progressSyncTask?.cancel()
-        let latestPage = readerFileType == "epub" ? epubPosition : progress.currentPage
-        let latestPercent = displayedProgressPercent
-        let percentInt = Int(latestPercent.rounded())
-        progressSyncTask = Task {
-            try? await Task.sleep(for: .milliseconds(650))
-            guard !Task.isCancelled else { return }
-            await syncProgress(page: latestPage, percent: latestPercent, percentInt: percentInt, bookID: bookID)
-        }
-    }
-
-    private func syncProgress(page: Int, percent: Double, percentInt: Int, bookID: Int) async {
-        syncState = .syncing
-        if (try? await container.books.updateProgress(bookID: bookID, page: page, percent: percent)) != nil {
-            rememberContinueReading(page: page, percent: percentInt)
-            syncState = .synced
-        } else {
-            syncState = .failed
-        }
-    }
-
-    private func rememberContinueReading(page: Int, percent: Int) {
-        let now = Int(Date().timeIntervalSince1970)
-        let existing = container.libraryItems.first(where: { $0.bookId == book.id })
-        let nextShelf: String = {
-            let current = existing?.normalizedShelfState ?? ""
-            if current == "OKUDUM" || current == "READ" || current == "FINISHED" {
-                return existing?.shelfState ?? "OKUYORUM"
-            }
-            return "OKUYORUM"
-        }()
-        if let existing {
-            container.upsertLibraryItem(
-                existing.updating(
-                    shelfState: nextShelf,
-                    progressPercent: percent,
-                    lastReadPage: page,
-                    lastReadAt: now
-                )
-            )
-        } else {
-            container.upsertLibraryItem(
-                LibraryItemDTO(
-                    bookId: book.id,
-                    shelfState: nextShelf,
-                    progressPercent: percent,
-                    lastReadPage: page,
-                    isDownloaded: container.downloadManager.localFile(for: book.id) != nil,
-                    isFavorite: false,
-                    title: book.title,
-                    author: book.author,
-                    coverUrl: book.coverUrl,
-                    pageCount: book.pageCount,
-                    lastReadAt: now
-                )
-            )
-        }
-    }
-
-    private func promoteReadingShelfIfNeeded() async {
-        guard case .signedIn = container.authState, let bookID else { return }
+    private func promoteReadingShelfIfNeeded(username: String) async {
+        guard case .signedIn(let session) = container.authState, session.username == username, let bookID else { return }
         let libraryItem = container.libraryItems.first(where: { $0.bookId == book.id })
         let normalizedShelf = libraryItem?.normalizedShelfState ?? ""
         guard normalizedShelf.isEmpty || normalizedShelf == "NONE" else { return }
@@ -243,7 +326,6 @@ struct ReaderView: View {
             progressPercent: progress.percent,
             lastReadPage: progress.page
         )
-        await container.refreshLibrary()
     }
 
     private func loadReaderSession() async {
@@ -255,11 +337,14 @@ struct ReaderView: View {
         }
 
         isLoading = true
+        let generation = UUID()
+        loadGeneration = generation
         errorTitle = L10n.readerUnavailable
         errorMessage = nil
-        defer { isLoading = false }
+        defer { if loadGeneration == generation { isLoading = false } }
         do {
             let access = try await container.books.readerAccess(bookID: bookID)
+            guard !Task.isCancelled, loadGeneration == generation else { return }
             guard access.canReadOnline else {
                 errorTitle = readerDenialTitle(from: access)
                 errorMessage = readerDenialMessage(from: access)
@@ -269,13 +354,16 @@ struct ReaderView: View {
             // The server creates/counts the read session atomically. This must happen even
             // when an offline copy exists so daily read limits cannot be bypassed.
             let session = try await container.books.createReaderSession(bookID: bookID, purpose: .read)
+            guard !Task.isCancelled, loadGeneration == generation else { return }
             let fileType = DownloadFilePolicy.resolvedFileExtension(for: session.fileType)
+            initialPosition = try await container.prepareReaderProgress(book: book)
+            guard !Task.isCancelled, loadGeneration == generation else { return }
 
             if let localFile = container.downloadManager.localFile(for: book.id) {
+                try validateInitialPosition(fileType: localFile.fileType)
                 readerFileType = localFile.fileType
                 readerURL = localFile.url
-                restorePDFPositionIfAvailable(fileType: localFile.fileType)
-                await promoteReadingShelfIfNeeded()
+                scheduleShelfPromotion()
                 return
             }
             guard let url = ReaderSourcePolicy.nativeContentURL(
@@ -291,16 +379,29 @@ struct ReaderView: View {
                 sourceURL: url,
                 fileType: fileType
             )
+            guard !Task.isCancelled, loadGeneration == generation else {
+                container.readerContentLoader.removePreparedFile(at: localURL)
+                return
+            }
             let resolvedType = DownloadFilePolicy.sniffedFileExtension(at: localURL) ?? fileType
+            do { try validateInitialPosition(fileType: resolvedType) }
+            catch { container.readerContentLoader.removePreparedFile(at: localURL); throw error }
             readerFileType = resolvedType
             temporaryReaderURL = localURL
             readerURL = localURL
-            restorePDFPositionIfAvailable(fileType: resolvedType)
-            await promoteReadingShelfIfNeeded()
+            scheduleShelfPromotion()
         } catch let transferError as BookFileTransferError {
+            guard !Task.isCancelled, loadGeneration == generation else { return }
             errorMessage = transferError.readerMessage
         } catch {
+            guard !Task.isCancelled, loadGeneration == generation else { return }
             errorMessage = (error as? APIClientError)?.serverMessage ?? L10n.readerSessionFailed
+        }
+    }
+
+    private func validateInitialPosition(fileType: String) throws {
+        if let initialPosition, !initialPosition.isValid || initialPosition.positionType != fileType {
+            throw EPUBPositionError.invalidCFI
         }
     }
 
@@ -330,17 +431,10 @@ struct ReaderView: View {
         return L10n.readerSessionFailed
     }
 
-    private func restorePDFPositionIfAvailable(fileType: String) {
-        guard fileType == "pdf",
-              let lastPage = container.libraryItems.first(where: { $0.bookId == book.id })?.lastReadPage,
-              lastPage > 1 else { return }
-        requestedPage = lastPage
-    }
+
 }
 
-private enum ReaderSyncState: Equatable {
-    case idle, syncing, synced, failed
-
+private extension ReaderProgressSyncState {
     var label: String {
         switch self {
         case .idle: L10n.readerSyncReady
@@ -368,7 +462,7 @@ private struct ReaderToolbar: View {
     let isBookmarked: Bool
     let bookmarkCount: Int
     let supportsBookmarks: Bool
-    let syncState: ReaderSyncState
+    let syncState: ReaderProgressSyncState
     let onToggleBookmark: () -> Void
     let onShowBookmarks: () -> Void
     let onShowPages: () -> Void
@@ -469,18 +563,71 @@ private struct ReaderActionButton: View {
     }
 }
 
-private enum PDFReadingLayout: Hashable {
+enum PDFReadingLayout: Hashable {
     case continuous
     case paged
 }
 
 private struct PDFReaderControls: View {
     let progress: ReadingProgress
+    let accessiblePageLimit: Int
+    let isPreviewMode: Bool
+    let hasLockedContent: Bool
     @Binding var layout: PDFReadingLayout
     let onRequestPage: (Int) -> Void
 
+    private var sliderUpperBound: Int {
+        hasLockedContent ? accessiblePageLimit : max(progress.totalPages, 1)
+    }
+
+    private var previewFinished: Bool {
+        isPreviewMode && hasLockedContent && progress.currentPage >= accessiblePageLimit
+    }
+
+    private var statusTitle: String {
+        if previewFinished {
+            return L10n.readerPreviewLimitFinished
+        }
+        if isPreviewMode, hasLockedContent {
+            return L10n.readerPreviewLimitActive(limit: accessiblePageLimit)
+        }
+        return L10n.commonPercent(Int(progress.percent))
+    }
+
+    private var statusBadge: String {
+        if previewFinished {
+            return L10n.readerPreviewLimitContinuePremium
+        }
+        if isPreviewMode, hasLockedContent {
+            let remaining = max(accessiblePageLimit - progress.currentPage, 0)
+            return L10n.readerPreviewLimitRemainingBadge(count: remaining)
+        }
+        let remaining = max(progress.totalPages - progress.currentPage, 0)
+        return String(format: "%d sayfa kaldı", remaining)
+    }
+
     var body: some View {
-        VStack(spacing: 8) {
+        VStack(spacing: 10) {
+            if isPreviewMode, hasLockedContent {
+                HStack(alignment: .top) {
+                    VStack(alignment: .leading, spacing: 4) {
+                        Text("OKUMA İLERLEMESİ")
+                            .font(.caption2.weight(.semibold))
+                            .foregroundStyle(EKitapligimPalette.teal)
+                        Text(statusTitle)
+                            .font(.subheadline.weight(.bold))
+                            .foregroundStyle(EKitapligimPalette.ink)
+                    }
+                    Spacer(minLength: 8)
+                    Text(statusBadge)
+                        .font(.caption2.weight(.semibold))
+                        .foregroundStyle(EKitapligimPalette.tealDark)
+                        .padding(.horizontal, 10)
+                        .padding(.vertical, 6)
+                        .background(EKitapligimPalette.tealSoft, in: Capsule())
+                }
+            }
+
             HStack(spacing: 14) {
                 Button {
                     onRequestPage(max(1, progress.currentPage - 1))
@@ -495,7 +642,7 @@ private struct PDFReaderControls: View {
                         get: { Double(progress.currentPage) },
                         set: { onRequestPage(Int($0.rounded())) }
                     ),
-                    in: 1...Double(max(1, progress.totalPages)),
+                    in: 1...Double(sliderUpperBound),
                     step: 1
                 )
                 .tint(EKitapligimPalette.teal)
@@ -503,11 +650,11 @@ private struct PDFReaderControls: View {
                 .accessibilityValue(L10n.readerPage(progress.currentPage, progress.totalPages))
 
                 Button {
-                    onRequestPage(min(progress.totalPages, progress.currentPage + 1))
+                    onRequestPage(progress.currentPage + 1)
                 } label: {
                     Image(systemName: "chevron.right")
                 }
-                .disabled(progress.currentPage >= progress.totalPages)
+                .disabled(!hasLockedContent && progress.currentPage >= progress.totalPages)
                 .accessibilityLabel(L10n.readerNextPage)
             }
 
@@ -582,32 +729,35 @@ private struct ReaderSettingsView: View {
 @MainActor
 private struct PDFPagePickerView: View {
     @Environment(\.dismiss) private var dismiss
+    @StateObject private var model = PDFPagePickerModel()
     let url: URL
     let selectedPage: Int
+    var maxSelectablePage: Int?
     let onSelect: (Int) -> Void
 
     private let columns = [GridItem(.adaptive(minimum: 92), spacing: 16)]
 
+    private var visiblePageCount: Int {
+        guard let pageCount = model.pageCount else { return 0 }
+        if let maxSelectablePage {
+            return min(pageCount, maxSelectablePage)
+        }
+        return pageCount
+    }
+
     var body: some View {
         NavigationStack {
             Group {
-                if let document = PDFDocument(url: url) {
+                if model.pageCount != nil, let service = model.service {
                     ScrollViewReader { proxy in
                         ScrollView {
                             LazyVGrid(columns: columns, spacing: 20) {
-                                ForEach(0..<document.pageCount, id: \.self) { index in
+                                ForEach(0..<visiblePageCount, id: \.self) { index in
                                     Button {
                                         onSelect(index + 1)
                                     } label: {
                                         VStack(spacing: 6) {
-                                            if let page = document.page(at: index) {
-                                                Image(uiImage: page.thumbnail(of: CGSize(width: 160, height: 220), for: .cropBox))
-                                                    .resizable()
-                                                    .scaledToFit()
-                                                    .background(.white)
-                                                    .clipShape(RoundedRectangle(cornerRadius: 5))
-                                                    .shadow(color: .black.opacity(0.12), radius: 3, y: 2)
-                                            }
+                                            PDFThumbnailCell(service: service, index: index)
                                             Text(L10n.readerPageNumber(index + 1))
                                                 .font(.caption.monospacedDigit())
                                                 .foregroundStyle(index + 1 == selectedPage ? Color.accentColor : Color.secondary)
@@ -621,10 +771,14 @@ private struct PDFPagePickerView: View {
                         }
                         .onAppear { proxy.scrollTo(selectedPage, anchor: .center) }
                     }
-                } else {
+                } else if model.failed {
                     ContentUnavailableView(L10n.readerUnavailable, systemImage: "doc.questionmark")
+                } else {
+                    ProgressView(L10n.readerPreparing)
                 }
             }
+            .task(id: url) { await model.load(url: url) }
+            .onDisappear { model.cancel() }
             .navigationTitle(L10n.readerPages)
             .navigationBarTitleDisplayMode(.inline)
             .toolbar {
@@ -633,6 +787,36 @@ private struct PDFPagePickerView: View {
                 }
             }
         }
+    }
+}
+
+private struct PDFThumbnailCell: View {
+    let service: any PDFThumbnailProviding
+    let index: Int
+    @State private var image: UIImage?
+
+    var body: some View {
+        Group {
+            if let image {
+                Image(uiImage: image).resizable().scaledToFit()
+            } else {
+                Image(systemName: "doc.text")
+                    .foregroundStyle(.secondary)
+                    .frame(maxWidth: .infinity, maxHeight: .infinity)
+            }
+        }
+        .frame(height: 130)
+        .frame(maxWidth: .infinity)
+        .background(.white)
+        .clipShape(RoundedRectangle(cornerRadius: 5))
+        .shadow(color: .black.opacity(0.12), radius: 3, y: 2)
+        .accessibilityHidden(true)
+        .task(id: index) {
+            let result = try? await service.thumbnail(at: index)
+            guard !Task.isCancelled else { return }
+            image = result
+        }
+        .onDisappear { image = nil }
     }
 }
 
@@ -675,65 +859,129 @@ private struct ReaderBookmarksView: View {
     }
 }
 
-private struct PDFReader: UIViewRepresentable {
+@MainActor
+struct PDFReader: UIViewRepresentable {
     let url: URL
     @Binding var progress: ReadingProgress
     @Binding var requestedPage: Int?
     let layout: PDFReadingLayout
+    var initialPage: Int = 1
+    var onPageChange: (ReadingProgress) -> Void = { _ in }
 
     func makeCoordinator() -> Coordinator {
-        Coordinator(progress: $progress, requestedPage: $requestedPage)
+        Coordinator(progress: $progress, requestedPage: $requestedPage, initialPage: initialPage, onPageChange: onPageChange)
     }
 
     func makeUIView(context: Context) -> PDFView {
-        let view = PDFView()
-        view.autoScales = true
-        applyLayout(to: view)
-        view.document = PDFDocument(url: url)
+        let view = ResumePDFView()
+        context.coordinator.configure(view, url: url, layout: layout)
         context.coordinator.observe(view)
         context.coordinator.updateProgress(from: view)
         return view
     }
 
     func updateUIView(_ uiView: PDFView, context: Context) {
-        applyLayout(to: uiView)
-        if uiView.document?.documentURL != url {
-            uiView.document = PDFDocument(url: url)
-            context.coordinator.updateProgress(from: uiView)
-        }
-        guard let requestedPage,
+        context.coordinator.configure(uiView, url: url, layout: layout)
+        guard context.coordinator.isRestored, let requestedPage,
               let document = uiView.document,
-              let page = document.page(at: requestedPage - 1) else { return }
-        uiView.go(to: page)
-        context.coordinator.clearRequestedPage()
+              let page = document.page(at: min(max(requestedPage, 1), document.pageCount) - 1) else { return }
+        if uiView.currentPage !== page { uiView.go(to: page) }
+        context.coordinator.clearRequestedPage(expected: requestedPage)
     }
 
     static func dismantleUIView(_ uiView: PDFView, coordinator: Coordinator) {
         coordinator.stopObserving()
     }
 
-    private func applyLayout(to view: PDFView) {
-        switch layout {
-        case .continuous:
-            view.displayMode = .singlePageContinuous
-            view.displayDirection = .vertical
-        case .paged:
-            view.displayMode = .singlePage
-            view.displayDirection = .horizontal
-        }
-        view.displaysPageBreaks = true
-        view.autoScales = true
-    }
-
+    @MainActor
     final class Coordinator: NSObject {
+        private var loadedURL: URL?
+        private var appliedLayout: PDFReadingLayout?
         private var progress: Binding<ReadingProgress>
         private var requestedPage: Binding<Int?>
         private weak var view: PDFView?
         private var pageObserver: NSObjectProtocol?
+        private(set) var isRestored = false
+        private let initialPage: Int
+        private let onPageChange: (ReadingProgress) -> Void
+        private var lastPage: Int?
+        private var restorationGeneration = UUID()
+        private var restorationScheduled = false
 
-        init(progress: Binding<ReadingProgress>, requestedPage: Binding<Int?>) {
+        init(progress: Binding<ReadingProgress>, requestedPage: Binding<Int?>, initialPage: Int = 1, onPageChange: @escaping (ReadingProgress) -> Void = { _ in }) {
             self.progress = progress
             self.requestedPage = requestedPage
+            self.initialPage = initialPage
+            self.onPageChange = onPageChange
+        }
+
+        func configure(
+            _ view: PDFView, url: URL, layout: PDFReadingLayout,
+            makeDocument: (URL) -> PDFDocument? = { PDFDocument(url: $0) }
+        ) {
+            if let resumeView = view as? ResumePDFView {
+                resumeView.onLayoutReady = { [weak self, weak view] in
+                    guard let view else { return }
+                    self?.restore(view)
+                }
+            }
+            if appliedLayout != layout {
+                switch layout {
+                case .continuous:
+                    view.displayMode = .singlePageContinuous
+                    view.displayDirection = .vertical
+                case .paged:
+                    view.displayMode = .singlePage
+                    view.displayDirection = .horizontal
+                }
+                view.displaysPageBreaks = true
+                view.autoScales = true
+                appliedLayout = layout
+            }
+            if loadedURL != url {
+                isRestored = false
+                restorationGeneration = UUID()
+                restorationScheduled = false
+                lastPage = nil
+                view.document = makeDocument(url)
+                loadedURL = url
+            }
+            restore(view)
+        }
+
+        private func restore(_ view: PDFView) {
+            // SwiftUI creates this view before it has a window or usable bounds. A main-queue
+            // delay alone does not mean PDFKit has laid out its scroll view yet.
+            guard !isRestored, !restorationScheduled, view.window != nil,
+                  view.bounds.width > 0, view.bounds.height > 0,
+                  let document = view.document, document.pageCount > 0 else { return }
+            let target = min(max(initialPage, 1), document.pageCount)
+            let generation = restorationGeneration
+            restorationScheduled = true
+            DispatchQueue.main.async { [weak self, weak view] in
+                guard let self, let view, self.restorationGeneration == generation,
+                      view.document === document else { return }
+                guard view.window != nil, view.bounds.width > 0, view.bounds.height > 0 else {
+                    self.restorationScheduled = false
+                    return
+                }
+                view.layoutIfNeeded()
+                if let page = document.page(at: target - 1) { view.go(to: page) }
+                // Verify PDFKit's actual page after navigation/layout, not the requested number.
+                // Initial page-change notifications remain suppressed until this succeeds.
+                DispatchQueue.main.async { [weak self, weak view] in
+                    guard let self, let view, self.restorationGeneration == generation,
+                          view.document === document else { return }
+                    view.layoutIfNeeded()
+                    self.restorationScheduled = false
+                    guard view.window != nil, view.bounds.width > 0, view.bounds.height > 0,
+                          let currentPage = view.currentPage,
+                          document.index(for: currentPage) == target - 1 else { return }
+                    self.lastPage = target
+                    self.isRestored = true
+                    self.progress.wrappedValue = ReadingProgress(currentPage: target, totalPages: document.pageCount)
+                }
+            }
         }
 
         func observe(_ view: PDFView) {
@@ -743,29 +991,58 @@ private struct PDFReader: UIViewRepresentable {
                 object: view,
                 queue: .main
             ) { [weak self] _ in
-                guard let self, let view = self.view else { return }
-                self.updateProgress(from: view)
+                MainActor.assumeIsolated {
+                    guard let self, let view = self.view else { return }
+                    self.updateProgress(from: view)
+                }
             }
         }
 
         func updateProgress(from view: PDFView) {
-            guard let document = view.document, document.pageCount > 0 else { return }
-            let pageIndex = view.currentPage.map(document.index(for:)) ?? 0
-            progress.wrappedValue = ReadingProgress(currentPage: pageIndex + 1, totalPages: document.pageCount)
+            guard isRestored, let document = view.document, document.pageCount > 0,
+                  let currentPage = view.currentPage else { return }
+            let pageIndex = document.index(for: currentPage)
+            guard pageIndex >= 0, pageIndex < document.pageCount else { return }
+            let next = ReadingProgress(currentPage: pageIndex + 1, totalPages: document.pageCount)
+            if lastPage != next.currentPage {
+                lastPage = next.currentPage
+                onPageChange(next)
+            }
+            if progress.wrappedValue != next { progress.wrappedValue = next }
         }
 
-        func clearRequestedPage() {
+        func clearRequestedPage(expected: Int) {
             DispatchQueue.main.async { [weak self] in
+                guard self?.requestedPage.wrappedValue == expected else { return }
                 self?.requestedPage.wrappedValue = nil
             }
         }
 
         func stopObserving() {
+            restorationGeneration = UUID()
+            restorationScheduled = false
+            (view as? ResumePDFView)?.onLayoutReady = nil
             if let pageObserver {
                 NotificationCenter.default.removeObserver(pageObserver)
             }
             pageObserver = nil
         }
+    }
+}
+
+/// Exposes UIKit attachment/layout events without persisting any reading state in the view.
+@MainActor
+final class ResumePDFView: PDFView {
+    var onLayoutReady: (() -> Void)?
+
+    override func didMoveToWindow() {
+        super.didMoveToWindow()
+        if window != nil { setNeedsLayout() }
+    }
+
+    override func layoutSubviews() {
+        super.layoutSubviews()
+        if window != nil, bounds.width > 0, bounds.height > 0 { onLayoutReady?() }
     }
 }
 
@@ -791,6 +1068,7 @@ struct ReaderLoaderView: View {
             }
         }
         .task(id: bookID) { await load() }
+        .preference(key: AILauncherHiddenKey.self, value: true)
     }
 
     private func load() async {

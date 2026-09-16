@@ -70,6 +70,7 @@ struct LoginView: View {
                 Text(googleUsernameError ?? L10n.loginGoogleUsernameMessage)
             }
             .task { await loadLegalTerms() }
+            .preference(key: AILauncherHiddenKey.self, value: true)
             .background {
                 PresentationAnchor(viewController: $googlePresentationAnchor)
             }

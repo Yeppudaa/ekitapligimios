@@ -46,7 +46,14 @@ final class ProfileVisit
 		{
 			/** @var \XF\Repository\UserAlertRepository $alertRepo */
 			$alertRepo = \XF::repository('XF:UserAlert');
-			$alertRepo->alert($profileUser, $visitorId, 'user', 'profile_visit');
+			$alertRepo->alert(
+				$profileUser,
+				$visitorId,
+				(string) $visitor->username,
+				'user',
+				$visitorId,
+				'profile_visit'
+			);
 		}
 		catch (\Throwable $e)
 		{

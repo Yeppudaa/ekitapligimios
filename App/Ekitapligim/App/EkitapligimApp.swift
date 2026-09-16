@@ -9,16 +9,28 @@ struct EkitapligimApp: App {
 
     var body: some Scene {
         WindowGroup {
-            RootView()
+            appContent
                 .environmentObject(container)
                 .preferredColorScheme(.light)
                 .onOpenURL { url in
                     _ = GoogleSignInService.handle(url)
                 }
                 .task {
+                    #if DEBUG
+                    if ProcessInfo.processInfo.arguments.contains("-ai-ui-fixture") { return }
+                    #endif
                     appDelegate.pushManager = container.pushManager
                     await container.bootstrap()
                 }
         }
+    }
+
+    @ViewBuilder private var appContent: some View {
+        #if DEBUG
+        if ProcessInfo.processInfo.arguments.contains("-ai-ui-fixture") { AIUITestHost() }
+        else { RootView() }
+        #else
+        RootView()
+        #endif
     }
 }

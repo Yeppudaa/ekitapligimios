@@ -26,9 +26,13 @@ struct BlockedMembersView: View {
             } else {
                 List(members) { member in
                     HStack(spacing: 12) {
-                        EKAvatar(urlString: member.avatarUrl, username: member.username, size: 40, cornerRadius: 20)
-                        Text(member.username)
-                            .font(.body.weight(.semibold))
+                        MemberProfileLink(memberID: member.id) {
+                            HStack(spacing: 12) {
+                                EKAvatar(urlString: member.avatarUrl, username: member.username, size: 40, cornerRadius: 20)
+                                Text(member.username)
+                                    .font(.body.weight(.semibold))
+                            }
+                        }
                         Spacer()
                         Button(L10n.membersUnblock) {
                             Task { await unblock(member) }

@@ -231,6 +231,9 @@ public extension L10n {
     }
     static var profileDeleteRequestFailed: String { tr("profile.deleteRequestFailed", "Hesap silme talebi gönderilemedi.") }
 
+    static var profileSessionExpired: String {
+        tr("profile.sessionExpired", "Oturumunuz sona erdi. Devam etmek için tekrar giriş yapın.")
+    }
     static var profileGuestTitle: String { tr("profile.guest.title", "Kütüphanene hoş geldin") }
     static var profileGuestSubtitle: String {
         tr(
@@ -572,8 +575,8 @@ public extension L10n {
         tr("home.hero.subtitle", "Kütüphaneye yeni katılan kitapları keşfet, okumaya hemen başla.")
     }
     static var homeHeroPrimaryAction: String { tr("home.hero.primaryAction", "Yeni Kitaplar") }
-    static var homeSignalFormats: String { tr("home.signal.formats", "PDF & EPUB") }
-    static var homeSignalShelfSync: String { tr("home.signal.shelfSync", "Raf senkronu") }
+    static var homeSignalFormats: String { tr("home.signal.formats", "En Güncel Kitaplar") }
+    static var homeSignalShelfSync: String { tr("home.signal.shelfSync", "Kitap İstekleri") }
     static var homeSignalEverywhere: String { tr("home.signal.everywhere", "Her yerde oku") }
     static var homeSearchPlaceholder: String {
         tr("home.searchPlaceholder", "Kitap, yazar, yayınevi veya ISBN ara...")
@@ -621,6 +624,18 @@ public extension L10n {
     }
     static var homeAgendaRailEmpty: String {
         tr("home.agendaRail.empty", "Kitap Gündemi'ni aç ve okurların paylaşımlarını keşfet.")
+    }
+    static var homeAgendaEmptyPost: String {
+        tr("home.agendaRail.emptyPost", "Yeni bir kitap paylaşımı")
+    }
+    static var homeAgendaOpenPost: String {
+        tr("home.agendaRail.openPost", "Paylaşımın tamamını açar.")
+    }
+    static func homeAgendaReactionCount(_ count: Int) -> String {
+        String(format: tr("home.agendaRail.reactionCount", "%d beğeni"), count)
+    }
+    static func homeAgendaCommentCount(_ count: Int) -> String {
+        String(format: tr("home.agendaRail.commentCount", "%d yorum"), count)
     }
     static var homeChatCardSubtitle: String { tr("home.chatCard.subtitle", "Okurlar şimdi ne konuşuyor?") }
     static var homeChatCardEmpty: String {

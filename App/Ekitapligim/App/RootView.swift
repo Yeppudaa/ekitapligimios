@@ -7,6 +7,9 @@ struct RootView: View {
     @EnvironmentObject private var container: AppContainer
     @Environment(\.scenePhase) private var scenePhase
     @State private var isMenuPresented = false
+    @State private var assistantHidden = false
+    @State private var assistantCollapsed = false
+    @State private var keyboardVisible = false
 
     init() {
         EKitapligimAppearance.configure()
@@ -21,7 +24,7 @@ struct RootView: View {
     var body: some View {
         ZStack(alignment: .topTrailing) {
             tabs
-            if container.selectedTab != .catalog {
+            if container.isForumPresented || container.selectedTab != .catalog {
                 menuButton
             }
             drawer
@@ -32,6 +35,10 @@ struct RootView: View {
             container.open(route: route)
         }
         .onAppear { GoogleSignInService.configureIfNeeded() }
+        .task { container.activateAssistantAccount() }
+        .onPreferenceChange(AILauncherHiddenKey.self) { assistantHidden = $0 }
+        .onReceive(NotificationCenter.default.publisher(for: UIResponder.keyboardWillShowNotification)) { _ in keyboardVisible = true }
+        .onReceive(NotificationCenter.default.publisher(for: UIResponder.keyboardWillHideNotification)) { _ in keyboardVisible = false }
         .onChange(of: scenePhase) { _, phase in
             if phase == .active { container.handleScenePhaseActive() }
             if phase == .background { container.handleScenePhaseBackground() }
@@ -44,22 +51,35 @@ struct RootView: View {
     private var tabs: some View {
         VStack(spacing: 0) {
             Group {
-                switch container.selectedTab {
-                case .home:
-                    HomeView()
-                case .catalog:
-                    CatalogView(onOpenMenu: openMenu)
-                case .agenda:
-                    NavigationStack { BookAgendaView() }
-                case .flow:
-                    NavigationStack { LiveActivityView() }
-                case .requests:
-                    NavigationStack { BookRequestsView() }
-                case .profile:
-                    NavigationStack { ProfileView() }
+                if container.isForumPresented {
+                    CommunityView()
+                } else {
+                    switch container.selectedTab {
+                    case .home:
+                        HomeView()
+                    case .catalog:
+                        CatalogView(onOpenMenu: openMenu)
+                    case .agenda:
+                        NavigationStack { BookAgendaView() }
+                    case .flow:
+                        NavigationStack { LiveActivityView() }
+                    case .requests:
+                        NavigationStack { BookRequestsView() }
+                    case .profile:
+                        NavigationStack { ProfileView() }
+                    }
                 }
             }
             .frame(maxWidth: .infinity, maxHeight: .infinity)
+            .overlay(alignment: .bottomTrailing) {
+                if !isMenuPresented && !assistantHidden && !keyboardVisible && container.presentedRoute == nil {
+                    AIAssistantLauncher(model: container.assistantModel, isCollapsed: $assistantCollapsed) {
+                        container.open(route: .aiAssistant(bookID: nil))
+                    }
+                    .padding(.trailing, 16)
+                    .padding(.bottom, 16)
+                }
+            }
 
             PrimaryTabBar(
                 selection: $container.selectedTab,
@@ -130,12 +150,14 @@ struct RootView: View {
 @MainActor
 private struct AppSideMenu: View {
     @EnvironmentObject private var container: AppContainer
+    @State private var assistantAvailable = true
     let onSelect: (AppRoute) -> Void
     let onClose: () -> Void
 
     private var primaryItems: [AppMenuItem] {
         [
             AppMenuItem(route: .home, title: L10n.menuHome, subtitle: L10n.menuHomeSubtitle, icon: "house.fill"),
+            AppMenuItem(route: .aiAssistant(bookID: nil), title: AIL10n.text("title"), subtitle: AIL10n.text("menuSubtitle"), icon: "sparkles"),
             AppMenuItem(route: .catalog, title: L10n.menuBooks, subtitle: L10n.menuBooksSubtitle, icon: "books.vertical.fill"),
             AppMenuItem(route: .bookAgenda, title: L10n.menuBookAgenda, subtitle: L10n.menuBookAgendaSubtitle, icon: "text.book.closed.fill"),
             AppMenuItem(route: .chat, title: L10n.menuChat, subtitle: L10n.menuChatSubtitle, icon: "bubble.left.and.text.bubble.right.fill"),
@@ -187,7 +209,7 @@ private struct AppSideMenu: View {
             ScrollView {
                 LazyVStack(alignment: .leading, spacing: 4) {
                     ForEach(primaryItems) { item in
-                        menuRow(item)
+                        if item.route != .aiAssistant(bookID: nil) || assistantAvailable { menuRow(item) }
                     }
 
                     premiumCard
@@ -211,6 +233,7 @@ private struct AppSideMenu: View {
         .frame(maxHeight: .infinity)
         .background(EKitapligimPalette.pageGradient)
         .ignoresSafeArea(edges: .bottom)
+        .onReceive(container.assistantModel.$bootstrap) { assistantAvailable = $0?.enabled ?? true }
     }
 
     private var header: some View {
@@ -342,6 +365,10 @@ private struct AppRouteSheet: View {
 
     @ViewBuilder private var routeDestination: some View {
         switch route {
+        case .aiAssistant(let bookID):
+            AIAssistantDestination(bookID: bookID)
+        case .aiCollections(let slug):
+            AICollectionsDestination(slug: slug)
         case .forum:
             CommunityView()
         case .home, .requests, .profile, .catalog, .bookAgenda, .liveActivity:

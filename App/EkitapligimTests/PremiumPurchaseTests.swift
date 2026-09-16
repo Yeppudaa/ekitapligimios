@@ -99,6 +99,7 @@ final class PremiumPurchaseTests: XCTestCase {
     func testRestoreWithoutEntitlementShowsNothingToRestore() async throws {
         let service = StoreKitPurchaseService(purchaseRepository: SuccessfulPurchaseVerifier())
         await service.loadProducts()
+        await waitForStoreKitToClearEntitlements()
 
         await service.restore()
 
@@ -179,11 +180,29 @@ final class PremiumPurchaseTests: XCTestCase {
         until predicate: (PremiumEntitlement) -> Bool
     ) async {
         let clock = ContinuousClock()
-        let deadline = clock.now.advanced(by: .seconds(5))
+        // StoreKitTest publishes renewal-info changes asynchronously. Busy CI
+        // simulators can need more than five seconds after disabling auto-renew.
+        let deadline = clock.now.advanced(by: .seconds(15))
 
         repeat {
             await service.refreshEntitlements()
             if predicate(service.entitlement) { return }
+            try? await Task.sleep(for: .milliseconds(100))
+        } while clock.now < deadline
+    }
+
+    private func waitForStoreKitToClearEntitlements() async {
+        let clock = ContinuousClock()
+        let deadline = clock.now.advanced(by: .seconds(5))
+
+        repeat {
+            var hasCurrentEntitlement = false
+            for await _ in Transaction.currentEntitlements {
+                hasCurrentEntitlement = true
+                break
+            }
+            if !hasCurrentEntitlement { return }
+            session.clearTransactions()
             try? await Task.sleep(for: .milliseconds(100))
         } while clock.now < deadline
     }

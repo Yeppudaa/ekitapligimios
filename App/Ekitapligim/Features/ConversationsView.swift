@@ -412,30 +412,34 @@ private struct ConversationMessageCard: View {
     var body: some View {
         VStack(alignment: .leading, spacing: 0) {
             HStack(alignment: .center, spacing: 12) {
-                EKAvatar(
-                    urlString: message.avatarUrl,
-                    username: ForumMessageFormatting.displayUsername(message.username),
-                    size: 44,
-                    cornerRadius: 12
-                )
-                VStack(alignment: .leading, spacing: 4) {
-                    HStack(spacing: 6) {
-                        Text(ForumMessageFormatting.displayUsername(message.username))
-                            .font(.subheadline.weight(.bold))
-                            .foregroundStyle(EKitapligimPalette.ink)
-                            .lineLimit(1)
-                        if message.isMine {
-                            EKPill(
-                                title: L10n.conversationsYou,
-                                foreground: EKitapligimPalette.tealDark,
-                                background: EKitapligimPalette.tealSoft
-                            )
+                MemberProfileLink(memberID: message.userId) {
+                    HStack(alignment: .center, spacing: 12) {
+                        EKAvatar(
+                            urlString: message.avatarUrl,
+                            username: ForumMessageFormatting.displayUsername(message.username),
+                            size: 44,
+                            cornerRadius: 12
+                        )
+                        VStack(alignment: .leading, spacing: 4) {
+                            HStack(spacing: 6) {
+                                Text(ForumMessageFormatting.displayUsername(message.username))
+                                    .font(.subheadline.weight(.bold))
+                                    .foregroundStyle(EKitapligimPalette.ink)
+                                    .lineLimit(1)
+                                if message.isMine {
+                                    EKPill(
+                                        title: L10n.conversationsYou,
+                                        foreground: EKitapligimPalette.tealDark,
+                                        background: EKitapligimPalette.tealSoft
+                                    )
+                                }
+                            }
+                            if message.messageDate > 0 {
+                                Text(EKitapligimFormat.relativeTime(message.messageDate))
+                                    .font(.caption)
+                                    .foregroundStyle(EKitapligimPalette.muted)
+                            }
                         }
-                    }
-                    if message.messageDate > 0 {
-                        Text(EKitapligimFormat.relativeTime(message.messageDate))
-                            .font(.caption)
-                            .foregroundStyle(EKitapligimPalette.muted)
                     }
                 }
                 Spacer(minLength: 0)

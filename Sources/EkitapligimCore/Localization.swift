@@ -25,7 +25,7 @@ public enum L10n {
     public static let bookDetailInvalidId = localized("book.detail.invalidId", defaultValue: "Kitap kimliği geçersiz.")
     public static let bookDetailSecureDownloadMissing = localized("book.detail.secureDownloadMissing", defaultValue: "Güvenli indirme bağlantısı alınamadı.")
     public static let bookDetailLoginRequiredMessage = localized("book.detail.loginRequiredMessage", defaultValue: "Okumak veya indirmek için giriş yapın.")
-    public static let bookDetailDownloadReady = localized("book.detail.downloadReady", defaultValue: "Kitap çevrimdışı okuma için indirildi.")
+    public static let bookDetailDownloadReady = localized("book.detail.downloadReady", defaultValue: "Kitap indirildi. Dosyalar uygulamasına kaydedebilirsiniz.")
     public static let bookDetailDownloadStarted = localized("book.detail.downloadStarted", defaultValue: "İndirme başlatıldı.")
     public static let bookDetailInfoTitle = localized("book.detail.infoTitle", defaultValue: "Kitap Künyesi")
     public static let bookDetailInfoCategory = localized("book.detail.infoCategory", defaultValue: "Kategori")
@@ -147,6 +147,27 @@ public enum L10n {
         String(format: localized("reader.pageNumber", defaultValue: "Sayfa %d"), page)
     }
 
+    public static let readerPreviewLimitTitle = localized("reader.previewLimit.title", defaultValue: "Ücretsiz okuma hakkınız doldu")
+    public static func readerPreviewLimitMessage(pages: Int) -> String {
+        String(
+            format: localized(
+                "reader.previewLimit.message",
+                defaultValue: "Bu kitabın ilk %d sayfalık ücretsiz önizlemesini tamamladınız. Kitabın devamını okumak için Premium üye olun."
+            ),
+            pages
+        )
+    }
+    public static let readerPreviewLimitUpgrade = localized("reader.previewLimit.upgrade", defaultValue: "Premium Üye Ol")
+    public static let readerPreviewLimitDismiss = localized("reader.previewLimit.dismiss", defaultValue: "Şimdilik değil")
+    public static let readerPreviewLimitFinished = localized("reader.previewLimit.finished", defaultValue: "Ücretsiz önizlemenin sonuna geldiniz")
+    public static func readerPreviewLimitActive(limit: Int) -> String {
+        String(format: localized("reader.previewLimit.active", defaultValue: "İlk %d sayfalık ücretsiz önizleme"), limit)
+    }
+    public static func readerPreviewLimitRemainingBadge(count: Int) -> String {
+        String(format: localized("reader.previewLimit.remainingBadge", defaultValue: "%d önizleme sayfası"), count)
+    }
+    public static let readerPreviewLimitContinuePremium = localized("reader.previewLimit.continuePremium", defaultValue: "Devamı Premium")
+
     public static let deleteAccountTitle = localized("account.delete.title", defaultValue: "Hesabı Sil")
     public static let deleteAccountWarning = localized("account.delete.warning", defaultValue: "Bu işlem tüm hesabınızın silinmesi sürecini başlatır. Talep genellikle 30 gün içinde tamamlanır ve sonuç kayıtlı e-posta adresinize bildirilir. Profil, kitaplık ve kullanıcı içerikleri silinir veya yasal zorunluluk varsa anonimleştirilir. Apple aboneliğiniz varsa ayrıca App Store aboneliklerinizi yönetin.")
     public static let deleteAccountConfirmationPrompt = localized("account.delete.confirmationPrompt", defaultValue: "Devam etmek için SIL yazın.")
@@ -187,7 +208,7 @@ public enum L10n {
     public static let privacyAnalyticsLabel = localized("privacy.analyticsLabel", defaultValue: "Üçüncü taraf analitik")
     public static let privacyAdvertisingLabel = localized("privacy.advertisingLabel", defaultValue: "Reklam SDK'sı")
     public static let privacyNotUsed = localized("privacy.notUsed", defaultValue: "Kullanılmıyor")
-    public static let privacyOfflineNotice = localized("privacy.offlineNotice", defaultValue: "İndirilen kitaplar yalnızca uygulama alanında tutulur, cihaz yedeğine eklenmez ve siz kaldırana kadar saklanır.")
+    public static let privacyOfflineNotice = localized("privacy.offlineNotice", defaultValue: "İndirilen kitaplar uygulama alanında tutulur, cihaz yedeğine eklenmez ve siz kaldırana kadar saklanır. Dosyalar uygulamasına kaydetmeyi seçerseniz kopya seçtiğiniz konumda kalır.")
 
     public static let reportTitle = localized("report.title", defaultValue: "İçerik bildir")
     public static let reportReason = localized("report.reason", defaultValue: "Neden")
@@ -529,6 +550,12 @@ public enum L10n {
     public static let settingsPrivacyPreferences = localized("settings.privacyPreferences", defaultValue: "Gizlilik tercihleri")
 
     public static let premiumTitle = localized("premium.title", defaultValue: "Ekitaplığım Premium")
+    public static let premiumEyebrow = localized("premium.eyebrow", defaultValue: "OKUMANIN AYRICALIKLI HALİ")
+    public static let premiumHeroSubtitle = localized("premium.heroSubtitle", defaultValue: "Kütüphane deneyimini bir adım öteye taşı.")
+    public static let premiumBenefitsTitle = localized("premium.benefitsTitle", defaultValue: "Ayrıcalıklarınız")
+    public static let premiumReadingTitle = localized("premium.readingTitle", defaultValue: "Okuma keyfi")
+    public static let premiumDownloadsTitle = localized("premium.downloadsTitle", defaultValue: "Kitapların yanında")
+    public static let premiumPurchaseAction = localized("premium.purchaseAction", defaultValue: "Satın al")
     public static let premiumDescription = localized("premium.description", defaultValue: "Premium üyelik, sunucu tarafından belirlenen daha yüksek veya sınırsız okuma ve indirme hakları sağlar.")
     public static let premiumPlans = localized("premium.plans", defaultValue: "Abonelik Planları")
     public static let premiumLoading = localized("premium.loading", defaultValue: "Apple ürünleri yükleniyor")
@@ -543,7 +570,8 @@ public enum L10n {
     public static let premiumBenefitDownloads = localized("premium.benefit.downloads", defaultValue: "Daha yüksek veya sınırsız indirme hakları")
     public static let premiumMembershipStatus = localized("premium.membershipStatus", defaultValue: "Üyelik Durumu")
     public static let premiumPlan = localized("premium.plan", defaultValue: "Plan")
-    public static let premiumMonthlyPeriod = localized("premium.period.monthly", defaultValue: "Her ay otomatik yenilenir")
+    public static let premiumMonthlyPeriod = localized("premium.period.monthly", defaultValue: "Aylık abonelik")
+    public static let premiumMonthlyTagline = localized("premium.monthlyTagline", defaultValue: "Kitaplar beklemez. Sen de bekleme...")
     public static let premiumYearlyPeriod = localized("premium.period.yearly", defaultValue: "Her yıl otomatik yenilenir")
     public static let premiumStatusActive = localized("premium.status.active", defaultValue: "Premium aboneliğiniz aktif")
     public static let premiumStatusCancelled = localized("premium.status.cancelled", defaultValue: "Otomatik yenileme kapalı; erişiminiz dönem sonuna kadar aktif")

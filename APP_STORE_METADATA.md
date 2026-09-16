@@ -168,3 +168,11 @@ Physical iPhone + iPad recordings of EULA, report, and block flows are attached 
 - User Content / Other User Content: linked, app functionality; profile text, comments, posts, requests, reports, and private messages.
 - Other Data: linked, app functionality/security; retained IP address, user-agent/device-session and security records described by the published privacy policy.
 - Diagnostics: not collected by an app analytics/crash SDK in the current binary.
+
+## AI Assistant draft addition (pending release validation)
+
+Turkish feature copy: “AI Asistan ile kitap keşfet, okuma tercihlerine uygun öneriler al ve kitaplar hakkında sorular sor. Kullanım hakları üyelik durumuna göre sunucu tarafından belirlenir.”
+
+Reviewer steps: open AI Asistan in the side menu or floating launcher; verify remaining daily quota; send a book question; open a recommended book and return; inspect/delete history. Test a guest, standard member and entitled member. Confirm server-disabled features remain hidden and exhausted quota blocks suggested prompts as well as the composer. Any data-changing AI proposal must show a preview and require confirmation. No external digital purchase prompt is added.
+
+Do not submit this addition until SwiftUI build/UI/accessibility evidence and live account/group checks in AI_ASSISTANT_VALIDATION.md pass.

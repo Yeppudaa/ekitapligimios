@@ -1,6 +1,18 @@
 {
   "sourceLanguage": "tr",
   "strings": {
+    "home.agendaRail.emptyPost": {
+      "localizations": { "tr": { "stringUnit": { "state": "translated", "value": "Yeni bir kitap paylaşımı" } } }
+    },
+    "home.agendaRail.openPost": {
+      "localizations": { "tr": { "stringUnit": { "state": "translated", "value": "Paylaşımın tamamını açar." } } }
+    },
+    "home.agendaRail.reactionCount": {
+      "localizations": { "tr": { "stringUnit": { "state": "translated", "value": "%d beğeni" } } }
+    },
+    "home.agendaRail.commentCount": {
+      "localizations": { "tr": { "stringUnit": { "state": "translated", "value": "%d yorum" } } }
+    },
     "app.name": {
       "localizations": {
         "tr": {
@@ -296,7 +308,7 @@
         "tr": {
           "stringUnit": {
             "state": "translated",
-            "value": "Kitap çevrimdışı okuma için indirildi."
+            "value": "Kitap indirildi. Dosyalar uygulamasına kaydedebilirsiniz."
           }
         }
       }
@@ -3483,6 +3495,24 @@
         }
       }
     },
+    "premium.eyebrow": {
+      "localizations": { "tr": { "stringUnit": { "state": "translated", "value": "OKUMANIN AYRICALIKLI HALİ" } } }
+    },
+    "premium.heroSubtitle": {
+      "localizations": { "tr": { "stringUnit": { "state": "translated", "value": "Kütüphane deneyimini bir adım öteye taşı." } } }
+    },
+    "premium.benefitsTitle": {
+      "localizations": { "tr": { "stringUnit": { "state": "translated", "value": "Ayrıcalıklarınız" } } }
+    },
+    "premium.readingTitle": {
+      "localizations": { "tr": { "stringUnit": { "state": "translated", "value": "Okuma keyfi" } } }
+    },
+    "premium.downloadsTitle": {
+      "localizations": { "tr": { "stringUnit": { "state": "translated", "value": "Kitapların yanında" } } }
+    },
+    "premium.purchaseAction": {
+      "localizations": { "tr": { "stringUnit": { "state": "translated", "value": "Satın al" } } }
+    },
     "premium.benefit.reading": {
       "localizations": { "tr": { "stringUnit": { "state": "translated", "value": "Premium kitaplara ve geniş okuma haklarına erişim" } } }
     },
@@ -3495,8 +3525,11 @@
     "premium.plan": {
       "localizations": { "tr": { "stringUnit": { "state": "translated", "value": "Plan" } } }
     },
+    "premium.monthlyTagline": {
+      "localizations": { "tr": { "stringUnit": { "state": "translated", "value": "Kitaplar beklemez. Sen de bekleme..." } } }
+    },
     "premium.period.monthly": {
-      "localizations": { "tr": { "stringUnit": { "state": "translated", "value": "Her ay otomatik yenilenir" } } }
+      "localizations": { "tr": { "stringUnit": { "state": "translated", "value": "Aylık abonelik" } } }
     },
     "premium.period.yearly": {
       "localizations": { "tr": { "stringUnit": { "state": "translated", "value": "Her yıl otomatik yenilenir" } } }
@@ -3740,7 +3773,7 @@
         "tr": {
           "stringUnit": {
             "state": "translated",
-            "value": "İndirilen kitaplar yalnızca uygulama alanında tutulur, cihaz yedeğine eklenmez ve siz kaldırana kadar saklanır."
+            "value": "İndirilen kitaplar uygulama alanında tutulur, cihaz yedeğine eklenmez ve siz kaldırana kadar saklanır. Dosyalar uygulamasına kaydetmeyi seçerseniz kopya seçtiğiniz konumda kalır."
           }
         }
       }
@@ -4041,6 +4074,30 @@
     },
     "reader.previousPage": {
       "localizations": { "tr": { "stringUnit": { "state": "translated", "value": "Önceki sayfa" } } }
+    },
+    "reader.previewLimit.title": {
+      "localizations": { "tr": { "stringUnit": { "state": "translated", "value": "Ücretsiz okuma hakkınız doldu" } } }
+    },
+    "reader.previewLimit.message": {
+      "localizations": { "tr": { "stringUnit": { "state": "translated", "value": "Bu kitabın ilk %d sayfalık ücretsiz önizlemesini tamamladınız. Kitabın devamını okumak için Premium üye olun." } } }
+    },
+    "reader.previewLimit.upgrade": {
+      "localizations": { "tr": { "stringUnit": { "state": "translated", "value": "Premium Üye Ol" } } }
+    },
+    "reader.previewLimit.dismiss": {
+      "localizations": { "tr": { "stringUnit": { "state": "translated", "value": "Şimdilik değil" } } }
+    },
+    "reader.previewLimit.finished": {
+      "localizations": { "tr": { "stringUnit": { "state": "translated", "value": "Ücretsiz önizlemenin sonuna geldiniz" } } }
+    },
+    "reader.previewLimit.active": {
+      "localizations": { "tr": { "stringUnit": { "state": "translated", "value": "İlk %d sayfalık ücretsiz önizleme" } } }
+    },
+    "reader.previewLimit.remainingBadge": {
+      "localizations": { "tr": { "stringUnit": { "state": "translated", "value": "%d önizleme sayfası" } } }
+    },
+    "reader.previewLimit.continuePremium": {
+      "localizations": { "tr": { "stringUnit": { "state": "translated", "value": "Devamı Premium" } } }
     },
     "reader.epub.format": {
       "localizations": {

@@ -818,6 +818,11 @@ private struct ChatMessageBubble: View {
     let message: ChatMessageDTO
     let onBlocked: () -> Void
 
+    private var profileMemberID: String? {
+        guard !message.isBot else { return nil }
+        return message.userId
+    }
+
     var body: some View {
         if message.isAnnouncement {
             announcement
@@ -873,21 +878,25 @@ private struct ChatMessageBubble: View {
             if message.isMine { Spacer(minLength: 40) }
 
             if !message.isMine {
-                EKAvatar(
-                    urlString: message.avatarUrl,
-                    username: message.username,
-                    size: 36,
-                    background: message.isBot ? EKitapligimPalette.chatBotBubble : EKitapligimPalette.chatTealSoft,
-                    foreground: message.isBot ? Color(hex: 0x95610A) : EKitapligimPalette.chatTeal
-                )
+                MemberProfileLink(memberID: profileMemberID) {
+                    EKAvatar(
+                        urlString: message.avatarUrl,
+                        username: message.username,
+                        size: 36,
+                        background: message.isBot ? EKitapligimPalette.chatBotBubble : EKitapligimPalette.chatTealSoft,
+                        foreground: message.isBot ? Color(hex: 0x95610A) : EKitapligimPalette.chatTeal
+                    )
+                }
             }
 
             VStack(alignment: message.isMine ? .trailing : .leading, spacing: 4) {
                 if !message.isMine {
                     HStack(spacing: 6) {
-                        Text(message.username)
-                            .font(.system(size: 12, weight: .bold))
-                            .foregroundStyle(message.isBot ? Color(hex: 0x95610A) : EKitapligimPalette.chatTeal)
+                        MemberProfileLink(memberID: profileMemberID) {
+                            Text(message.username)
+                                .font(.system(size: 12, weight: .bold))
+                                .foregroundStyle(message.isBot ? Color(hex: 0x95610A) : EKitapligimPalette.chatTeal)
+                        }
                         if let roleBadge {
                             Text(roleBadge)
                                 .font(.system(size: 8, weight: .heavy))
@@ -902,17 +911,26 @@ private struct ChatMessageBubble: View {
                 Text(EKitapligimFormat.plainText(message.message))
                     .font(.subheadline)
                     .foregroundStyle(message.isMine ? .white : EKitapligimPalette.chatInk)
-                    .multilineTextAlignment(.leading)
+                    .multilineTextAlignment(message.isMine ? .trailing : .leading)
 
-                Text(timestampLabel)
-                    .font(.system(size: 10, weight: .medium))
-                    .foregroundStyle(message.isMine ? Color.white.opacity(0.72) : EKitapligimPalette.chatMuted)
-                    .frame(maxWidth: .infinity, alignment: .trailing)
+                if message.isMine {
+                    Text(timestampLabel)
+                        .font(.system(size: 10, weight: .medium))
+                        .foregroundStyle(Color.white.opacity(0.72))
+                } else {
+                    HStack {
+                        Spacer(minLength: 0)
+                        Text(timestampLabel)
+                            .font(.system(size: 10, weight: .medium))
+                            .foregroundStyle(EKitapligimPalette.chatMuted)
+                    }
+                }
             }
             .padding(.horizontal, 14)
             .padding(.vertical, 11)
+            .fixedSize(horizontal: true, vertical: false)
             .frame(maxWidth: 310, alignment: message.isMine ? .trailing : .leading)
-            .background { bubbleBackground }
+            .background(bubbleBackground, in: chatBubbleShape)
             .clipShape(chatBubbleShape)
             .overlay {
                 if !message.isMine {
