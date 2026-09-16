@@ -48,6 +48,7 @@ struct BookDetailView: View {
     @State private var isSubmittingComment = false
     private var commentsError: String? { loading.commentsError }
     @State private var showingCommentLoginAlert = false
+    @State private var showingDownloadPremiumAlert = false
     @State private var showingReaderLoginAlert = false
     @State private var showingReport = false
     @State private var selectedIssueType = "copyright"
@@ -121,6 +122,12 @@ struct BookDetailView: View {
             Button(L10n.commonCancel, role: .cancel) {}
         } message: {
             Text(L10n.bookDetailLoginRequiredMessage)
+        }
+        .alert(L10n.quotaDownloadPremiumTitle, isPresented: $showingDownloadPremiumAlert) {
+            Button(L10n.readerPreviewLimitUpgrade) { container.open(route: .premium) }
+            Button(L10n.commonCancel, role: .cancel) {}
+        } message: {
+            Text(L10n.quotaDownloadPremiumRequired)
         }
         .onChange(of: container.libraryItems) { _, _ in
             syncShelfFromLibrary()
@@ -928,7 +935,23 @@ struct BookDetailView: View {
         }
         let currentAccess = (try? await container.books.readerAccess(bookID: bookID)) ?? access
         loading.access = currentAccess
-        guard let currentAccess, currentAccess.canDownload else {
+        switch DownloadAccessPolicy.decision(
+            isSignedIn: isSignedIn,
+            isPremium: container.isPremium,
+            access: currentAccess
+        ) {
+        case .allowed:
+            break
+        case .loginRequired:
+            showingReaderLoginAlert = true
+            return
+        case .premiumRequired:
+            showingDownloadPremiumAlert = true
+            return
+        case .dailyLimitReached:
+            downloadStatusMessage = L10n.quotaDownloadLimitReached
+            return
+        case .unavailable:
             downloadStatusMessage = downloadDenialMessage(from: currentAccess)
             return
         }
@@ -948,6 +971,10 @@ struct BookDetailView: View {
                 expectedFileType: session.fileType
             )
         } catch {
+            if !container.isPremium {
+                showingDownloadPremiumAlert = true
+                return
+            }
             downloadStatusMessage = (error as? APIClientError)?.serverMessage ?? downloadDenialMessage(from: currentAccess)
             return
         }
@@ -979,19 +1006,22 @@ struct BookDetailView: View {
     }
 
     private func downloadDenialMessage(from access: ReaderAccessDTO?) -> String {
+        switch DownloadAccessPolicy.decision(
+            isSignedIn: isSignedIn,
+            isPremium: container.isPremium,
+            access: access
+        ) {
+        case .premiumRequired:
+            return L10n.quotaDownloadPremiumRequired
+        case .dailyLimitReached:
+            return L10n.quotaDownloadLimitReached
+        case .loginRequired:
+            return L10n.bookDetailLoginRequiredMessage
+        case .allowed, .unavailable:
+            break
+        }
         if let message = access?.denialMessage?.trimmingCharacters(in: .whitespacesAndNewlines), !message.isEmpty {
             return message
-        }
-        if let quota = access?.dailyDownload, !quota.isAllowed, quota.limit > 0 {
-            return L10n.quotaDownloadSubtitle(used: quota.used, limit: quota.limit)
-        }
-        if let code = access?.denialCode?.uppercased() {
-            switch code {
-            case "PREMIUM_REQUIRED", "SUBSCRIPTION_REQUIRED", "PREMIUM_ONLY":
-                return L10n.premiumLoginRequired
-            default:
-                break
-            }
         }
         return L10n.bookDetailSecureDownloadMissing
     }

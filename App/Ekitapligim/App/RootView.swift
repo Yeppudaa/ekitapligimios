@@ -8,7 +8,7 @@ struct RootView: View {
     @Environment(\.scenePhase) private var scenePhase
     @State private var isMenuPresented = false
     @State private var assistantHidden = false
-    @State private var assistantCollapsed = false
+    @State private var assistantCollapsed = true
     @State private var keyboardVisible = false
 
     init() {

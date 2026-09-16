@@ -160,7 +160,6 @@ struct AIAssistantLauncher: View {
     var body: some View {
         if model.showLauncher {
             Button {
-                setCollapsed(false)
                 action()
             } label: {
                 HStack(spacing: 9) {
@@ -177,8 +176,8 @@ struct AIAssistantLauncher: View {
                 .padding(7)
                 .padding(.trailing, isCollapsed ? 0 : 9)
                 .frame(minWidth: 52, minHeight: 52)
-                .background(AIStyle.gradient, in: RoundedRectangle(cornerRadius: isCollapsed ? 26 : 22))
-                .contentShape(RoundedRectangle(cornerRadius: 22))
+                .background(AIStyle.gradient, in: Capsule())
+                .contentShape(Capsule())
                 .shadow(color: AIStyle.navy.opacity(0.20), radius: 10, y: 4)
             }
             .buttonStyle(.plain)

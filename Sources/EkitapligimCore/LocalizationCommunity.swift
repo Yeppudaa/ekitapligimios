@@ -147,6 +147,13 @@ public extension L10n {
         tr("quota.readLimitReached", "Günlük okuma limitinize ulaştınız. Premium üye olarak okumaya devam edebilirsiniz.")
     }
     static var quotaPremiumAction: String { tr("quota.premiumAction", "Premium Ol") }
+    static var quotaDownloadPremiumTitle: String { tr("quota.downloadPremiumTitle", "Premium üyelik gerekli") }
+    static var quotaDownloadPremiumRequired: String {
+        tr("quota.downloadPremiumRequired", "İndirmek için Premium üye olmanız gerekiyor.")
+    }
+    static var quotaDownloadLimitReached: String {
+        tr("quota.downloadLimitReached", "Günlük indirme limitinize ulaştınız. Premium ile daha fazla indirebilirsiniz.")
+    }
     static var quotaDownloadTitle: String { tr("quota.downloadTitle", "Günlük indirme durumunuz") }
     static var quotaAdminTitle: String { tr("quota.adminTitle", "Yönetici erişimin aktif") }
     static var quotaAdminRead: String { tr("quota.adminRead", "Okuma hakkın sınırsız.") }

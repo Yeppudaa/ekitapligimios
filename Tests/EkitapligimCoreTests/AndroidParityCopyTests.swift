@@ -341,4 +341,13 @@ final class AndroidParityCopyTests: XCTestCase {
         XCTAssertEqual(L10n.catalogCategoryChip("Roman", countLabel: "3.251"), "Roman  3.251")
         XCTAssertEqual(L10n.catalogBookPageCount(240), "240 syf")
     }
+
+    func testDownloadPremiumCopyWarnsNormalMembersToUpgrade() {
+        XCTAssertEqual(L10n.quotaDownloadPremiumTitle, "Premium üyelik gerekli")
+        XCTAssertEqual(L10n.quotaDownloadPremiumRequired, "İndirmek için Premium üye olmanız gerekiyor.")
+        XCTAssertEqual(
+            L10n.quotaDownloadLimitReached,
+            "Günlük indirme limitinize ulaştınız. Premium ile daha fazla indirebilirsiniz."
+        )
+    }
 }

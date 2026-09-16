@@ -26,13 +26,19 @@ final class AIAssistantUITests: XCTestCase {
         XCTAssertTrue(app.buttons["agenda-author-1"].exists)
         capture(app, name: "layout-tabs-and-agenda")
 
-        let expandedWidth = launcher.frame.width
-        let start = launcher.coordinate(withNormalizedOffset: CGVector(dx: 0.3, dy: 0.5))
+        XCTAssertEqual(launcher.value as? String, "Küçültülmüş")
+        let collapsedWidth = launcher.frame.width
+        let start = launcher.coordinate(withNormalizedOffset: CGVector(dx: 0.5, dy: 0.5))
+        start.press(forDuration: 0.1, thenDragTo: start.withOffset(CGVector(dx: -65, dy: 0)))
+        let expanded = NSPredicate(format: "value == %@", "Genişletilmiş")
+        expectation(for: expanded, evaluatedWith: launcher)
+        waitForExpectations(timeout: 3)
+        XCTAssertGreaterThan(launcher.frame.width, collapsedWidth + 40)
         start.press(forDuration: 0.1, thenDragTo: start.withOffset(CGVector(dx: 65, dy: 0)))
         let collapsed = NSPredicate(format: "value == %@", "Küçültülmüş")
         expectation(for: collapsed, evaluatedWith: launcher)
         waitForExpectations(timeout: 3)
-        XCTAssertLessThan(launcher.frame.width, expandedWidth - 40)
+        XCTAssertEqual(launcher.frame.width, collapsedWidth, accuracy: 2)
         tabs[1].tap()
         XCTAssertEqual(launcher.value as? String, "Küçültülmüş")
         capture(app, name: "layout-collapsed-launcher")
@@ -40,7 +46,7 @@ final class AIAssistantUITests: XCTestCase {
         XCTAssertTrue(app.buttons["ai-send"].waitForExistence(timeout: 5))
         app.buttons["layout-close-assistant"].tap()
         XCTAssertTrue(launcher.waitForExistence(timeout: 5))
-        XCTAssertEqual(launcher.value as? String, "Genişletilmiş")
+        XCTAssertEqual(launcher.value as? String, "Küçültülmüş")
     }
 
     private func launch(_ mode: String, largeText: Bool = false) -> XCUIApplication {

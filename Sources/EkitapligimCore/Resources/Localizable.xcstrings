@@ -4095,6 +4095,15 @@
         }
       }
     },
+    "quota.downloadPremiumTitle": {
+      "localizations": { "tr": { "stringUnit": { "state": "translated", "value": "Premium üyelik gerekli" } } }
+    },
+    "quota.downloadPremiumRequired": {
+      "localizations": { "tr": { "stringUnit": { "state": "translated", "value": "İndirmek için Premium üye olmanız gerekiyor." } } }
+    },
+    "quota.downloadLimitReached": {
+      "localizations": { "tr": { "stringUnit": { "state": "translated", "value": "Günlük indirme limitinize ulaştınız. Premium ile daha fazla indirebilirsiniz." } } }
+    },
     "reader.previewLimit.title": {
       "localizations": { "tr": { "stringUnit": { "state": "translated", "value": "Ücretsiz okuma hakkınız doldu" } } }
     },

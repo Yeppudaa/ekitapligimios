@@ -59,7 +59,7 @@ actor AIFixtureService: AIAssistantServing {
 @MainActor
 struct AIUITestHost: View {
     @StateObject private var model: AIAssistantModel
-    @State private var collapsed = false
+    @State private var collapsed = true
     @State private var showAssistant = false
     @State private var selection: AppTab = .home
     private var layoutMode: Bool { ProcessInfo.processInfo.environment["AI_FIXTURE_MODE"] == "layout" }

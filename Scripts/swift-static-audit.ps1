@@ -101,12 +101,16 @@ if ($directBookPdfUsage) {
 $bookDetail = Get-Content -Raw -LiteralPath "App/Ekitapligim/Features/BookDetailView.swift"
 foreach ($requiredDownloadAuthorization in @(
     "container.books.readerAccess(bookID: bookID)",
-    "currentAccess.canDownload",
+    "DownloadAccessPolicy.decision(",
     "purpose: .download"
 )) {
     if ($bookDetail -notmatch [regex]::Escape($requiredDownloadAuthorization)) {
         Fail "Book detail download flow must authorize a fresh canDownload result and request a download session: $requiredDownloadAuthorization"
     }
+}
+$downloadAccessPolicy = Get-Content -Raw -LiteralPath "Sources/EkitapligimCore/DownloadAccessPolicy.swift"
+if ($downloadAccessPolicy -notmatch [regex]::Escape("access?.canDownload == true")) {
+    Fail "Download access policy must fail closed unless the server explicitly authorizes canDownload"
 }
 $readerView = Get-Content -Raw -LiteralPath "App/Ekitapligim/Features/ReaderView.swift"
 if ($readerView -notmatch [regex]::Escape("purpose: .read")) {
