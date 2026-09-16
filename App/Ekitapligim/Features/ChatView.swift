@@ -930,7 +930,7 @@ private struct ChatMessageBubble: View {
             .padding(.vertical, 11)
             .fixedSize(horizontal: true, vertical: false)
             .frame(maxWidth: 310, alignment: message.isMine ? .trailing : .leading)
-            .background(bubbleBackground, in: chatBubbleShape)
+            .background { bubbleBackground }
             .clipShape(chatBubbleShape)
             .overlay {
                 if !message.isMine {
