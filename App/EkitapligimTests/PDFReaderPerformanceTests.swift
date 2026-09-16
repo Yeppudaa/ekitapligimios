@@ -7,6 +7,15 @@ import EkitapligimCore
 
 @MainActor
 final class PDFReaderPerformanceTests: XCTestCase {
+    func testPreparedDocumentOpensBeforeReaderAttachment() async throws {
+        let url = try writePDF()
+        defer { try? FileManager.default.removeItem(at: url) }
+
+        let prepared = try await PreparedPDFDocument.load(from: url)
+
+        XCTAssertEqual(prepared.document.pageCount, 2)
+    }
+
     func testProgressUpdatesKeepDocumentAndUserZoomUntilLayoutChanges() throws {
         let url = FileManager.default.temporaryDirectory.appendingPathComponent("reader-test.pdf")
         let document = try XCTUnwrap(PDFDocument(data: pdfData()))

@@ -12,6 +12,7 @@ struct ReaderView: View {
 
     @State private var progress: ReadingProgress
     @State private var readerURL: URL?
+    @State private var preparedPDF: PreparedPDFDocument?
     @State private var temporaryReaderURL: URL?
     @State private var readerFileType = "pdf"
     @State private var epubProgressPercent: Double = 0
@@ -31,6 +32,7 @@ struct ReaderView: View {
     @State private var hasScheduledShelfPromotion = false
     @State private var showsPreviewLimitDialog = false
     @State private var previewLimitNoticeShown = false
+    @State private var showsPremiumActionForError = false
 
     init(book: BookDTO) {
         self.book = book
@@ -111,6 +113,9 @@ struct ReaderView: View {
         .onChange(of: epubPosition) { _, position in
             handleEPUBPositionChange(position)
         }
+        .onChange(of: progress.currentPage) { _, page in
+            evaluatePreviewLimitNotice(for: page, totalPages: progress.totalPages)
+        }
         .onChange(of: isLoading) { _, loading in
             guard !loading, readerURL != nil else { return }
             evaluatePreviewLimitNotice(for: activeReaderPage, totalPages: progress.totalPages)
@@ -152,7 +157,17 @@ struct ReaderView: View {
             ProgressView(L10n.readerPreparing)
                 .frame(maxWidth: .infinity, maxHeight: .infinity)
         } else if let errorMessage {
-            ContentUnavailableView(errorTitle, systemImage: "lock.shield", description: Text(errorMessage))
+            ContentUnavailableView {
+                Label(errorTitle, systemImage: "lock.shield")
+            } description: {
+                Text(errorMessage)
+            } actions: {
+                if showsPremiumActionForError {
+                    Button(L10n.quotaPremiumAction) { openPremium() }
+                        .buttonStyle(.borderedProminent)
+                        .accessibilityIdentifier("reader.quota.premium")
+                }
+            }
         } else if let url = readerURL, readerFileType == "epub" {
             EPUBReaderView(sourceURL: url, progressPercent: $epubProgressPercent, position: $epubPosition,
                 initialPosition: initialPosition, onPositionChange: recordPosition, onFlush: {
@@ -160,10 +175,11 @@ struct ReaderView: View {
                 }, onCaptureFailure: {
                     if let bookID { container.readerProgressSync.captureFailed(bookID: bookID) }
                 })
-        } else if let url = readerURL {
+        } else if let url = readerURL, let preparedPDF {
             VStack(spacing: 0) {
                 PDFReader(
                     url: url,
+                    document: preparedPDF.document,
                     progress: $progress,
                     requestedPage: $requestedPage,
                     layout: pdfLayout,
@@ -188,6 +204,9 @@ struct ReaderView: View {
                     onRequestPage: requestPage
                 )
             }
+        } else if readerURL != nil {
+            ProgressView(L10n.readerPreparing)
+                .frame(maxWidth: .infinity, maxHeight: .infinity)
         } else {
             ContentUnavailableView(L10n.readerUnavailable, systemImage: "lock.shield", description: Text(L10n.readerSecureLinkMissing))
         }
@@ -341,6 +360,8 @@ struct ReaderView: View {
         loadGeneration = generation
         errorTitle = L10n.readerUnavailable
         errorMessage = nil
+        showsPremiumActionForError = false
+        preparedPDF = nil
         defer { if loadGeneration == generation { isLoading = false } }
         do {
             let access = try await container.books.readerAccess(bookID: bookID)
@@ -348,6 +369,7 @@ struct ReaderView: View {
             guard access.canReadOnline else {
                 errorTitle = readerDenialTitle(from: access)
                 errorMessage = readerDenialMessage(from: access)
+                showsPremiumActionForError = access.isDailyReadLimitDenied
                 return
             }
 
@@ -361,7 +383,10 @@ struct ReaderView: View {
 
             if let localFile = container.downloadManager.localFile(for: book.id) {
                 try validateInitialPosition(fileType: localFile.fileType)
+                let document = try await preparePDFIfNeeded(at: localFile.url, fileType: localFile.fileType)
+                guard !Task.isCancelled, loadGeneration == generation else { return }
                 readerFileType = localFile.fileType
+                preparedPDF = document
                 readerURL = localFile.url
                 scheduleShelfPromotion()
                 return
@@ -386,7 +411,15 @@ struct ReaderView: View {
             let resolvedType = DownloadFilePolicy.sniffedFileExtension(at: localURL) ?? fileType
             do { try validateInitialPosition(fileType: resolvedType) }
             catch { container.readerContentLoader.removePreparedFile(at: localURL); throw error }
+            let document: PreparedPDFDocument?
+            do { document = try await preparePDFIfNeeded(at: localURL, fileType: resolvedType) }
+            catch { container.readerContentLoader.removePreparedFile(at: localURL); throw error }
+            guard !Task.isCancelled, loadGeneration == generation else {
+                container.readerContentLoader.removePreparedFile(at: localURL)
+                return
+            }
             readerFileType = resolvedType
+            preparedPDF = document
             temporaryReaderURL = localURL
             readerURL = localURL
             scheduleShelfPromotion()
@@ -405,14 +438,16 @@ struct ReaderView: View {
         }
     }
 
+    private func preparePDFIfNeeded(at url: URL, fileType: String) async throws -> PreparedPDFDocument? {
+        guard fileType == "pdf" else { return nil }
+        return try await PreparedPDFDocument.load(from: url)
+    }
+
     private func readerDenialTitle(from access: ReaderAccessDTO) -> String {
+        if access.isDailyReadLimitDenied {
+            return L10n.quotaReadTitle
+        }
         let code = access.denialCode?.trimmingCharacters(in: .whitespacesAndNewlines).uppercased() ?? ""
-        if code == "DAILY_READ_LIMIT" {
-            return L10n.quotaReadTitle
-        }
-        if let quota = access.dailyRead, !quota.isAllowed, quota.limit > 0 {
-            return L10n.quotaReadTitle
-        }
         switch code {
         case "PREMIUM_REQUIRED", "SUBSCRIPTION_REQUIRED", "PREMIUM_ONLY":
             return L10n.premiumTitle
@@ -422,11 +457,11 @@ struct ReaderView: View {
     }
 
     private func readerDenialMessage(from access: ReaderAccessDTO) -> String {
+        if access.isDailyReadLimitDenied {
+            return L10n.quotaReadLimitReached
+        }
         if let message = access.denialMessage?.trimmingCharacters(in: .whitespacesAndNewlines), !message.isEmpty {
             return message
-        }
-        if let quota = access.dailyRead, !quota.isAllowed, quota.limit > 0 {
-            return L10n.quotaReadSubtitle(used: quota.used, limit: quota.limit)
         }
         return L10n.readerSessionFailed
     }
@@ -862,6 +897,7 @@ private struct ReaderBookmarksView: View {
 @MainActor
 struct PDFReader: UIViewRepresentable {
     let url: URL
+    let document: PDFDocument
     @Binding var progress: ReadingProgress
     @Binding var requestedPage: Int?
     let layout: PDFReadingLayout
@@ -874,14 +910,14 @@ struct PDFReader: UIViewRepresentable {
 
     func makeUIView(context: Context) -> PDFView {
         let view = ResumePDFView()
-        context.coordinator.configure(view, url: url, layout: layout)
+        context.coordinator.configure(view, url: url, layout: layout, makeDocument: { _ in document })
         context.coordinator.observe(view)
         context.coordinator.updateProgress(from: view)
         return view
     }
 
     func updateUIView(_ uiView: PDFView, context: Context) {
-        context.coordinator.configure(uiView, url: url, layout: layout)
+        context.coordinator.configure(uiView, url: url, layout: layout, makeDocument: { _ in document })
         guard context.coordinator.isRestored, let requestedPage,
               let document = uiView.document,
               let page = document.page(at: min(max(requestedPage, 1), document.pageCount) - 1) else { return }

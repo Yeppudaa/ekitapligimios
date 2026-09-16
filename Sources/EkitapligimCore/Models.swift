@@ -997,6 +997,14 @@ public struct ReaderAccessDTO: Decodable, Equatable, Sendable {
     public let dailyDownload: DailyQuotaDTO?
 }
 
+public extension ReaderAccessDTO {
+    var isDailyReadLimitDenied: Bool {
+        let code = denialCode?.trimmingCharacters(in: .whitespacesAndNewlines).uppercased() ?? ""
+        if code == "DAILY_READ_LIMIT" { return true }
+        return dailyRead.map { !$0.isAllowed && $0.limit > 0 } ?? false
+    }
+}
+
 public struct DailyQuotaDTO: Decodable, Equatable, Sendable {
     public let limit: Int
     public let used: Int

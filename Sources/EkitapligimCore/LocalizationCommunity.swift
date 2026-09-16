@@ -143,6 +143,10 @@ public extension L10n {
     static func readingGoalDayCount(_ value: Int) -> String { String(format: tr("readingGoal.dayCount", "%d gün"), value) }
 
     static var quotaReadTitle: String { tr("quota.readTitle", "Günlük okuma durumunuz") }
+    static var quotaReadLimitReached: String {
+        tr("quota.readLimitReached", "Günlük okuma limitinize ulaştınız. Premium üye olarak okumaya devam edebilirsiniz.")
+    }
+    static var quotaPremiumAction: String { tr("quota.premiumAction", "Premium Ol") }
     static var quotaDownloadTitle: String { tr("quota.downloadTitle", "Günlük indirme durumunuz") }
     static var quotaAdminTitle: String { tr("quota.adminTitle", "Yönetici erişimin aktif") }
     static var quotaAdminRead: String { tr("quota.adminRead", "Okuma hakkın sınırsız.") }

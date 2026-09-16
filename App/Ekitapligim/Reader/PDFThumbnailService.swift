@@ -3,6 +3,32 @@ import Combine
 @preconcurrency import PDFKit
 @preconcurrency import UIKit
 
+/// PDFKit opens large documents synchronously. Preparing the document away from the
+/// main actor keeps the reader responsive; ownership moves to PDFView after loading.
+final class PreparedPDFDocument: @unchecked Sendable {
+    let document: PDFDocument
+
+    private init(document: PDFDocument) {
+        self.document = document
+    }
+
+    static func load(from url: URL) async throws -> PreparedPDFDocument {
+        let task = Task.detached(priority: .userInitiated) {
+            try Task.checkCancellation()
+            guard let document = PDFDocument(url: url), document.pageCount > 0 else {
+                throw BookFileTransferError.invalidFile
+            }
+            try Task.checkCancellation()
+            return PreparedPDFDocument(document: document)
+        }
+        return try await withTaskCancellationHandler {
+            try await task.value
+        } onCancel: {
+            task.cancel()
+        }
+    }
+}
+
 protocol PDFThumbnailProviding: Sendable {
     func pageCount() async throws -> Int
     func thumbnail(at index: Int) async throws -> UIImage?

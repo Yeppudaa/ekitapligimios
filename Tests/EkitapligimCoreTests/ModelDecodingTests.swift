@@ -894,6 +894,7 @@ final class ModelDecodingTests: XCTestCase {
         XCTAssertEqual(access.denialCode, "daily_read_limit")
         XCTAssertEqual(access.denialMessage, "Günlük okuma limitinize ulaştınız.")
         XCTAssertEqual(access.dailyRead?.isAllowed, false)
+        XCTAssertTrue(access.isDailyReadLimitDenied)
     }
 
     func testTermsStatusDecodesBackendShape() throws {
