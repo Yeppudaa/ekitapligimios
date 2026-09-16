@@ -14,6 +14,22 @@ final class PDFReaderPerformanceTests: XCTestCase {
         let prepared = try await PreparedPDFDocument.load(from: url)
 
         XCTAssertEqual(prepared.document.pageCount, 2)
+        XCTAssertTrue(Thread.isMainThread)
+    }
+
+    func testDismantleClearsDocumentBeforeFileCanBeRemoved() throws {
+        let url = FileManager.default.temporaryDirectory.appendingPathComponent("reader-dismantle.pdf")
+        let document = try XCTUnwrap(PDFDocument(data: pdfData()))
+        let view = PDFView(frame: CGRect(x: 0, y: 0, width: 320, height: 600))
+        var progress = ReadingProgress(currentPage: 1, totalPages: 2)
+        let coordinator = PDFReader.Coordinator(
+            progress: Binding(get: { progress }, set: { progress = $0 }),
+            requestedPage: .constant(nil)
+        )
+        coordinator.configure(view, url: url, layout: .continuous, makeDocument: { _ in document })
+        XCTAssertTrue(view.document === document)
+        PDFReader.dismantleUIView(view, coordinator: coordinator)
+        XCTAssertNil(view.document)
     }
 
     func testProgressUpdatesKeepDocumentAndUserZoomUntilLayoutChanges() throws {

@@ -3,8 +3,8 @@ import Combine
 @preconcurrency import PDFKit
 @preconcurrency import UIKit
 
-/// PDFKit opens large documents synchronously. Preparing the document away from the
-/// main actor keeps the reader responsive; ownership moves to PDFView after loading.
+/// PDFKit is not thread-safe. The file may be copied off-main; `PDFDocument` itself
+/// is always created on the main actor before `PDFView` takes ownership.
 final class PreparedPDFDocument: @unchecked Sendable {
     let document: PDFDocument
 
@@ -13,18 +13,12 @@ final class PreparedPDFDocument: @unchecked Sendable {
     }
 
     static func load(from url: URL) async throws -> PreparedPDFDocument {
-        let task = Task.detached(priority: .userInitiated) {
+        try await MainActor.run {
             try Task.checkCancellation()
             guard let document = PDFDocument(url: url), document.pageCount > 0 else {
                 throw BookFileTransferError.invalidFile
             }
-            try Task.checkCancellation()
             return PreparedPDFDocument(document: document)
-        }
-        return try await withTaskCancellationHandler {
-            try await task.value
-        } onCancel: {
-            task.cancel()
         }
     }
 }

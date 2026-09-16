@@ -14,6 +14,7 @@ struct EPUBReaderView: View {
     var onPositionChange: (ReaderPositionDTO) -> Void = { _ in }
     var onFlush: () async -> Void = {}
     var onCaptureFailure: () -> Void = {}
+    var onRestored: () -> Void = {}
     @Environment(\.scenePhase) private var scenePhase
 
     @StateObject private var model = EPUBReaderModel()
@@ -35,7 +36,7 @@ struct EPUBReaderView: View {
         }
         .task(id: sourceURL) {
             await model.open(sourceURL: sourceURL, initialPosition: initialPosition,
-                onPositionChange: onPositionChange, onCaptureFailure: onCaptureFailure)
+                onPositionChange: onPositionChange, onCaptureFailure: onCaptureFailure, onRestored: onRestored)
         }
         .onChange(of: model.progressPercent) { _, value in progressPercent = value }
         .onChange(of: model.position) { _, value in position = value }
@@ -75,6 +76,7 @@ private final class EPUBReaderModel: NSObject, ObservableObject, EPUBNavigatorDe
     private var locationGeneration = UUID()
     private var onPositionChange: (ReaderPositionDTO) -> Void = { _ in }
     private var onCaptureFailure: () -> Void = {}
+    private var onRestored: () -> Void = {}
 
     override init() {
         let httpClient = DefaultHTTPClient()
@@ -99,7 +101,7 @@ private final class EPUBReaderModel: NSObject, ObservableObject, EPUBNavigatorDe
     }
 
     func open(sourceURL: URL, initialPosition: ReaderPositionDTO?, onPositionChange: @escaping (ReaderPositionDTO) -> Void,
-              onCaptureFailure: @escaping () -> Void) async {
+              onCaptureFailure: @escaping () -> Void, onRestored: @escaping () -> Void = {}) async {
         guard sourceURL.scheme?.lowercased() == "https" || sourceURL.isFileURL else {
             fail(with: L10n.readerAtsLinkMissing)
             return
@@ -109,6 +111,7 @@ private final class EPUBReaderModel: NSObject, ObservableObject, EPUBNavigatorDe
         errorMessage = nil
         self.onPositionChange = onPositionChange
         self.onCaptureFailure = onCaptureFailure
+        self.onRestored = onRestored
         savedPosition = initialPosition
         restored = false
         restoring = false
@@ -165,6 +168,9 @@ private final class EPUBReaderModel: NSObject, ObservableObject, EPUBNavigatorDe
                     lastCFI = current.positionValue
                     restored = true
                     restoring = false
+                    ReaderDeferredTeardown.enqueue { [weak self] in
+                        self?.onRestored()
+                    }
                 } catch {
                     // A bad CFI must never silently overwrite the user's position with chapter/page 1.
                     fail(with: L10n.readerEPUBOpenFailed)
@@ -251,8 +257,13 @@ private final class EPUBReaderModel: NSObject, ObservableObject, EPUBNavigatorDe
     }
 
     private func fail(with message: String) {
-        errorMessage = message
-        isLoading = false
+        ReaderDeferredTeardown.enqueue { [weak self] in
+            guard let self else { return }
+            self.navigator = nil
+            self.restoring = false
+            self.errorMessage = message
+            self.isLoading = false
+        }
     }
 }
 

@@ -30,7 +30,8 @@ struct ReaderView: View {
     @State private var hasScheduledShelfPromotion = false
     @State private var showsPremiumActionForError = false
     @State private var showsPreviewLimitDialog = false
-    @State private var didPresentPreviewLimit = false
+    @State private var previewPresentation = ReaderPreviewPresentation()
+    @State private var pendingPremiumAfterLimitDismiss = false
 
     init(book: BookDTO) {
         self.book = book
@@ -100,8 +101,7 @@ struct ReaderView: View {
         .onDisappear {
             loadGeneration = UUID()
             flushProgress()
-            container.readerContentLoader.removePreparedFile(at: temporaryReaderURL)
-            temporaryReaderURL = nil
+            scheduleTemporaryFileRemoval()
         }
         .onChange(of: scenePhase) { _, phase in
             if phase != .active { flushProgress() }
@@ -109,26 +109,21 @@ struct ReaderView: View {
         .onChange(of: epubPosition) { _, position in
             handleEPUBPositionChange(position)
         }
-        .onChange(of: progress.currentPage) { _, page in
-            handlePDFPageChange(page)
-        }
-        .onChange(of: isLoading) { _, loading in
-            if !loading {
-                presentPreviewLimitIfNeeded()
+        .onChange(of: showsPreviewLimitDialog) { _, showing in
+            if showing {
+                previewPresentation.isLimitVisible = true
+                return
             }
-        }
-        .onChange(of: previewFinished) { _, finished in
-            if finished {
-                presentPreviewLimitIfNeeded()
+            previewPresentation.dismissLimit()
+            if pendingPremiumAfterLimitDismiss {
+                pendingPremiumAfterLimitDismiss = false
+                openPremium()
             }
         }
         .fullScreenCover(isPresented: $showsPreviewLimitDialog) {
             ReaderPreviewLimitOverlay(
                 pageCount: accessiblePageLimit,
-                onUpgrade: {
-                    showsPreviewLimitDialog = false
-                    openPremium()
-                },
+                onUpgrade: requestPremiumPresentation,
                 onDismiss: {
                     showsPreviewLimitDialog = false
                 }
@@ -177,6 +172,9 @@ struct ReaderView: View {
                     if let bookID { await container.readerProgressSync.flush(bookID: bookID) }
                 }, onCaptureFailure: {
                     if let bookID { container.readerProgressSync.captureFailed(bookID: bookID) }
+                }, onRestored: {
+                    previewPresentation.markRestored()
+                    applyPreviewDecision(makePreviewLimit(page: epubPosition))
                 })
         } else if let url = readerURL, let preparedPDF {
             VStack(spacing: 0) {
@@ -193,6 +191,10 @@ struct ReaderView: View {
                         let limit = makePreviewLimit(page: value.currentPage, totalPages: value.totalPages)
                         guard !limit.blocks(value.currentPage) else { return }
                         recordPosition(ReaderPositionDTO(positionType: "pdf", positionValue: String(value.currentPage), progressPercent: value.percent))
+                    },
+                    onRestored: {
+                        previewPresentation.markRestored()
+                        applyPreviewDecision(makePreviewLimit(page: progress.currentPage))
                     }
                 )
                 Divider()
@@ -253,34 +255,32 @@ struct ReaderView: View {
     }
 
     private func handlePDFPageChange(_ page: Int, totalPages: Int? = nil) {
-        let limit = makePreviewLimit(page: page, totalPages: totalPages)
-        if limit.blocks(page) {
-            applyReaderPage(limit.accessiblePageLimit)
-            if didPresentPreviewLimit {
-                openPremium()
-            }
-        }
-        presentPreviewLimitIfNeeded(page: limit.clamped(page), totalPages: totalPages)
+        applyPreviewDecision(makePreviewLimit(page: page, totalPages: totalPages))
     }
 
     private func handleEPUBPositionChange(_ position: Int) {
-        let limit = makePreviewLimit(page: position)
-        if limit.blocks(position) {
-            epubPosition = limit.accessiblePageLimit
-            if didPresentPreviewLimit {
-                openPremium()
-            }
-        }
-        presentPreviewLimitIfNeeded(page: limit.clamped(position))
+        applyPreviewDecision(makePreviewLimit(page: position))
     }
 
     private func requestPage(_ target: Int) {
-        let limit = makePreviewLimit(page: target)
-        if limit.blocks(target), didPresentPreviewLimit {
-            openPremium()
+        applyPreviewDecision(makePreviewLimit(page: target))
+    }
+
+    private func applyPreviewDecision(_ limit: ReaderPreviewLimit) {
+        let decision = previewPresentation.handle(limit)
+        if decision.page != activeReaderPage || limit.blocks(limit.currentPage) {
+            applyReaderPage(decision.page)
         }
-        applyReaderPage(limit.blocks(target) ? limit.accessiblePageLimit : limit.clamped(target))
-        presentPreviewLimitIfNeeded(page: limit.clamped(target))
+        switch decision.event {
+        case .none, .clampOnly:
+            break
+        case .presentLimit:
+            ReaderDeferredTeardown.enqueue {
+                showsPreviewLimitDialog = true
+            }
+        case .openPremium:
+            requestPremiumPresentation()
+        }
     }
 
     private func applyReaderPage(_ page: Int) {
@@ -290,12 +290,21 @@ struct ReaderView: View {
         requestedPage = page
     }
 
-    private func presentPreviewLimitIfNeeded(page: Int? = nil, totalPages: Int? = nil) {
-        let limit = makePreviewLimit(page: page ?? activeReaderPage, totalPages: totalPages)
-        guard limit.isOnLimitPage, !didPresentPreviewLimit else { return }
-        didPresentPreviewLimit = true
-        Task { @MainActor in
-            showsPreviewLimitDialog = true
+    private func requestPremiumPresentation() {
+        if showsPreviewLimitDialog {
+            pendingPremiumAfterLimitDismiss = true
+            showsPreviewLimitDialog = false
+            return
+        }
+        openPremium()
+    }
+
+    private func scheduleTemporaryFileRemoval() {
+        let url = temporaryReaderURL
+        let loader = container.readerContentLoader
+        temporaryReaderURL = nil
+        ReaderDeferredTeardown.enqueue {
+            loader.removePreparedFile(at: url)
         }
     }
 
@@ -381,6 +390,9 @@ struct ReaderView: View {
         errorTitle = L10n.readerUnavailable
         errorMessage = nil
         showsPremiumActionForError = false
+        previewPresentation = ReaderPreviewPresentation()
+        showsPreviewLimitDialog = false
+        pendingPremiumAfterLimitDismiss = false
         preparedPDF = nil
         defer { if loadGeneration == generation { isLoading = false } }
         do {
@@ -974,6 +986,7 @@ struct PDFReader: UIViewRepresentable {
     var initialPage: Int = 1
     var maxAccessiblePage: Int? = nil
     var onPageChange: (ReadingProgress) -> Void = { _ in }
+    var onRestored: () -> Void = {}
 
     func makeCoordinator() -> Coordinator {
         Coordinator(
@@ -981,7 +994,8 @@ struct PDFReader: UIViewRepresentable {
             requestedPage: $requestedPage,
             initialPage: initialPage,
             maxAccessiblePage: maxAccessiblePage,
-            onPageChange: onPageChange
+            onPageChange: onPageChange,
+            onRestored: onRestored
         )
     }
 
@@ -996,6 +1010,8 @@ struct PDFReader: UIViewRepresentable {
 
     func updateUIView(_ uiView: PDFView, context: Context) {
         context.coordinator.maxAccessiblePage = maxAccessiblePage
+        context.coordinator.onPageChange = onPageChange
+        context.coordinator.onRestored = onRestored
         context.coordinator.configure(uiView, url: url, layout: layout, makeDocument: { _ in document })
         guard context.coordinator.isRestored, let requestedPage,
               let pdfDocument = uiView.document else { return }
@@ -1007,6 +1023,7 @@ struct PDFReader: UIViewRepresentable {
 
     static func dismantleUIView(_ uiView: PDFView, coordinator: Coordinator) {
         coordinator.stopObserving()
+        uiView.document = nil
     }
 
     @MainActor
@@ -1019,7 +1036,8 @@ struct PDFReader: UIViewRepresentable {
         private var pageObserver: NSObjectProtocol?
         private(set) var isRestored = false
         private let initialPage: Int
-        private let onPageChange: (ReadingProgress) -> Void
+        var onPageChange: (ReadingProgress) -> Void
+        var onRestored: () -> Void
         private var lastPage: Int?
         private var restorationGeneration = UUID()
         private var restorationScheduled = false
@@ -1030,13 +1048,15 @@ struct PDFReader: UIViewRepresentable {
             requestedPage: Binding<Int?>,
             initialPage: Int = 1,
             maxAccessiblePage: Int? = nil,
-            onPageChange: @escaping (ReadingProgress) -> Void = { _ in }
+            onPageChange: @escaping (ReadingProgress) -> Void = { _ in },
+            onRestored: @escaping () -> Void = {}
         ) {
             self.progress = progress
             self.requestedPage = requestedPage
             self.initialPage = initialPage
             self.maxAccessiblePage = maxAccessiblePage
             self.onPageChange = onPageChange
+            self.onRestored = onRestored
         }
 
         func configure(
@@ -1082,7 +1102,7 @@ struct PDFReader: UIViewRepresentable {
             let target = clampedPage(initialPage, documentPageCount: document.pageCount)
             let generation = restorationGeneration
             restorationScheduled = true
-            DispatchQueue.main.async { [weak self, weak view] in
+            Task { @MainActor [weak self, weak view] in
                 guard let self, let view, self.restorationGeneration == generation,
                       view.document === document else { return }
                 guard view.window != nil, view.bounds.width > 0, view.bounds.height > 0 else {
@@ -1091,9 +1111,7 @@ struct PDFReader: UIViewRepresentable {
                 }
                 view.layoutIfNeeded()
                 if let page = document.page(at: target - 1) { view.go(to: page) }
-                // Verify PDFKit's actual page after navigation/layout, not the requested number.
-                // Initial page-change notifications remain suppressed until this succeeds.
-                DispatchQueue.main.async { [weak self, weak view] in
+                Task { @MainActor [weak self, weak view] in
                     guard let self, let view, self.restorationGeneration == generation,
                           view.document === document else { return }
                     view.layoutIfNeeded()
@@ -1104,6 +1122,10 @@ struct PDFReader: UIViewRepresentable {
                     self.lastPage = target
                     self.isRestored = true
                     self.progress.wrappedValue = ReadingProgress(currentPage: target, totalPages: document.pageCount)
+                    let restored = self.onRestored
+                    ReaderDeferredTeardown.enqueue {
+                        restored()
+                    }
                 }
             }
         }
@@ -1115,7 +1137,7 @@ struct PDFReader: UIViewRepresentable {
                 object: view,
                 queue: .main
             ) { [weak self] _ in
-                MainActor.assumeIsolated {
+                Task { @MainActor in
                     guard let self, let view = self.view else { return }
                     self.updateProgress(from: view)
                 }
@@ -1129,8 +1151,14 @@ struct PDFReader: UIViewRepresentable {
             guard pageIndex >= 0, pageIndex < document.pageCount else { return }
             let rawPage = pageIndex + 1
             let limitedPage = clampedPage(rawPage, documentPageCount: document.pageCount)
-            if limitedPage < rawPage, let page = document.page(at: limitedPage - 1), view.currentPage !== page {
-                view.go(to: page)
+            if limitedPage < rawPage {
+                let targetIndex = limitedPage - 1
+                Task { @MainActor [weak self] in
+                    guard let self, let view = self.view, let document = view.document,
+                          let page = document.page(at: targetIndex),
+                          view.currentPage !== page else { return }
+                    view.go(to: page)
+                }
             }
             let next = ReadingProgress(currentPage: limitedPage, totalPages: document.pageCount)
             if lastPage != next.currentPage {
@@ -1147,7 +1175,7 @@ struct PDFReader: UIViewRepresentable {
         }
 
         func clearRequestedPage(expected: Int) {
-            DispatchQueue.main.async { [weak self] in
+            Task { @MainActor [weak self] in
                 guard self?.requestedPage.wrappedValue == expected else { return }
                 self?.requestedPage.wrappedValue = nil
             }
