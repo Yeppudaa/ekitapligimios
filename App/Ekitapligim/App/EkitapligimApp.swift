@@ -19,7 +19,6 @@ struct EkitapligimApp: App {
                     #if DEBUG
                     if ProcessInfo.processInfo.arguments.contains("-ai-ui-fixture") { return }
                     if ProcessInfo.processInfo.arguments.contains("-gift-wheel-ui-fixture") { return }
-                    if ProcessInfo.processInfo.arguments.contains("-premium-review-screenshot") { return }
                     #endif
                     appDelegate.pushManager = container.pushManager
                     await container.bootstrap()
@@ -31,7 +30,6 @@ struct EkitapligimApp: App {
         #if DEBUG
         if ProcessInfo.processInfo.arguments.contains("-ai-ui-fixture") { AIUITestHost() }
         else if ProcessInfo.processInfo.arguments.contains("-gift-wheel-ui-fixture") { GiftWheelUITestHost() }
-        else if ProcessInfo.processInfo.arguments.contains("-premium-review-screenshot") { PremiumReviewScreenshotHost() }
         else { RootView() }
         #else
         RootView()

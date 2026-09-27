@@ -43,19 +43,6 @@ final class StoreKitPurchaseService: ObservableObject {
         self.appStoreSynchronizer = appStoreSynchronizer
     }
 
-    #if DEBUG
-    func loadReviewScreenshotProducts() {
-        products = [
-            StoreProduct(id: Self.productIDs[0], displayName: "1 Aylık Premium", displayPrice: "₺100,00"),
-            StoreProduct(id: Self.productIDs[1], displayName: "3 Aylık Premium", displayPrice: "₺239,99"),
-            StoreProduct(id: Self.productIDs[2], displayName: "6 Aylık Premium", displayPrice: "₺400,00"),
-            StoreProduct(id: Self.productIDs[3], displayName: "1 Yıllık Premium", displayPrice: "₺750,00"),
-            StoreProduct(id: Self.productIDs[4], displayName: "Sınırsız Premium", displayPrice: "₺2.500,00")
-        ]
-        state = .available(products: products)
-    }
-    #endif
-
     deinit {
         updatesTask?.cancel()
         statusUpdatesTask?.cancel()

@@ -172,16 +172,6 @@ workflows:
             SWIFT_COMPILATION_MODE=singlefile \
             SWIFT_ENABLE_BATCH_MODE=NO 2>&1 | tee "$CM_BUILD_DIR/build/ios-tests.log"
 
-      - name: Export native Premium review screenshots
-        script: |
-          set -euo pipefail
-          mkdir -p "$CM_BUILD_DIR/build/premium-review-attachments"
-          xcrun xcresulttool export attachments \
-            --path "$CM_BUILD_DIR/build/ios-tests.xcresult" \
-            --output-path "$CM_BUILD_DIR/build/premium-review-attachments"
-          cd "$CM_BUILD_DIR/build/premium-review-attachments"
-          zip -q -r "$CM_BUILD_DIR/build/premium-review-attachments.zip" .
-
       - name: Increment App Store build number
         script: |
           set -euo pipefail
@@ -226,7 +216,6 @@ workflows:
           echo "Signed IPA uses the production APNs environment."
 
     artifacts:
-      - build/premium-review-attachments.zip
       - build/**/*
       - build/ios/ipa/*.ipa
       - /tmp/xcodebuild_logs/*.log
