@@ -19,6 +19,28 @@ struct PremiumView: View {
     }
 }
 
+#if DEBUG
+@MainActor
+struct PremiumReviewScreenshotHost: View {
+    @EnvironmentObject private var container: AppContainer
+
+    var body: some View {
+        NavigationStack {
+            EKitapligimScreen {
+                PremiumContentView(
+                    storeKit: container.storeKit,
+                    subscription: nil,
+                    isSignedIn: true,
+                    termsURL: container.config.termsURL,
+                    privacyURL: container.config.privacyPolicyURL
+                )
+            }
+        }
+            .onAppear { container.storeKit.loadReviewScreenshotProducts() }
+    }
+}
+#endif
+
 @MainActor
 private struct PremiumContentView: View {
     @Environment(\.dynamicTypeSize) private var dynamicTypeSize
@@ -58,7 +80,12 @@ private struct PremiumContentView: View {
         .navigationTitle(L10n.premiumTitle)
         .navigationBarTitleDisplayMode(.inline)
         .manageSubscriptionsSheet(isPresented: $isManagingSubscriptions)
-        .task { await storeKit.prepare() }
+        .task {
+            #if DEBUG
+            if ProcessInfo.processInfo.arguments.contains("-premium-review-screenshot") { return }
+            #endif
+            await storeKit.prepare()
+        }
         .preference(key: AILauncherHiddenKey.self, value: true)
     }
 
