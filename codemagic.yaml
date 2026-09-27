@@ -1,42 +1,4 @@
 workflows:
-  premium-review-screenshots:
-    name: Native Premium Review Screenshots
-    max_build_duration: 45
-    instance_type: mac_mini_m2
-    environment:
-      xcode: 26.3
-    scripts:
-      - name: Generate Xcode project
-        script: |
-          if ! command -v xcodegen >/dev/null 2>&1; then brew install xcodegen; fi
-          xcodegen generate
-      - name: Capture native Premium product cards
-        script: |
-          set -euo pipefail
-          mkdir -p "$CM_BUILD_DIR/build"
-          SIMULATOR_ID=$(xcrun simctl list devices available -j | jq -r '
-            [.devices[][] | select(.isAvailable == true and (.name | startswith("iPhone")))]
-            | first | .udid // empty
-          ')
-          if [ -z "$SIMULATOR_ID" ]; then exit 1; fi
-          xcodebuild build-for-testing \
-            -project Ekitapligim.xcodeproj -scheme Ekitapligim \
-            -configuration Development -destination "generic/platform=iOS Simulator" \
-            CODE_SIGNING_ALLOWED=NO SWIFT_COMPILATION_MODE=singlefile SWIFT_ENABLE_BATCH_MODE=NO
-          xcodebuild test-without-building \
-            -project Ekitapligim.xcodeproj -scheme Ekitapligim \
-            -configuration Development -destination "platform=iOS Simulator,id=$SIMULATOR_ID" \
-            -only-testing:EkitapligimUITests/PremiumReviewScreenshotUITests \
-            -resultBundlePath "$CM_BUILD_DIR/build/premium-review.xcresult" \
-            CODE_SIGNING_ALLOWED=NO SWIFT_COMPILATION_MODE=singlefile SWIFT_ENABLE_BATCH_MODE=NO
-          xcrun xcresulttool export attachments \
-            --path "$CM_BUILD_DIR/build/premium-review.xcresult" \
-            --output-path "$CM_BUILD_DIR/build/premium-review-attachments"
-          cd "$CM_BUILD_DIR/build/premium-review-attachments"
-          zip -q -r "$CM_BUILD_DIR/build/premium-review-attachments.zip" .
-    artifacts:
-      - build/premium-review-attachments.zip
-
   ios-production:
     name: Ekitapligim iOS Production
     max_build_duration: 120
