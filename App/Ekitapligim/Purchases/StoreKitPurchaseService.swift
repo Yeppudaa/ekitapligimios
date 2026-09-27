@@ -7,9 +7,13 @@ import EkitapligimCore
 final class StoreKitPurchaseService: ObservableObject {
     static let productIDs = [
         "com.ekitapligim.app.premium.monthly",
-        "com.ekitapligim.app.premium.yearly"
+        "com.ekitapligim.app.premium.three_months",
+        "com.ekitapligim.app.premium.six_months",
+        "com.ekitapligim.app.premium.yearly_once",
+        "com.ekitapligim.app.premium.lifetime"
     ]
     static let legacyProductIDs = [
+        "com.ekitapligim.app.premium.yearly",
         "ekitapligim.premium.monthly",
         "ekitapligim.premium.yearly"
     ]
@@ -95,7 +99,7 @@ final class StoreKitPurchaseService: ObservableObject {
         state = .loading
         do {
             let loaded = try await loadProductsWithRetry()
-            guard Set(loaded.map(\.id)) == Set(Self.productIDs) else {
+            guard !loaded.isEmpty else {
                 storeProducts = []
                 products = []
                 state = .failed(message: L10n.premiumProductMissing)
@@ -276,6 +280,12 @@ final class StoreKitPurchaseService: ObservableObject {
             if previous != entitlement {
                 await entitlementDidChange?()
             }
+        } catch PurchaseVerificationError.inactiveEntitlement,
+                PurchaseVerificationError.expiredEntitlement {
+            if entitlement != .none {
+                entitlement = .none
+                await entitlementDidChange?()
+            }
         } catch {
             // Keep the last server-backed state during transient network failures.
         }
@@ -343,7 +353,7 @@ final class StoreKitPurchaseService: ObservableObject {
         serverExpiration: Date?
     ) async -> PremiumEntitlement {
         var renewalState: PremiumRenewalState = .active
-        var willAutoRenew = true
+        var willAutoRenew = transaction.productType == .autoRenewable
 
         if let status = await transaction.subscriptionStatus {
             switch status.state {

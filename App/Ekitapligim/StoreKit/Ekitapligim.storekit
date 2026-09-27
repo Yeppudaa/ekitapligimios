@@ -1,10 +1,68 @@
 {
   "identifier" : "Ekitapligim",
   "nonRenewingSubscriptions" : [
-
+    {
+      "displayPrice" : "₺239,99",
+      "familyShareable" : false,
+      "internalID" : "com.ekitapligim.app.premium.three_months",
+      "localizations" : [
+        {
+          "description" : "Otomatik yenilenmeyen üç aylık Premium erişim",
+          "displayName" : "3 Aylık Premium",
+          "locale" : "tr_TR"
+        }
+      ],
+      "productID" : "com.ekitapligim.app.premium.three_months",
+      "referenceName" : "Three Month Premium",
+      "type" : "NonRenewingSubscription"
+    },
+    {
+      "displayPrice" : "₺400,00",
+      "familyShareable" : false,
+      "internalID" : "com.ekitapligim.app.premium.six_months",
+      "localizations" : [
+        {
+          "description" : "Otomatik yenilenmeyen altı aylık Premium erişim",
+          "displayName" : "6 Aylık Premium",
+          "locale" : "tr_TR"
+        }
+      ],
+      "productID" : "com.ekitapligim.app.premium.six_months",
+      "referenceName" : "Six Month Premium",
+      "type" : "NonRenewingSubscription"
+    },
+    {
+      "displayPrice" : "₺750,00",
+      "familyShareable" : false,
+      "internalID" : "com.ekitapligim.app.premium.yearly_once",
+      "localizations" : [
+        {
+          "description" : "Otomatik yenilenmeyen yıllık Premium erişim",
+          "displayName" : "1 Yıllık Premium",
+          "locale" : "tr_TR"
+        }
+      ],
+      "productID" : "com.ekitapligim.app.premium.yearly_once",
+      "referenceName" : "One Year Premium",
+      "type" : "NonRenewingSubscription"
+    }
   ],
   "products" : [
-
+    {
+      "displayPrice" : "₺2.500,00",
+      "familyShareable" : false,
+      "internalID" : "com.ekitapligim.app.premium.lifetime",
+      "localizations" : [
+        {
+          "description" : "Tek ödemeyle kalıcı Premium erişim",
+          "displayName" : "Sınırsız Premium",
+          "locale" : "tr_TR"
+        }
+      ],
+      "productID" : "com.ekitapligim.app.premium.lifetime",
+      "referenceName" : "Lifetime Premium",
+      "type" : "NonConsumable"
+    }
   ],
   "settings" : {
     "_failTransactionsEnabled" : false,
@@ -30,7 +88,7 @@
           "codeOffers" : [
 
           ],
-          "displayPrice" : "₺99,99",
+          "displayPrice" : "₺100,00",
           "familyShareable" : false,
           "groupNumber" : 1,
           "internalID" : "com.ekitapligim.app.premium.monthly",
@@ -55,7 +113,7 @@
           "codeOffers" : [
 
           ],
-          "displayPrice" : "₺999,99",
+          "displayPrice" : "₺750,00",
           "familyShareable" : false,
           "groupNumber" : 1,
           "internalID" : "com.ekitapligim.app.premium.yearly",

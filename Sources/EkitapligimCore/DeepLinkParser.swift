@@ -21,6 +21,7 @@ public enum AppRoute: Hashable, Identifiable, Sendable {
     case chat
     case chatRoom(Int)
     case liveActivity
+    case giftWheel
     case members
     case member(Int)
     case messages
@@ -57,6 +58,7 @@ public enum AppRoute: Hashable, Identifiable, Sendable {
         case .chat: "chat"
         case .chatRoom(let id): "chat/\(id)"
         case .liveActivity: "live-activity"
+        case .giftWheel: "gift-wheel"
         case .members: "members"
         case .member(let id): "member/\(id)"
         case .messages: "messages"
@@ -94,6 +96,8 @@ public struct DeepLinkParser: Sendable {
         let id = segments.last.flatMap(Self.trailingID)
 
         switch first {
+        case "hediye-carki":
+            return segments.count == 1 ? .giftWheel : nil
         case "asistan":
             return segments.count == 1 ? .aiAssistant(bookID: nil) : nil
         case "ai-collections":
@@ -143,6 +147,8 @@ public struct DeepLinkParser: Sendable {
         if normalized == "live-activity" { return .liveActivity }
 
         switch first {
+        case "gift-wheel", "hediye-carki":
+            return segments.count == 1 ? .giftWheel : nil
         case "ai-assistant":
             if segments.count == 1 { return .aiAssistant(bookID: nil) }
             return id.flatMap { $0 > 0 ? .aiAssistant(bookID: $0) : nil }

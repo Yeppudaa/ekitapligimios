@@ -1,5 +1,7 @@
 # Universal Links Setup
 
+Gift wheel (2026-09-27): repository AASA now includes exact `/hediye-carki` and `/hediye-carki/` paths, mapped to native `gift-wheel`. Existing associated-domain entitlements suffice. Deployment and on-device Universal Link verification remain pending; no server file was changed by this task.
+
 The app entitlement includes:
 
 ```text

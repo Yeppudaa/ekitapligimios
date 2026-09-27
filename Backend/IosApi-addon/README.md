@@ -83,8 +83,8 @@ Set these environment/config values on the server (never commit secrets):
 
 - `EKITAPLIGIM_IOS_BUNDLE_ID` — iOS app bundle identifier
 - `EKITAPLIGIM_IOS_PRODUCT_IDS` — comma-separated App Store product allowlist. Set it to
-  `com.ekitapligim.app.premium.monthly,com.ekitapligim.app.premium.yearly,ekitapligim.premium.monthly,ekitapligim.premium.yearly`.
-  The bundle-prefixed IDs are used for new purchases; the original IDs remain accepted only for restoration.
+  `com.ekitapligim.app.premium.monthly,com.ekitapligim.app.premium.three_months,com.ekitapligim.app.premium.six_months,com.ekitapligim.app.premium.yearly_once,com.ekitapligim.app.premium.lifetime,com.ekitapligim.app.premium.yearly,ekitapligim.premium.monthly,ekitapligim.premium.yearly`.
+  The monthly, three-month, six-month, yearly-once, and lifetime IDs are used for new purchases; the previous yearly and unprefixed IDs remain accepted for restoration.
   IosApi 1.0.9+ always retains these source-controlled shipped IDs and merges any configured IDs into the list,
   so an outdated server value cannot reject an active App Store product.
 - `EKITAPLIGIM_APPSTORE_ENVIRONMENT` — use `Production` in production, `Sandbox` in staging, and `Xcode` only for local StoreKit testing

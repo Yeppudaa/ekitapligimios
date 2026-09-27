@@ -9,6 +9,7 @@ final class AppContainer: ObservableObject {
         didSet {
             activateReaderAccount()
             activateAssistantAccount()
+            activateGiftWheelAccount()
         }
     }
     @Published var selectedTab: AppTab = .home {
@@ -119,6 +120,22 @@ final class AppContainer: ObservableObject {
     let tokenStore: TokenStore
     let apiClient: APIClient
     let assistant: AIAssistantRepository
+    lazy var giftWheelModel: GiftWheelModel = {
+        let directory = (FileManager.default.urls(for: .applicationSupportDirectory, in: .userDomainMask).first
+            ?? URL(fileURLWithPath: NSHomeDirectory()).appendingPathComponent("Library/Application Support"))
+            .appendingPathComponent("GiftWheel", isDirectory: true)
+        let client = apiClient
+        let service = GiftWheelRepository(webBaseURL: config.webBaseURL, tokens: tokenStore, refresh: {
+            // Reuse the existing coordinated iOS session refresh; the wheel transport remains separate.
+            try await client.refreshAssistantIdentity()
+        })
+        return GiftWheelModel(service: service, pendingStore: FileGiftWheelPendingStore(directory: directory))
+    }()
+
+    private func activateGiftWheelAccount() {
+        if case .signedIn(let session) = authState { giftWheelModel.controller.activate(account: session.username) }
+        else { giftWheelModel.controller.activate(account: nil) }
+    }
     lazy var assistantModel = AIAssistantModel(repository: assistant)
 
     func activateAssistantAccount() {
@@ -530,6 +547,7 @@ final class AppContainer: ObservableObject {
     func requestAccountDeletion(currentPassword: String?, reason: String?) async throws {
         try await account.requestAccountDeletion(currentPassword: currentPassword, reason: reason)
         try? readerProgressSync.eraseCurrentAccount()
+        try? giftWheelModel.controller.eraseCurrentAccount()
         await clearLocalSession()
         presentedRoute = nil
         selectedTab = .profile

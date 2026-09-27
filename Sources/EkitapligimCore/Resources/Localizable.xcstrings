@@ -3531,6 +3531,18 @@
     "premium.period.monthly": {
       "localizations": { "tr": { "stringUnit": { "state": "translated", "value": "Aylık abonelik" } } }
     },
+    "premium.period.threeMonths": {
+      "localizations": { "tr": { "stringUnit": { "state": "translated", "value": "3 ay geçerli · otomatik yenilenmez" } } }
+    },
+    "premium.period.sixMonths": {
+      "localizations": { "tr": { "stringUnit": { "state": "translated", "value": "6 ay geçerli · otomatik yenilenmez" } } }
+    },
+    "premium.period.lifetime": {
+      "localizations": { "tr": { "stringUnit": { "state": "translated", "value": "Tek ödeme · süresiz erişim" } } }
+    },
+    "premium.period.yearlyOnce": {
+      "localizations": { "tr": { "stringUnit": { "state": "translated", "value": "1 yıl geçerli · otomatik yenilenmez" } } }
+    },
     "premium.period.yearly": {
       "localizations": { "tr": { "stringUnit": { "state": "translated", "value": "Her yıl otomatik yenilenir" } } }
     },
@@ -3673,7 +3685,7 @@
         "tr": {
           "stringUnit": {
             "state": "translated",
-            "value": "Ödeme Apple ID hesabınızdan alınır. Abonelik, geçerli dönemin bitiminden en az 24 saat önce iptal edilmezse otomatik yenilenir. Fiyat ve dönem Apple satın alma ekranında gösterilir; aboneliği App Store hesap ayarlarından yönetebilir veya iptal edebilirsiniz."
+            "value": "Ödeme Apple ID hesabınızdan alınır. Aylık abonelik, dönem bitiminden en az 24 saat önce iptal edilmezse otomatik yenilenir. 3 aylık, 6 aylık ve yıllık paketler otomatik yenilenmez; Sınırsız Premium tek ödemedir. Fiyat ve dönem Apple satın alma ekranında gösterilir."
           }
         }
       }

@@ -7,6 +7,8 @@
           "QA67383767.com.ekitapligim.app"
         ],
         "components": [
+          { "/": "/hediye-carki", "comment": "Native gift wheel" },
+          { "/": "/hediye-carki/", "comment": "Native gift wheel" },
           { "/": "/books/*", "comment": "Book details" },
           { "/": "/konular/*", "comment": "Turkish book and thread URLs" },
           { "/": "/threads/*", "comment": "Forum threads" },

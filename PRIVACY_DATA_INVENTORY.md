@@ -1,5 +1,11 @@
 # Privacy Data Inventory
 
+## Gift wheel addition (2026-09-27)
+
+PremiumWheel receives the existing Keychain bearer session, random per-spin idempotency key and configuration revision. Account-associated quota, prize history, gift seconds and publicly listed winner names are read from this same first-party service. These are covered by existing UserID and ProductInteraction/AppFunctionality declarations; no tracking, third-party SDK or additional required-reason API category is introduced.
+
+The separate ephemeral URLSession disables cookies, credential storage and disk caching. Responses are held in memory and discarded on sign-out/account change. Only pending request key/revision is saved atomically in Application Support, scoped by encoded account name (encoding is not encryption); it contains no token or purchase entitlement. It survives interruption/sign-out for safe recovery, is removed after reveal or explicit rejection, and is cleared on account deletion. Server retention/deletion of gift history requires a live release check. No new privacy manifest or StoreKit entries are necessary.
+
 | Data | Purpose | Linked To User | Tracking | Retention |
 |---|---|---:|---:|---|
 | Username/email | Account login/profile | Yes | No | Until account deletion/legal retention |

@@ -1,5 +1,9 @@
 # Android To iOS Feature Parity
 
+## Gift wheel addition (2026-09-27)
+
+Native code follows Android `GiftWheelScreen.kt`: violet/gold 12-slice Canvas disc with fixed rim/hub/pointer, reader-club hero, spin/recovery/login states, gift wallet, prize legend, winners, instructions and history. Same separate PremiumWheel API, server-awarded result and 10-second motion curve. Side-menu and web/native route support added; iPad stage adapts to two columns. API/state/motion tests executed; iPhone/iPad screenshot parity remains unverified on this Windows host. See `GIFT_WHEEL_VALIDATION.md`. This addition does not inherit earlier visual sign-off and does not change purchases.
+
 ## Executive gap report (2026-08-24)
 
 Automated gate (2026-08-26): `.\Scripts\parity-audit.ps1` → **PASS=303, WARN=1, FAIL=0** (133 Swift tests, 62/62 routes, prod smoke + auth mutations). IosApi **v1.0.5** live. Only remaining WARN: Mac visual screenshots.

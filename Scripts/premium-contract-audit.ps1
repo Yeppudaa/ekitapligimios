@@ -9,12 +9,13 @@ function Require-Text([string]$Path, [string]$Text) {
     }
 }
 
-$expectedProducts = @("com.ekitapligim.app.premium.monthly", "com.ekitapligim.app.premium.yearly")
+$expectedProducts = @("com.ekitapligim.app.premium.monthly", "com.ekitapligim.app.premium.three_months", "com.ekitapligim.app.premium.six_months", "com.ekitapligim.app.premium.yearly_once", "com.ekitapligim.app.premium.lifetime")
 $legacyProducts = @("ekitapligim.premium.monthly", "ekitapligim.premium.yearly")
 $configuration = Get-Content -Raw -LiteralPath "App/Ekitapligim/StoreKit/Ekitapligim.storekit" | ConvertFrom-Json
 $subscriptions = @($configuration.subscriptionGroups.subscriptions)
-$configuredProducts = @($subscriptions.productID | Sort-Object)
-if (Compare-Object ($expectedProducts | Sort-Object) $configuredProducts) {
+$configuredProducts = @(($subscriptions + $configuration.nonRenewingSubscriptions + $configuration.products).productID | Sort-Object)
+$expectedConfiguredProducts = @($expectedProducts + "com.ekitapligim.app.premium.yearly" | Sort-Object)
+if (Compare-Object $expectedConfiguredProducts $configuredProducts) {
     throw "StoreKit product IDs do not match the client/backend Premium contract."
 }
 if (@($subscriptions.groupNumber | Sort-Object -Unique).Count -ne 1) {
@@ -30,6 +31,7 @@ foreach ($product in $legacyProducts) {
     Require-Text "App/Ekitapligim/Purchases/StoreKitPurchaseService.swift" $product
     Require-Text "Backend/IosApi-addon/Api/Controller/AppStoreVerify.php" $product
 }
+Require-Text "App/Ekitapligim/Purchases/StoreKitPurchaseService.swift" "com.ekitapligim.app.premium.yearly"
 
 foreach ($control in @('$shippedProducts', 'array_unique', 'array_merge')) {
     Require-Text "Backend/IosApi-addon/Api/Controller/AppStoreVerify.php" $control
@@ -76,7 +78,7 @@ foreach ($control in @("signedRenewalInfo", "AppStoreEntitlementPolicy::isActive
     Require-Text "Backend/IosApi-addon/Api/Controller/AppStoreNotifications.php" $control
 }
 
-foreach ($control in @("gracePeriodExpiresDate", "revocationDate", "missing expiration", "return false")) {
+foreach ($control in @("gracePeriodExpiresDate", "revocationDate", "isLifetimeProduct", "nonRenewingMonths", "purchaseDate", "return false")) {
     Require-Text "Backend/IosApi-addon/Service/AppStoreEntitlementPolicy.php" $control
 }
 

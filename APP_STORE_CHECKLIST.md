@@ -1,5 +1,15 @@
 # App Store Checklist
 
+## Gift wheel release gate (2026-09-27)
+
+- [x] Separate PremiumWheel transport and native screen; no MobileApi/backend/purchase-source changes.
+- [x] Core request/decoding/error/idempotency/account/motion tests executed; static secrets and accessibility checks passed.
+- [ ] iOS clean/release builds and UI tests on macOS; native iPhone/iPad screenshot comparison, ten-second recording, VoiceOver/large-text/Reduce Motion checks.
+- [ ] Authenticated public HTTPS staging spin/recovery/quota/permissions and server account-deletion retention verified with reviewer account.
+- [ ] Gift-wheel AASA paths deployed and verified on a device.
+
+See `GIFT_WHEEL_VALIDATION.md`. Windows core results do not establish App Store readiness.
+
 ## Release Blockers
 - Public HTTPS staging API is required.
 - Standalone `Ekitapligim/IosApi` 1.0.13 must pass staging auth, objectionable-content, report, block, instant-hide and 20/24-hour SLA tests before the identical SHA-256 ZIP is installed in production. `MobileApi` 1.0.136 and Android routes must remain unchanged.
@@ -19,9 +29,9 @@
 - UGC: pre-auth EULA/community acceptance, pre-persistence managed filtering, XenForo report queue, immediate local hiding, server-side ignore filtering, support contact and blocked-user management.
 - `ekIosUgcModeratorEmails` and `ekIosUgcBlockedTerms` must be non-empty and `php cmd.php ekitapligim-ios:release-audit` must pass on staging and production.
 - Payments: StoreKit 2 for digital subscriptions/access. Authenticated `Transaction.updates` observation handles pending/out-of-app completions; unverified or backend-unsynced transactions remain unfinished for redelivery.
-- App Store Connect must contain subscription group `ekitapligim.premium` with monthly
-  `com.ekitapligim.app.premium.monthly` and yearly `com.ekitapligim.app.premium.yearly` products at the same service level.
+- App Store Connect, checked 2026-09-27: approved/on-sale auto-renewing monthly is currently ₺99.99, with ₺100 scheduled for 2026-09-28 and existing subscribers' price preserved. Approved/on-sale auto-renewing yearly is currently ₺999.99, with a Türkiye-only decrease to ₺750 scheduled for 2026-09-28, including existing subscribers. This legacy yearly product is still in the distributed app and renews automatically. The new non-renewing `three_months` (₺239.99, Apple ID 6816677090), `six_months` (₺400, 6816677130), `yearly_once` (₺750, 6816677700), and non-consumable `lifetime` (₺2,500, 6816678261) remain Prepare for Submission and are not live. All new IDs use the `com.ekitapligim.app.premium.` prefix. Apple has no exact ₺240 price point; the owner approved ₺239.99.
 - The original unprefixed product records remained unavailable to StoreKit in TestFlight Sandbox through build 14.
+- 2026-09-27 premium update: the four new products have Turkish localizations, availability and pricing configured in App Store Connect; status is Prepare for Submission. Their product-level review screenshots are still required. The 1.0.6 version draft has ten new iPhone App Store screenshots, which do not satisfy the product-level screenshot fields. Apple requires the first non-renewing/non-consumable products to accompany a new app version. The changed backend verification policy must be deployed before purchases are enabled. Windows Swift package tests (273), release package build, static workspace checks, and 17 standalone PHP policy scenarios passed; no iOS build, TestFlight upload or review submission has occurred.
   New bundle-prefixed records are used for new purchases; the client and backend retain the original IDs only for
   transaction restoration and entitlement verification.
 - App Store Server Notifications V2 must target `/ios-api/v1/billing/app-store/notifications` for both
@@ -42,7 +52,7 @@
 - API smoke test script exists at `Scripts/api-smoke-test.ps1`; it must pass against public HTTPS staging before App Review.
 - Public release audit at `Scripts/public-release-audit.ps1` must pass with the real Apple Team ID; it verifies legal/support pages, production API JSON, and the deployed AASA app identifier.
 - UGC safety smoke test script exists at `Scripts/ugc-safety-smoke-test.ps1`; it must pass against public HTTPS staging before App Review.
-- Build 17 must not be resubmitted. All build settings are synchronized to build 18 for the Guideline 1.2 binary.
+- Build 17 must not be resubmitted. The next version is 1.0.6, build 37, above the distributed 1.0.5 build 36. This build still requires a signed macOS archive and validation before TestFlight upload.
 - Capture physical iPhone and iPad recordings showing pre-login acceptance, report, block-and-report and immediate content removal.
 - App Store preflight script exists at `Scripts/appstore-preflight.ps1`; it must pass without placeholders before submission.
 - Opaque AppIcon files and source/hash evidence exist. Confirm brand approval and inspect the rendered icon on real devices before submission.

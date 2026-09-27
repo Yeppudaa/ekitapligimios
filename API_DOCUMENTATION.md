@@ -1,5 +1,17 @@
 # iOS API Documentation
 
+## Gift wheel: independent PremiumWheel API (2026-09-27)
+
+`GiftWheelRepository` uses `https://ekitapligim.com/hediye-carki-api/`, separately from MobileApi and IosApi routing. The existing native Keychain `ms_at_` bearer session is required for all three endpoints. Cookies, XF API keys, redirects and disk caching are disabled. One 401 refresh reuses the existing iOS session coordinator; it retains the exact spin request body/key.
+
+| Method | Path | Contract |
+|---|---|---|
+| GET | status | `api_version=1`, ready/availability/revision, 12 indexed segments, quota (`limit`, `remaining`, `wait_seconds`), wallet (`seconds`, `running`), history |
+| GET | winners | `api_version=1`, winners with username, days and Unix `created_at` |
+| POST | spin | Form `request_key` (32–64 lowercase hex), positive `revision`; returns result (`prize_index`, days, promoted, replayed), quota and wallet |
+
+Errors use `{error:{code,message}}`. Only explicit 400/409 spin rejections clear the pending key; uncertain responses retain it for recovery. A replay from an older ordering maps by server-awarded days. Invalid versions, geometry or mismatched non-replayed results fail closed. The server remains the sole authority for awards and XenForo eligibility. See `GIFT_WHEEL_VALIDATION.md` for evidence and pending authenticated/device checks. No backend source changed.
+
 The native iOS app consumes the standalone XenForo add-on `Ekitapligim/IosApi` at:
 
 Android continues to use `https://{host}/mobile-api/v1/` through `Ekitapligim/MobileApi`. The route paths below are identical; only the base URL prefix differs for iOS.
@@ -279,7 +291,7 @@ Android uses Google Play verification; iOS uses the following StoreKit 2 endpoin
 Auth: login required.
 Body: `signed_transaction`, `product_id`, `original_transaction_id`, and optional
 `signed_renewal_info`. Renewal JWS is required to preserve access during an Apple billing grace period.
-Response: subscription entitlement, transaction expiration, and optional grace-period expiration.
+Response: subscription entitlement, effective expiration, and optional grace-period expiration. The three-month, six-month, and yearly-once products expire 3, 6, or 12 calendar months after the signed purchase date. The non-consumable lifetime product has no expiration. Monthly and legacy yearly products retain Apple's signed subscription expiration.
 Security: both JWS chains are anchored to a configured Apple root, bundle/product/environment are
 allowlisted, and each `originalTransactionId` is atomically bound to its first Ekitapligim account.
 

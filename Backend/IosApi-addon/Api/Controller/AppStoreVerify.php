@@ -38,7 +38,6 @@ class AppStoreVerify extends \Ekitapligim\MobileApi\Api\Controller\AbstractMobil
 		$transactionId = (string) ($transaction['transactionId'] ?? '');
 		$payloadOriginalTransactionId = (string) ($transaction['originalTransactionId'] ?? '');
 		$environment = (string) ($transaction['environment'] ?? '');
-		$expiresDate = (int) ($transaction['expiresDate'] ?? 0);
 		$revocationDate = (int) ($transaction['revocationDate'] ?? 0);
 		$renewalInfo = [];
 		if ($signedRenewalInfo !== '')
@@ -119,8 +118,8 @@ class AppStoreVerify extends \Ekitapligim\MobileApi\Api\Controller\AbstractMobil
 			'original_transaction_id' => $payloadOriginalTransactionId,
 			'originalTransactionId' => $payloadOriginalTransactionId,
 			'environment' => $environment,
-			'expiration_time' => $expiresDate > 0 ? (int) floor($expiresDate / 1000) : null,
-			'expirationTime' => $expiresDate > 0 ? (int) floor($expiresDate / 1000) : null,
+			'expiration_time' => AppStoreEntitlementPolicy::effectiveExpirationSeconds($transaction, $renewalInfo) ?: null,
+			'expirationTime' => AppStoreEntitlementPolicy::effectiveExpirationSeconds($transaction, $renewalInfo) ?: null,
 			'grace_period_expiration_time' => $gracePeriodExpiresDate > 0 ? (int) floor($gracePeriodExpiresDate / 1000) : null,
 		]);
 	}
@@ -274,7 +273,11 @@ class AppStoreVerify extends \Ekitapligim\MobileApi\Api\Controller\AbstractMobil
 	{
 		$shippedProducts = [
 			'com.ekitapligim.app.premium.monthly',
+			'com.ekitapligim.app.premium.three_months',
+			'com.ekitapligim.app.premium.six_months',
 			'com.ekitapligim.app.premium.yearly',
+			'com.ekitapligim.app.premium.yearly_once',
+			'com.ekitapligim.app.premium.lifetime',
 			'ekitapligim.premium.monthly',
 			'ekitapligim.premium.yearly'
 		];

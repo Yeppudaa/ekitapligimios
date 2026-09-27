@@ -162,6 +162,7 @@ private struct AppSideMenu: View {
             AppMenuItem(route: .bookAgenda, title: L10n.menuBookAgenda, subtitle: L10n.menuBookAgendaSubtitle, icon: "text.book.closed.fill"),
             AppMenuItem(route: .chat, title: L10n.menuChat, subtitle: L10n.menuChatSubtitle, icon: "bubble.left.and.text.bubble.right.fill"),
             AppMenuItem(route: .liveActivity, title: L10n.menuLiveActivity, subtitle: L10n.menuLiveActivitySubtitle, icon: "bolt.fill"),
+            AppMenuItem(route: .giftWheel, title: WheelL10n.text("title"), subtitle: WheelL10n.text("menuSubtitle"), icon: "gift.fill"),
             AppMenuItem(route: .requests, title: L10n.menuRequests, subtitle: L10n.menuRequestsSubtitle, icon: "heart.fill"),
             AppMenuItem(route: .authors, title: L10n.menuAuthors, subtitle: L10n.menuAuthorsSubtitle, icon: "person.2.fill"),
             AppMenuItem(route: .publishers, title: L10n.menuPublishers, subtitle: L10n.menuPublishersSubtitle, icon: "building.2.fill"),
@@ -365,6 +366,8 @@ private struct AppRouteSheet: View {
 
     @ViewBuilder private var routeDestination: some View {
         switch route {
+        case .giftWheel:
+            GiftWheelDestination().presentationDetents([.large])
         case .aiAssistant(let bookID):
             AIAssistantDestination(bookID: bookID)
         case .aiCollections(let slug):

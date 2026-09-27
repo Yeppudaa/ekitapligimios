@@ -16,6 +16,9 @@ workflows:
         - pattern: codex/ai-assistant-validation-20260906
           include: true
           source: true
+        - pattern: codex/premium-giftwheel-testflight
+          include: true
+          source: true
       cancel_previous_builds: true
 
     environment:
@@ -146,6 +149,28 @@ workflows:
             CODE_SIGNING_ALLOWED=NO \
             SWIFT_COMPILATION_MODE=singlefile \
             SWIFT_ENABLE_BATCH_MODE=NO 2>&1 | tee "$CM_BUILD_DIR/build/compile-tests.log"
+
+      - name: Run iOS unit and UI tests
+        script: |
+          set -euo pipefail
+          SIMULATOR_ID=$(xcrun simctl list devices available -j | jq -r '
+            [.devices[][] | select(.isAvailable == true and (.name | startswith("iPhone")))]
+            | first | .udid // empty
+          ')
+          if [ -z "$SIMULATOR_ID" ]; then
+            echo "No available iPhone simulator for unit and UI tests."
+            exit 1
+          fi
+          echo "Testing on iPhone simulator $SIMULATOR_ID"
+          xcodebuild test-without-building \
+            -project "$XCODE_PROJECT" \
+            -scheme "$XCODE_SCHEME" \
+            -configuration Development \
+            -destination "platform=iOS Simulator,id=$SIMULATOR_ID" \
+            -resultBundlePath "$CM_BUILD_DIR/build/ios-tests.xcresult" \
+            CODE_SIGNING_ALLOWED=NO \
+            SWIFT_COMPILATION_MODE=singlefile \
+            SWIFT_ENABLE_BATCH_MODE=NO 2>&1 | tee "$CM_BUILD_DIR/build/ios-tests.log"
 
       - name: Increment App Store build number
         script: |

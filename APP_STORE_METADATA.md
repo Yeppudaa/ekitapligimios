@@ -1,5 +1,11 @@
 # App Store Metadata Draft
 
+## Gift wheel draft addition (pending device validation)
+
+Turkish copy: “Hediye Çarkı'nı ücretsiz çevir, 30 güne kadar Premium süre sürprizini keşfet. Kazandığın hediye sürelerini ve son çevirişlerini uygulamada takip et.”
+
+Reviewer steps: open **Hediye Çarkı** in the side menu. Guests can inspect the wheel and sign in; the server determines member eligibility and available spins. A successful request runs a ten-second animation before showing the server result. Test cooldown, gift wallet, history and recovering an interrupted response. This feature adds no purchase flow or external digital-purchase link. Publish this copy only after the gift-wheel release gate in `GIFT_WHEEL_VALIDATION.md` passes.
+
 ## App Information
 - App name: Ekitaplığım
 - Subtitle: PDF ve EPUB Kitap Okuyucu
@@ -81,7 +87,14 @@ Subscription group: `ekitapligim.premium`
 
 Product IDs:
 - `com.ekitapligim.app.premium.monthly`
-- `com.ekitapligim.app.premium.yearly`
+- `com.ekitapligim.app.premium.three_months`
+- `com.ekitapligim.app.premium.six_months`
+- `com.ekitapligim.app.premium.yearly_once`
+- `com.ekitapligim.app.premium.lifetime`
+
+Turkey prices: ₺100 monthly, ₺239.99 three months, ₺400 six months, ₺750 one year, and ₺2,500 lifetime. Apple does not offer the website's exact ₺240 price point; ₺239.99 was approved by the owner. The monthly product renews; the three-month, six-month, and yearly products do not. Lifetime is a non-consumable purchase. The previous auto-renewing yearly product remains recognized for restoration.
+
+App Store Connect status on 2026-09-27: the approved monthly and legacy auto-renewing yearly products are on sale at ₺99.99 and ₺999.99, respectively. Their Türkiye prices are scheduled to become ₺100 and ₺750 on 2026-09-28. The three new fixed-term products and lifetime product are still Prepare for Submission; only a new approved app version can make those available to customers.
 
 The app displays localized names and prices returned by StoreKit. It provides purchase, restore, Manage Subscriptions, Terms, Privacy Policy, and auto-renewal disclosure. A verified Apple transaction JWS is sent to the backend; premium is not granted for unverified or server-rejected transactions.
 
