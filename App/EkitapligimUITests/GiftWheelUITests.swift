@@ -6,7 +6,7 @@ final class GiftWheelUITests: XCTestCase {
         app.launchArguments += ["-gift-wheel-ui-fixture", "-AppleLanguages", "(tr)", "-AppleLocale", "tr_TR"]
         app.launchEnvironment["WHEEL_FIXTURE_MODE"] = mode
         app.launch()
-        XCTAssertTrue(app.otherElements["gift-wheel-screen"].waitForExistence(timeout: 5))
+        XCTAssertTrue(app.buttons["gift-wheel-spin"].waitForExistence(timeout: 5))
         return app
     }
     private func scrollToAction(_ app: XCUIApplication) -> XCUIElement {
@@ -35,7 +35,7 @@ final class GiftWheelUITests: XCTestCase {
         XCTAssertTrue(button.isEnabled)
         let start = ProcessInfo.processInfo.systemUptime
         button.tap()
-        let result = app.otherElements["gift-wheel-result"]
+        let result = app.descendants(matching: .any)["gift-wheel-result"].firstMatch
         let tooEarly = expectation(for: NSPredicate(format: "exists == true"), evaluatedWith: result)
         tooEarly.isInverted = true
         wait(for: [tooEarly], timeout: 9)

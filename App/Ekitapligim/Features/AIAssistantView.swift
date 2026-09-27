@@ -41,6 +41,7 @@ struct AIAssistantDestination: View {
 struct AIAssistantView: View {
     @EnvironmentObject private var container: AppContainer
     @Environment(\.scenePhase) private var scenePhase
+    @Environment(\.dynamicTypeSize) private var dynamicTypeSize
     @ObservedObject var model: AIAssistantModel
     var initialBook: BookDTO?
     var initialBookID: Int?
@@ -211,7 +212,7 @@ struct AIAssistantView: View {
                 Text(AIL10n.text("welcomeMessage"))
                     .font(.body)
                     .multilineTextAlignment(.center)
-                    .foregroundStyle(AIStyle.muted)
+                    .foregroundStyle(dynamicTypeSize.isAccessibilitySize ? AIStyle.navy : AIStyle.muted)
                     .fixedSize(horizontal: false, vertical: true)
             }
             .frame(maxWidth: .infinity)
