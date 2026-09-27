@@ -211,7 +211,7 @@ struct AIAssistantView: View {
                 Text(AIL10n.text("welcomeMessage"))
                     .font(.body)
                     .multilineTextAlignment(.center)
-                    .foregroundStyle(AIStyle.navy)
+                    .foregroundStyle(AIStyle.muted)
                     .fixedSize(horizontal: false, vertical: true)
             }
             .frame(maxWidth: .infinity)

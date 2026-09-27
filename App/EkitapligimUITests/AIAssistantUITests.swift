@@ -85,7 +85,7 @@ final class AIAssistantUITests: XCTestCase {
         let app = launch("welcome", largeText: true)
         capture(app, name: "ai-large-text")
         // The automated contrast sampler flags the welcome copy even though its
-        // #0F3D64 foreground on white has an 11.22:1 contrast ratio.
+        // original #687784 foreground on white has a 4.60:1 contrast ratio.
         try app.performAccessibilityAudit(for: [.elementDetection, .hitRegion, .sufficientElementDescription])
     }
     func testLongAnswerKeepsComposerVisible() throws {
