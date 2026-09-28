@@ -80,6 +80,11 @@ private actor AITestSessionStore: SessionTokenManaging {
     func loadSession() async throws -> Session? { session }
     func save(session: Session) async throws { self.session = session }
     func clear() async throws { session = nil }
+    func replaceSession(_ session: Session?, ifMatching expected: Session) async throws -> Bool {
+        guard self.session == expected else { return false }
+        self.session = session
+        return true
+    }
 }
 private final class AIRequestRecorder: @unchecked Sendable {
     private let lock = NSLock()

@@ -11,6 +11,8 @@ public protocol SessionTokenManaging: AccessTokenProviding {
     func loadSession() async throws -> Session?
     func save(session: Session) async throws
     func clear() async throws
+    /// Compare and replace atomically inside the store, including nil for sign-out.
+    func replaceSession(_ session: Session?, ifMatching expected: Session) async throws -> Bool
 }
 
 public final class SessionLifecycleHandlers: @unchecked Sendable {
@@ -73,9 +75,16 @@ public final class APIClient: Sendable {
     private func request<T: Decodable>(
         _ endpoint: APIEndpoint,
         as type: T.Type,
-        allowsTokenRefresh: Bool
+        allowsTokenRefresh: Bool,
+        retryingSession: Session? = nil
     ) async throws -> T {
-        let request = try await authenticatedRequest(endpoint)
+        var request = try await authenticatedRequest(endpoint)
+        if let retryingSession {
+            guard try await (tokenProvider as? any SessionTokenManaging)?.loadSession() == retryingSession else {
+                throw CancellationError()
+            }
+            request.setValue("Bearer \(retryingSession.accessToken)", forHTTPHeaderField: "Authorization")
+        }
         let transport = endpoint.service == .assistant ? assistantSession : session
         let (data, response) = try await transport.data(for: request)
         guard let http = response as? HTTPURLResponse else { throw APIClientError.invalidResponse }
@@ -84,19 +93,28 @@ public final class APIClient: Sendable {
            allowsTokenRefresh,
            (endpoint.service != .assistant || endpoint.method == .get),
            let tokenManager = tokenProvider as? any SessionTokenManaging {
-            do {
-                _ = try await refreshCoordinator.refresh { [self] in
-                    try await refreshSession(using: tokenManager)
-                }
-                return try await self.request(endpoint, as: type, allowsTokenRefresh: false)
-            } catch {
-                if Self.shouldInvalidateSession(after: error) {
-                    try? await tokenManager.clear()
-                    await sessionLifecycle.notifyInvalidated()
-                    throw APIClientError.authenticationRequired
-                }
-                throw error
+            guard let expected = try await tokenManager.loadSession() else {
+                throw CancellationError()
             }
+            if request.value(forHTTPHeaderField: "Authorization") != "Bearer \(expected.accessToken)" {
+                let failedToken = String((request.value(forHTTPHeaderField: "Authorization") ?? "").dropFirst(7))
+                guard let rotated = try await refreshCoordinator.existingResult(key: failedToken), rotated == expected else {
+                    throw CancellationError()
+                }
+                return try await self.request(endpoint, as: type, allowsTokenRefresh: false, retryingSession: rotated)
+            }
+            let refreshed = try await refreshCoordinator.refresh(key: expected.accessToken) { [self] in
+                try await refreshSession(using: tokenManager, expected: expected)
+            }
+            // A refreshed session can still lack permission for this resource. A 403
+            // from the retried request must not invalidate the successful refresh.
+            return try await self.request(endpoint, as: type, allowsTokenRefresh: false, retryingSession: refreshed)
+        }
+        if http.statusCode == 401, let retryingSession,
+           let manager = tokenProvider as? any SessionTokenManaging {
+            guard try await manager.replaceSession(nil, ifMatching: retryingSession) else { throw CancellationError() }
+            await sessionLifecycle.notifyInvalidated()
+            throw APIClientError.authenticationRequired
         }
         guard (200..<300).contains(http.statusCode) else {
             throw APIClientError.httpStatus(http.statusCode, try? decoder.decode(APIErrorEnvelope.self, from: data))
@@ -117,35 +135,50 @@ public final class APIClient: Sendable {
         }
     }
 
-    private func refreshSession(using tokenManager: any SessionTokenManaging) async throws -> Session {
-        guard let storedSession = try await tokenManager.loadSession(),
-              let refreshToken = storedSession.refreshToken,
-              !refreshToken.isEmpty else {
-            throw APIClientError.authenticationRequired
-        }
-
-        let endpoint = APIEndpoint.refreshSession(refreshToken: refreshToken)
-        let request = try makeURLRequest(endpoint)
-        let (data, response) = try await session.data(for: request)
-        guard let http = response as? HTTPURLResponse else { throw APIClientError.invalidResponse }
-        guard (200..<300).contains(http.statusCode) else {
-            throw APIClientError.httpStatus(http.statusCode, try? decoder.decode(APIErrorEnvelope.self, from: data))
-        }
-
-        let authResponse: AuthResponseDTO
+    private func refreshSession(using tokenManager: any SessionTokenManaging, expected: Session) async throws -> Session {
+        guard try await tokenManager.loadSession() == expected else { throw CancellationError() }
         do {
-            authResponse = try decoder.decode(AuthResponseDTO.self, from: data)
+            guard let refreshToken = expected.refreshToken,
+                  !refreshToken.isEmpty else {
+                throw APIClientError.authenticationRequired
+            }
+
+            let endpoint = APIEndpoint.refreshSession(refreshToken: refreshToken)
+            let request = try makeURLRequest(endpoint)
+            let (data, response) = try await session.data(for: request)
+            guard let http = response as? HTTPURLResponse else { throw APIClientError.invalidResponse }
+            guard (200..<300).contains(http.statusCode) else {
+                throw APIClientError.httpStatus(http.statusCode, try? decoder.decode(APIErrorEnvelope.self, from: data))
+            }
+
+            let authResponse: AuthResponseDTO
+            do {
+                authResponse = try decoder.decode(AuthResponseDTO.self, from: data)
+            } catch {
+                throw APIClientError.decodingFailed(error.localizedDescription)
+            }
+            let refreshedSession = Session(
+                accessToken: authResponse.accessToken,
+                refreshToken: authResponse.refreshToken,
+                username: authResponse.user.username
+            )
+            // A response from an earlier login must never recreate a signed-out session
+            // or overwrite credentials belonging to the next account.
+            guard try await tokenManager.replaceSession(refreshedSession, ifMatching: expected) else {
+                throw CancellationError()
+            }
+            await sessionLifecycle.notifyRefreshed(refreshedSession)
+            return refreshedSession
         } catch {
-            throw APIClientError.decodingFailed(error.localizedDescription)
+            if Self.shouldInvalidateSession(after: error) {
+                if try await tokenManager.replaceSession(nil, ifMatching: expected) {
+                    await sessionLifecycle.notifyInvalidated()
+                    throw APIClientError.authenticationRequired
+                }
+                throw CancellationError()
+            }
+            throw error
         }
-        let refreshedSession = Session(
-            accessToken: authResponse.accessToken,
-            refreshToken: authResponse.refreshToken,
-            username: authResponse.user.username
-        )
-        try await tokenManager.save(session: refreshedSession)
-        await sessionLifecycle.notifyRefreshed(refreshedSession)
-        return refreshedSession
     }
 
     private static func shouldInvalidateSession(after error: Error) -> Bool {
@@ -234,15 +267,9 @@ public final class APIClient: Sendable {
         guard let manager = tokenProvider as? any SessionTokenManaging else {
             throw APIClientError.authenticationRequired
         }
-        do {
-            _ = try await refreshCoordinator.refresh { [self] in try await refreshSession(using: manager) }
-        } catch {
-            if Self.shouldInvalidateSession(after: error) {
-                try? await manager.clear()
-                await sessionLifecycle.notifyInvalidated()
-                throw APIClientError.authenticationRequired
-            }
-            throw error
+        guard let expected = try await manager.loadSession() else { throw APIClientError.authenticationRequired }
+        _ = try await refreshCoordinator.refresh(key: expected.accessToken) { [self] in
+            try await refreshSession(using: manager, expected: expected)
         }
     }
 
@@ -254,17 +281,26 @@ public final class APIClient: Sendable {
 }
 
 private actor TokenRefreshCoordinator {
-    private var task: Task<Session, Error>?
+    private var tasks: [String: Task<Session, Error>] = [:]
+    private var rotations: [String: Session] = [:]
 
-    func refresh(operation: @escaping @Sendable () async throws -> Session) async throws -> Session {
-        if let task {
+    func existingResult(key: String) async throws -> Session? {
+        if let task = tasks[key] { return try await task.value }
+        return rotations[key]
+    }
+
+    func refresh(key: String, operation: @escaping @Sendable () async throws -> Session) async throws -> Session {
+        if let task = tasks[key] {
             return try await task.value
         }
 
         let newTask = Task { try await operation() }
-        task = newTask
-        defer { task = nil }
-        return try await newTask.value
+        tasks[key] = newTask
+        defer { tasks[key] = nil }
+        let result = try await newTask.value
+        if rotations.count >= 8, let oldest = rotations.keys.first { rotations[oldest] = nil }
+        rotations[key] = result
+        return result
     }
 }
 

@@ -1,5 +1,13 @@
 # Android To iOS Feature Parity
 
+## Reader experience update (2026-09-28)
+
+The native reader follows Android `ReaderScreen.kt` with sepia (`#F4ECD8`), white and night paper themes, full-screen presentation, collapsible reading tools and page status. PDFKit retains continuous/paged reading, zoom, bookmarks, thumbnails and saved-page restoration; Readium retains EPUB CFI restoration. The paper choice is a local app preference. Continue-reading selection and server progress contracts remain unchanged.
+
+Large files download directly to disk with actual byte counts and a percentage when the server supplies a total size; unknown sizes use an indeterminate indicator. Validation/opening are separate visible stages, base64 book envelopes decode in bounded chunks, and file-backed PDF preparation runs off the main actor. Retry messages distinguish connection, timeout and storage failures.
+
+Current evidence: `Scripts/swift-test-windows.ps1` passed **287 XCTest tests (14 new)** and the workspace audit passed. A DEBUG-only native reader fixture and iOS tests were added but have not run on this Windows host. Native clean/release builds, iPhone/iPad screenshots, accessibility and large-file/resume scenarios remain pending; earlier dated counts below are historical, not validation of this update. See [READER_EXPERIENCE_VALIDATION.md](READER_EXPERIENCE_VALIDATION.md).
+
 ## Gift wheel addition (2026-09-27)
 
 Native code follows Android `GiftWheelScreen.kt`: violet/gold 12-slice Canvas disc with fixed rim/hub/pointer, reader-club hero, spin/recovery/login states, gift wallet, prize legend, winners, instructions and history. Same separate PremiumWheel API, server-awarded result and 10-second motion curve. Side-menu and web/native route support added; iPad stage adapts to two columns. API/state/motion tests executed; iPhone/iPad screenshot parity remains unverified on this Windows host. See `GIFT_WHEEL_VALIDATION.md`. This addition does not inherit earlier visual sign-off and does not change purchases.

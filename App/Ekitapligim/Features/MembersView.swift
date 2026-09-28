@@ -11,6 +11,7 @@ struct MembersView: View {
     @State private var lastPage = 1
     @State private var total = 0
     @State private var isLoading = true
+    @State private var loadGeneration = UUID()
     @State private var errorMessage: String?
 
     var body: some View {
@@ -86,15 +87,19 @@ struct MembersView: View {
     }
 
     private func load(reset: Bool) async {
+        guard reset || !isLoading else { return }
+        let generation = UUID()
+        loadGeneration = generation
         isLoading = true
         errorMessage = nil
-        defer { isLoading = false }
+        defer { if loadGeneration == generation { isLoading = false } }
         do {
             let result = try await container.members.members(
                 page: reset ? 1 : currentPage + 1,
                 query: query.trimmed.nilIfEmpty,
                 sort: sort
             )
+            guard loadGeneration == generation, !Task.isCancelled else { return }
             members = reset ? result.members : members + result.members.filter { item in
                 !members.contains(where: { $0.id == item.id })
             }
@@ -106,6 +111,7 @@ struct MembersView: View {
             lastPage = result.lastPage
             total = result.total
         } catch {
+            guard loadGeneration == generation, !Task.isCancelled else { return }
             errorMessage = L10n.membersLoadFailed
         }
     }

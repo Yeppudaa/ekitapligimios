@@ -56,6 +56,52 @@ final class NotificationReadSyncServiceTests: XCTestCase {
         XCTAssertEqual(service.pendingCount, 0)
     }
 
+    func testClearDiscardsLateReadCounts() async throws {
+        let name = "NotificationReadSync-\(UUID().uuidString)"
+        let defaults = try XCTUnwrap(UserDefaults(suiteName: name))
+        defer { defaults.removePersistentDomain(forName: name) }
+        let counts = try makeCounts(unread: 9, conversationsUnread: 2)
+        let started = expectation(description: "read pending")
+        var continuation: CheckedContinuation<NotificationCountsDTO, Never>?
+        let service = NotificationReadSyncService(defaults: defaults, markAlert: { _ in
+            await withCheckedContinuation { continuation = $0; started.fulfill() }
+        }, markConversation: { _ in counts }, markAllAlerts: { counts })
+        var updates = 0
+        service.countsDidChange = { _ in updates += 1 }
+        let task = Task { try? await service.markAlertRead(44) }
+        await fulfillment(of: [started], timeout: 2)
+        service.clear()
+        continuation?.resume(returning: counts)
+        await task.value
+        XCTAssertEqual(updates, 0)
+        XCTAssertEqual(service.pendingCount, 0)
+    }
+
+    func testClearStopsRemainingRetryRequestsFromPreviousAccount() async throws {
+        let name = "NotificationReadSync-\(UUID().uuidString)"
+        let defaults = try XCTUnwrap(UserDefaults(suiteName: name))
+        defer { defaults.removePersistentDomain(forName: name) }
+        let targets: Set<NotificationReadSyncService.Target> = [.alert(1), .alert(2), .allAlerts]
+        defaults.set(try JSONEncoder().encode(targets), forKey: "ekitapligim.pendingNotificationReads")
+        let counts = try makeCounts(unread: 0, conversationsUnread: 0)
+        let started = expectation(description: "first retry")
+        var continuation: CheckedContinuation<NotificationCountsDTO, Never>?
+        var requests = 0
+        let request: () async -> NotificationCountsDTO = {
+            requests += 1
+            return await withCheckedContinuation { continuation = $0; started.fulfill() }
+        }
+        let service = NotificationReadSyncService(defaults: defaults, markAlert: { _ in await request() },
+            markConversation: { _ in await request() }, markAllAlerts: { await request() })
+        let task = Task { await service.retryPending() }
+        await fulfillment(of: [started], timeout: 2)
+        service.clear()
+        continuation?.resume(returning: counts)
+        await task.value
+        XCTAssertEqual(requests, 1)
+        XCTAssertEqual(service.pendingCount, 0)
+    }
+
     private func makeCounts(unread: Int, conversationsUnread: Int) throws -> NotificationCountsDTO {
         let data = Data("{\"unread\":\(unread),\"unviewed\":0,\"conversations_unread\":\(conversationsUnread)}".utf8)
         return try JSONDecoder.ekitapligim.decode(NotificationCountsDTO.self, from: data)

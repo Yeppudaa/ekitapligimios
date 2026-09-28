@@ -7,6 +7,14 @@ import EkitapligimCore
 struct ReaderView: View {
     @EnvironmentObject private var container: AppContainer
     let book: BookDTO
+    var onPremium: (() -> Void)?
+    @Environment(\.dismiss) private var dismiss
+    @Environment(\.accessibilityReduceMotion) private var reduceMotion
+    @AppStorage("reader.paperTheme") private var paperThemeRaw = ReaderPaperTheme.sepia.rawValue
+    @State private var showsControls = false
+    @State private var loadingPhase: ReaderLoadingPhase = .authorizing
+    @State private var reloadID = UUID()
+    @State private var canRetryLoad = false
 
     @State private var progress: ReadingProgress
     @State private var readerURL: URL?
@@ -33,12 +41,14 @@ struct ReaderView: View {
     @State private var previewPresentation = ReaderPreviewPresentation()
     @State private var pendingPremiumAfterLimitDismiss = false
 
-    init(book: BookDTO) {
+    init(book: BookDTO, onPremium: (() -> Void)? = nil) {
         self.book = book
+        self.onPremium = onPremium
         _progress = State(initialValue: ReadingProgress(currentPage: 1, totalPages: book.pageCount))
     }
 
     private var bookID: Int? { Int(book.id) }
+    private var paperTheme: ReaderPaperTheme { ReaderPaperTheme(rawValue: paperThemeRaw) ?? .sepia }
 
     private var isPreviewMode: Bool { !container.isPremium }
 
@@ -57,13 +67,57 @@ struct ReaderView: View {
     }
 
     var body: some View {
-        VStack(spacing: 0) {
-            readerToolbar
-            Divider()
+        ZStack {
+            paperTheme.paper.ignoresSafeArea()
             readerContent
+                .frame(maxWidth: .infinity, maxHeight: .infinity)
+            if showsControls {
+                VStack {
+                    readerToolbar
+                    Spacer(minLength: 0)
+                    if readerURL != nil, !isLoading, errorMessage == nil {
+                        if readerFileType == "pdf" {
+                            ReaderPageControls(progress: progress, accessiblePageLimit: accessiblePageLimit,
+                                hasLockedContent: hasLockedContent, detail: readerToolbarDetail,
+                                syncLabel: syncState.label, syncFailed: syncState == .failed,
+                                theme: paperTheme, onRequestPage: requestPage)
+                        } else {
+                            ReaderEPUBProgress(percent: epubProgressPercent, detail: readerToolbarDetail,
+                                syncLabel: syncState.label, syncFailed: syncState == .failed, theme: paperTheme)
+                        }
+                    }
+                }
+            } else {
+                VStack {
+                    HStack {
+                        ReaderIconButton(icon: "chevron.left", label: L10n.commonClose, theme: paperTheme) { dismiss() }
+                            .background(paperTheme.panel, in: RoundedRectangle(cornerRadius: 14))
+                            .accessibilityIdentifier("reader.close")
+                        Spacer()
+                        ReaderIconButton(icon: "slider.horizontal.3", label: ReaderL10n.text("showControls"), theme: paperTheme) { toggleControls() }
+                            .background(paperTheme.panel, in: RoundedRectangle(cornerRadius: 14))
+                            .accessibilityIdentifier("reader.showControls")
+                    }.padding(.horizontal, 12).padding(.top, 6)
+                    Spacer()
+                    if readerURL != nil, !isLoading, errorMessage == nil {
+                        Text(readerToolbarDetail)
+                            .font(.caption2.monospacedDigit().weight(.medium))
+                            .foregroundStyle(paperTheme.ink.opacity(0.65))
+                            .padding(.horizontal, 14).padding(.vertical, 7)
+                            .background(paperTheme.paper.opacity(0.92), in: Capsule())
+                            .padding(.bottom, 6)
+                            .allowsHitTesting(false)
+                            .accessibilityIdentifier("reader.focusProgress")
+                    }
+                }
+            }
         }
-        .background(EKitapligimPalette.page)
-        .navigationBarTitleDisplayMode(.inline)
+        .background(paperTheme.paper)
+        .preferredColorScheme(paperTheme.colorScheme)
+        .toolbar(.hidden, for: .navigationBar)
+        .statusBarHidden(!showsControls)
+        .persistentSystemOverlays(showsControls ? .automatic : .hidden)
+        .accessibilityIdentifier("reader.fullscreen")
         .sheet(isPresented: $showsBookmarks) {
             ReaderBookmarksView(
                 bookmarks: bookmarks,
@@ -89,19 +143,24 @@ struct ReaderView: View {
             }
         }
         .sheet(isPresented: $showsReaderSettings) {
-            ReaderSettingsView(layout: $pdfLayout, fileType: readerFileType)
+            ReaderSettingsView(layout: $pdfLayout, paperTheme: $paperThemeRaw, fileType: readerFileType)
                 .presentationDetents([.medium])
                 .presentationDragIndicator(.visible)
         }
-        .task {
+        .task(id: reloadID) {
+            guard readerURL == nil else { return }
             refreshBookmarks()
             await loadReaderSession()
         }
         .preference(key: AILauncherHiddenKey.self, value: true)
         .onDisappear {
-            loadGeneration = UUID()
             flushProgress()
-            scheduleTemporaryFileRemoval()
+            // Sheets can also cover the reader in compact-height layouts. Keep its backing file
+            // alive while any reader-owned presentation is open (PDFKit reads pages lazily).
+            if !showsPreviewLimitDialog && !showsPagePicker && !showsBookmarks && !showsReaderSettings {
+                loadGeneration = UUID()
+                scheduleTemporaryFileRemoval()
+            }
         }
         .onChange(of: scenePhase) { _, phase in
             if phase != .active { flushProgress() }
@@ -133,33 +192,40 @@ struct ReaderView: View {
 
     @ViewBuilder
     private var readerToolbar: some View {
-        ReaderToolbar(
-            title: book.title,
-            progressPercent: displayedProgressPercent,
-            detail: readerToolbarDetail,
-            author: book.author,
+        ReaderChrome(
+            title: book.title, detail: readerFileType.uppercased() + " · " + readerToolbarDetail, theme: paperTheme,
             isBookmarked: isCurrentPageBookmarked,
-            bookmarkCount: bookmarks.count,
-            supportsBookmarks: readerFileType != "epub",
-            syncState: syncState,
-            onToggleBookmark: toggleCurrentBookmark,
-            onShowBookmarks: { showsBookmarks = true },
-            onShowPages: { showsPagePicker = true },
-            onShowSettings: { showsReaderSettings = true }
+            supportsPDF: readerFileType == "pdf", enabled: readerURL != nil && !isLoading && errorMessage == nil,
+            close: { dismiss() }, focus: toggleControls, changeTheme: cyclePaperTheme,
+            bookmark: toggleCurrentBookmark, bookmarks: { showsBookmarks = true },
+            pages: { showsPagePicker = true }, settings: { showsReaderSettings = true }
         )
+    }
+
+    private func toggleControls() {
+        withAnimation(reduceMotion ? nil : .easeInOut(duration: 0.2)) { showsControls.toggle() }
+    }
+
+    private func cyclePaperTheme() {
+        let next: ReaderPaperTheme = paperTheme == .sepia ? .night : (paperTheme == .night ? .white : .sepia)
+        paperThemeRaw = next.rawValue
     }
 
     @ViewBuilder
     private var readerContent: some View {
         if isLoading {
-            ProgressView(L10n.readerPreparing)
-                .frame(maxWidth: .infinity, maxHeight: .infinity)
+            ReaderLoadingView(title: book.title, author: book.author, phase: loadingPhase, theme: paperTheme)
         } else if let errorMessage {
             ContentUnavailableView {
-                Label(errorTitle, systemImage: "lock.shield")
+                Label(errorTitle, systemImage: canRetryLoad ? "doc.badge.arrow.up" : "lock.shield")
             } description: {
                 Text(errorMessage)
             } actions: {
+                if canRetryLoad {
+                    Button(ReaderL10n.text("retry")) { reloadID = UUID() }
+                        .buttonStyle(.borderedProminent).tint(paperTheme.accent)
+                        .accessibilityIdentifier("reader.retry")
+                }
                 if showsPremiumActionForError {
                     Button(L10n.quotaPremiumAction) { openPremium() }
                         .buttonStyle(.borderedProminent)
@@ -168,7 +234,7 @@ struct ReaderView: View {
             }
         } else if let url = readerURL, readerFileType == "epub" {
             EPUBReaderView(sourceURL: url, progressPercent: $epubProgressPercent, position: $epubPosition,
-                initialPosition: initialPosition, onPositionChange: recordPosition, onFlush: {
+                initialPosition: initialPosition, paperTheme: paperTheme, onPositionChange: recordPosition, onFlush: {
                     if let bookID { await container.readerProgressSync.flush(bookID: bookID) }
                 }, onCaptureFailure: {
                     if let bookID { container.readerProgressSync.captureFailed(bookID: bookID) }
@@ -177,7 +243,6 @@ struct ReaderView: View {
                     applyPreviewDecision(makePreviewLimit(page: epubPosition))
                 })
         } else if let url = readerURL, let preparedPDF {
-            VStack(spacing: 0) {
                 PDFReader(
                     url: url,
                     document: preparedPDF.document,
@@ -195,18 +260,11 @@ struct ReaderView: View {
                     onRestored: {
                         previewPresentation.markRestored()
                         applyPreviewDecision(makePreviewLimit(page: progress.currentPage))
-                    }
+                    },
+                    onToggleControls: toggleControls
                 )
-                Divider()
-                PDFReaderControls(
-                    progress: progress,
-                    accessiblePageLimit: accessiblePageLimit,
-                    isPreviewMode: isPreviewMode,
-                    hasLockedContent: hasLockedContent,
-                    layout: $pdfLayout,
-                    onRequestPage: requestPage
-                )
-            }
+                .modifier(ReaderPDFPaper(theme: paperTheme))
+                .ignoresSafeArea(.container)
         } else if readerURL != nil {
             ProgressView(L10n.readerPreparing)
                 .frame(maxWidth: .infinity, maxHeight: .infinity)
@@ -220,22 +278,18 @@ struct ReaderView: View {
         return bookmarks.contains { $0.page == progress.currentPage }
     }
 
-    private var displayedProgressPercent: Double {
-        readerFileType == "epub" ? epubProgressPercent : progress.percent
-    }
-
     private var readerToolbarDetail: String {
         if readerFileType == "epub" {
             if isPreviewMode, hasLockedContent {
                 return L10n.readerPreviewLimitActive(limit: accessiblePageLimit) + " • " + L10n.readerPage(epubPosition, accessiblePageLimit)
             }
-            return L10n.readerEPUBFormat
+            return L10n.commonPercent(Int(epubProgressPercent))
         }
         if isPreviewMode, hasLockedContent {
             if previewFinished {
                 return L10n.readerPage(progress.currentPage, progress.totalPages) + " • " + L10n.readerPreviewLimitContinuePremium
             }
-            return L10n.readerPage(progress.currentPage, progress.totalPages) + " • Önizleme"
+            return L10n.readerPage(progress.currentPage, progress.totalPages) + " • " + ReaderL10n.text("preview")
         }
         return L10n.readerPage(progress.currentPage, progress.totalPages)
     }
@@ -309,7 +363,8 @@ struct ReaderView: View {
     }
 
     private func openPremium() {
-        container.open(route: .premium)
+        if let onPremium { onPremium() }
+        else { container.open(route: .premium) }
     }
 
     private func toggleCurrentBookmark() {
@@ -385,6 +440,8 @@ struct ReaderView: View {
         }
 
         isLoading = true
+        loadingPhase = .authorizing
+        canRetryLoad = false
         let generation = UUID()
         loadGeneration = generation
         errorTitle = L10n.readerUnavailable
@@ -410,6 +467,7 @@ struct ReaderView: View {
             let session = try await container.books.createReaderSession(bookID: bookID, purpose: .read)
             guard !Task.isCancelled, loadGeneration == generation else { return }
             let fileType = DownloadFilePolicy.resolvedFileExtension(for: session.fileType)
+            loadingPhase = .restoring
             initialPosition = try await container.prepareReaderProgress(book: book)
             guard !Task.isCancelled, loadGeneration == generation else { return }
 
@@ -429,12 +487,17 @@ struct ReaderView: View {
                 apiBaseURL: container.config.apiBaseURL
             ) else {
                 errorMessage = L10n.readerAtsLinkMissing
+                canRetryLoad = true
                 return
             }
             let localURL = try await container.readerContentLoader.prepare(
                 bookID: book.id,
                 sourceURL: url,
-                fileType: fileType
+                fileType: fileType,
+                onProgress: { phase in
+                    guard loadGeneration == generation, isLoading else { return }
+                    loadingPhase = phase
+                }
             )
             guard !Task.isCancelled, loadGeneration == generation else {
                 container.readerContentLoader.removePreparedFile(at: localURL)
@@ -458,9 +521,18 @@ struct ReaderView: View {
         } catch let transferError as BookFileTransferError {
             guard !Task.isCancelled, loadGeneration == generation else { return }
             errorMessage = transferError.readerMessage
+            canRetryLoad = true
         } catch {
             guard !Task.isCancelled, loadGeneration == generation else { return }
             errorMessage = (error as? APIClientError)?.serverMessage ?? L10n.readerSessionFailed
+            canRetryLoad = true
+            if let urlError = error as? URLError {
+                switch urlError.code {
+                case .timedOut: errorMessage = ReaderL10n.text("error.timeout")
+                case .notConnectedToInternet, .networkConnectionLost: errorMessage = ReaderL10n.text("error.connection")
+                default: break
+                }
+            }
         }
     }
 
@@ -471,6 +543,7 @@ struct ReaderView: View {
     }
 
     private func preparePDFIfNeeded(at url: URL, fileType: String) async throws -> PreparedPDFDocument? {
+        loadingPhase = .opening
         guard fileType == "pdf" else { return nil }
         return try await PreparedPDFDocument.load(from: url)
     }
@@ -517,116 +590,6 @@ private extension ReaderProgressSyncState {
         case .syncing: EKitapligimPalette.teal
         default: EKitapligimPalette.success
         }
-    }
-}
-
-@MainActor
-private struct ReaderToolbar: View {
-    let title: String
-    let progressPercent: Double
-    let detail: String
-    let author: String
-    let isBookmarked: Bool
-    let bookmarkCount: Int
-    let supportsBookmarks: Bool
-    let syncState: ReaderProgressSyncState
-    let onToggleBookmark: () -> Void
-    let onShowBookmarks: () -> Void
-    let onShowPages: () -> Void
-    let onShowSettings: () -> Void
-
-    var body: some View {
-        VStack(spacing: 12) {
-            HStack(spacing: 12) {
-                VStack(alignment: .leading, spacing: 3) {
-                    Text(title)
-                        .font(.headline.weight(.semibold))
-                        .lineLimit(1)
-                    HStack(spacing: 6) {
-                        Text(author.isEmpty ? L10n.menuBrandTitle : author)
-                            .lineLimit(1)
-                        Text("•")
-                        Text(detail)
-                            .font(.caption.monospacedDigit())
-                    }
-                    .font(.caption)
-                    .foregroundStyle(EKitapligimPalette.muted)
-                }
-                Spacer(minLength: 4)
-                ZStack {
-                    Circle()
-                        .stroke(EKitapligimPalette.tealSoft, lineWidth: 5)
-                    Circle()
-                        .trim(from: 0, to: min(max(progressPercent / 100, 0), 1))
-                        .stroke(EKitapligimPalette.teal, style: StrokeStyle(lineWidth: 5, lineCap: .round))
-                        .rotationEffect(.degrees(-90))
-                    Text("%\(Int(progressPercent.rounded()))")
-                        .font(.caption2.monospacedDigit().weight(.bold))
-                        .foregroundStyle(EKitapligimPalette.tealDark)
-                }
-                .frame(width: 42, height: 42)
-            }
-            HStack(spacing: 8) {
-                Image(systemName: syncState == .syncing ? "arrow.triangle.2.circlepath" : "checkmark.shield.fill")
-                    .symbolEffect(.pulse, options: .repeating, isActive: syncState == .syncing)
-                Text(syncState.label)
-                Spacer()
-                Text(L10n.commonPercent(Int(progressPercent)))
-                    .font(.caption.monospacedDigit().weight(.semibold))
-            }
-            .font(.caption2.weight(.medium))
-            .foregroundStyle(syncState.color)
-
-            ScrollView(.horizontal, showsIndicators: false) {
-                HStack(spacing: 10) {
-                    if supportsBookmarks {
-                        ReaderActionButton(
-                            title: isBookmarked ? L10n.readerRemoveBookmark : L10n.readerAddBookmark,
-                            systemImage: isBookmarked ? "bookmark.fill" : "bookmark",
-                            action: onToggleBookmark
-                        )
-                        ReaderActionButton(
-                            title: bookmarkCount > 0 ? "\(L10n.readerBookmarks) (\(bookmarkCount))" : L10n.readerBookmarks,
-                            systemImage: "list.bullet"
-                        ) {
-                            onShowBookmarks()
-                        }
-                    }
-                    if supportsBookmarks {
-                        ReaderActionButton(title: L10n.readerPages, systemImage: "square.grid.2x2") {
-                            onShowPages()
-                        }
-                    }
-                    ReaderActionButton(title: L10n.readerSettings, systemImage: "slider.horizontal.3") {
-                        onShowSettings()
-                    }
-                    Spacer(minLength: 0)
-                }
-            }
-        }
-        .padding(.horizontal, 16)
-        .padding(.vertical, 12)
-        .background(.ultraThinMaterial)
-    }
-}
-
-@MainActor
-private struct ReaderActionButton: View {
-    let title: String
-    let systemImage: String
-    let action: () -> Void
-
-    var body: some View {
-        Button(action: action) {
-            Label(title, systemImage: systemImage)
-                .font(.caption.weight(.semibold))
-                .foregroundStyle(EKitapligimPalette.ink)
-                .padding(.horizontal, 10)
-                .padding(.vertical, 7)
-                .background(EKitapligimPalette.surfaceAlt, in: Capsule())
-        }
-        .buttonStyle(.plain)
-        .accessibilityLabel(title)
     }
 }
 
@@ -685,143 +648,35 @@ enum PDFReadingLayout: Hashable {
     case paged
 }
 
-private struct PDFReaderControls: View {
-    let progress: ReadingProgress
-    let accessiblePageLimit: Int
-    let isPreviewMode: Bool
-    let hasLockedContent: Bool
-    @Binding var layout: PDFReadingLayout
-    let onRequestPage: (Int) -> Void
-
-    private var sliderUpperBound: Int {
-        hasLockedContent ? accessiblePageLimit : max(progress.totalPages, 1)
-    }
-
-    private var previewFinished: Bool {
-        isPreviewMode && hasLockedContent && progress.currentPage >= accessiblePageLimit
-    }
-
-    private var statusTitle: String {
-        if previewFinished {
-            return L10n.readerPreviewLimitFinished
-        }
-        if isPreviewMode, hasLockedContent {
-            return L10n.readerPreviewLimitActive(limit: accessiblePageLimit)
-        }
-        return L10n.commonPercent(Int(progress.percent))
-    }
-
-    private var statusBadge: String {
-        if previewFinished {
-            return L10n.readerPreviewLimitContinuePremium
-        }
-        if isPreviewMode, hasLockedContent {
-            let remaining = max(accessiblePageLimit - progress.currentPage, 0)
-            return L10n.readerPreviewLimitRemainingBadge(count: remaining)
-        }
-        let remaining = max(progress.totalPages - progress.currentPage, 0)
-        return String(format: "%d sayfa kaldı", remaining)
-    }
-
-    var body: some View {
-        VStack(spacing: 10) {
-            if isPreviewMode, hasLockedContent {
-                HStack(alignment: .top) {
-                    VStack(alignment: .leading, spacing: 4) {
-                        Text("OKUMA İLERLEMESİ")
-                            .font(.caption2.weight(.semibold))
-                            .foregroundStyle(EKitapligimPalette.teal)
-                        Text(statusTitle)
-                            .font(.subheadline.weight(.bold))
-                            .foregroundStyle(EKitapligimPalette.ink)
-                    }
-                    Spacer(minLength: 8)
-                    Text(statusBadge)
-                        .font(.caption2.weight(.semibold))
-                        .foregroundStyle(EKitapligimPalette.tealDark)
-                        .padding(.horizontal, 10)
-                        .padding(.vertical, 6)
-                        .background(EKitapligimPalette.tealSoft, in: Capsule())
-                }
-            }
-
-            HStack(spacing: 14) {
-                Button {
-                    onRequestPage(max(1, progress.currentPage - 1))
-                } label: {
-                    Image(systemName: "chevron.left")
-                }
-                .disabled(progress.currentPage <= 1)
-                .accessibilityLabel(L10n.readerPreviousPage)
-
-                Slider(
-                    value: Binding(
-                        get: { Double(progress.currentPage) },
-                        set: { onRequestPage(Int($0.rounded())) }
-                    ),
-                    in: 1...Double(sliderUpperBound),
-                    step: 1
-                )
-                .tint(EKitapligimPalette.teal)
-                .accessibilityLabel(L10n.readerPageSlider)
-                .accessibilityValue(L10n.readerPage(progress.currentPage, progress.totalPages))
-
-                Button {
-                    onRequestPage(progress.currentPage + 1)
-                } label: {
-                    Image(systemName: "chevron.right")
-                }
-                .disabled(!hasLockedContent && progress.currentPage >= progress.totalPages)
-                .accessibilityLabel(L10n.readerNextPage)
-            }
-
-            HStack {
-                Text(L10n.readerPage(progress.currentPage, progress.totalPages))
-                    .font(.caption.monospacedDigit().weight(.semibold))
-                    .foregroundStyle(EKitapligimPalette.muted)
-                Spacer()
-                Menu {
-                    Button {
-                        layout = .continuous
-                    } label: {
-                        Label(L10n.readerContinuousLayout, systemImage: "arrow.down.doc")
-                    }
-                    Button {
-                        layout = .paged
-                    } label: {
-                        Label(L10n.readerPagedLayout, systemImage: "rectangle.portrait.on.rectangle.portrait")
-                    }
-                } label: {
-                    Label(L10n.readerLayout, systemImage: layout == .continuous ? "arrow.down.doc" : "rectangle.portrait.on.rectangle.portrait")
-                }
-            }
-        }
-        .buttonStyle(.borderless)
-        .padding(.horizontal, 18)
-        .padding(.vertical, 10)
-        .background(.bar)
-    }
-}
-
 @MainActor
 private struct ReaderSettingsView: View {
     @Environment(\.dismiss) private var dismiss
     @Binding var layout: PDFReadingLayout
+    @Binding var paperTheme: String
     let fileType: String
 
     var body: some View {
         NavigationStack {
             Form {
                 Section {
-                    Picker(L10n.readerLayout, selection: $layout) {
-                        Text(L10n.readerContinuousLayout).tag(PDFReadingLayout.continuous)
-                        Text(L10n.readerPagedLayout).tag(PDFReadingLayout.paged)
-                    }
-                    .pickerStyle(.inline)
+                    ReaderThemePicker(selection: $paperTheme)
                 } header: {
-                    Label(L10n.readerSettingsAppearance, systemImage: "rectangle.3.group")
+                    Label(ReaderL10n.text("paper"), systemImage: "circle.lefthalf.filled")
                 } footer: {
-                    Text(fileType == "epub" ? L10n.readerSettingsEPUBNote : L10n.readerSettingsPDFNote)
+                    Text(ReaderL10n.text("paper.note"))
+                }
+                if fileType == "pdf" {
+                    Section {
+                        Picker(L10n.readerLayout, selection: $layout) {
+                            Text(L10n.readerContinuousLayout).tag(PDFReadingLayout.continuous)
+                            Text(L10n.readerPagedLayout).tag(PDFReadingLayout.paged)
+                        }
+                        .pickerStyle(.inline)
+                    } header: {
+                        Label(L10n.readerSettingsAppearance, systemImage: "rectangle.3.group")
+                    } footer: {
+                        Text(L10n.readerSettingsPDFNote)
+                    }
                 }
                 Section {
                     LabeledContent(L10n.readerSettingsFormat, value: fileType.uppercased())
@@ -831,7 +686,7 @@ private struct ReaderSettingsView: View {
                 }
             }
             .scrollContentBackground(.hidden)
-            .background(EKitapligimPalette.pageGradient)
+            .background((ReaderPaperTheme(rawValue: paperTheme) ?? .sepia).paper)
             .navigationTitle(L10n.readerSettings)
             .navigationBarTitleDisplayMode(.inline)
             .toolbar {
@@ -987,6 +842,7 @@ struct PDFReader: UIViewRepresentable {
     var maxAccessiblePage: Int? = nil
     var onPageChange: (ReadingProgress) -> Void = { _ in }
     var onRestored: () -> Void = {}
+    var onToggleControls: () -> Void = {}
 
     func makeCoordinator() -> Coordinator {
         Coordinator(
@@ -1001,9 +857,11 @@ struct PDFReader: UIViewRepresentable {
 
     func makeUIView(context: Context) -> PDFView {
         let view = ResumePDFView()
+        view.backgroundColor = .white
         context.coordinator.maxAccessiblePage = maxAccessiblePage
         context.coordinator.configure(view, url: url, layout: layout, makeDocument: { _ in document })
         context.coordinator.observe(view)
+        context.coordinator.installControlGesture(on: view, action: onToggleControls)
         context.coordinator.updateProgress(from: view)
         return view
     }
@@ -1012,6 +870,7 @@ struct PDFReader: UIViewRepresentable {
         context.coordinator.maxAccessiblePage = maxAccessiblePage
         context.coordinator.onPageChange = onPageChange
         context.coordinator.onRestored = onRestored
+        context.coordinator.onToggleControls = onToggleControls
         context.coordinator.configure(uiView, url: url, layout: layout, makeDocument: { _ in document })
         guard context.coordinator.isRestored, let requestedPage,
               let pdfDocument = uiView.document else { return }
@@ -1027,7 +886,7 @@ struct PDFReader: UIViewRepresentable {
     }
 
     @MainActor
-    final class Coordinator: NSObject {
+    final class Coordinator: NSObject, UIGestureRecognizerDelegate {
         private var loadedURL: URL?
         private var appliedLayout: PDFReadingLayout?
         private var progress: Binding<ReadingProgress>
@@ -1042,6 +901,8 @@ struct PDFReader: UIViewRepresentable {
         private var restorationGeneration = UUID()
         private var restorationScheduled = false
         var maxAccessiblePage: Int?
+        var onToggleControls: () -> Void = {}
+        private var controlGesture: UITapGestureRecognizer?
 
         init(
             progress: Binding<ReadingProgress>,
@@ -1144,6 +1005,33 @@ struct PDFReader: UIViewRepresentable {
             }
         }
 
+        func installControlGesture(on view: PDFView, action: @escaping () -> Void) {
+            onToggleControls = action
+            let gesture = UITapGestureRecognizer(target: self, action: #selector(toggleControls(_:)))
+            gesture.cancelsTouchesInView = false
+            gesture.delegate = self
+            view.addGestureRecognizer(gesture)
+            controlGesture = gesture
+        }
+
+        @objc private func toggleControls(_ gesture: UITapGestureRecognizer) {
+            guard gesture.state == .ended, view?.currentSelection == nil else { return }
+            onToggleControls()
+        }
+
+        func gestureRecognizer(_ gestureRecognizer: UIGestureRecognizer, shouldReceive touch: UITouch) -> Bool {
+            guard let view, view.currentSelection == nil, !(touch.view is UIControl) else { return false }
+            let point = touch.location(in: view)
+            if let page = view.page(for: point, nearest: false), page.annotation(at: view.convert(point, to: page)) != nil { return false }
+            return true
+        }
+
+        func gestureRecognizer(_ gestureRecognizer: UIGestureRecognizer, shouldRecognizeSimultaneouslyWith otherGestureRecognizer: UIGestureRecognizer) -> Bool { true }
+
+        func gestureRecognizer(_ gestureRecognizer: UIGestureRecognizer, shouldRequireFailureOf otherGestureRecognizer: UIGestureRecognizer) -> Bool {
+            (otherGestureRecognizer as? UITapGestureRecognizer).map { $0.numberOfTapsRequired > 1 } ?? false
+        }
+
         func updateProgress(from view: PDFView) {
             guard isRestored, let document = view.document, document.pageCount > 0,
                   let currentPage = view.currentPage else { return }
@@ -1189,6 +1077,8 @@ struct PDFReader: UIViewRepresentable {
                 NotificationCenter.default.removeObserver(pageObserver)
             }
             pageObserver = nil
+            if let controlGesture { view?.removeGestureRecognizer(controlGesture) }
+            controlGesture = nil
         }
     }
 }
@@ -1212,7 +1102,9 @@ final class ResumePDFView: PDFView {
 @MainActor
 struct ReaderLoaderView: View {
     @EnvironmentObject private var container: AppContainer
+    @Environment(\.dismiss) private var dismiss
     let bookID: Int
+    var onPremium: (() -> Void)? = nil
 
     @State private var book: BookDTO?
     @State private var isLoading = true
@@ -1221,16 +1113,25 @@ struct ReaderLoaderView: View {
     var body: some View {
         Group {
             if isLoading {
-                EKLoadingState(message: L10n.bookDetailLoading)
+                ReaderLoadingView(title: L10n.bookDetailLoading, author: "", phase: .authorizing, theme: .sepia)
             } else if let book {
-                ReaderView(book: book)
+                ReaderView(book: book, onPremium: onPremium)
             } else {
                 EKErrorState(title: L10n.bookDetailOpenFailed, message: errorMessage ?? L10n.bookDetailLoadFailed) {
                     Task { await load() }
                 }
             }
         }
-        .task(id: bookID) { await load() }
+        .overlay(alignment: .topLeading) {
+            if book == nil {
+                ReaderIconButton(icon: "chevron.left", label: L10n.commonClose, theme: .sepia) { dismiss() }
+                    .padding(12)
+            }
+        }
+        .task(id: bookID) {
+            guard book?.id != String(bookID) else { return }
+            await load()
+        }
         .preference(key: AILauncherHiddenKey.self, value: true)
     }
 

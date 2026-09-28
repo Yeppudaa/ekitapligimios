@@ -11,6 +11,7 @@ struct EPUBReaderView: View {
     @Binding var progressPercent: Double
     @Binding var position: Int
     var initialPosition: ReaderPositionDTO? = nil
+    var paperTheme: ReaderPaperTheme = .sepia
     var onPositionChange: (ReaderPositionDTO) -> Void = { _ in }
     var onFlush: () async -> Void = {}
     var onCaptureFailure: () -> Void = {}
@@ -22,8 +23,7 @@ struct EPUBReaderView: View {
     var body: some View {
         Group {
             if model.isLoading {
-                ProgressView(L10n.readerEPUBPreparing)
-                    .frame(maxWidth: .infinity, maxHeight: .infinity)
+                ReaderLoadingView(title: L10n.readerEPUBPreparing, author: "", phase: .opening, theme: paperTheme)
             } else if let errorMessage = model.errorMessage {
                 ContentUnavailableView(
                     L10n.readerEPUBUnavailable,
@@ -32,12 +32,14 @@ struct EPUBReaderView: View {
                 )
             } else if let navigator = model.navigator {
                 EPUBNavigatorContainer(navigator: navigator)
+                    .ignoresSafeArea(.container)
             }
         }
         .task(id: sourceURL) {
             await model.open(sourceURL: sourceURL, initialPosition: initialPosition,
-                onPositionChange: onPositionChange, onCaptureFailure: onCaptureFailure, onRestored: onRestored)
+                onPositionChange: onPositionChange, onCaptureFailure: onCaptureFailure, onRestored: onRestored, paperTheme: paperTheme)
         }
+        .onChange(of: paperTheme) { _, theme in model.applyTheme(theme) }
         .onChange(of: model.progressPercent) { _, value in progressPercent = value }
         .onChange(of: model.position) { _, value in position = value }
         .onChange(of: scenePhase) { _, phase in if phase != .active { checkpoint() } }
@@ -67,6 +69,8 @@ private final class EPUBReaderModel: NSObject, ObservableObject, EPUBNavigatorDe
     private let publicationOpener: PublicationOpener
     private var publication: Publication?
     private var temporaryPublicationURL: URL?
+    private var openedSourceURL: URL?
+    private var paperTheme = ReaderPaperTheme.sepia
     private var positionAdapter: EPUBPositionAdapter?
     private var savedPosition: ReaderPositionDTO?
     private var initialLocator: Locator?
@@ -101,7 +105,17 @@ private final class EPUBReaderModel: NSObject, ObservableObject, EPUBNavigatorDe
     }
 
     func open(sourceURL: URL, initialPosition: ReaderPositionDTO?, onPositionChange: @escaping (ReaderPositionDTO) -> Void,
-              onCaptureFailure: @escaping () -> Void, onRestored: @escaping () -> Void = {}) async {
+              onCaptureFailure: @escaping () -> Void, onRestored: @escaping () -> Void = {}, paperTheme: ReaderPaperTheme = .sepia) async {
+        self.paperTheme = paperTheme
+        // A preview/settings presentation can restart SwiftUI's task without ending this reading
+        // session. Reuse the navigator at its current CFI instead of restoring the original CFI again.
+        if openedSourceURL == sourceURL, navigator != nil {
+            self.onPositionChange = onPositionChange
+            self.onCaptureFailure = onCaptureFailure
+            self.onRestored = onRestored
+            applyTheme(paperTheme)
+            return
+        }
         guard sourceURL.scheme?.lowercased() == "https" || sourceURL.isFileURL else {
             fail(with: L10n.readerAtsLinkMissing)
             return
@@ -135,17 +149,37 @@ private final class EPUBReaderModel: NSObject, ObservableObject, EPUBNavigatorDe
             let navigator = try EPUBNavigatorViewController(
                 publication: publication,
                 initialLocation: initialLocator,
-                config: EPUBNavigatorViewController.Configuration()
+                config: EPUBNavigatorViewController.Configuration(preferences: Self.preferences(self.paperTheme))
             )
             navigator.delegate = self
             self.publication = publication
             self.positionAdapter = adapter
             self.initialLocator = initialLocator
             self.navigator = navigator
+            openedSourceURL = sourceURL
             isLoading = false
         } catch {
             fail(with: L10n.readerEPUBOpenFailed)
         }
+    }
+
+    private static func preferences(_ theme: ReaderPaperTheme) -> EPUBPreferences {
+        let colors: (paper: Int, ink: Int)
+        switch theme {
+        case .sepia: colors = (0xF4ECD8, 0x433422)
+        case .white: colors = (0xFFFFFF, 0x111111)
+        case .night: colors = (0x1E1E1E, 0xE1E1E1)
+        }
+        return EPUBPreferences(
+            backgroundColor: ReadiumNavigator.Color(rawValue: colors.paper),
+            textColor: ReadiumNavigator.Color(rawValue: colors.ink),
+            theme: theme == .night ? .dark : (theme == .sepia ? .sepia : .light)
+        )
+    }
+
+    func applyTheme(_ theme: ReaderPaperTheme) {
+        paperTheme = theme
+        navigator?.submitPreferences(Self.preferences(theme))
     }
 
     func navigator(_ navigator: Navigator, locationDidChange locator: Locator) {

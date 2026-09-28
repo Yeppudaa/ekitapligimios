@@ -1,5 +1,11 @@
 # Privacy Data Inventory
 
+## Reader experience update (2026-09-28)
+
+The sepia/white/night paper choice is stored locally in UserDefaults under `reader.paperTheme`. It is an app-wide preference, remains across sign-out, and is not sent to the server or associated with an account. It adds no collected-data category; the existing UserDefaults required-reason declaration covers this local preference.
+
+Loading percentages and byte counts exist only in memory for the active transfer and are not analytics. Reading downloads continue to use protected, backup-excluded reader-session storage; large base64 envelopes are decoded to temporary disk files in bounded chunks. Reader-owned presentations preserve the active document rather than starting a new reading session. Existing account-scoped reading progress retention and deletion behavior remain unchanged. No new tracking, SDK, entitlement or privacy-manifest category is introduced. See [READER_EXPERIENCE_VALIDATION.md](READER_EXPERIENCE_VALIDATION.md).
+
 ## Gift wheel addition (2026-09-27)
 
 PremiumWheel receives the existing Keychain bearer session, random per-spin idempotency key and configuration revision. Account-associated quota, prize history, gift seconds and publicly listed winner names are read from this same first-party service. These are covered by existing UserID and ProductInteraction/AppFunctionality declarations; no tracking, third-party SDK or additional required-reason API category is introduced.

@@ -17,7 +17,8 @@ final class ReaderContentLoader {
         self.baseDirectory = baseDirectory
     }
 
-    func prepare(bookID: String, sourceURL: URL, fileType: String) async throws -> URL {
+    func prepare(bookID: String, sourceURL: URL, fileType: String,
+                 onProgress: @escaping @MainActor @Sendable (ReaderLoadingPhase) -> Void = { _ in }) async throws -> URL {
         let fileExtension = DownloadFilePolicy.resolvedFileExtension(for: fileType)
         let directory = try sessionDirectory()
         let safeName = try DownloadFilePolicy.fileName(bookID: bookID, fileExtension: fileExtension)
@@ -25,7 +26,7 @@ final class ReaderContentLoader {
             .appendingPathComponent(UUID().uuidString, isDirectory: true)
             .appendingPathComponent(safeName, isDirectory: false)
         do {
-            try await transfer.download(from: sourceURL, fileType: fileExtension, to: targetURL)
+            try await transfer.download(from: sourceURL, fileType: fileExtension, to: targetURL, onProgress: onProgress)
             if let sniffed = DownloadFilePolicy.sniffedFileExtension(at: targetURL), sniffed != fileExtension {
                 let renamed = targetURL.deletingLastPathComponent()
                     .appendingPathComponent(try DownloadFilePolicy.fileName(bookID: bookID, fileExtension: sniffed), isDirectory: false)

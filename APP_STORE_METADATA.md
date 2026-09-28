@@ -1,5 +1,11 @@
 # App Store Metadata Draft
 
+## Reader draft addition (2026-09-28; pending native validation)
+
+Turkish copy: “Tam ekran okuma alanında sepya, beyaz veya gece görünümünü seç. Kitabın yüklenirken aktarılan dosya boyutunu, sunucu toplam boyutu bildirdiğinde yükleme yüzdesini takip et. Kaldığın yerden okumaya devam et.”
+
+Reviewer steps for the next validated binary: open a permitted PDF or EPUB from book detail or continue reading; inspect full-screen/tools and paper themes, advance the reading position, close and reopen the book. Check that settings and preview notices preserve the current position. With a large PDF, verify transfer progress, the separate preparation stage and retry behavior after a failed connection. Themes are stored only on the device. The DEBUG-only reader fixture is for development tests and is not a production feature or review-account substitute. Publish this copy only after the native gates in [READER_EXPERIENCE_VALIDATION.md](READER_EXPERIENCE_VALIDATION.md) pass; Windows core tests do not establish device appearance or App Store readiness.
+
 ## Gift wheel draft addition (pending device validation)
 
 Turkish copy: “Hediye Çarkı'nı ücretsiz çevir, 30 güne kadar Premium süre sürprizini keşfet. Kazandığın hediye sürelerini ve son çevirişlerini uygulamada takip et.”

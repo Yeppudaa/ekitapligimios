@@ -1,5 +1,21 @@
 # App Store Checklist
 
+## General review follow-up (2026-09-28)
+
+- [x] Session isolation, notification retry invalidation, download lifecycle/progress and stale search-result corrections implemented; 293 portable XCTest tests and workspace audit passed.
+- [ ] Execute the eight new native regressions and iOS/device checks in [GENERAL_APP_REVIEW.md](GENERAL_APP_REVIEW.md). Windows validation does not establish release readiness.
+
+## Reader experience release gate (2026-09-28)
+
+- [x] Android-referenced full-screen reader, local sepia/white/night themes and actual download progress implemented; existing continue-reading/progress contracts retained.
+- [x] `Scripts/swift-test-windows.ps1`: **287 XCTest tests passed (14 new)**; workspace audit passed. Earlier dated test counts below describe earlier builds.
+- [x] DEBUG-only native reader fixture and native reader test coverage added for execution on macOS.
+- [ ] Execute current iOS clean/release builds and native unit/UI tests; the new fixture/tests have not run on this Windows host.
+- [ ] Capture iPhone/iPad full-screen and theme screenshots; verify VoiceOver, large text, landscape, zoom, page controls and preview/settings dismissal without losing the reading position.
+- [ ] Verify large PDF/EPUB files over public HTTPS, known/unknown response sizes, interrupted downloads, timeout/storage errors, and reopen/continue-reading against the real service.
+
+See [READER_EXPERIENCE_VALIDATION.md](READER_EXPERIENCE_VALIDATION.md). This update has no App Store readiness or device visual sign-off yet; existing release blockers still apply.
+
 ## Gift wheel release gate (2026-09-27)
 
 - [x] Separate PremiumWheel transport and native screen; no MobileApi/backend/purchase-source changes.

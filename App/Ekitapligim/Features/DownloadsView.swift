@@ -6,9 +6,18 @@ struct DownloadsView: View {
     @EnvironmentObject private var container: AppContainer
 
     var body: some View {
+        DownloadsContent(manager: container.downloadManager)
+    }
+}
+
+@MainActor
+private struct DownloadsContent: View {
+    @ObservedObject var manager: DownloadManager
+
+    var body: some View {
         EKitapligimScreen {
             Group {
-                if container.downloadManager.states.isEmpty {
+                if manager.states.isEmpty {
                     EKEmptyState(
                         title: L10n.downloadsEmptyTitle,
                         message: L10n.downloadsEmptyDescription,
@@ -17,16 +26,16 @@ struct DownloadsView: View {
                 } else {
                     ScrollView {
                         LazyVStack(spacing: 12) {
-                            ForEach(container.downloadManager.states.keys.sorted(), id: \.self) { bookID in
-                                let state = container.downloadManager.states[bookID] ?? .notDownloaded
-                                DownloadStateRow(bookID: bookID, state: state)
+                            ForEach(manager.states.keys.sorted(), id: \.self) { bookID in
+                                let state = manager.states[bookID] ?? .notDownloaded
+                                DownloadStateRow(bookID: bookID, state: state, progress: manager.transferProgress[bookID])
                                     .padding(14)
                                     .ekitapligimCard(radius: 14)
                                     .contextMenu {
                                         if case .downloaded(let fileName) = state {
                                             Button(role: .destructive) {
                                                 Task {
-                                                    await container.downloadManager.remove(
+                                                    await manager.remove(
                                                         bookID: bookID,
                                                         fileExtension: URL(fileURLWithPath: fileName).pathExtension
                                                     )
@@ -52,6 +61,7 @@ struct DownloadsView: View {
 private struct DownloadStateRow: View {
     let bookID: String
     let state: DownloadState
+    let progress: BookTransferProgress?
 
     var body: some View {
         HStack {
@@ -73,7 +83,9 @@ private struct DownloadStateRow: View {
         switch state {
         case .notDownloaded: L10n.downloadsNotDownloaded
         case .queued: L10n.downloadsQueued
-        case .downloading(let progress): L10n.downloadsDownloading(Int(progress * 100))
+        case .downloading:
+            if let percent = progress?.percent { L10n.downloadsDownloading(percent) }
+            else { ReaderL10n.text("loading.downloading") + (progress.map { " · " + $0.byteDescription } ?? "") }
         case .downloaded(let fileName): L10n.downloadsReady(fileName)
         case .failed(let message): message
         }

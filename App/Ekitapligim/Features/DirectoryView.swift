@@ -17,6 +17,7 @@ struct DirectoryView: View {
     @State private var totalEntries = 0
     @State private var totalBooks = 0
     @State private var isLoading = true
+    @State private var loadGeneration = UUID()
     @State private var errorMessage: String?
     @State private var heroCollapseProgress: CGFloat = 0
 
@@ -188,9 +189,11 @@ struct DirectoryView: View {
 
     private func load(reset: Bool) async {
         guard !isLoading || reset else { return }
+        let generation = UUID()
+        loadGeneration = generation
         isLoading = true
         errorMessage = nil
-        defer { isLoading = false }
+        defer { if loadGeneration == generation { isLoading = false } }
         let trimmedQuery = query.trimmingCharacters(in: .whitespacesAndNewlines)
         let page = reset ? 1 : currentPage + 1
         do {
@@ -203,6 +206,7 @@ struct DirectoryView: View {
 
             let result = try await directoryRequest
             let stats = await statsRequest
+            guard loadGeneration == generation, !Task.isCancelled else { return }
             items = reset ? result.items : items + result.items.filter { newItem in
                 !items.contains(where: { $0.id == newItem.id })
             }
@@ -210,6 +214,7 @@ struct DirectoryView: View {
             lastPage = result.lastPage
             applyDirectoryTotals(result: result, stats: stats, isSearching: !trimmedQuery.isEmpty)
         } catch {
+            guard loadGeneration == generation, !Task.isCancelled else { return }
             if reset { errorMessage = L10n.directoryLoadFailed }
         }
     }

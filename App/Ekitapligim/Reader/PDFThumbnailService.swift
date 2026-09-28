@@ -3,8 +3,8 @@ import Combine
 @preconcurrency import PDFKit
 @preconcurrency import UIKit
 
-/// PDFKit is not thread-safe. The file may be copied off-main; `PDFDocument` itself
-/// is always created on the main actor before `PDFView` takes ownership.
+/// Opens one file-backed document on a worker, then transfers sole ownership to the main actor.
+/// No PDFView, page rendering, or concurrent access occurs until loading has completed.
 final class PreparedPDFDocument: @unchecked Sendable {
     let document: PDFDocument
 
@@ -13,13 +13,15 @@ final class PreparedPDFDocument: @unchecked Sendable {
     }
 
     static func load(from url: URL) async throws -> PreparedPDFDocument {
-        try await MainActor.run {
+        let worker = Task.detached(priority: .userInitiated) {
             try Task.checkCancellation()
-            guard let document = PDFDocument(url: url), document.pageCount > 0 else {
+            guard let document = PDFDocument(url: url), !document.isLocked, document.pageCount > 0 else {
                 throw BookFileTransferError.invalidFile
             }
+            try Task.checkCancellation()
             return PreparedPDFDocument(document: document)
         }
+        return try await withTaskCancellationHandler { try await worker.value } onCancel: { worker.cancel() }
     }
 }
 

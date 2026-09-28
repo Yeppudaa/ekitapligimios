@@ -5,16 +5,18 @@ import EkitapligimCore
 @MainActor
 final class DownloadManager: ObservableObject {
     @Published private(set) var states: [String: DownloadState] = [:]
+    @Published private(set) var transferProgress: [String: BookTransferProgress] = [:]
 
-    private let transfer: ValidatedBookFileTransfer
+    private let transfer: any BookFileTransferring
+    private var operations: [String: (id: UUID, task: Task<Void, Error>)] = [:]
     private let fileManager: FileManager
     private let baseDirectory: URL?
 
     init(
-        session: URLSession = .shared,
+        session: URLSession? = nil,
         fileManager: FileManager = .default,
         baseDirectory: URL? = nil,
-        transfer: ValidatedBookFileTransfer? = nil
+        transfer: (any BookFileTransferring)? = nil
     ) {
         self.transfer = transfer ?? ValidatedBookFileTransfer(session: session, fileManager: fileManager)
         self.fileManager = fileManager
@@ -54,6 +56,7 @@ final class DownloadManager: ObservableObject {
                 restoredStates[bookID] = .downloaded(localFileName: url.lastPathComponent)
             }
         }
+        for bookID in operations.keys { restoredStates[bookID] = states[bookID] }
         states = restoredStates
     }
 
@@ -70,54 +73,75 @@ final class DownloadManager: ObservableObject {
     }
 
     func download(bookID: String, sourceURL: URL, expectedFileType: String = "pdf") async {
-        guard sourceURL.scheme == "https" else {
+        guard operations[bookID] == nil else { return }
+        // A failed second request must never remove a previously validated offline copy.
+        if let local = localFile(for: bookID) {
+            states[bookID] = .downloaded(localFileName: local.url.lastPathComponent)
+            return
+        }
+        guard sourceURL.scheme?.lowercased() == "https" else {
             states[bookID] = .failed(message: L10n.downloadSecureConnectionRequired)
             return
         }
         states[bookID] = .downloading(progress: 0)
-        var destination: URL?
+        let operationID = UUID()
+        var stagingDirectory: URL?
+        defer {
+            if let stagingDirectory { try? fileManager.removeItem(at: stagingDirectory) }
+            if operations[bookID]?.id == operationID {
+                operations[bookID] = nil
+                transferProgress[bookID] = nil
+            }
+        }
         do {
             let fileExtension = DownloadFilePolicy.resolvedFileExtension(for: expectedFileType)
-            let targetURL = try localURL(for: bookID, fileExtension: fileExtension)
-            destination = targetURL
-            try await transfer.download(from: sourceURL, fileType: fileExtension, to: targetURL)
-            var storedURL = targetURL
-            if let sniffed = DownloadFilePolicy.sniffedFileExtension(at: targetURL), sniffed != fileExtension {
-                let renamed = try localURL(for: bookID, fileExtension: sniffed)
-                if fileManager.fileExists(atPath: renamed.path) {
-                    try fileManager.removeItem(at: renamed)
+            let fileName = try DownloadFilePolicy.fileName(bookID: bookID, fileExtension: fileExtension)
+            let directory = try downloadsDirectory().appendingPathComponent(".pending-\(operationID.uuidString)", isDirectory: true)
+            stagingDirectory = directory
+            let stagingURL = directory.appendingPathComponent(fileName)
+            let task = Task { [transfer] in
+                try await transfer.download(from: sourceURL, fileType: fileExtension, to: stagingURL) { [weak self] phase in
+                    guard let self, self.operations[bookID]?.id == operationID, let progress = phase.transfer else { return }
+                    self.transferProgress[bookID] = progress
+                    self.states[bookID] = .downloading(progress: progress.fraction ?? 0)
                 }
-                try fileManager.moveItem(at: targetURL, to: renamed)
-                storedURL = renamed
             }
-            try protectDownloadedFile(storedURL)
+            operations[bookID] = (operationID, task)
+            try await withTaskCancellationHandler { try await task.value } onCancel: { task.cancel() }
+            guard operations[bookID]?.id == operationID else { return }
+            try Task.checkCancellation()
+            let resolvedType = DownloadFilePolicy.sniffedFileExtension(at: stagingURL) ?? fileExtension
+            try transfer.validateFile(at: stagingURL, fileType: resolvedType)
+            try protectDownloadedFile(stagingURL)
+            let storedURL = try localURL(for: bookID, fileExtension: resolvedType)
+            if fileManager.fileExists(atPath: storedURL.path) { try fileManager.removeItem(at: storedURL) }
+            try fileManager.moveItem(at: stagingURL, to: storedURL)
             states[bookID] = .downloaded(localFileName: storedURL.lastPathComponent)
-        } catch BookFileTransferError.serverRejected {
-            if let destination, fileManager.fileExists(atPath: destination.path) {
-                try? fileManager.removeItem(at: destination)
-            }
-            states[bookID] = .failed(message: L10n.downloadServerRejected)
         } catch {
-            if let destination, fileManager.fileExists(atPath: destination.path) {
-                try? fileManager.removeItem(at: destination)
-            }
-            states[bookID] = .failed(message: L10n.downloadValidationFailed)
+            guard operations[bookID]?.id == operationID || stagingDirectory == nil else { return }
+            if error is CancellationError || Task.isCancelled { states[bookID] = nil; return }
+            states[bookID] = .failed(message: (error as? BookFileTransferError)?.readerMessage ?? L10n.downloadValidationFailed)
         }
     }
 
     func remove(bookID: String, fileExtension: String = "pdf") async {
+        operations.removeValue(forKey: bookID)?.task.cancel()
+        transferProgress[bookID] = nil
         do {
             let url = try localURL(for: bookID, fileExtension: fileExtension)
             if fileManager.fileExists(atPath: url.path) {
                 try fileManager.removeItem(at: url)
             }
-            states[bookID] = .notDownloaded
+            states[bookID] = nil
         } catch {
             states[bookID] = .failed(message: L10n.downloadRemovalFailed)
         }
     }
 
     func removeAllDownloads() {
+        for operation in operations.values { operation.task.cancel() }
+        operations.removeAll()
+        transferProgress.removeAll()
         do {
             let directory = try downloadsDirectory()
             if fileManager.fileExists(atPath: directory.path) {

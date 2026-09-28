@@ -7,11 +7,20 @@ import EkitapligimCore
 final class AppContainer: ObservableObject {
     @Published var authState: AuthenticationState = .signedOut {
         didSet {
+            let previousAccount: String? = { if case .signedIn(let session) = oldValue { return session.username }; return nil }()
+            let currentAccount: String? = { if case .signedIn(let session) = authState { return session.username }; return nil }()
+            if previousAccount != currentAccount || (currentAccount == nil && oldValue != authState) {
+                sessionGeneration = UUID()
+                isRefreshingSession = false
+                if previousAccount != nil { notificationReadSync.clear() }
+            }
             activateReaderAccount()
             activateAssistantAccount()
             activateGiftWheelAccount()
         }
     }
+    private var sessionGeneration = UUID()
+    var sessionRevision: UUID { sessionGeneration }
     @Published var selectedTab: AppTab = .home {
         didSet { isForumPresented = false }
     }
@@ -165,7 +174,7 @@ final class AppContainer: ObservableObject {
     let liveActivity: LiveActivityRepository
     let pushManager: PushNotificationManager
 
-    init() {
+    init(apiSession: URLSession? = nil, tokenStore suppliedTokenStore: (any TokenStore)? = nil) {
         let apiURL = Bundle.main.urlValue(for: "EKITAPLIGIM_API_BASE_URL")
             ?? URL(string: "https://ekitapligim.com/ios-api/v1/")
             ?? URL(fileURLWithPath: "/invalid-api-config")
@@ -173,9 +182,9 @@ final class AppContainer: ObservableObject {
             ?? URL(fileURLWithPath: "/invalid-web-config")
         let environment = Bundle.main.environmentValue(for: "EKITAPLIGIM_ENVIRONMENT")
         let config = AppConfig(environment: environment, apiBaseURL: apiURL, webBaseURL: webURL)
-        let tokenStore = KeychainTokenStore(service: "com.ekitapligim.app")
+        let tokenStore: any TokenStore = suppliedTokenStore ?? KeychainTokenStore(service: "com.ekitapligim.app")
         let sessionLifecycle = SessionLifecycleHandlers()
-        let apiClient = APIClient(config: config, tokenProvider: tokenStore, sessionLifecycle: sessionLifecycle)
+        let apiClient = APIClient(config: config, session: apiSession ?? .shared, tokenProvider: tokenStore, assistantSession: apiSession, sessionLifecycle: sessionLifecycle)
         let fileTransfer = ValidatedBookFileTransfer(tokenProvider: tokenStore, apiBaseURL: apiURL)
 
         self.config = config
@@ -233,7 +242,7 @@ final class AppContainer: ObservableObject {
                 await self?.syncAuthSession(session)
             },
             onInvalidated: { [weak self] in
-                await self?.markRemoteSessionInvalidated()
+                await self?.reconcileAuthStateWithKeychain()
             }
         )
     }
@@ -273,8 +282,11 @@ final class AppContainer: ObservableObject {
         }
     }
 
-    func syncAuthSession(_ session: Session) {
-        guard isSignedIn else { return }
+    func syncAuthSession(_ session: Session) async {
+        let generation = sessionGeneration
+        guard let stored = try? await tokenStore.loadSession(), stored == session,
+              sessionGeneration == generation, case .signedIn(let current) = authState,
+              current.username == session.username else { return }
         authState = .signedIn(session)
     }
 
@@ -288,7 +300,9 @@ final class AppContainer: ObservableObject {
 
     private func reconcileAuthStateWithKeychain() async {
         guard isSignedIn else { return }
+        let generation = sessionGeneration
         let persisted = try? await tokenStore.loadSession()
+        guard generation == sessionGeneration, isSignedIn else { return }
         if persisted == nil {
             markRemoteSessionInvalidated()
         } else if case .signedIn(let session) = authState, let persisted, persisted != session {
@@ -301,9 +315,10 @@ final class AppContainer: ObservableObject {
     /// Loads everything the shell and profile need in one pass; each call degrades independently.
     func refreshSessionData() async {
         guard isSignedIn else { return }
+        let generation = sessionGeneration
         let readingGeneration = libraryGeneration
         isRefreshingSession = true
-        defer { isRefreshingSession = false }
+        defer { if generation == sessionGeneration { isRefreshingSession = false } }
 
         async let profileResult = try? profile.profile()
         async let subscriptionResult = try? subscriptions.subscription()
@@ -315,6 +330,8 @@ final class AppContainer: ObservableObject {
         let (loadedProfile, loadedSubscription, loadedLibrary, loadedStats, counts, blocked) = await (
             profileResult, subscriptionResult, libraryResult, statsResult, countsResult, blockedResult
         )
+
+        guard generation == sessionGeneration, isSignedIn, !Task.isCancelled else { return }
 
         if let loadedProfile { profileState = loadedProfile }
         if let loadedSubscription { subscription = loadedSubscription }
@@ -330,22 +347,29 @@ final class AppContainer: ObservableObject {
     }
 
     func refreshUnreadCounts() async {
-        guard isSignedIn, let counts = try? await notifications.counts() else { return }
+        let generation = sessionGeneration
+        guard isSignedIn, let counts = try? await notifications.counts(),
+              generation == sessionGeneration, isSignedIn, !Task.isCancelled else { return }
         applyCounts(counts)
     }
 
     func refreshPremiumStatus() async {
-        guard isSignedIn, let updated = try? await subscriptions.subscription() else { return }
+        let generation = sessionGeneration
+        guard isSignedIn, let updated = try? await subscriptions.subscription(),
+              generation == sessionGeneration, isSignedIn, !Task.isCancelled else { return }
         subscription = updated
     }
 
     @discardableResult
     func refreshLibrary() async -> Bool {
         guard isSignedIn else { return false }
+        let sessionRevision = sessionGeneration
         await readerProgressSync.retryPending()
+        guard sessionRevision == sessionGeneration, isSignedIn else { return false }
         let generation = UUID()
         libraryGeneration = generation
-        guard let page = try? await books.library(), generation == libraryGeneration, isSignedIn else { return false }
+        guard let page = try? await books.library(), generation == libraryGeneration,
+              sessionRevision == sessionGeneration, isSignedIn else { return false }
         applyLibrary(page.items)
         return true
     }

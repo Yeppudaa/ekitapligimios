@@ -17,6 +17,7 @@ final class NotificationReadSyncService {
     private let defaults: UserDefaults
     private let storageKey = "ekitapligim.pendingNotificationReads"
     private var pending: Set<Target>
+    private var generation = UUID()
     var pendingCount: Int { pending.count }
 
     init(repository: NotificationsRepository, defaults: UserDefaults = .standard) {
@@ -65,17 +66,21 @@ final class NotificationReadSyncService {
     }
 
     func retryPending() async {
+        let generation = generation
         for target in pending {
+            guard self.generation == generation, !Task.isCancelled else { return }
             try? await acknowledge(target)
         }
     }
 
     func clear() {
+        generation = UUID()
         pending.removeAll()
         persist()
     }
 
     private func acknowledge(_ target: Target) async throws {
+        let generation = generation
         pending.insert(target)
         persist()
 
@@ -88,6 +93,8 @@ final class NotificationReadSyncService {
         case .allAlerts:
             counts = try await markAllAlertsRequest()
         }
+
+        guard self.generation == generation, !Task.isCancelled else { throw CancellationError() }
 
         if target == .allAlerts {
             pending = pending.filter {

@@ -1,5 +1,9 @@
 # iOS API Documentation
 
+## iOS session handling correction (2026-09-28)
+
+Client refresh commits and invalidations now atomically compare the current Keychain session with the session that initiated refresh. Late responses after sign-out/account switching are canceled, and replay is limited to the matching rotated session. Parallel 401 responses share refresh work. A resource 403 after successful refresh is returned as a permission error without signing out; another 401 invalidates only the matching session. These changes do not alter any endpoint, request/response schema, backend or purchase contract. See [GENERAL_APP_REVIEW.md](GENERAL_APP_REVIEW.md).
+
 ## Gift wheel: independent PremiumWheel API (2026-09-27)
 
 `GiftWheelRepository` uses `https://ekitapligim.com/hediye-carki-api/`, separately from MobileApi and IosApi routing. The existing native Keychain `ms_at_` bearer session is required for all three endpoints. Cookies, XF API keys, redirects and disk caching are disabled. One 401 refresh reuses the existing iOS session coordinator; it retains the exact spin request body/key.
@@ -99,6 +103,8 @@ Body: `purpose`.
 Response: temporary reader token, source URL, file type.
 
 The client must create a purpose-specific session before opening content, including when a validated offline copy exists. This keeps read/download quota enforcement on the server. Remote PDF/EPUB responses are downloaded to protected local storage and validated by file signature before native rendering; Google Drive sharing URLs are converted to binary download URLs without exposing the underlying URL to the reader UI.
+
+Client loading update (2026-09-28): URLSession downloads to disk and reports transferred bytes; a percentage is shown only when a positive expected size is available. Authorization, saved-position lookup, download, validation and native opening have distinct UI stages. The client uses a 180-second request timeout and a 30-minute resource timeout, decodes legacy base64 JSON book envelopes in bounded chunks off the main actor, and accepts bounded HTTPS source-link response chains. Redirects retain bearer authorization only for approved first-party API URLs. File validation remains required before rendering; connection, timeout and storage failures expose a retry action. These are client changes; endpoint contracts, quota/session enforcement and progress payloads are unchanged. See [READER_EXPERIENCE_VALIDATION.md](READER_EXPERIENCE_VALIDATION.md) for evidence and pending device checks.
 
 ### GET / POST `/books/{thread_id}/reader/progress` (IosApi 1.0.24+)
 Auth: login and XenForo visibility permission for this book. Both methods use the website's existing `xf_codex_book_reader_progress` record, keyed by authenticated user and thread. No schema migration.

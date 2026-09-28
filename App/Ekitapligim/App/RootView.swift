@@ -10,6 +10,7 @@ struct RootView: View {
     @State private var assistantHidden = false
     @State private var assistantCollapsed = true
     @State private var keyboardVisible = false
+    @State private var readerRequestedPremium = false
 
     init() {
         EKitapligimAppearance.configure()
@@ -43,9 +44,41 @@ struct RootView: View {
             if phase == .active { container.handleScenePhaseActive() }
             if phase == .background { container.handleScenePhaseBackground() }
         }
-        .sheet(item: $container.presentedRoute) { route in
+        .sheet(item: sheetRoute) { route in
             AppRouteSheet(route: route)
         }
+        .fullScreenCover(item: readerRoute, onDismiss: {
+            if readerRequestedPremium {
+                readerRequestedPremium = false
+                container.open(route: .premium)
+            }
+        }) { route in
+            if case .reader(let id) = route {
+                ReaderLoaderView(bookID: id, onPremium: {
+                    readerRequestedPremium = true
+                    container.presentedRoute = nil
+                })
+            }
+        }
+    }
+
+    private var readerRoute: Binding<AppRoute?> {
+        Binding(get: {
+            if case .reader = container.presentedRoute { return container.presentedRoute }
+            return nil
+        }, set: { value in
+            if case .reader = container.presentedRoute { container.presentedRoute = value }
+        })
+    }
+
+    private var sheetRoute: Binding<AppRoute?> {
+        Binding(get: {
+            if case .reader = container.presentedRoute { return nil }
+            return container.presentedRoute
+        }, set: { value in
+            if case .reader = container.presentedRoute { return }
+            container.presentedRoute = value
+        })
     }
 
     private var tabs: some View {

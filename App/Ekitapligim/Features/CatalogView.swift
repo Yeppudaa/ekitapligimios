@@ -15,6 +15,7 @@ struct CatalogView: View {
     @State private var isLoading = true
     @State private var isRefreshing = false
     @State private var isLoadingMore = false
+    @State private var loadGeneration = UUID()
     @State private var showingFilters = false
     @State private var errorMessage: String?
     @State private var heroCollapseProgress: CGFloat = 0
@@ -290,7 +291,9 @@ struct CatalogView: View {
     }
 
     private func load(reset: Bool) async {
-        guard reset || !isLoadingMore else { return }
+        guard reset || (!isLoadingMore && !isLoading && !isRefreshing) else { return }
+        let generation = UUID()
+        loadGeneration = generation
         if reset {
             if books.isEmpty {
                 isLoading = true
@@ -302,9 +305,11 @@ struct CatalogView: View {
         }
         errorMessage = nil
         defer {
-            isLoading = false
-            isRefreshing = false
-            isLoadingMore = false
+            if loadGeneration == generation {
+                isLoading = false
+                isRefreshing = false
+                isLoadingMore = false
+            }
         }
         do {
             let page = reset ? 1 : currentPage + 1
@@ -318,11 +323,13 @@ struct CatalogView: View {
                 order: filters.order,
                 premiumOnly: false
             )
+            guard loadGeneration == generation, !Task.isCancelled else { return }
             books = reset ? result.books : books + result.books.filter { item in !books.contains(where: { $0.id == item.id }) }
             currentPage = result.currentPage
             lastPage = result.lastPage
             totalBooks = result.totalBooks
         } catch {
+            guard loadGeneration == generation, !Task.isCancelled else { return }
             if reset, books.isEmpty {
                 errorMessage = L10n.catalogLoadFailed
             }

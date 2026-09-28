@@ -35,6 +35,7 @@ struct BookDetailView: View {
     private var errorMessage: String? { loading.errorMessage }
     @State private var downloadStatusMessage: String?
     @State private var exportFileURL: URL?
+    @State private var isPreparingDownload = false
     @State private var shelfStatusMessage: String?
     @State private var currentShelfState = ""
     @State private var isFavorite = false
@@ -51,6 +52,8 @@ struct BookDetailView: View {
     @State private var showingDownloadPremiumAlert = false
     @State private var showingReaderLoginAlert = false
     @State private var showingReport = false
+    @State private var showingReader = false
+    @State private var readerRequestedPremium = false
     @State private var selectedIssueType = "copyright"
     @State private var issueFeedback: String?
     @State private var isSynopsisExpanded = false
@@ -102,6 +105,19 @@ struct BookDetailView: View {
         .task(id: bookID) { await load() }
         .onDisappear { loading.cancel() }
         .onChange(of: loading.book?.id) { _, _ in syncShelfFromLibrary() }
+        .fullScreenCover(isPresented: $showingReader, onDismiss: {
+            if readerRequestedPremium {
+                readerRequestedPremium = false
+                container.open(route: .premium)
+            }
+        }) {
+            if let book {
+                ReaderView(book: book, onPremium: {
+                    readerRequestedPremium = true
+                    showingReader = false
+                })
+            }
+        }
         .sheet(isPresented: $showingReport) {
             ReportContentView(kind: .book(bookID: bookID), initialType: selectedIssueType) { success in
                 if success {
@@ -260,11 +276,10 @@ struct BookDetailView: View {
         VStack(spacing: 10) {
             HStack(spacing: 10) {
                 if isSignedIn {
-                    NavigationLink {
-                        ReaderView(book: book)
-                    } label: {
+                    Button { showingReader = true } label: {
                         readButtonLabel
                     }
+                    .accessibilityIdentifier("book.openReader")
                     .buttonStyle(.plain)
                 } else {
                     Button { showingReaderLoginAlert = true } label: {
@@ -293,6 +308,7 @@ struct BookDetailView: View {
                         .overlay { RoundedRectangle(cornerRadius: 10).stroke(Color(hex: 0xE7D8C5)) }
                 }
                 .accessibilityLabel(L10n.bookDetailOfflineDownload)
+                .disabled(isPreparingDownload)
             }
 
             HStack(spacing: 10) {
@@ -929,11 +945,16 @@ struct BookDetailView: View {
     }
 
     private func download(_ book: BookDTO) async {
+        guard !isPreparingDownload else { return }
+        isPreparingDownload = true
+        defer { isPreparingDownload = false }
+        let sessionRevision = container.sessionRevision
         guard let bookID = Int(book.id) else {
             downloadStatusMessage = L10n.bookDetailInvalidId
             return
         }
         let currentAccess = (try? await container.books.readerAccess(bookID: bookID)) ?? access
+        guard container.sessionRevision == sessionRevision, !Task.isCancelled else { return }
         loading.access = currentAccess
         switch DownloadAccessPolicy.decision(
             isSignedIn: isSignedIn,
@@ -957,6 +978,7 @@ struct BookDetailView: View {
         }
         do {
             let session = try await container.books.createReaderSession(bookID: bookID, purpose: .download)
+            guard container.sessionRevision == sessionRevision, !Task.isCancelled else { return }
             guard let url = ReaderSourcePolicy.nativeContentURL(
                 session: session,
                 bookID: bookID,
@@ -971,6 +993,7 @@ struct BookDetailView: View {
                 expectedFileType: session.fileType
             )
         } catch {
+            guard container.sessionRevision == sessionRevision, !Task.isCancelled else { return }
             if !container.isPremium {
                 showingDownloadPremiumAlert = true
                 return
@@ -978,10 +1001,12 @@ struct BookDetailView: View {
             downloadStatusMessage = (error as? APIClientError)?.serverMessage ?? downloadDenialMessage(from: currentAccess)
             return
         }
+        guard container.sessionRevision == sessionRevision, !Task.isCancelled else { return }
         switch container.downloadManager.states[book.id] {
         case .downloaded:
             downloadStatusMessage = L10n.bookDetailDownloadReady
             _ = await container.refreshLibrary()
+            guard container.sessionRevision == sessionRevision, !Task.isCancelled else { return }
             presentDeviceExport(for: book)
         case .failed(let message):
             downloadStatusMessage = message

@@ -4,7 +4,7 @@ import EkitapligimCore
 
 protocol TokenStore: SessionTokenManaging {}
 
-final class KeychainTokenStore: TokenStore, @unchecked Sendable {
+actor KeychainTokenStore: TokenStore {
     private let service: String
     private let account = "session"
     private let encoder = JSONEncoder()
@@ -15,10 +15,14 @@ final class KeychainTokenStore: TokenStore, @unchecked Sendable {
     }
 
     func accessToken() async throws -> String? {
-        try await loadSession()?.accessToken
+        try readSession()?.accessToken
     }
 
     func loadSession() async throws -> Session? {
+        try readSession()
+    }
+
+    private func readSession() throws -> Session? {
         let query: [String: Any] = [
             kSecClass as String: kSecClassGenericPassword,
             kSecAttrService as String: service,
@@ -37,6 +41,17 @@ final class KeychainTokenStore: TokenStore, @unchecked Sendable {
     }
 
     func save(session: Session) async throws {
+        try writeSession(session)
+    }
+
+    func replaceSession(_ session: Session?, ifMatching expected: Session) async throws -> Bool {
+        guard try readSession() == expected else { return false }
+        if let session { try writeSession(session) }
+        else { try deleteSession() }
+        return true
+    }
+
+    private func writeSession(_ session: Session) throws {
         let data = try encoder.encode(session)
         let query: [String: Any] = [
             kSecClass as String: kSecClassGenericPassword,
@@ -60,6 +75,10 @@ final class KeychainTokenStore: TokenStore, @unchecked Sendable {
     }
 
     func clear() async throws {
+        try deleteSession()
+    }
+
+    private func deleteSession() throws {
         let query: [String: Any] = [
             kSecClass as String: kSecClassGenericPassword,
             kSecAttrService as String: service,
