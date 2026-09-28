@@ -129,8 +129,9 @@ final class ReaderExperienceUITests: XCTestCase {
         for id in ["reader.close", "reader.focus", "reader.theme"] {
             let button = app.buttons[id]
             XCTAssertTrue(button.isHittable)
-            XCTAssertGreaterThanOrEqual(button.frame.width, 44)
-            XCTAssertGreaterThanOrEqual(button.frame.height, 44)
+            // XCTest frames can round a 44-point SwiftUI control to 43.99999.
+            XCTAssertGreaterThanOrEqual(button.frame.width, 43.99)
+            XCTAssertGreaterThanOrEqual(button.frame.height, 43.99)
         }
         XCTAssertTrue(app.sliders["Sayfa seçici"].isHittable)
         let toolbar = app.descendants(matching: .any)["reader.toolbar"].firstMatch
