@@ -117,7 +117,6 @@ struct ReaderView: View {
         .toolbar(.hidden, for: .navigationBar)
         .statusBarHidden(!showsControls)
         .persistentSystemOverlays(showsControls ? .automatic : .hidden)
-        .accessibilityIdentifier("reader.fullscreen")
         .sheet(isPresented: $showsBookmarks) {
             ReaderBookmarksView(
                 bookmarks: bookmarks,

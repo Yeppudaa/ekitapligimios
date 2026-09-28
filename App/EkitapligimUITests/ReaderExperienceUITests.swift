@@ -20,7 +20,7 @@ final class ReaderExperienceUITests: XCTestCase {
         app.launchEnvironment["READER_FIXTURE_MODE"] = mode
         app.launchEnvironment["READER_FIXTURE_THEME"] = "sepia"
         app.launch()
-        XCTAssertTrue(app.buttons["reader.showControls"].waitForExistence(timeout: 10))
+        XCTAssertTrue(app.buttons["reader.showControls"].waitForExistence(timeout: 10), app.debugDescription)
         return app
     }
 

@@ -61,7 +61,6 @@ struct ReaderUITestHost: View {
         .preferredColorScheme(theme.colorScheme)
         .statusBarHidden(!showsControls)
         .persistentSystemOverlays(showsControls ? .automatic : .hidden)
-        .accessibilityIdentifier("reader.fullscreen")
         .sheet(isPresented: $showsSettings) {
             NavigationStack {
                 Form {
