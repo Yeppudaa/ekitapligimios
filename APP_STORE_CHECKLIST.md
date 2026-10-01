@@ -3,13 +3,14 @@
 ## Purchase/API audit gate (2026-10-01)
 
 - [x] Production AdminCP shows IosApi 1.0.29 and MobileApi 1.0.148; authenticated live purchase preparation returned an account UUID. A permitted reader session and native PDF source returned HTTP 200 and a `%PDF-` header. These checks do not exercise Apple payment or restore.
-- [x] App Store Connect shows the bundle-prefixed monthly product approved and version 1.0.6 build 39 Ready for Distribution. The local purchase fixes are a 1.0.7 candidate and are not in build 39.
+- [x] App Store Connect shows the bundle-prefixed monthly product approved at ₺100 in Türkiye. Version 1.0.7 build 40 is in TestFlight, assigned to the internal group and attached to a saved App Store version draft; version 1.0.6 build 39 does not contain these fixes.
+- [x] Codemagic Production build #49 from `c11799b` passed native tests, signed an IPA and uploaded build 40. The tester reported successful monthly purchase/restore and successful 3-, 6-, 12-month and lifetime access on build 40. These device outcomes are tester-reported, not automated transaction evidence.
 
 - [x] Source fixes and regression tests for account isolation, unfinished purchases, restore cancellation, expiry, signed event ordering, refund replay, early notifications and XenForo Premium delivery. See [PURCHASE_AND_API_AUDIT.md](PURCHASE_AND_API_AUDIT.md).
 - [x] Local 1.0.27 server archive reconciled into 1.0.28 source, preserving group reconciliation and reader preview metadata; MobileApi 1.0.145+ dependency retained.
 - [ ] Verify that every production IosApi 1.0.29 file matches the audited source and that upgrade/data preservation and entitlement group delivery pass in staging. The version label and live API probes alone do not prove full source identity.
-- [ ] Execute current iOS clean/Production builds, StoreKitTest and UI/accessibility tests on macOS. Windows Swift core tests and syntax parsing are not iOS build evidence.
-- [ ] Run all five products plus legacy restores on Apple Sandbox/TestFlight, including interruption, second device, wrong app account, grace, expiry, refunds and notification retry. Confirm App Store Connect product availability for this build.
+- [x] GitHub CI run #157 passed on commit `7e0f1d1`: iPhone/iPad simulator unit and UI tests, Production build, API/source validation and App Store screenshots. Codemagic Production build #49 and native tests also passed. Physical-device accessibility and all StoreKit edge cases remain unverified.
+- [ ] Complete legacy restores and interruption, second-device, wrong-account, grace, expiry, refund and notification-retry scenarios. The five current product outcomes were reported from TestFlight, and App Store Connect product availability was checked for the ₺100 monthly product.
 - [ ] Verify operational recovery for lost Apple notifications and deletion/retention of account-linked purchase records. Local membership cron alone does not reconcile Apple history.
 
 ## General review follow-up (2026-09-28)

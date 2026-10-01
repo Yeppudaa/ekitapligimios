@@ -1,8 +1,8 @@
 # App Store Metadata Draft
 
-## Version 1.0.7 candidate (2026-10-01)
+## Version 1.0.7 (2026-10-01)
 
-Proposed Turkish What's New: “Kitap okuma bağlantıları ile Premium satın alma ve geri yükleme işlemlerinde güvenilirlik iyileştirmeleri.” This copy is a draft until the native build and Apple Sandbox purchase/restore checks pass. App Store Connect currently marks version 1.0.6 build 39 Ready for Distribution; the changes in this workspace require a separate 1.0.7 build.
+Turkish What's New saved in App Store Connect: “Kitap okuma bağlantıları ile Premium satın alma ve geri yükleme işlemlerinde güvenilirlik iyileştirmeleri.” Version 1.0.7 build 40 was uploaded to TestFlight and attached to the App Store version draft. Codemagic Production build and native tests passed; GitHub CI #157 passed iPhone/iPad simulator tests, Production build, API/source checks and screenshot generation. The tester reported successful monthly purchase/restore and the four other current products in TestFlight. This report does not cover second-device, wrong-account, refund, expiry or notification-retry scenarios.
 
 ## Purchase reliability draft (2026-10-01; pending native/Sandbox validation)
 
