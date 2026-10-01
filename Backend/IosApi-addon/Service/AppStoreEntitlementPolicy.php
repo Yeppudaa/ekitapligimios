@@ -7,7 +7,7 @@ final class AppStoreEntitlementPolicy
 	public static function isActive(array $transaction, array $renewalInfo, int $nowMilliseconds): bool
 	{
 		$revocationDate = (int) ($transaction['revocationDate'] ?? 0);
-		if ($revocationDate > 0)
+		if ($revocationDate > 0 || !empty($transaction['isUpgraded']) || !self::hasValidProductType($transaction))
 		{
 			return false;
 		}
@@ -40,7 +40,11 @@ final class AppStoreEntitlementPolicy
 				return 0;
 			}
 			$purchase = new \DateTimeImmutable('@' . (int) floor($purchaseDate / 1000));
-			return $purchase->modify('+' . $months . ' months')->getTimestamp();
+			// Clamp to the last day of the destination month (Jan 31 + 3 months
+			// is Apr 30), rather than PHP's overflowing month arithmetic.
+			$target = $purchase->modify('first day of this month')->modify('+' . $months . ' months');
+			return $target->setDate((int) $target->format('Y'), (int) $target->format('n'),
+				min((int) $purchase->format('j'), (int) $target->format('t')))->getTimestamp();
 		}
 		return (int) floor(max(
 			(int) ($transaction['expiresDate'] ?? 0),
@@ -52,6 +56,21 @@ final class AppStoreEntitlementPolicy
 	{
 		return ($transaction['productId'] ?? '') === 'com.ekitapligim.app.premium.lifetime'
 			&& ($transaction['type'] ?? '') === 'Non-Consumable';
+	}
+
+	public static function hasValidProductType(array $transaction): bool
+	{
+		$product = (string) ($transaction['productId'] ?? '');
+		if ($product === 'com.ekitapligim.app.premium.lifetime')
+		{
+			return self::isLifetimeProduct($transaction);
+		}
+		if (in_array($product, ['com.ekitapligim.app.premium.three_months',
+			'com.ekitapligim.app.premium.six_months', 'com.ekitapligim.app.premium.yearly_once'], true))
+		{
+			return self::nonRenewingMonths($transaction) > 0;
+		}
+		return ($transaction['type'] ?? '') === 'Auto-Renewable Subscription';
 	}
 
 	private static function nonRenewingMonths(array $transaction): int

@@ -147,6 +147,11 @@ class AlertCreated
 	{
 		$action = (string) $alert->action;
 		$type = (string) $alert->content_type;
+		// Lock-screen previews must not render private message text or participants.
+		if (in_array($type, ['conversation', 'conversation_message', 'siropu_chat_conv_message', 'chat_message'], true))
+		{
+			return 'Yeni bir özel mesajınız var.';
+		}
 
 		$actor = '';
 		try

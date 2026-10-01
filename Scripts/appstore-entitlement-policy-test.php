@@ -36,6 +36,7 @@ $cases = [
 
 foreach ($cases as $name => [$transaction, $renewalInfo, $expected])
 {
+	$transaction += ['productId' => 'com.ekitapligim.app.premium.monthly', 'type' => 'Auto-Renewable Subscription'];
 	$actual = AppStoreEntitlementPolicy::isActive($transaction, $renewalInfo, $now);
 	if ($actual !== $expected)
 	{

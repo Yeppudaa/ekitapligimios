@@ -28,11 +28,11 @@ try {
     $prefix = "upload/src/addons/Ekitapligim/IosApi/"
     $addon = Get-EntryText ($prefix + "addon.json") | ConvertFrom-Json
     if ($addon.title -ne "Ekitapligim iOS API") { throw "Unexpected add-on title: $($addon.title)" }
-    if ([int]$addon.version_id -ne 1000012 -or $addon.version_string -ne "1.0.12") {
-        throw "IosApi must be exactly 1.0.12 / 1000012; found $($addon.version_string) / $($addon.version_id)."
+    if ([int]$addon.version_id -ne 1000029 -or $addon.version_string -ne "1.0.29") {
+        throw "IosApi must be exactly 1.0.29 / 1000029; found $($addon.version_string) / $($addon.version_id)."
     }
-    if ([int]$addon.require.'Ekitapligim/MobileApi'[0] -ne 1000136) {
-        throw "IosApi must depend on the unchanged production MobileApi 1.0.136."
+    if ([int]$addon.require.'Ekitapligim/MobileApi'[0] -ne 1000145) {
+        throw "IosApi must retain the 1.0.27 server baseline dependency: MobileApi 1.0.145+."
     }
 
     $routes = Get-EntryText ($prefix + "_data/routes.xml")
@@ -56,6 +56,13 @@ try {
     $cron = Get-EntryText ($prefix + "Cron/UgcSla.php")
     Assert-Contains $cron "72000" "20-hour reminder"
     Assert-Contains $cron "86400" "24-hour escalation"
+    $billing = Get-EntryText ($prefix + "Service/AppStoreTransactionStore.php")
+    Assert-Contains $billing "GET_LOCK" "atomic purchase ownership"
+    Assert-Contains $billing "signedDate" "ordered transaction updates"
+    Assert-Contains $billing "xf_ekitapligim_ios_appstore_account" "pre-purchase account binding"
+    $membership = Get-EntryText ($prefix + "Service/IosMembershipSynchronizer.php")
+    Assert-Contains $membership "appStoreEntitlement-" "preserved server membership grants"
+    Assert-Contains (Get-EntryText ($prefix + "_data/cron.xml")) "ekIosAppStoreReconcile" "subscription expiry reconciliation"
     $options = Get-EntryText ($prefix + "_data/options.xml")
     Assert-Contains $options "ekIosUgcModeratorEmails" "moderator email option"
     Assert-Contains $options "ekIosUgcBlockedTerms" "content filter option"
@@ -63,7 +70,7 @@ try {
     $hash = (Get-FileHash -LiteralPath $resolvedZip -Algorithm SHA256).Hash
     Write-Host "Standalone IosApi release audit completed: $(Split-Path -Leaf $resolvedZip) ($($addon.version_string))"
     Write-Host "SHA-256: $hash"
-    Write-Host "Staging remains blocked until moderator emails and filter terms are configured and tested."
+    Write-Host "Run the server release audit and Apple Sandbox purchase/restore matrix before promotion."
 } finally {
     $archive.Dispose()
 }

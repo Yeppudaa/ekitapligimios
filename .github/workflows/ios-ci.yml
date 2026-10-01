@@ -22,6 +22,17 @@ jobs:
         run: |
           php Tests/Backend/ReaderProgressTest.php
           php Tests/Backend/ReaderProgressControllerTest.php
+      - name: App Store verification, restore and transaction ordering contracts
+        run: |
+          php Scripts/appstore-entitlement-policy-test.php
+          php Tests/Backend/AppStoreEntitlementPolicyTest.php
+          php Tests/Backend/AppStoreTransactionStoreTest.php
+          php Tests/Backend/AppStoreControllerTest.php
+          php Tests/Backend/AppStoreSignatureTest.php
+          php Tests/Backend/AppStoreMembershipTest.php
+          php Tests/Backend/PublicBearerIsolationTest.php
+          php Tests/Backend/AccountDeletionRequestTest.php
+          php Tests/Backend/AlertPrivacyTest.php
       - name: EPUB.js and Readium position contract
         run: |
           npm install --prefix "$RUNNER_TEMP/reader-test-runtime" jsdom@26.1.0 epubjs@0.3.93 --no-audit --no-fund

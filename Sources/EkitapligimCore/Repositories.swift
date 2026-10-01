@@ -615,11 +615,13 @@ public struct SafetyRepository: Sendable {
 }
 
 public protocol PurchaseVerifying: Sendable {
+    func prepareAppStorePurchase(accountName: String) async throws -> UUID
     func verifyAppStorePurchase(
         signedTransaction: String,
         productID: String,
         originalTransactionID: String?,
-        signedRenewalInfo: String?
+        signedRenewalInfo: String?,
+        accountName: String
     ) async throws -> BillingResponseDTO
 }
 
@@ -630,18 +632,26 @@ public struct PurchaseRepository: PurchaseVerifying, Sendable {
         self.apiClient = apiClient
     }
 
+    public func prepareAppStorePurchase(accountName: String) async throws -> UUID {
+        let response = try await apiClient.request(.prepareAppStorePurchase(accountName: accountName), as: PurchaseAccountDTO.self)
+        guard response.success else { throw APIClientError.invalidResponse }
+        return response.appAccountToken
+    }
+
     public func verifyAppStorePurchase(
         signedTransaction: String,
         productID: String,
         originalTransactionID: String?,
-        signedRenewalInfo: String? = nil
+        signedRenewalInfo: String? = nil,
+        accountName: String
     ) async throws -> BillingResponseDTO {
         try await apiClient.request(
             .verifyAppStorePurchase(
                 signedTransaction: signedTransaction,
                 productID: productID,
                 originalTransactionID: originalTransactionID,
-                signedRenewalInfo: signedRenewalInfo
+                signedRenewalInfo: signedRenewalInfo,
+                accountName: accountName
             ),
             as: BillingResponseDTO.self
         )
@@ -882,6 +892,11 @@ public struct BlockedMemberDTO: Decodable, Equatable, Identifiable, Sendable {
     public let username: String
     public let avatarUrl: String?
     public let blockedAt: Int?
+}
+
+public struct PurchaseAccountDTO: Decodable, Equatable, Sendable {
+    public let success: Bool
+    public let appAccountToken: UUID
 }
 
 public struct BillingResponseDTO: Decodable, Equatable, Sendable {

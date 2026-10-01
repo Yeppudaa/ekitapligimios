@@ -30,10 +30,15 @@ class AccountDeletionRequest extends \Ekitapligim\MobileApi\Api\Controller\Abstr
 		$existingRequestId = $this->findPendingRequestId((int) $visitor->user_id);
 		if ($existingRequestId > 0)
 		{
+			// A previous response may have been lost, or the user may have signed
+			// back in while deletion is pending. Revoke those sessions as well.
+			MobileSession::revokeUserSessions((int) $visitor->user_id);
+			$appleRevocationPending = $hasAppleAuthorization
+				&& !AppleAuthorization::revokeForUser((int) $visitor->user_id);
 			return $this->deletionRequestResult(
 				$existingRequestId,
 				true,
-				AppleAuthorization::hasAuthorization((int) $visitor->user_id)
+				$appleRevocationPending
 			);
 		}
 

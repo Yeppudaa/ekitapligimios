@@ -30,9 +30,7 @@ class SendConversationPush extends AbstractJob
 			return $this->complete();
 		}
 
-		$sender = $senderId > 0 ? $this->app->em()->find('XF:User', $senderId) : null;
-		$senderName = trim((string) ($sender ? $sender->username : $message->username));
-		$body = ($senderName !== '' ? $senderName : 'Bir üye') . ' size özel mesaj gönderdi.';
+		$body = 'Yeni bir özel mesajınız var.';
 
 		foreach (array_unique(array_map('intval', (array) $this->data['recipient_user_ids'])) AS $recipientId)
 		{

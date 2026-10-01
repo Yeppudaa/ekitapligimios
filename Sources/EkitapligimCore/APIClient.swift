@@ -198,6 +198,7 @@ public final class APIClient: Sendable {
             throw APIClientError.invalidURL
         }
         var request = URLRequest(url: try endpoint.url(relativeTo: baseURL))
+        request.httpShouldHandleCookies = false
         if endpoint.service == .assistant {
             request.cachePolicy = .reloadIgnoringLocalCacheData
             request.setValue("no-cache, no-store", forHTTPHeaderField: "Cache-Control")

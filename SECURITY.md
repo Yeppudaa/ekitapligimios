@@ -1,5 +1,13 @@
 # Security Review
 
+## Purchase/API review (2026-10-01)
+
+Implemented: account-generation isolation in the StoreKit service and account binding on verification requests; transaction-specific, signed-date-ordered entitlement persistence; atomic ownership; retryable storage/permission failures; ES256/P-256, App Store signing OIDs and certificate validity at signing time; and bearer-only public iOS routes, including inherited MobileApi controllers. Raw payment JWS and private-message fields are redacted by the core logger. The bundled Apple root remains the default trust anchor.
+
+New purchases obtain a server-persisted per-user UUID before StoreKit starts and include it as Apple's signed `appAccountToken`. This closes account switching before the first server verification. Legacy tokenless receipts retain first-claim semantics. Preserve the UUID mapping in server backups. Private-message push previews are generic, and logout deregisters the device before revoking its bearer.
+
+Executed cryptographic fixtures, database tests and source scans are recorded in `PURCHASE_AND_API_AUDIT.md`. Remaining security/release gates include real Apple signed transactions, online certificate revocation/Apple history reconciliation strategy, server upgrade validation and account-linked retention/deletion. No production readiness claim is made from static scans.
+
 ## Current Findings
 - Android reads `EKITAPLIGIM_API_KEY` from `.env` and may call keyed XenForo `/api` routes. iOS must not ship privileged API keys.
 - The legacy Google Play controller is Android-only and must never be used by the iOS purchase flow. iOS uses StoreKit 2 and the App Store JWS endpoints.

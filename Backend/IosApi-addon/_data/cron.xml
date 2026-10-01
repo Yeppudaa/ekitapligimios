@@ -1,4 +1,5 @@
 <?xml version="1.0" encoding="utf-8"?>
 <cron>
+  <entry entry_id="ekIosAppStoreReconcile" cron_class="Ekitapligim\IosApi\Cron\AppStoreReconcile" cron_method="run" active="1"><![CDATA[{"day_type":"dom","dom":[-1],"hours":[-1],"minutes":[0,5,10,15,20,25,30,35,40,45,50,55]}]]></entry>
   <entry entry_id="ekIosUgcSla" cron_class="Ekitapligim\IosApi\Cron\UgcSla" cron_method="run" active="1"><![CDATA[{"day_type":"dom","dom":[-1],"hours":[-1],"minutes":[0,15,30,45]}]]></entry>
 </cron>

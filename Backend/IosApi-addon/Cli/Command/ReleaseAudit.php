@@ -39,13 +39,26 @@ class ReleaseAudit extends AbstractCommand
 		{
 			$errors[] = 'Book Agenda comment report handler is missing.';
 		}
+		foreach (['xf_ekitapligim_mobile_appstore_entitlement', 'xf_ekitapligim_ios_appstore_state', 'xf_ekitapligim_ios_appstore_account'] AS $table)
+		{
+			if (!\XF::db()->getSchemaManager()->tableExists($table)) { $errors[] = 'App Store storage is missing: ' . $table; }
+		}
+		$premiumGroup = \Ekitapligim\IosApi\Service\IosMembershipSynchronizer::premiumGroupId();
+		if ($premiumGroup <= 0 || !\XF::em()->find('XF:UserGroup', $premiumGroup))
+		{
+			$errors[] = 'The shared Premium user group must be configured for purchase delivery.';
+		}
+		if (!\XF::db()->fetchOne("SELECT 1 FROM xf_cron_entry WHERE entry_id = 'ekIosAppStoreReconcile' AND active = 1"))
+		{
+			$errors[] = 'App Store membership reconciliation cron is missing or inactive.';
+		}
 
 		if ($errors)
 		{
 			foreach ($errors AS $error) $output->writeln('<error>' . $error . '</error>');
 			return 1;
 		}
-		$output->writeln('<info>IosApi Guideline 1.2 release controls are configured.</info>');
+		$output->writeln('<info>IosApi moderation and purchase storage/delivery controls are configured. Native and Apple Sandbox validation still required.</info>');
 		return 0;
 	}
 }

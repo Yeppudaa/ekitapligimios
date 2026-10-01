@@ -17,7 +17,7 @@ Google OAuth client IDs and the reversed URL scheme are public configuration, no
 - `EKITAPLIGIM_IOS_PRODUCT_IDS`: comma-separated StoreKit allowlist. Production value:
   `com.ekitapligim.app.premium.monthly,com.ekitapligim.app.premium.yearly,ekitapligim.premium.monthly,ekitapligim.premium.yearly`.
   IosApi 1.0.9+ merges configured IDs with the source-controlled shipped IDs; configuration extends the list and cannot remove a shipped product.
-- `EKITAPLIGIM_APPSTORE_ENVIRONMENT`: `Production`, `Sandbox`, `Xcode`, or `Both`; production servers should use `Production`.
+- `EKITAPLIGIM_APPSTORE_ENVIRONMENT`: `Production`, `Sandbox`, or `Both`. Use `Both` when TestFlight/Sandbox verification and the App Store Connect sandbox notification URL share the API. `Both` never accepts Xcode receipts. Keep JWS signature, bundle and product checks enabled; local StoreKitTest uses injected verifiers. An explicit Xcode value does not bypass Apple certificate validation and is not a usable production test mode.
 - `EKITAPLIGIM_APPLE_ROOT_CA_FILE` or `EKITAPLIGIM_APPLE_ROOT_CA_PEM`: Apple root certificate used to anchor App Store JWS certificate-chain verification. Keep the PEM file outside the web root.
 - App Store Server API issuer ID, key ID, bundle ID, and private key must live only on the server secret store.
 - Apple Sign in keys and JWKS cache must live only on the server.

@@ -1,5 +1,15 @@
 # App Store Metadata Draft
 
+## Version 1.0.7 candidate (2026-10-01)
+
+Proposed Turkish What's New: “Kitap okuma bağlantıları ile Premium satın alma ve geri yükleme işlemlerinde güvenilirlik iyileştirmeleri.” This copy is a draft until the native build and Apple Sandbox purchase/restore checks pass. App Store Connect currently marks version 1.0.6 build 39 Ready for Distribution; the changes in this workspace require a separate 1.0.7 build.
+
+## Purchase reliability draft (2026-10-01; pending native/Sandbox validation)
+
+Proposed Turkish release note after validation: “Satın alma ve satın almaları geri yükleme işlemlerinde bağlantı kesintisi sonrası toparlanma ve hesap eşitleme iyileştirildi.”
+
+Review the five current products and legacy restore IDs with the same Ekitapligim account on a second device. A purchase linked to another app account must show the localized account explanation. Local StoreKit tests inject a verifier; TestFlight must exercise the public server with Apple-signed transactions. Do not publish this reliability claim until the gates in `PURCHASE_AND_API_AUDIT.md` pass.
+
 ## Reader draft addition (2026-09-28; pending native validation)
 
 Turkish copy: “Tam ekran okuma alanında sepya, beyaz veya gece görünümünü seç. Kitabın yüklenirken aktarılan dosya boyutunu, sunucu toplam boyutu bildirdiğinde yükleme yüzdesini takip et. Kaldığın yerden okumaya devam et.”

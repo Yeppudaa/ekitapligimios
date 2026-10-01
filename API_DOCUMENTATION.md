@@ -122,7 +122,9 @@ The library includes viewable books with progress even without shelf membership.
 
 ### GET `/books/{thread_id}/reader/source`
 Auth: login/session token required.
-Response: signed/temporary source URL.
+Query: signed reader token `t`; optional `format=json`.
+Response: ebook bytes, or base64 content with reader metadata when JSON is requested.
+Missing or invalid Drive source URLs return the existing `ebook_unavailable` API error before the remote fetcher is called. Valid URLs use the shared BookThreads URL validator and continue through MobileApi's access/preview pipeline. An unavailable source must be corrected on the book record; the endpoint does not invent a replacement URL.
 
 ## Authors And Publishers
 
@@ -296,18 +298,21 @@ Android uses Google Play verification; iOS uses the following StoreKit 2 endpoin
 ### POST `/billing/app-store/verify`
 Auth: login required.
 Body: `signed_transaction`, `product_id`, `original_transaction_id`, and optional
-`signed_renewal_info`. Renewal JWS is required to preserve access during an Apple billing grace period.
+`signed_renewal_info`. New clients also send `account_name`, captured before the purchase/restore starts; a mismatch with the bearer account returns `409 purchase_account_changed`. Omitting it remains supported for shipped clients. Verified renewal JWS supplies Apple billing grace periods; omitting it does not erase a newer grace state already stored.
 Response: subscription entitlement, effective expiration, and optional grace-period expiration. The three-month, six-month, and yearly-once products expire 3, 6, or 12 calendar months after the signed purchase date. The non-consumable lifetime product has no expiration. Monthly and legacy yearly products retain Apple's signed subscription expiration.
 Security: both JWS chains are anchored to a configured Apple root, bundle/product/environment are
 allowlisted, and each `originalTransactionId` is atomically bound to its first Ekitapligim account.
+IosApi 1.0.28 responds from the stored, newest signed state rather than the submitted receipt alone. Ownership conflicts return `409 original_transaction_already_linked`; storage/lock/Premium group synchronization failures return `503 purchase_storage_unavailable`. A successful response means both ledger persistence and XenForo permission synchronization completed. Verified inactive transactions return HTTP 200 with `success=false`, `is_premium=false`; the app acknowledges them without granting access. Effective expiration already includes grace. Non-renewing calendar periods clamp month ends.
+
+Purchase preparation uses the same POST route with `prepare_purchase=1` and required `account_name`, without a transaction. Response: `{"success":true,"app_account_token":"<UUID>"}`. The UUID is stable per XenForo user ID, persisted before opening StoreKit, and passed through `Product.PurchaseOption.appAccountToken`. A signed token tied to a different user returns the same ownership conflict, even before any receipt was previously verified. Unknown signed tokens return `409 app_account_token_unknown`; restore the server mapping from backup rather than reassigning ownership. Legacy tokenless transactions remain supported. Deploy 1.0.28 before distributing this client; failed preparation prevents the payment sheet from opening.
 
 ### POST `/billing/app-store/notifications`
 Auth: server-to-server from Apple.
 Response: 200 after verification and entitlement update.
-Current backend behavior: verifies the outer, transaction, and renewal JWS certificate chains; rejects bundle/product/environment mismatches; records the verified notification hash; preserves Apple billing grace periods; and atomically updates the matching existing entitlement by transaction/original transaction ID. Public sandbox verification is still required.
+IosApi 1.0.28 verifies outer, transaction and renewal JWS chains, App Store OIDs and signing dates; rejects bundle/product/environment/renewal binding mismatches; saves transaction records independently; and orders transaction/renewal state by their signed dates. Known signed app-account UUIDs identify the owner before client verification. Other unclaimed transactions are retained under user 0 without permissions, then atomically claimed on authenticated verification. Duplicate deliveries are idempotent. Invalid signatures return 400; storage or permission-sync failures return `503 notification_storage_unavailable` so Apple retries. The five-minute cron reconciles local membership expiry; it does not query Apple for lost notification history. Public Sandbox verification remains required.
 
 ## Required Deployment Work Before iOS Release
-- Deploy standalone IosApi `1.0.13` (SHA-256 verified; MobileApi 1.0.136 unchanged) to public HTTPS staging, configure moderator emails and managed filter terms, run `php cmd.php ekitapligim-ios:release-audit`, then promote the identical ZIP to production.
+- Validate standalone IosApi `1.0.28` against the saved `1.0.27` server baseline and MobileApi `1.0.145+`, deploy to public HTTPS staging, run the purchase/recovery scenarios in `PURCHASE_AND_API_AUDIT.md`, and only then promote the identical ZIP. Never install an older 1.0.24/1.0.25 package over the 1.0.27 server.
 - Configure the Apple root CA and verify StoreKit sandbox transactions and App Store Server Notifications.
 - Exercise Apple login, identity changes, blocking, reporting, terms acceptance, account deletion, reader access, and subscription state with the App Review account.
 

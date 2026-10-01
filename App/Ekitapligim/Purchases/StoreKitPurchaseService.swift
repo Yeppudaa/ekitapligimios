@@ -32,14 +32,24 @@ final class StoreKitPurchaseService: ObservableObject {
     private var statusUpdatesTask: Task<Void, Never>?
     private var storefrontUpdatesTask: Task<Void, Never>?
     private var isLoadingProducts = false
+    private var isPurchasing = false
+    private var accountName: String?
+    private var accountGeneration = UUID()
+    private var synchronizationRevision = UUID()
+    private var isRestoring = false
+    private var retryTask: Task<Void, Never>?
+    private var hasPendingVerification = false
+    private var isBusy: Bool { isPurchasing || isRestoring }
 
     init(
         purchaseRepository: any PurchaseVerifying,
+        accountName: String? = nil,
         appStoreSynchronizer: @escaping @Sendable () async throws -> Void = {
             try await AppStore.sync()
         }
     ) {
         self.purchaseRepository = purchaseRepository
+        self.accountName = accountName
         self.appStoreSynchronizer = appStoreSynchronizer
     }
 
@@ -47,10 +57,18 @@ final class StoreKitPurchaseService: ObservableObject {
         updatesTask?.cancel()
         statusUpdatesTask?.cancel()
         storefrontUpdatesTask?.cancel()
+        retryTask?.cancel()
+    }
+
+    func activateAccount(_ username: String?) {
+        guard username != accountName else { return }
+        stopObservingTransactions()
+        accountName = username
+        if username != nil { startObservingTransactions() }
     }
 
     func startObservingTransactions() {
-        guard updatesTask == nil else { return }
+        guard accountName != nil, updatesTask == nil else { return }
         updatesTask = Task { [weak self] in
             for await update in Transaction.updates {
                 guard !Task.isCancelled else { break }
@@ -72,6 +90,14 @@ final class StoreKitPurchaseService: ObservableObject {
     }
 
     func stopObservingTransactions() {
+        accountGeneration = UUID()
+        synchronizationRevision = UUID()
+        accountName = nil
+        isPurchasing = false
+        isRestoring = false
+        retryTask?.cancel()
+        retryTask = nil
+        hasPendingVerification = false
         updatesTask?.cancel()
         statusUpdatesTask?.cancel()
         storefrontUpdatesTask?.cancel()
@@ -89,20 +115,22 @@ final class StoreKitPurchaseService: ObservableObject {
 
     func loadProducts(force: Bool = false) async {
         if !force, !storeProducts.isEmpty {
-            state = .available(products: products)
+            if !isBusy { state = .available(products: products) }
             return
         }
         guard !isLoadingProducts else { return }
         isLoadingProducts = true
         defer { isLoadingProducts = false }
 
-        state = .loading
+        if storeProducts.isEmpty && !isBusy { state = .loading }
         do {
             let loaded = try await loadProductsWithRetry()
             guard !loaded.isEmpty else {
-                storeProducts = []
-                products = []
-                state = .failed(message: L10n.premiumProductMissing)
+                if !isBusy {
+                    state = storeProducts.isEmpty
+                        ? .failed(message: L10n.premiumProductMissing)
+                        : .available(products: products)
+                }
                 return
             }
             storeProducts = loaded.sorted { lhs, rhs in
@@ -112,13 +140,15 @@ final class StoreKitPurchaseService: ObservableObject {
             products = storeProducts.map {
                 StoreProduct(id: $0.id, displayName: $0.displayName, displayPrice: $0.displayPrice)
             }
-            state = .available(products: products)
+            if !isBusy { state = .available(products: products) }
         } catch is CancellationError {
             return
         } catch {
-            storeProducts = []
-            products = []
-            state = .failed(message: L10n.premiumProductsFailed)
+            if !isBusy {
+                state = storeProducts.isEmpty
+                    ? .failed(message: L10n.premiumProductsFailed)
+                    : .available(products: products)
+            }
         }
     }
 
@@ -176,9 +206,21 @@ final class StoreKitPurchaseService: ObservableObject {
     }
 
     func purchase(productID: String) async {
+        guard !isBusy, accountName != nil else { return }
+        let generation = accountGeneration
+        guard let purchaseAccount = accountName else { return }
+        synchronizationRevision = UUID()
         guard Self.productIDs.contains(productID) else {
             state = .failed(message: L10n.premiumProductMissing)
             return
+        }
+        isPurchasing = true
+        state = .purchasing(productID: productID)
+        defer {
+            if generation == accountGeneration {
+                isPurchasing = false
+                scheduleVerificationRetry()
+            }
         }
 
         do {
@@ -192,18 +234,29 @@ final class StoreKitPurchaseService: ObservableObject {
                 return
             }
 
-            state = .purchasing(productID: productID)
-            let result = try await product.purchase()
+            try requireCurrentAccount(generation)
+            let appAccountToken = try await purchaseRepository.prepareAppStorePurchase(accountName: purchaseAccount)
+            try requireCurrentAccount(generation)
+            let result = try await product.purchase(options: [.appAccountToken(appAccountToken)])
+            try requireCurrentAccount(generation)
             switch result {
             case .success(let verification):
-                let transaction = try checkVerified(verification)
-                let response = try await verifyWithServer(verification, transaction: transaction)
-                let serverExpiration = try PurchaseVerificationPolicy.requireActive(response)
-                let updated = await entitlementSnapshot(for: transaction, serverExpiration: serverExpiration)
-                await transaction.finish()
-                entitlement = updated
-                state = .purchased(productID: transaction.productID, expiration: updated.expiration)
-                await entitlementDidChange?()
+                do {
+                    let transaction = try checkVerified(verification)
+                    let response = try await verifyWithServer(verification, transaction: transaction, generation: generation)
+                    let serverExpiration = try PurchaseVerificationPolicy.requireActive(response, productID: transaction.productID)
+                    let updated = await entitlementSnapshot(for: transaction, serverExpiration: serverExpiration)
+                    try requireCurrentAccount(generation)
+                    await transaction.finish()
+                    try requireCurrentAccount(generation)
+                    if isLater(updated, than: entitlement.isActive ? entitlement : nil) { entitlement = updated }
+                    state = .purchased(productID: transaction.productID, expiration: updated.expiration)
+                    await entitlementDidChange?()
+                } catch {
+                    guard generation == accountGeneration, !Task.isCancelled else { return }
+                    hasPendingVerification = true
+                    state = .failed(message: PurchaseVerificationPolicy.failureMessage(for: error))
+                }
             case .pending:
                 state = .pending
             case .userCancelled:
@@ -212,11 +265,23 @@ final class StoreKitPurchaseService: ObservableObject {
                 state = .failed(message: L10n.premiumPurchaseFailed)
             }
         } catch {
-            state = .failed(message: L10n.premiumVerificationFailed)
+            guard generation == accountGeneration, !Task.isCancelled else { return }
+            state = .failed(message: L10n.premiumPurchaseFailed)
         }
     }
 
     func restore() async {
+        guard !isBusy, accountName != nil else { return }
+        let generation = accountGeneration
+        synchronizationRevision = UUID()
+        isRestoring = true
+        defer {
+            if generation == accountGeneration {
+                isRestoring = false
+                if state == .loading { state = products.isEmpty ? .notLoaded : .available(products: products) }
+                scheduleVerificationRetry()
+            }
+        }
         state = .loading
 
         var lastFailure: Error?
@@ -226,42 +291,58 @@ final class StoreKitPurchaseService: ObservableObject {
         // account-dialog based AppStore.sync() call, which can fail or be
         // cancelled even though the entitlement itself is valid.
         do {
-            if let restored = try await synchronizeCurrentEntitlements() {
+            if let restored = try await synchronizeCurrentEntitlements(generation: generation) {
+                try requireCurrentAccount(generation)
                 await completeRestore(restored)
                 return
             }
         } catch is CancellationError {
+            if !isBusy, state == .loading {
+                state = products.isEmpty ? .notLoaded : .available(products: products)
+            }
             return
         } catch {
-            lastFailure = error
+            if lastFailure == nil { lastFailure = error }
         }
 
         do {
+            try requireCurrentAccount(generation)
             try await appStoreSynchronizer()
+            try requireCurrentAccount(generation)
         } catch is CancellationError {
             return
         } catch {
-            lastFailure = error
+            if lastFailure == nil || PurchaseVerificationPolicy.isLinkedAccountError(error) {
+                lastFailure = error
+            }
         }
 
         // Re-read entitlements even when AppStore.sync() failed. StoreKit can
         // refresh its transaction cache before the sync call reports an error.
         do {
-            if let restored = try await synchronizeCurrentEntitlements() {
+            if let restored = try await synchronizeCurrentEntitlements(generation: generation) {
+                try requireCurrentAccount(generation)
                 await completeRestore(restored)
                 return
             }
         } catch is CancellationError {
             return
         } catch {
-            lastFailure = error
+            if lastFailure == nil || PurchaseVerificationPolicy.isLinkedAccountError(error) {
+                lastFailure = error
+            }
         }
 
-        state = .failed(
-            message: lastFailure == nil
-                ? L10n.premiumNothingToRestore
-                : L10n.premiumRestoreFailed
-        )
+        guard generation == accountGeneration, !Task.isCancelled else { return }
+        if let lastFailure {
+            hasPendingVerification = true
+            state = .failed(message: PurchaseVerificationPolicy.failureMessage(for: lastFailure, restoring: true))
+        } else {
+            let hadEntitlement = entitlement != .none
+            entitlement = .none
+            state = .failed(message: L10n.premiumNothingToRestore)
+            if hadEntitlement { await entitlementDidChange?() }
+        }
     }
 
     private func completeRestore(_ restored: PremiumEntitlement) async {
@@ -271,9 +352,24 @@ final class StoreKitPurchaseService: ObservableObject {
     }
 
     func refreshEntitlements() async {
+        guard accountName != nil, !isBusy else { return }
+        let generation = accountGeneration
+        let revision = UUID()
+        synchronizationRevision = revision
         do {
+            await retryUnfinishedTransactions(generation: generation)
+            let synchronized = try await synchronizeCurrentEntitlements(generation: generation)
+            try requireCurrentAccount(generation)
+            guard revision == synchronizationRevision else { return }
             let previous = entitlement
-            entitlement = try await synchronizeCurrentEntitlements() ?? .none
+            entitlement = synchronized ?? .none
+            if entitlement.isActive, let productID = entitlement.productID {
+                switch state {
+                case .failed, .pending:
+                    state = .purchased(productID: productID, expiration: entitlement.expiration)
+                default: break
+                }
+            }
             if state == .notLoaded, !products.isEmpty {
                 state = .available(products: products)
             }
@@ -282,29 +378,42 @@ final class StoreKitPurchaseService: ObservableObject {
             }
         } catch PurchaseVerificationError.inactiveEntitlement,
                 PurchaseVerificationError.expiredEntitlement {
+            guard generation == accountGeneration, revision == synchronizationRevision else { return }
             if entitlement != .none {
                 entitlement = .none
                 await entitlementDidChange?()
             }
         } catch {
             // Keep the last server-backed state during transient network failures.
+            if generation == accountGeneration { hasPendingVerification = true }
         }
+        if generation == accountGeneration { scheduleVerificationRetry() }
     }
 
-    private func synchronizeCurrentEntitlements() async throws -> PremiumEntitlement? {
+    private func synchronizeCurrentEntitlements(generation: UUID) async throws -> PremiumEntitlement? {
         var best: PremiumEntitlement?
         var lastFailure: Error?
 
         for await result in Transaction.currentEntitlements {
             do {
+                try requireCurrentAccount(generation)
                 let transaction = try checkVerified(result)
                 guard Self.recognizedProductIDs.contains(transaction.productID),
                       transaction.revocationDate == nil,
                       !transaction.isUpgraded else { continue }
 
-                let response = try await verifyWithServer(result, transaction: transaction)
-                let serverExpiration = try PurchaseVerificationPolicy.requireActive(response)
+                let response = try await verifyWithServer(result, transaction: transaction, generation: generation)
+                let serverExpiration: Date?
+                do { serverExpiration = try PurchaseVerificationPolicy.requireActive(response, productID: transaction.productID) }
+                catch PurchaseVerificationError.inactiveEntitlement, PurchaseVerificationError.expiredEntitlement {
+                    // Non-renewing purchases remain in currentEntitlements after expiry.
+                    await transaction.finish()
+                    continue
+                }
                 let candidate = await entitlementSnapshot(for: transaction, serverExpiration: serverExpiration)
+                try requireCurrentAccount(generation)
+                await transaction.finish()
+                try requireCurrentAccount(generation)
                 if isLater(candidate, than: best) { best = candidate }
             } catch is CancellationError {
                 throw CancellationError()
@@ -313,10 +422,13 @@ final class StoreKitPurchaseService: ObservableObject {
                 // while an upgrade, downgrade, or accelerated renewal settles.
                 // One rejected/stale transaction must not hide another entitlement
                 // that StoreKit and the server both verified as active.
-                lastFailure = error
+                hasPendingVerification = true
+                if lastFailure == nil || PurchaseVerificationPolicy.isLinkedAccountError(error) {
+                    lastFailure = error
+                }
             }
         }
-
+        try requireCurrentAccount(generation)
         return try Self.resolveSynchronizedEntitlement(best: best, lastFailure: lastFailure)
     }
 
@@ -331,7 +443,8 @@ final class StoreKitPurchaseService: ObservableObject {
 
     private func verifyWithServer(
         _ verification: VerificationResult<Transaction>,
-        transaction: Transaction
+        transaction: Transaction,
+        generation: UUID
     ) async throws -> BillingResponseDTO {
         let signedRenewalInfo: String?
         if let status = await transaction.subscriptionStatus,
@@ -340,12 +453,17 @@ final class StoreKitPurchaseService: ObservableObject {
         } else {
             signedRenewalInfo = nil
         }
-        return try await purchaseRepository.verifyAppStorePurchase(
+        try requireCurrentAccount(generation)
+        guard let accountName else { throw CancellationError() }
+        let response = try await purchaseRepository.verifyAppStorePurchase(
             signedTransaction: verification.jwsRepresentation,
             productID: transaction.productID,
             originalTransactionID: String(transaction.originalID),
-            signedRenewalInfo: signedRenewalInfo
+            signedRenewalInfo: signedRenewalInfo,
+            accountName: accountName
         )
+        try requireCurrentAccount(generation)
+        return response
     }
 
     private func entitlementSnapshot(
@@ -385,29 +503,71 @@ final class StoreKitPurchaseService: ObservableObject {
         }
     }
 
+    private func requireCurrentAccount(_ generation: UUID) throws {
+        try Task.checkCancellation()
+        guard generation == accountGeneration, accountName != nil else { throw CancellationError() }
+    }
+
     private func processTransactionUpdate(_ result: VerificationResult<Transaction>) async {
+        guard accountName != nil else { return }
+        if isBusy {
+            hasPendingVerification = true
+            return
+        }
+        let generation = accountGeneration
         do {
-            let transaction = try checkVerified(result)
-            guard Self.recognizedProductIDs.contains(transaction.productID) else { return }
-            let response = try await verifyWithServer(result, transaction: transaction)
-            do {
-                let expiration = try PurchaseVerificationPolicy.requireActive(response)
-                entitlement = await entitlementSnapshot(for: transaction, serverExpiration: expiration)
-                await transaction.finish()
-                state = .purchased(productID: transaction.productID, expiration: entitlement.expiration)
-            } catch is PurchaseVerificationError {
-                await transaction.finish()
-                entitlement = PremiumEntitlement(
-                    productID: transaction.productID,
-                    expiration: transaction.expirationDate,
-                    renewalState: transaction.revocationDate == nil ? .expired : .revoked,
-                    willAutoRenew: false
-                )
-                state = products.isEmpty ? .notLoaded : .available(products: products)
-            }
+            try await acknowledge(result, generation: generation)
+            // A refund/expiration for one product must not remove another active
+            // product (including lifetime). Recompute the complete entitlement.
+            await refreshEntitlements()
+            try requireCurrentAccount(generation)
             await entitlementDidChange?()
         } catch {
             // Unverified or server-unsynchronized transactions remain unfinished for redelivery.
+            guard generation == accountGeneration else { return }
+            hasPendingVerification = true
+            scheduleVerificationRetry()
+        }
+    }
+
+    private func acknowledge(_ result: VerificationResult<Transaction>, generation: UUID) async throws {
+        try requireCurrentAccount(generation)
+        let transaction = try checkVerified(result)
+        guard Self.recognizedProductIDs.contains(transaction.productID) else { return }
+        // A decoded response confirms durable server processing, including an
+        // expired or revoked entitlement. Transport/validation errors throw.
+        let response = try await verifyWithServer(result, transaction: transaction, generation: generation)
+        do { _ = try PurchaseVerificationPolicy.requireActive(response, productID: transaction.productID) }
+        catch PurchaseVerificationError.inactiveEntitlement, PurchaseVerificationError.expiredEntitlement {
+            // A definitive server rejection completes this obsolete transaction.
+        }
+        await transaction.finish()
+        try requireCurrentAccount(generation)
+    }
+
+    private func retryUnfinishedTransactions(generation: UUID) async {
+        hasPendingVerification = false
+        for await result in Transaction.unfinished {
+            do { try await acknowledge(result, generation: generation) }
+            catch {
+                guard generation == accountGeneration, !Task.isCancelled else { return }
+                hasPendingVerification = true
+            }
+        }
+    }
+
+    private func scheduleVerificationRetry() {
+        guard hasPendingVerification, accountName != nil, retryTask == nil else { return }
+        let generation = accountGeneration
+        retryTask = Task { [weak self] in
+            for delay in [2, 5, 15, 30] {
+                do { try await Task.sleep(for: .seconds(delay)) } catch { break }
+                guard let self, generation == self.accountGeneration else { return }
+                await self.refreshEntitlements()
+                if !self.hasPendingVerification { break }
+            }
+            guard let self, generation == self.accountGeneration else { return }
+            self.retryTask = nil
         }
     }
 

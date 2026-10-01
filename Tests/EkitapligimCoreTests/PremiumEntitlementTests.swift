@@ -22,4 +22,14 @@ final class PremiumEntitlementTests: XCTestCase {
         XCTAssertFalse(PremiumEntitlement(renewalState: .expired).isActive)
         XCTAssertFalse(PremiumEntitlement(renewalState: .revoked).isActive)
     }
+
+    func testCachedEntitlementExpiresEvenWhenOffline() {
+        let now = Date(timeIntervalSince1970: 1_800_000_000)
+        for state in [PremiumRenewalState.active, .cancelled, .gracePeriod] {
+            let entitlement = PremiumEntitlement(expiration: now, renewalState: state)
+            XCTAssertFalse(entitlement.isActive(at: now))
+            XCTAssertTrue(entitlement.isActive(at: now.addingTimeInterval(-1)))
+        }
+        XCTAssertTrue(PremiumEntitlement(renewalState: .active).isActive(at: now))
+    }
 }

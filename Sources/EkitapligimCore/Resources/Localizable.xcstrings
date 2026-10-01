@@ -3730,6 +3730,16 @@
         }
       }
     },
+    "premium.error.linkedAccount": {
+      "localizations": {
+        "tr": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Bu Apple aboneliği başka bir Ekitaplığım hesabına bağlı. Satın alma sırasında kullandığınız Ekitaplığım hesabıyla giriş yapıp yeniden deneyin."
+          }
+        }
+      }
+    },
     "premium.error.nothingToRestore": {
       "localizations": {
         "tr": {

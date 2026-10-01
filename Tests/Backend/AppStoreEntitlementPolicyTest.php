@@ -41,3 +41,14 @@ $missingDate = ['productId' => 'com.ekitapligim.app.premium.three_months', 'type
 checkPolicy(!Policy::isActive($missingDate, [], $purchaseMs), 'non-renewing purchase date required');
 
 echo "App Store entitlement policy: 17 scenarios passed.\n";
+
+$monthEnd = ['productId' => 'com.ekitapligim.app.premium.three_months',
+    'type' => 'Non-Renewing Subscription', 'purchaseDate' => strtotime('2026-01-31 12:00:00 UTC') * 1000];
+checkPolicy(Policy::effectiveExpirationSeconds($monthEnd, []) === strtotime('2026-04-30 12:00:00 UTC'), 'Month end clamps');
+$leap = ['productId' => 'com.ekitapligim.app.premium.yearly_once',
+    'type' => 'Non-Renewing Subscription', 'purchaseDate' => strtotime('2024-02-29 12:00:00 UTC') * 1000];
+checkPolicy(Policy::effectiveExpirationSeconds($leap, []) === strtotime('2025-02-28 12:00:00 UTC'), 'Leap year clamps');
+$upgraded = ['productId' => 'com.ekitapligim.app.premium.monthly', 'type' => 'Auto-Renewable Subscription',
+    'expiresDate' => $purchaseMs + 86400000, 'isUpgraded' => true];
+checkPolicy(!Policy::isActive($upgraded, [], $purchaseMs), 'Superseded subscription cannot grant access');
+echo "App Store entitlement policy: month-end, leap-year, upgraded subscription passed.\n";

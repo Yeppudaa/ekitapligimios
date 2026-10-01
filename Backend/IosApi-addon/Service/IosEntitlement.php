@@ -27,7 +27,7 @@ class IosEntitlement
 					AND entitlement.user_id = (
 						SELECT owner.user_id
 						FROM xf_ekitapligim_mobile_appstore_entitlement owner
-						WHERE owner.original_transaction_id = entitlement.original_transaction_id
+						WHERE owner.original_transaction_id = entitlement.original_transaction_id AND owner.user_id > 0
 						ORDER BY owner.entitlement_id ASC
 						LIMIT 1
 					)",
@@ -58,7 +58,7 @@ class IosEntitlement
 					AND entitlement.user_id = (
 						SELECT owner.user_id
 						FROM xf_ekitapligim_mobile_appstore_entitlement owner
-						WHERE owner.original_transaction_id = entitlement.original_transaction_id
+						WHERE owner.original_transaction_id = entitlement.original_transaction_id AND owner.user_id > 0
 						ORDER BY owner.entitlement_id ASC
 						LIMIT 1
 					)

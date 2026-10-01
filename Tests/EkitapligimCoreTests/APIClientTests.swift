@@ -12,6 +12,7 @@ final class APIClientTests: XCTestCase {
         let request = try await client.authenticatedRequest(.library)
 
         XCTAssertEqual(request.value(forHTTPHeaderField: "Authorization"), "Bearer abc123")
+        XCTAssertFalse(request.httpShouldHandleCookies)
     }
 
     func testOptionalAuthAttachesBearerWhenTokenIsAvailable() async throws {

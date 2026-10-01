@@ -3,6 +3,8 @@
 namespace Ekitapligim\IosApi\Api\Controller;
 
 use Ekitapligim\IosApi\Service\AppStoreEntitlementPolicy;
+use Ekitapligim\IosApi\Service\AppStoreTransactionStore;
+use Ekitapligim\IosApi\Service\IosMembershipSynchronizer;
 
 class AppStoreNotifications extends AppStoreVerify
 {
@@ -23,7 +25,8 @@ class AppStoreNotifications extends AppStoreVerify
 		try
 		{
 			$notification = $this->decodeAndVerifyJws($signedPayload)['payload'];
-			$data = is_array($notification['data'] ?? null) ? $notification['data'] : [];
+			$data = is_array($notification['data'] ?? null) ? $notification['data']
+				: (is_array($notification['summary'] ?? null) ? $notification['summary'] : []);
 			$transaction = [];
 			$renewalInfo = [];
 
@@ -38,27 +41,30 @@ class AppStoreNotifications extends AppStoreVerify
 
 			$this->validateNotificationPayload($data, $transaction, $renewalInfo);
 
-			$db = \XF::db();
-			$db->beginTransaction();
-			try
-			{
-				$this->recordNotification($notification, $transaction, $signedPayload);
-				if ($transaction)
-				{
-					$this->updateEntitlementFromNotification($transaction, $renewalInfo, $signedPayload);
-				}
-				$db->commit();
-			}
-			catch (\Throwable $e)
-			{
-				$db->rollback();
-				throw $e;
-			}
 		}
 		catch (\Throwable $e)
 		{
-			\XF::logException($e, false, 'MobileApi App Store notification verification failed: ');
 			return $this->apiError('Notification could not be verified.', 'notification_verification_failed');
+		}
+		try
+		{
+			// DDL must never occur inside a transaction: MySQL implicitly commits it.
+			AppStoreTransactionStore::ensureTables();
+			$this->ensureNotificationTable();
+			if ($transaction)
+			{
+				$record = AppStoreTransactionStore::record(0, $transaction, $renewalInfo, hash('sha256', $signedPayload));
+				if ((int) $record['user_id'] > 0 && !IosMembershipSynchronizer::syncUser((int) $record['user_id']))
+				{
+					throw new \RuntimeException('Premium permission synchronization needs retry.');
+				}
+			}
+			$this->recordNotification($notification, $transaction, $signedPayload);
+		}
+		catch (\Throwable $e)
+		{
+			// Apple retries 5xx. A 400 on a database outage permanently loses the event.
+			return $this->apiError('Notification storage is temporarily unavailable.', 'notification_storage_unavailable', null, 503);
 		}
 
 		return $this->apiResult([
@@ -73,11 +79,11 @@ class AppStoreNotifications extends AppStoreVerify
 		$dataBundleId = (string) ($data['bundleId'] ?? '');
 		$dataEnvironment = (string) ($data['environment'] ?? '');
 
-		if ($dataBundleId !== '' && $dataBundleId !== $expectedBundleId)
+		if ($dataBundleId !== $expectedBundleId)
 		{
 			throw new \RuntimeException('Notification bundle does not match this app.');
 		}
-		if ($dataEnvironment !== '' && !$this->isAllowedEnvironment($dataEnvironment))
+		if (!$this->isAllowedEnvironment($dataEnvironment))
 		{
 			throw new \RuntimeException('Notification environment is not allowed.');
 		}
@@ -100,6 +106,10 @@ class AppStoreNotifications extends AppStoreVerify
 		{
 			throw new \RuntimeException('Notification product is not allowed.');
 		}
+		if (!AppStoreEntitlementPolicy::hasValidProductType($transaction))
+		{
+			throw new \RuntimeException('Notification transaction type mismatch.');
+		}
 		if (!$this->isAllowedEnvironment($environment) || ($dataEnvironment !== '' && $environment !== $dataEnvironment))
 		{
 			throw new \RuntimeException('Notification transaction environment mismatch.');
@@ -113,56 +123,13 @@ class AppStoreNotifications extends AppStoreVerify
 			$renewalOriginalId = (string) ($renewalInfo['originalTransactionId'] ?? '');
 			$renewalProductId = (string) ($renewalInfo['autoRenewProductId'] ?? '');
 			$renewalEnvironment = (string) ($renewalInfo['environment'] ?? '');
-			if (($renewalOriginalId !== '' && $renewalOriginalId !== $originalTransactionId)
+			if ($renewalOriginalId !== $originalTransactionId
 				|| ($renewalProductId !== '' && !$this->isAllowedProductId($renewalProductId))
-				|| ($renewalEnvironment !== '' && strcasecmp($renewalEnvironment, $environment) !== 0))
+				|| strcasecmp($renewalEnvironment, $environment) !== 0)
 			{
 				throw new \RuntimeException('Notification renewal information mismatch.');
 			}
 		}
-	}
-
-	protected function updateEntitlementFromNotification(array $transaction, array $renewalInfo, string $signedPayload): void
-	{
-		$this->ensureEntitlementTable();
-		$originalTransactionId = (string) $transaction['originalTransactionId'];
-		$transactionId = (string) $transaction['transactionId'];
-		$isActive = AppStoreEntitlementPolicy::isActive($transaction, $renewalInfo, \XF::$time * 1000);
-		$effectiveExpirationSeconds = AppStoreEntitlementPolicy::effectiveExpirationSeconds($transaction, $renewalInfo);
-		$entitlementId = (int) \XF::db()->fetchOne(
-			"SELECT entitlement_id
-			FROM xf_ekitapligim_mobile_appstore_entitlement
-			WHERE transaction_id = ? OR original_transaction_id = ?
-			ORDER BY (transaction_id = ?) DESC, entitlement_id DESC
-			LIMIT 1",
-			[$transactionId, $originalTransactionId, $transactionId]
-		);
-		if (!$entitlementId)
-		{
-			return;
-		}
-
-		\XF::db()->query(
-			"UPDATE xf_ekitapligim_mobile_appstore_entitlement
-			SET product_id = ?,
-				transaction_id = ?,
-				environment = ?,
-				expires_date = ?,
-				active = ?,
-				signed_transaction_hash = ?,
-				last_verified = ?
-			WHERE entitlement_id = ?",
-			[
-				(string) $transaction['productId'],
-				$transactionId,
-				(string) $transaction['environment'],
-				$effectiveExpirationSeconds,
-				$isActive ? 1 : 0,
-				hash('sha256', $signedPayload),
-				\XF::$time,
-				$entitlementId
-			]
-		);
 	}
 
 	protected function recordNotification(array $notification, array $transaction, string $signedPayload): void

@@ -33,6 +33,7 @@ Loads the installed Visual Studio C++ environment and official Swift for Windows
 
 ```powershell
 .\Scripts\swift-test-windows.ps1
+.\Scripts\swift-test-windows.ps1 -Clean -Release
 ```
 
 This validates the portable core package. Xcode is still required for the SwiftUI app target, Readium, StoreKit, PDFKit, Keychain, simulator, and UI tests.
@@ -97,7 +98,7 @@ The Team ID must be ten uppercase letters or digits. Existing output directories
 
 ## `mobileapi-release-audit.ps1`
 
-Inspects the standalone IosApi release ZIP before deployment. It verifies the iOS route table, UGC safety controls, SLA cron, managed options, and the unchanged MobileApi 1.0.136 dependency without extracting or modifying the package:
+Inspects the standalone IosApi 1.0.28 release ZIP before deployment. It verifies the iOS routes, UGC controls, purchase ledger, membership reconciliation and the server-baseline MobileApi 1.0.145+ dependency without modifying the package:
 
 ```powershell
 .\Scripts\mobileapi-release-audit.ps1

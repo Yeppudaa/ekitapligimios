@@ -1,5 +1,23 @@
 # Ekitapligim iOS API XenForo Add-on
 
+## 1.0.29 — reader Drive source validation (2026-10-01)
+
+Reject missing or invalid Drive URLs with `ebook_unavailable` before calling the shared fetcher. Valid sources retain the existing access and preview pipeline. This full add-on package includes the 1.0.28 changes below; back up the installed add-on and database before upgrading through XenForo's add-on archive installer. Invalid book source records still require correction by an administrator.
+
+## 1.0.28 — purchase and restore reliability (2026-10-01)
+
+This source merges the saved 1.0.27 server baseline with the native app's five current products and three legacy restore IDs. It retains reader preview metadata, `IosMembershipSynchronizer`, the `appStoreEntitlement-*` group-change keys, and the five-minute reconciliation cron. Minimum MobileApi remains 1.0.145, as in the server archive. No Android files are changed.
+
+Transactions are stored separately and updates are ordered by Apple's signed dates. A delayed notification or old receipt cannot undo a newer refund. Verified notifications received before an account claims the purchase are retained without granting guest access. A new additive `xf_ekitapligim_ios_appstore_state` table stores only the verified fields needed for entitlement calculation. Original transaction ownership is serialized; database and Premium permission-delivery failures return HTTP 503 for retry.
+
+**Deploy this server version before the new iOS build.** The client first posts `prepare_purchase=1` with `account_name` to the verification route. A stable random UUID in the additive `xf_ekitapligim_ios_appstore_account` table binds the XenForo user ID to Apple's `appAccountToken` before the payment sheet opens. The server enforces the signed UUID even before the first verification and can deliver early notifications to the correct owner. A username change does not change this mapping. Back up this table with the entitlement tables; unknown signed UUIDs fail closed. Tokenless purchases from previous app versions retain first-verified-account ownership.
+
+Monthly and legacy yearly subscriptions use Apple expiry/grace; three/six/twelve-month non-renewing plans use purchase-date calendar periods with month-end clamping; lifetime requires a non-consumable product. JWS checks include ES256/P-256, Apple trust anchoring, App Store signing OIDs, and certificate validity at the signed date, so old legitimate purchases can be restored.
+
+All public `/ios-api/` requests ignore browser-cookie authentication, including controllers shared with MobileApi. Use a valid mobile bearer. The existing `ekGooglePlayPremiumGroupId` option remains the shared Premium group configuration for compatibility; no Google billing flow is added to iOS.
+
+See `PURCHASE_AND_API_AUDIT.md` for executed tests, archive provenance, deployment order and remaining device/Sandbox gates. Local Xcode StoreKit receipts must use injected test verifiers; they are not Apple-signed production evidence.
+
 ## 1.0.24 — reader progress synchronization
 
 Install this upgrade before the matching iOS build. The GET/POST reader-progress and library routes now use IosApi controllers while sharing the website's existing reader-progress table. No Android source changes or database migration are required. Shelf updates no longer overwrite reader positions. POST acknowledgements contain the stored position/date/revision and report conflicts or storage failures explicitly. See `API_DOCUMENTATION.md` in the iOS repository for the wire contract.
@@ -10,7 +28,7 @@ Standalone XenForo add-on for the native iOS app. Public routes live under `/ios
 
 ## Architecture
 
-- **Depends on** unchanged `Ekitapligim/MobileApi` 1.0.136 for shared catalog, reader, and library controllers.
+- **Depends on** `Ekitapligim/MobileApi` 1.0.145+ for shared catalog, reader preview metadata, and library controllers.
 - **Owns** Apple Sign In, App Store billing/notifications, account deletion, blocking, reporting, and terms acceptance.
 - **Owns** all iOS social write/filter wrappers (forum, book comments, Book Agenda, chat, and private conversations) under `/ios-api/v1/`; `/mobile-api/v1/` is never modified.
 - **Extends** `AbstractMobileController` through XenForo class extensions so App Store entitlements grant premium access without modifying MobileApi source files.
@@ -87,7 +105,7 @@ Set these environment/config values on the server (never commit secrets):
   The monthly, three-month, six-month, yearly-once, and lifetime IDs are used for new purchases; the previous yearly and unprefixed IDs remain accepted for restoration.
   IosApi 1.0.9+ always retains these source-controlled shipped IDs and merges any configured IDs into the list,
   so an outdated server value cannot reject an active App Store product.
-- `EKITAPLIGIM_APPSTORE_ENVIRONMENT` — use `Production` in production, `Sandbox` in staging, and `Xcode` only for local StoreKit testing
+- `EKITAPLIGIM_APPSTORE_ENVIRONMENT` — `Production` for production-only traffic, `Sandbox` for sandbox-only staging, or `Both` when TestFlight and production use the same API. An unset value also accepts only Production/Sandbox. Apple JWS verification is always required; local Xcode receipts must use test doubles rather than a public-server verification bypass.
 - `EKITAPLIGIM_APPLE_ROOT_CA_FILE` or `EKITAPLIGIM_APPLE_ROOT_CA_PEM` — optional trusted Apple root override. IosApi 1.0.7+ falls back to the bundled official Apple Root CA - G3 certificate used by current App Store JWS chains.
 - `EKITAPLIGIM_APPLE_CLIENT_SECRET` — valid Apple client-secret JWT (rotate before expiry)
 - `EKITAPLIGIM_APPLE_TOKEN_ENCRYPTION_KEY` — base64-encoded 32-byte key for refresh-token encryption

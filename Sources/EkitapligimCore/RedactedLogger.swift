@@ -11,8 +11,17 @@ public struct RedactedLogger: Sendable {
         "access_token",
         "refresh_token",
         "purchase_token",
+        "app_account_token",
+        "appaccounttoken",
         "identity_token",
         "authorization_code",
+        "signed_transaction",
+        "signed_renewal_info",
+        "signedpayload",
+        "signed_payload",
+        "payment",
+        "private_message",
+        "message_body",
         "nonce"
     ]
 
@@ -27,7 +36,7 @@ public struct RedactedLogger: Sendable {
     public func redact(message: String) -> String {
         sensitiveKeys.reduce(message) { partial, key in
             partial.replacingOccurrences(
-                of: #"(?i)\#(key)[=:]\s*[^&\s]+"#,
+                of: #"(?i)(?<![\w])["']?\#(key)["']?\s*[=:]\s*(?:"(?:\\.|[^"\\])*"|'[^']*'|[^&\r\n]+)"#,
                 with: "\(key)=[REDACTED]",
                 options: .regularExpression
             )

@@ -13,6 +13,7 @@ final class AppContainer: ObservableObject {
                 sessionGeneration = UUID()
                 isRefreshingSession = false
                 if previousAccount != nil { notificationReadSync.clear() }
+                storeKit.activateAccount(currentAccount)
             }
             activateReaderAccount()
             activateAssistantAccount()
@@ -446,6 +447,7 @@ final class AppContainer: ObservableObject {
             startUnreadPolling()
             startPresencePolling()
             await pushManager.retryPendingRegistration()
+            await storeKit.refreshEntitlements()
             await notificationReadSync.retryPending()
             await refreshUnreadCounts()
             await refreshLibrary()
@@ -595,6 +597,8 @@ final class AppContainer: ObservableObject {
     }
 
     func logout() async {
+        // Device deregistration needs the bearer that logout is about to revoke.
+        await pushManager.unregisterToken()
         try? await auth.logout()
         await clearLocalSession()
     }

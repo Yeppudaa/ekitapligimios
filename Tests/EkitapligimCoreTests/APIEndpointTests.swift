@@ -213,7 +213,8 @@ final class APIEndpointTests: XCTestCase {
             signedTransaction: "signed",
             productID: "ekitapligim.premium.monthly",
             originalTransactionID: "1000001",
-            signedRenewalInfo: "renewal"
+            signedRenewalInfo: "renewal",
+            accountName: "purchase-owner"
         )
 
         XCTAssertEqual(endpoint.path, "billing/app-store/verify")
@@ -223,6 +224,7 @@ final class APIEndpointTests: XCTestCase {
             return XCTFail("Expected StoreKit verification form body")
         }
         XCTAssertEqual(fields["signed_renewal_info"], "renewal")
+        XCTAssertEqual(fields["account_name"], "purchase-owner")
     }
 
     func testForumEndpoints() {

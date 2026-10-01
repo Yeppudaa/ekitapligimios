@@ -22,6 +22,7 @@ class Setup extends AbstractSetup
 		TermsAcceptance::ensureTable();
 		UgcModeration::ensureTable();
 		self::ensureDeviceTokensTable();
+		\Ekitapligim\IosApi\Service\AppStoreTransactionStore::ensureTables();
 	}
 
 	public function upgrade1000002Step1(): void
@@ -116,5 +117,11 @@ class Setup extends AbstractSetup
 				KEY `idx_user_id` (`user_id`)
 			) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_general_ci
 		");
+	}
+
+	public function upgrade1000028Step1(): void
+	{
+		\Ekitapligim\IosApi\Service\AppStoreTransactionStore::ensureTables();
+		\Ekitapligim\IosApi\Service\IosMembershipSynchronizer::syncAll();
 	}
 }

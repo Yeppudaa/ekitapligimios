@@ -592,6 +592,7 @@ public enum L10n {
     public static let premiumProductMissing = localized("premium.error.productMissing", defaultValue: "Seçilen abonelik Apple mağazasında bulunamadı.")
     public static let premiumPurchaseFailed = localized("premium.error.purchase", defaultValue: "Satın alma tamamlanamadı.")
     public static let premiumVerificationFailed = localized("premium.error.verification", defaultValue: "Satın alma güvenli biçimde doğrulanamadı.")
+    public static let premiumLinkedToAnotherAccount = localized("premium.error.linkedAccount", defaultValue: "Bu Apple aboneliği başka bir Ekitaplığım hesabına bağlı. Satın alma sırasında kullandığınız Ekitaplığım hesabıyla giriş yapıp yeniden deneyin.")
     public static let premiumNothingToRestore = localized("premium.error.nothingToRestore", defaultValue: "Geri yüklenecek etkin bir premium abonelik bulunamadı.")
     public static let premiumRestoreFailed = localized("premium.error.restore", defaultValue: "Satın almalar geri yüklenemedi veya sunucuda doğrulanamadı.")
 

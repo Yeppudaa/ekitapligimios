@@ -606,11 +606,18 @@ public extension APIEndpoint {
         )
     }
 
+    static func prepareAppStorePurchase(accountName: String) -> APIEndpoint {
+        APIEndpoint(method: .post, path: "billing/app-store/verify",
+            body: .form(["prepare_purchase": "1", "account_name": accountName]),
+            requiresAuthentication: true)
+    }
+
     static func verifyAppStorePurchase(
         signedTransaction: String,
         productID: String,
         originalTransactionID: String?,
-        signedRenewalInfo: String? = nil
+        signedRenewalInfo: String? = nil,
+        accountName: String? = nil
     ) -> APIEndpoint {
         var fields = [
             "signed_transaction": signedTransaction,
@@ -622,6 +629,7 @@ public extension APIEndpoint {
         if let signedRenewalInfo, !signedRenewalInfo.isEmpty {
             fields["signed_renewal_info"] = signedRenewalInfo
         }
+        if let accountName { fields["account_name"] = accountName }
         return APIEndpoint(
             method: .post,
             path: "billing/app-store/verify",

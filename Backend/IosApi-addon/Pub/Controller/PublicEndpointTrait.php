@@ -129,6 +129,9 @@ trait PublicEndpointTrait
 
 	protected function applyMobileBearerVisitor(): void
 	{
+		// These routes deliberately skip CSRF; web cookies must never authorize
+		// them. Start as guest even when XenForo loaded a browser session.
+		\XF::setVisitor(\XF::repository('XF:User')->getGuestUser());
 		$userId = MobileSession::userIdForAccessToken(MobileSession::bearerToken($this->getMobileAuthorizationHeader()));
 		if ($userId <= 0)
 		{
@@ -136,7 +139,7 @@ trait PublicEndpointTrait
 		}
 
 		$user = $this->em()->find('XF:User', $userId);
-		if ($user)
+		if ($user && !$user->is_banned && !in_array($user->user_state, ['rejected', 'disabled'], true))
 		{
 			\XF::setVisitor($user);
 			MobilePresence::touch($user);

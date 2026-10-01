@@ -1,5 +1,5 @@
 [CmdletBinding()]
-param()
+param([switch]$Clean, [switch]$Release)
 
 $ErrorActionPreference = "Stop"
 $root = Resolve-Path (Join-Path $PSScriptRoot "..")
@@ -61,6 +61,8 @@ if (-not (Test-Path -LiteralPath $runtimeBin)) {
 
 $vsDevCmd = Find-VsDevCmd
 $command = '"{0}" -arch=amd64 -host_arch=amd64 && set "PATH={1};{2};!PATH!" && set "SDKROOT={3}" && swift test --parallel' -f $vsDevCmd, $swiftBin, $runtimeBin, $sdkRoot
+if ($Clean) { $command = $command.Replace('&& swift test', '&& swift package clean && swift test') }
+if ($Release) { $command = $command.Replace('swift test --parallel', 'swift test --configuration release --parallel') }
 
 Push-Location $root
 try {

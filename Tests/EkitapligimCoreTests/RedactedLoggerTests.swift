@@ -23,4 +23,12 @@ final class RedactedLoggerTests: XCTestCase {
         XCTAssertFalse(message.contains("abc"))
         XCTAssertFalse(message.contains("one-time-value"))
     }
+
+    func testAuthorizationAndQuotedPaymentValuesAreFullyRedacted() {
+        let result = RedactedLogger().redact(message: "Authorization: Bearer hidden-token\nCookie: session=hidden-cookie\n"
+            + #"{"signed_transaction":"hidden-jws","private_message":"private words with spaces"}"#)
+        for secret in ["hidden-token", "hidden-cookie", "hidden-jws", "private words"] {
+            XCTAssertFalse(result.contains(secret))
+        }
+    }
 }

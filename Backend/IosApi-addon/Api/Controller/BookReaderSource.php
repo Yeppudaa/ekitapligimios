@@ -4,6 +4,19 @@ namespace Ekitapligim\IosApi\Api\Controller;
 
 class BookReaderSource extends \Ekitapligim\MobileApi\Api\Controller\BookReaderSource
 {
+	protected function serveDriveSource(\XenCustomize\BookThreads\Entity\Book $book, string $url)
+	{
+		// Older MobileApi versions log invalid source data as an unexpected exception.
+		// Validate here before delegating; keep the parent's access and preview pipeline.
+		$url = \XenCustomize\BookThreads\Service\Book\ExternalEbook::validateAndNormalizeUrl($url);
+		if (!$url)
+		{
+			return $this->apiError('Drive ebook unavailable.', 'ebook_unavailable');
+		}
+
+		return parent::serveDriveSource($book, $url);
+	}
+
 	protected function deliverReaderContents(string $fileName, string $mimeType, string $contents)
 	{
 		if ($contents === '')
@@ -21,6 +34,7 @@ class BookReaderSource extends \Ekitapligim\MobileApi\Api\Controller\BookReaderS
 			'contents' => $contents,
 			'fileName' => $fileName,
 			'mimeType' => $mimeType,
+			'readerMetadata' => $this->readerMetadata,
 		]);
 	}
 }

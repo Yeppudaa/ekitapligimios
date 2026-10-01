@@ -28,6 +28,8 @@ private struct PremiumContentView: View {
     let termsURL: URL
     let privacyURL: URL
     @State private var isManagingSubscriptions = false
+    @State private var operationErrorMessage: String?
+    @State private var operationErrorTitle = L10n.premiumPurchaseFailed
 
     private var hasPremium: Bool {
         subscription?.isPremium == true || storeKit.entitlement.isActive
@@ -58,6 +60,14 @@ private struct PremiumContentView: View {
         .navigationTitle(L10n.premiumTitle)
         .navigationBarTitleDisplayMode(.inline)
         .manageSubscriptionsSheet(isPresented: $isManagingSubscriptions)
+        .alert(operationErrorTitle, isPresented: Binding(
+            get: { operationErrorMessage != nil },
+            set: { if !$0 { operationErrorMessage = nil } }
+        )) {
+            Button(L10n.commonClose, role: .cancel) { operationErrorMessage = nil }
+        } message: {
+            Text(operationErrorMessage ?? L10n.premiumPurchaseFailed)
+        }
         .task { await storeKit.prepare() }
         .preference(key: AILauncherHiddenKey.self, value: true)
     }
@@ -195,7 +205,13 @@ private struct PremiumContentView: View {
             } else {
                 ForEach(storeKit.products) { product in
                     Button {
-                        Task { await storeKit.purchase(productID: product.id) }
+                        Task {
+                            await storeKit.purchase(productID: product.id)
+                            if case .failed(let message) = storeKit.state {
+                                operationErrorTitle = L10n.premiumPurchaseFailed
+                                operationErrorMessage = message
+                            }
+                        }
                     } label: {
                         PremiumPlanCard(
                             name: product.displayName,
@@ -262,7 +278,15 @@ private struct PremiumContentView: View {
     private var actionsSection: some View {
         VStack(alignment: .leading, spacing: 16) {
             VStack(spacing: 0) {
-                Button { Task { await storeKit.restore() } } label: {
+                Button {
+                    Task {
+                        await storeKit.restore()
+                        if case .failed(let message) = storeKit.state {
+                            operationErrorTitle = L10n.premiumRestoreFailed
+                            operationErrorMessage = message
+                        }
+                    }
+                } label: {
                     actionLabel(L10n.premiumRestore, systemImage: "arrow.clockwise")
                 }
                 .disabled(!isSignedIn || isBusy)

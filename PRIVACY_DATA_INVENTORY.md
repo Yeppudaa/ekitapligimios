@@ -1,5 +1,11 @@
 # Privacy Data Inventory
 
+## Purchase reliability update (2026-10-01)
+
+The client sends the signed transaction, optional signed renewal information and the active account name to the first-party billing endpoint. The server stores transaction/original IDs, product, environment, purchase/expiry/revocation/signing dates, upgrade state and payload hashes. The additive `xf_ekitapligim_ios_appstore_state` table contains a filtered entitlement snapshot; it does not store raw JWS, app-account tokens, payment details or secrets. Verified notifications can exist temporarily without a claimed user. Purchase-history and UserID/AppFunctionality categories already cover this; no new SDK, tracking, entitlement or required-reason API is introduced. Purchase/legal retention and account-deletion cleanup still require server-policy validation before release.
+
+Before a new payment, the authenticated API generates or returns a stable random UUID associated with the XenForo user ID in the separate `xf_ekitapligim_ios_appstore_account` table. The client passes this pseudonymous account identifier to Apple as `appAccountToken`; Apple includes it in signed purchase data. This prevents an interrupted payment from being claimed by a different app account. It is account-linked app functionality covered by UserID and purchase history, not tracking. Logs redact both UUID field spellings. Retention/deletion must preserve ownership safely while satisfying the account-deletion policy; validate the operator's procedure before release.
+
 ## Reader experience update (2026-09-28)
 
 The sepia/white/night paper choice is stored locally in UserDefaults under `reader.paperTheme`. It is an app-wide preference, remains across sign-out, and is not sent to the server or associated with an account. It adds no collected-data category; the existing UserDefaults required-reason declaration covers this local preference.
@@ -43,12 +49,18 @@ Likely data types:
 - Purchases: subscription or premium transactions, if StoreKit is enabled.
 - Usage Data: reading progress/library activity.
 - Other Data: retained IP address, user agent/device-session and security records described by the published policy.
-- No analytics, advertising, tracking, ATT prompt, crash SDK, or push-token collection exists in the current binary.
+- No analytics, advertising, tracking, ATT prompt or crash SDK is added. APNs device tokens are registered with the first-party API for account notifications, as described in the APNs inventory below.
+
+## APNs inventory (2026-10-01)
+
+The first-party API stores the APNs device token, user ID, platform and registration time in `xf_ios_device_tokens`. A token is unique and re-registration assigns it to the currently authenticated account. The client requests removal before revoking the logout bearer. The server removes tokens rejected as invalid/unregistered by APNs. Offline logout, expired sessions and completed account deletion still require an end-to-end retention/cleanup check; successful removal is not guaranteed without a reachable authenticated API.
+
+Apple APNs receives the device token, notification title/body, badge and routing identifiers (alert/content/actor IDs and optional route/target URL) for delivery. Private conversation/chat message previews now use a generic body before any alert rendering. Other alert summaries may contain forum activity and usernames. Notification delivery is app functionality, linked to the account, without tracking. DeviceID is consequently declared linked in the manifest; the separate anonymous AI installation ID remains unlinked by design. Review the matching App Store Connect privacy answers before release. See Apple's [data-type definitions](https://developer.apple.com/documentation/bundleresources/app-privacy-configuration/nsprivacycollecteddatatypes/nsprivacycollecteddatatype).
 
 ## Privacy Manifest
 Initial manifest location: `App/Ekitapligim/Support/PrivacyInfo.xcprivacy`.
 
-It declares no tracking, app-functionality collection for email/user ID/product interaction/purchase history/user content, and required-reason API usage for file timestamps and UserDefaults. Reconcile before submission with the final dependency list and any analytics/crash SDKs.
+It declares no tracking, app-functionality collection including linked device IDs, email/user ID/product interaction/purchase history/user content, and required-reason API usage for file timestamps and UserDefaults. Reconcile before submission with the final dependency list and any analytics/crash SDKs.
 
 Offline book files remain in Application Support, are excluded from iCloud/device backup, and use complete-until-first-authentication file protection. The client validates safe identifiers and PDF/EPUB file signatures before retaining a download. If the user confirms the Files export sheet after a permitted download, a copy is written to the user-chosen Files location and is no longer under the app backup-exclusion policy.
 
@@ -62,4 +74,4 @@ Do not declare tracking unless tracking is actually implemented. Do not request 
 - Member conversations and personalization are associated with the server account. Anonymous history and daily usage use a random installation key stored separately in Keychain and sent only to the AI API. It is not an advertising identifier and is not used for tracking.
 - Conversation content is held only in app memory; AI URLSession disables cookies and persistent caching. The server controls retention, history deletion, and quota. The current bootstrap publishes retention constraints; the client does not silently extend them.
 - Sign-out/account changes discard in-memory AI state and cancel stale operations. Deleting history does not rotate anonymous identity or grant extra usage. Existing server account-deletion behavior must be checked for AI conversation cleanup before release.
-- Existing privacy-manifest UserID, OtherUserContent and ProductInteraction categories cover these behaviors. Add DeviceID for the persistent anonymous installation identifier. No new tracking domain, entitlement, billing product or required-reason API is introduced.
+- Existing privacy-manifest UserID, OtherUserContent and ProductInteraction categories cover these behaviors. DeviceID covers the persistent anonymous installation identifier and the account-linked APNs token described above; the aggregate category is declared linked because APNs uses it with an account. No new tracking domain, entitlement, billing product or required-reason API is introduced.

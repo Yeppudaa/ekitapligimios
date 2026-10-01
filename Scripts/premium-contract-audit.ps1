@@ -51,15 +51,14 @@ foreach ($control in @(
 
 foreach ($control in @(
     "signed_renewal_info",
-    "gracePeriodExpiresDate",
-    "original_transaction_already_linked",
-    "GET_LOCK",
     "EKITAPLIGIM_APPSTORE_ENVIRONMENT",
     "EKITAPLIGIM_APPLE_ROOT_CA",
     "Resources/AppleRootCA-G3.pem"
 )) {
     Require-Text "Backend/IosApi-addon/Api/Controller/AppStoreVerify.php" $control
 }
+Require-Text "Backend/IosApi-addon/Service/AppStoreTransactionStore.php" "GET_LOCK"
+Require-Text "Backend/IosApi-addon/Service/AppStoreTransactionStore.php" "original_transaction_already_linked"
 
 $appleRootPath = "Backend/IosApi-addon/Resources/AppleRootCA-G3.pem"
 $appleRootBase64 = (Get-Content -Raw -LiteralPath $appleRootPath) `
@@ -74,7 +73,7 @@ if ($appleRootFingerprint -ne "63343ABFB89A6A03EBB57E9B3F5FA7BE7C4F5C756F3017B3A
     throw "Bundled Apple Root CA - G3 fingerprint does not match Apple's published certificate."
 }
 
-foreach ($control in @("signedRenewalInfo", "AppStoreEntitlementPolicy::isActive")) {
+foreach ($control in @("signedRenewalInfo", "AppStoreTransactionStore::record")) {
     Require-Text "Backend/IosApi-addon/Api/Controller/AppStoreNotifications.php" $control
 }
 

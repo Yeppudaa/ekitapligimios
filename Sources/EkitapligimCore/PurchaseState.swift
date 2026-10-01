@@ -42,11 +42,16 @@ public struct PremiumEntitlement: Equatable, Sendable {
     public static let none = PremiumEntitlement()
 
     public var isActive: Bool {
+        isActive(at: Date())
+    }
+
+    public func isActive(at now: Date) -> Bool {
+        if let expiration, expiration <= now { return false }
         switch renewalState {
         case .active, .cancelled, .gracePeriod:
-            true
+            return true
         case .none, .billingRetry, .expired, .revoked:
-            false
+            return false
         }
     }
 }

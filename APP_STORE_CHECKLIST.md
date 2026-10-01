@@ -1,5 +1,17 @@
 # App Store Checklist
 
+## Purchase/API audit gate (2026-10-01)
+
+- [x] Production AdminCP shows IosApi 1.0.29 and MobileApi 1.0.148; authenticated live purchase preparation returned an account UUID. A permitted reader session and native PDF source returned HTTP 200 and a `%PDF-` header. These checks do not exercise Apple payment or restore.
+- [x] App Store Connect shows the bundle-prefixed monthly product approved and version 1.0.6 build 39 Ready for Distribution. The local purchase fixes are a 1.0.7 candidate and are not in build 39.
+
+- [x] Source fixes and regression tests for account isolation, unfinished purchases, restore cancellation, expiry, signed event ordering, refund replay, early notifications and XenForo Premium delivery. See [PURCHASE_AND_API_AUDIT.md](PURCHASE_AND_API_AUDIT.md).
+- [x] Local 1.0.27 server archive reconciled into 1.0.28 source, preserving group reconciliation and reader preview metadata; MobileApi 1.0.145+ dependency retained.
+- [ ] Verify that every production IosApi 1.0.29 file matches the audited source and that upgrade/data preservation and entitlement group delivery pass in staging. The version label and live API probes alone do not prove full source identity.
+- [ ] Execute current iOS clean/Production builds, StoreKitTest and UI/accessibility tests on macOS. Windows Swift core tests and syntax parsing are not iOS build evidence.
+- [ ] Run all five products plus legacy restores on Apple Sandbox/TestFlight, including interruption, second device, wrong app account, grace, expiry, refunds and notification retry. Confirm App Store Connect product availability for this build.
+- [ ] Verify operational recovery for lost Apple notifications and deletion/retention of account-linked purchase records. Local membership cron alone does not reconcile Apple history.
+
 ## General review follow-up (2026-09-28)
 
 - [x] Session isolation, notification retry invalidation, download lifecycle/progress and stale search-result corrections implemented; 293 portable XCTest tests and workspace audit passed.

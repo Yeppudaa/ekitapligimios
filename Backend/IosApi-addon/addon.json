@@ -2,8 +2,8 @@
   "legacy_addon_id": "",
   "title": "Ekitapligim iOS API",
   "description": "Dedicated REST API (v1) for the native iOS app at /ios-api/v1/. Delegates shared catalog and community endpoints to Ekitapligim/MobileApi while hosting Apple Sign In, App Store billing, and iOS-specific routes independently from the Android mobile API.",
-  "version_id": 1000024,
-  "version_string": "1.0.24",
+  "version_id": 1000029,
+  "version_string": "1.0.29",
   "dev": "Ekitapligim",
   "dev_url": "https://ekitapligim.com",
   "faq_url": "",
@@ -15,8 +15,8 @@
       "XenForo 2.3.0"
     ],
     "Ekitapligim/MobileApi": [
-      1000136,
-      "MobileApi 1.0.136+"
+      1000145,
+      "MobileApi 1.0.145+"
     ]
   },
   "icon": ""
