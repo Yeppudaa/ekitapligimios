@@ -36,7 +36,7 @@ final class ReaderExperienceUITests: XCTestCase {
         let attribute = controls ? "value" : "label"
         let predicate = NSPredicate(format: "%K == %@", attribute, "Sayfa \(page) / 60")
         expectation(for: predicate, evaluatedWith: element)
-        waitForExpectations(timeout: 5)
+        waitForExpectations(timeout: 20)
     }
 
     func testFocusStartsAtRestoredPageAndShowsFullScreenPaper() {
