@@ -3,7 +3,7 @@
 ## Purchase/API audit gate (2026-10-01)
 
 - [x] Production AdminCP shows IosApi 1.0.29 and MobileApi 1.0.148; authenticated live purchase preparation returned an account UUID. A permitted reader session and native PDF source returned HTTP 200 and a `%PDF-` header. These checks do not exercise Apple payment or restore.
-- [x] App Store Connect shows the bundle-prefixed monthly product approved at ₺100 in Türkiye. Version 1.0.7 build 40 is in TestFlight, assigned to the internal group and attached to a saved App Store version draft; version 1.0.6 build 39 does not contain these fixes.
+- [x] App Store Connect shows the bundle-prefixed monthly product approved at ₺100 in Türkiye. Version 1.0.7 build 40 is in TestFlight and submitted for App Review (Waiting for Review); version 1.0.6 build 39 does not contain these fixes.
 - [x] Codemagic Production build #49 from `c11799b` passed native tests, signed an IPA and uploaded build 40. The tester reported successful monthly purchase/restore and successful 3-, 6-, 12-month and lifetime access on build 40. These device outcomes are tester-reported, not automated transaction evidence.
 
 - [x] Source fixes and regression tests for account isolation, unfinished purchases, restore cancellation, expiry, signed event ordering, refund replay, early notifications and XenForo Premium delivery. See [PURCHASE_AND_API_AUDIT.md](PURCHASE_AND_API_AUDIT.md).
