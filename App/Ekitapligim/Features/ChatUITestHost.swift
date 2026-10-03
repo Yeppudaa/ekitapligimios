@@ -13,7 +13,8 @@ struct ChatUITestHost: View {
     init() {
         let configuration = URLSessionConfiguration.ephemeral
         configuration.protocolClasses = [ChatFixtureProtocol.self]
-        _fixtureContainer = StateObject(wrappedValue: AppContainer(apiSession: URLSession(configuration: configuration)))
+        _fixtureContainer = StateObject(wrappedValue: AppContainer(
+            apiSession: URLSession(configuration: configuration), tokenStore: ChatFixtureTokenStore()))
     }
 
     var body: some View {
@@ -24,6 +25,15 @@ struct ChatUITestHost: View {
         .dynamicTypeSize(largeText ? .accessibility3 : .large)
         .environmentObject(fixtureContainer)
     }
+}
+
+/// Unsigned simulator UI tests must not depend on device Keychain entitlements or saved accounts.
+private actor ChatFixtureTokenStore: TokenStore {
+    func accessToken() async throws -> String? { nil }
+    func loadSession() async throws -> Session? { nil }
+    func save(session: Session) async throws { }
+    func clear() async throws { }
+    func replaceSession(_ session: Session?, ifMatching expected: Session) async throws -> Bool { false }
 }
 
 private actor ChatFixtureService: ChatServing {

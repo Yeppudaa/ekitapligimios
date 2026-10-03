@@ -28,7 +28,7 @@ final class ProfileReadingRefreshTests: XCTestCase {
     func testPreparedBookPublishesContinueCardBeforeAnyNewPageIsRecorded() async throws {
         let container = makeContainer { request in
             if request.url?.path.hasSuffix("/books/7/reader/progress") == true {
-                return #"{"progress":{"position_type":"pdf","position_value":"25","progress_percent":25,"last_read_date":300},"revision":"server"}"#
+                return #"{"progress":{"position_type":"pdf","position_value":"25","progress_percent":25,"last_read_date":300},"revision":"server","saved":false,"conflict":false}"#
             }
             return "{}"
         }

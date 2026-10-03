@@ -504,12 +504,13 @@ struct ChatView: View {
                                 .font(.title3)
                                 .foregroundStyle(EKitapligimPalette.chatMuted)
                                 .frame(width: 44, height: 44)
+                                .contentShape(Rectangle())
                         }
                         .buttonStyle(.plain)
                         .accessibilityLabel(L10n.chatCancelReply)
                         .accessibilityIdentifier("chat-cancel-reply")
                     }
-                    .accessibilityIdentifier("chat-reply-context")
+                    .accessibilityElement(children: .contain)
                 }
                 HStack(alignment: .bottom, spacing: 9) {
                     HStack(spacing: 8) {
