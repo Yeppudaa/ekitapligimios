@@ -28,24 +28,40 @@ try {
     $prefix = "upload/src/addons/Ekitapligim/IosApi/"
     $addon = Get-EntryText ($prefix + "addon.json") | ConvertFrom-Json
     if ($addon.title -ne "Ekitapligim iOS API") { throw "Unexpected add-on title: $($addon.title)" }
-    if ([int]$addon.version_id -ne 1000029 -or $addon.version_string -ne "1.0.29") {
-        throw "IosApi must be exactly 1.0.29 / 1000029; found $($addon.version_string) / $($addon.version_id)."
+    if ([int]$addon.version_id -ne 1000032 -or $addon.version_string -ne "1.0.32") {
+        throw "IosApi must be exactly 1.0.32 / 1000032; found $($addon.version_string) / $($addon.version_id)."
     }
     if ([int]$addon.require.'Ekitapligim/MobileApi'[0] -ne 1000145) {
         throw "IosApi must retain the 1.0.27 server baseline dependency: MobileApi 1.0.145+."
     }
 
     $routes = Get-EntryText ($prefix + "_data/routes.xml")
+    Assert-Contains $routes 'sub_name="chat-message-detail"' "specific message route priority"
+    Assert-Contains $routes 'sub_name="chat-message-reactions"' "specific reaction route priority"
     foreach ($route in @(
         'format="v1/legal/terms"', 'format="v1/safety/reports"',
         'controller="Ekitapligim\IosApi:AuthLogin"', 'controller="Ekitapligim\IosApi:AuthRegister"',
         'controller="Ekitapligim\IosApi:ForumThreads"', 'controller="Ekitapligim\IosApi:BookComments"',
         'controller="Ekitapligim\IosApi:BookAgenda"', 'controller="Ekitapligim\IosApi:ChatMessages"',
-        'controller="Ekitapligim\IosApi:Conversations"'
+        'controller="Ekitapligim\IosApi:Conversations"',
+        'controller="Ekitapligim\IosApi:ChatReactions"'
     )) { Assert-Contains $routes $route "Guideline 1.2 route table" }
     if ($routes.Contains('route_prefix="mobile-api"', [System.StringComparison]::Ordinal)) {
         throw "IosApi ZIP must not define or modify /mobile-api routes."
     }
+    $chatListeners = Get-EntryText ($prefix + "_data/code_event_listeners.xml")
+    $chatSerializer = Get-EntryText ($prefix + "Service/ChatSerializer.php")
+    Assert-Contains $chatSerializer "'message_body'" "additive old/new-client chat body"
+    Assert-Contains $chatSerializer "'sprite_params'" "configured web reaction sprite metadata"
+    $chatReaction = Get-EntryText ($prefix + "Api/Controller/ChatReactions.php")
+    Assert-Contains $chatReaction "clearCache('Reactions')" "saved visitor reaction response"
+    Assert-Contains $chatSerializer 'ChatInteraction::filterQuotes' "nested quote privacy filtering"
+    Assert-Contains $chatListeners 'hint="Siropu\Chat\Entity\Message"' "room quote listener"
+    Assert-Contains $chatListeners 'hint="XF\Entity\ReactionContent"' "room reaction listener"
+    $chatJob = Get-EntryText ($prefix + "Job/SendChatInteractionPush.php")
+    Assert-Contains $chatJob 'ChatPushProducer::eligible' "chat delivery permission recheck"
+    $chatAlert = Get-EntryText ($prefix + "Listener/AlertCreated.php")
+    Assert-Contains $chatAlert 'ChatPushProducer::isChatAlertType' "external/generic chat APNs isolation"
 
     $policy = Get-EntryText ($prefix + "Service/UgcPolicy.php")
     Assert-Contains $policy "ekIosUgcBlockedTerms" "managed content filter"

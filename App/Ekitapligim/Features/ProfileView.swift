@@ -5,6 +5,7 @@ import EkitapligimCore
 @MainActor
 struct ProfileView: View {
     @EnvironmentObject private var container: AppContainer
+    @Environment(\.scenePhase) private var scenePhase
 
     @State private var section: ProfileSection = .profile
     @State private var posts: [ForumPostDTO] = []
@@ -15,7 +16,7 @@ struct ProfileView: View {
     @State private var showingDeleteConfirmation = false
     @State private var isSubmittingDeletion = false
     @State private var route: ProfileRoute?
-    @State private var lastLibraryRefresh: Date?
+    @State private var libraryRefreshSession: UUID?
 
     private var profile: ProfileDTO? { container.profileState }
     private var stats: ReadingStatsDTO? { container.readingStats }
@@ -80,12 +81,12 @@ struct ProfileView: View {
             route = .library(tab)
             container.pendingProfileLibraryTab = nil
         }
-        .task {
+        .task(id: container.sessionRevision) {
             await initialLoad()
             await refreshLibraryIfNeeded()
         }
-        .onAppear {
-            Task { await refreshLibraryIfNeeded() }
+        .onChange(of: scenePhase) { _, phase in
+            if phase == .active { Task { await refreshLibraryIfNeeded() } }
         }
         .refreshable { await refresh() }
         .alert(L10n.profileDeleteRequest, isPresented: $showingDeleteConfirmation) {
@@ -355,9 +356,10 @@ struct ProfileView: View {
     }
 
     private func refreshLibraryIfNeeded() async {
-        guard container.isSignedIn else { return }
-        if let lastLibraryRefresh, Date().timeIntervalSince(lastLibraryRefresh) < 2 { return }
-        lastLibraryRefresh = Date()
+        let revision = container.sessionRevision
+        guard container.isSignedIn, !Task.isCancelled, libraryRefreshSession != revision else { return }
+        libraryRefreshSession = revision
+        defer { if libraryRefreshSession == revision { libraryRefreshSession = nil } }
         await container.refreshLibrary()
     }
 
@@ -589,7 +591,7 @@ private struct ReadingSummaryStrip: View {
     let listedCount: Int
 
     var body: some View {
-        HStack(spacing: 0) {
+        HStack(alignment: .top, spacing: 0) {
             cell(value: readingCount, label: L10n.profileSummaryReading)
             divider
             cell(value: finishedCount, label: L10n.profileSummaryRead)
@@ -610,6 +612,8 @@ private struct ReadingSummaryStrip: View {
             Text(label)
                 .font(.system(size: 10))
                 .foregroundStyle(EKitapligimPalette.profileMuted)
+                .multilineTextAlignment(.center)
+                .fixedSize(horizontal: false, vertical: true)
         }
         .frame(maxWidth: .infinity)
         .accessibilityElement(children: .combine)
@@ -635,6 +639,7 @@ private struct ReadingAchievementCard: View {
                     Text(stats.goalCompleted ? L10n.readingGoalCompletedTitle : L10n.readingGoalTitle)
                         .font(.subheadline.weight(.heavy))
                         .foregroundStyle(EKitapligimPalette.profileInk)
+                        .fixedSize(horizontal: false, vertical: true)
                     Text(subtitle)
                         .font(.caption)
                         .foregroundStyle(EKitapligimPalette.profileMuted)
@@ -680,9 +685,13 @@ private struct ReadingAchievementCard: View {
             Text(value)
                 .font(.subheadline.weight(.heavy))
                 .foregroundStyle(EKitapligimPalette.profileInk)
+                .multilineTextAlignment(.center)
+                .fixedSize(horizontal: false, vertical: true)
             Text(label)
                 .font(.system(size: 10))
                 .foregroundStyle(EKitapligimPalette.profileMuted)
+                .multilineTextAlignment(.center)
+                .fixedSize(horizontal: false, vertical: true)
         }
         .frame(maxWidth: .infinity)
         .accessibilityElement(children: .combine)
@@ -771,20 +780,25 @@ private struct ContinueReadingCard: View {
                             Text(item.title.isEmpty ? L10n.commonBookNumber(item.bookId) : item.title)
                                 .font(.subheadline.weight(.bold))
                                 .foregroundStyle(EKitapligimPalette.profileInk)
-                                .lineLimit(2)
                                 .multilineTextAlignment(.leading)
+                                .fixedSize(horizontal: false, vertical: true)
                             if !item.author.isEmpty {
                                 Text(item.author)
                                     .font(.caption)
                                     .foregroundStyle(EKitapligimPalette.profileMuted)
-                                    .lineLimit(1)
+                                    .multilineTextAlignment(.leading)
+                                    .fixedSize(horizontal: false, vertical: true)
                             }
                             Text(item.positionType == "epub" ? L10n.commonPercent(item.displayProgressPercent) : L10n.continueReadingFromPage(max(item.lastReadPage, 1)))
                                 .font(.caption2.weight(.semibold))
                                 .foregroundStyle(EKitapligimPalette.profileTealDeep)
+                                .multilineTextAlignment(.leading)
+                                .fixedSize(horizontal: false, vertical: true)
                             ProgressView(value: Double(item.displayProgressPercent), total: 100)
                                 .tint(EKitapligimPalette.profileSuccess)
                         }
+                        .frame(maxWidth: .infinity, alignment: .leading)
+                        .layoutPriority(1)
                         Image(systemName: "chevron.right")
                             .font(.caption)
                             .foregroundStyle(EKitapligimPalette.profileTeal)
@@ -902,7 +916,8 @@ private struct ProfileMetricsRow: View {
             Text(label)
                 .font(.system(size: 10))
                 .foregroundStyle(EKitapligimPalette.profileMuted)
-                .lineLimit(1)
+                .multilineTextAlignment(.center)
+                .fixedSize(horizontal: false, vertical: true)
         }
         .frame(maxWidth: .infinity)
         .padding(.vertical, 13)

@@ -1,5 +1,7 @@
 # Scripts
 
+Offline chat integration checks can load a local XenForo/Siropu source tree without bootstrapping its configured app or connecting to its database. Set `CHAT_SYNC_XF_SOURCE_ROOT` if the tree is not at `C:/xampp/htdocs/ekitapligim/src`, then run `php Tests/Integration/ChatReactionSyncTest.php` and `php Tests/Integration/ChatRouteTest.php`. These checks exercise the real reaction repository, entity, web action logger and route sorter against in-memory storage. They require the proprietary source tree and are separate from the portable backend unit tests.
+
 ## `validate-workspace.ps1`
 
 Runs the checks available in this Windows workspace:
@@ -37,6 +39,20 @@ Loads the installed Visual Studio C++ environment and official Swift for Windows
 ```
 
 This validates the portable core package. Xcode is still required for the SwiftUI app target, Readium, StoreKit, PDFKit, Keychain, simulator, and UI tests.
+
+## `chat-state-test-windows.ps1`
+
+`chat-state-test-windows.ps1` additionally compiles the actual `ChatModel` and its XCTest cases against the core package. Its temporary Combine module provides only property storage, so it validates request/state concurrency on Windows; Apple Combine publication, SwiftUI layout and device behavior still require the native macOS tests. It does not connect to production.
+
+```powershell
+.\Scripts\chat-state-test-windows.ps1
+```
+
+`notification-state-test-windows.ps1` compiles the actual push manager and injected-transport XCTest cases with test-only Combine/UIKit/UserNotifications modules. It verifies registration/logout races and routing on Windows; permission UI, Apple publishing and APNs delivery still require native device tests.
+
+```powershell
+.\Scripts\notification-state-test-windows.ps1
+```
 
 ## `swift-static-audit.ps1`
 
@@ -98,7 +114,7 @@ The Team ID must be ten uppercase letters or digits. Existing output directories
 
 ## `mobileapi-release-audit.ps1`
 
-Inspects the standalone IosApi 1.0.28 release ZIP before deployment. It verifies the iOS routes, UGC controls, purchase ledger, membership reconciliation and the server-baseline MobileApi 1.0.145+ dependency without modifying the package:
+Inspects the standalone IosApi 1.0.32 release ZIP before deployment. It verifies the iOS routes, old-client chat serialization, UGC controls, purchase ledger, membership reconciliation and the server-baseline MobileApi 1.0.145+ dependency without modifying the package:
 
 ```powershell
 .\Scripts\mobileapi-release-audit.ps1

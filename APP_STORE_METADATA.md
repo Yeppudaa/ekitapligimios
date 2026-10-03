@@ -205,3 +205,8 @@ Turkish feature copy: “AI Asistan ile kitap keşfet, okuma tercihlerine uygun 
 Reviewer steps: open AI Asistan in the side menu or floating launcher; verify remaining daily quota; send a book question; open a recommended book and return; inspect/delete history. Test a guest, standard member and entitled member. Confirm server-disabled features remain hidden and exhausted quota blocks suggested prompts as well as the composer. Any data-changing AI proposal must show a preview and require confirmation. No external digital purchase prompt is added.
 
 Do not submit this addition until SwiftUI build/UI/accessibility evidence and live account/group checks in AI_ASSISTANT_VALIDATION.md pass.
+## Live chat/profile draft addition (2026-10-03, pending native/staging checks)
+
+“Canlı sohbette mesajları alıntılayarak yanıtlayın, sitenin ifadeleriyle tepki verin ve profil fotoğrafından okurun profilini açın. Sohbet etkileşimi bildirimleri yalnızca mesajınıza verilen yanıt ve ifadelere yöneliktir. Profilinizde güncel okuma konumundan devam edin.”
+
+Reviewer checks: use two accounts in a live room, verify multiline text and narrow/large-text layout, quote/cancel/send, select/change/remove a configured reaction, and follow the avatar/profile route. Verify exactly the intended author receives reply/reaction APNs, while ordinary messages, mentions and Siropu private/external chat do not create chat APNs. Verify current profile reading progress after closing/reopening the reader and account changes. Existing purchase flow/configuration is unchanged. Do not publish this copy until the gates in `CHAT_PROFILE_STABILITY_VALIDATION.md` pass.

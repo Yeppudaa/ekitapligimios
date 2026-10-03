@@ -29,6 +29,8 @@ books/:value/reader/session
 books/:value/reader/source
 chat/rooms
 chat/rooms/:value/messages
+chat/rooms/:value/messages/:value
+chat/rooms/:value/messages/:value/reactions
 legal/terms
 conversation-detail/:value
 conversation-reply/:value

@@ -514,9 +514,16 @@ public struct ChatRepository: Sendable {
         )
     }
 
-    public func send(roomID: String, message: String) async throws -> ChatMessageDTO {
+    public func send(roomID: String, message: String, quoteMessageID: String? = nil) async throws -> ChatMessageDTO {
         try await apiClient.request(
-            .sendChatMessage(roomID: roomID, message: message),
+            .sendChatMessage(roomID: roomID, message: message, quoteMessageID: quoteMessageID),
+            as: ChatMessageEnvelopeDTO.self
+        ).message
+    }
+
+    public func setReaction(roomID: String, messageID: String, reactionID: Int) async throws -> ChatMessageDTO {
+        try await apiClient.request(
+            .setChatReaction(roomID: roomID, messageID: messageID, reactionID: reactionID),
             as: ChatMessageEnvelopeDTO.self
         ).message
     }

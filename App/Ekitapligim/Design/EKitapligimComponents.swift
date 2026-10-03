@@ -664,8 +664,8 @@ struct EKChatPreviewMessageRow: View {
             .multilineTextAlignment(message.isMine ? .trailing : .leading)
             .padding(.horizontal, 10)
             .padding(.vertical, 7)
-            .fixedSize(horizontal: true, vertical: false)
-            .frame(maxWidth: 240, alignment: message.isMine ? .trailing : .leading)
+            .fixedSize(horizontal: false, vertical: true)
+            .frame(maxWidth: .infinity, alignment: message.isMine ? .trailing : .leading)
             .background(previewBubbleColor, in: previewBubbleShape)
             .overlay {
                 if !message.isMine {

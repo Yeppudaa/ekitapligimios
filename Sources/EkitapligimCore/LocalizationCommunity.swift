@@ -545,6 +545,20 @@ public extension L10n {
     static var chatReconnectTitle: String { tr("chat.reconnectTitle", "Topluluğa yeniden bağlanalım") }
     static var chatReconnect: String { tr("chat.reconnect", "Tekrar bağlan") }
     static var chatLoadOlder: String { tr("chat.loadOlder", "Önceki mesajları göster") }
+    static var chatReply: String { tr("chat.reply", "Yanıtla / Alıntıla") }
+    static var chatCancelReply: String { tr("chat.cancelReply", "Yanıtı iptal et") }
+    static var chatReact: String { tr("chat.react", "İfade ekle") }
+    static var chatRemoveReaction: String { tr("chat.removeReaction", "İfadeyi kaldır") }
+    static var chatReactionFailed: String { tr("chat.reactionFailed", "İfade kaydedilemedi. Lütfen tekrar deneyin.") }
+    static func chatReplyTo(_ username: String) -> String {
+        String(format: tr("chat.replyTo", "%@ kişisine yanıt"), username)
+    }
+    static func chatOpenProfile(_ username: String) -> String {
+        String(format: tr("chat.openProfile", "%@ profilini aç"), username)
+    }
+    static func chatReactionCount(_ title: String, _ count: Int) -> String {
+        String(format: tr("chat.reactionCount", "%@: %d ifade"), title, count)
+    }
 
     // MARK: - Canlı Aktivite
 

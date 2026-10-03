@@ -771,11 +771,22 @@ public extension APIEndpoint {
         return APIEndpoint(method: .get, path: "chat/rooms/\(roomID)/messages", queryItems: items)
     }
 
-    static func sendChatMessage(roomID: String, message: String) -> APIEndpoint {
-        APIEndpoint(
+    static func sendChatMessage(roomID: String, message: String, quoteMessageID: String? = nil) -> APIEndpoint {
+        var fields = ["message": message]
+        if let quoteMessageID, !quoteMessageID.isEmpty { fields["quote_message_id"] = quoteMessageID }
+        return APIEndpoint(
             method: .post,
             path: "chat/rooms/\(roomID)/messages",
-            body: .form(["message": message]),
+            body: .form(fields),
+            requiresAuthentication: true
+        )
+    }
+
+    static func setChatReaction(roomID: String, messageID: String, reactionID: Int) -> APIEndpoint {
+        APIEndpoint(
+            method: .post,
+            path: "chat/rooms/\(roomID)/messages/\(messageID)/reactions",
+            body: .form(["reaction_id": String(reactionID)]),
             requiresAuthentication: true
         )
     }

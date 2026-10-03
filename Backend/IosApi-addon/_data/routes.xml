@@ -33,6 +33,8 @@
   <route route_type="public" route_prefix="ios-api" sub_name="book-stats" format="v1/book-stats" controller="Ekitapligim\MobileApi:Stats" />
   <route route_type="public" route_prefix="ios-api" sub_name="books" format="v1/books" controller="Ekitapligim\MobileApi:Books" />
   <route route_type="public" route_prefix="ios-api" sub_name="chat-messages" format="v1/chat/rooms/:+int&lt;room_id&gt;/messages" controller="Ekitapligim\IosApi:ChatMessages" />
+  <route route_type="public" route_prefix="ios-api" sub_name="chat-message-detail" format="v1/chat/rooms/:+int&lt;room_id&gt;/messages/:+int&lt;message_id&gt;" controller="Ekitapligim\IosApi:ChatMessages" />
+  <route route_type="public" route_prefix="ios-api" sub_name="chat-message-reactions" format="v1/chat/rooms/:+int&lt;room_id&gt;/messages/:+int&lt;message_id&gt;/reactions" controller="Ekitapligim\IosApi:ChatReactions" />
   <route route_type="public" route_prefix="ios-api" sub_name="chat-rooms" format="v1/chat/rooms" controller="Ekitapligim\MobileApi:ChatRooms" />
   <route route_type="public" route_prefix="ios-api" sub_name="conversation" format="v1/conversations/:int&lt;conversation_id&gt;/" controller="Ekitapligim\IosApi:Conversations" />
   <route route_type="public" route_prefix="ios-api" sub_name="conversation-detail-ios" format="v1/conversation-detail/:int&lt;conversation_id&gt;" controller="Ekitapligim\IosApi:Conversations" />

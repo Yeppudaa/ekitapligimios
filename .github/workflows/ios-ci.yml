@@ -22,6 +22,12 @@ jobs:
         run: |
           php Tests/Backend/ReaderProgressTest.php
           php Tests/Backend/ReaderProgressControllerTest.php
+      - name: Live-room chat interactions and notification isolation
+        run: |
+          php Tests/Backend/ChatInteractionTest.php
+          php Tests/Backend/ChatInteractionPushTest.php
+          php Tests/Backend/ChatControllerTest.php
+          php Tests/Backend/ChatSerializerTest.php
       - name: App Store verification, restore and transaction ordering contracts
         run: |
           php Scripts/appstore-entitlement-policy-test.php

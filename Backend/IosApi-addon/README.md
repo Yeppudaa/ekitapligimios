@@ -139,3 +139,17 @@ Execute (irreversible):
 ## Migration From MobileApi Patch
 
 The legacy `Backend/MobileApi-addon` patch and `Scripts/apply-mobileapi-ios-patch.ps1` are deprecated. All future iOS backend work happens in this add-on only. Android MobileApi and the Android app are not modified.
+## 1.0.30 live-room chat patch
+
+Adds native iOS quote/reaction routes, configured reaction serialization, safe structured web quote metadata, and room-only interaction APNs. Generic Siropu chat alerts, including private/external chat, are excluded from APNs. Existing XenForo conversation notifications, non-chat alerts and purchase code are preserved. No schema migration is added. Import the new version's routes, phrases, class extensions and entity listeners through the normal XenForo add-on upgrade; uploading PHP alone is insufficient. Staging/device delivery validation remains required. See the repository's `CHAT_PROFILE_STABILITY_VALIDATION.md`.
+
+## 1.0.32 shared chat reaction refresh
+
+- Fix internal route priority so single-message and reaction addresses resolve before the general messages route. Public URLs stay the same. Run a normal add-on upgrade to import the route changes.
+- Keep reactions in XenForo's existing `siropu_chat_room_message` store, shared with web/Android. Clear the cached `Reactions` relation after a changed API write so add/change/remove responses return the saved selection.
+- Include additive `sprite_mode`/`sprite_params` for configured web reaction images. Emoji and existing response fields remain unchanged.
+- This version retains the 1.0.31 old-client quote behavior below. No schema migration, purchase behavior or Android route changes. The new ZIP is a local candidate, not an executed production upgrade.
+
+## 1.0.31 old-client compatibility repair
+
+Supersedes the previously prepared 1.0.30 ZIP. `message` retains safe visible quote text for existing clients; the additive `message_body` supports the updated native quote view without duplication. Nested, inline, malformed and unavailable structured quote references are filtered before either output, including both-direction blocks. Ordinary messages and existing response field types are preserved. No purchase code or schema changes were made. Server-only installation intentionally applies the room-only APNs rules immediately; screen layout/profile refresh fixes still require the native app update. Old-app, two-account and physical-device staging tests remain required before production rollout.

@@ -3,6 +3,27 @@ import XCTest
 
 @MainActor
 final class ReaderProgressSyncTests: XCTestCase {
+    func testRegisterPublishesRestoredBookWithoutRecordingOrWritingAnotherPage() async throws {
+        let repository = ProgressServer(page: 25)
+        let sync = makeSync(repository)
+        var projected: LibraryItemDTO?
+        sync.didChange = { bookID, saved, _ in
+            guard let saved else { return }
+            projected = ReaderLibraryProjection.item(bookID: bookID, record: saved,
+                existing: projected, isDownloaded: false)
+        }
+        _ = try await sync.prepare(bookID: 7)
+        XCTAssertNil(projected)
+        sync.register(bookID: 7, metadata: ReaderBookMetadata(title: "Restored book", author: "Author",
+            coverURL: "", pageCount: 100))
+        XCTAssertEqual(projected?.title, "Restored book")
+        XCTAssertEqual(projected?.lastReadPage, 25)
+        XCTAssertEqual(projected?.lastReadAt, 100)
+        XCTAssertFalse(sync.records[7]?.pending ?? true)
+        let writes = await repository.writes
+        XCTAssertTrue(writes.isEmpty)
+    }
+
     func testPDFRestores25Writes40AndCanReturnTo12() async throws {
         let repository = ProgressServer(page: 25)
         let sync = makeSync(repository)
@@ -86,6 +107,66 @@ final class ReaderProgressSyncTests: XCTestCase {
         await repository.setOffline(false)
         await restarted.retryPending()
         XCTAssertEqual(restarted.states[7], .synced)
+    }
+
+    func testLostAcknowledgementWithNewerLocalPageSurvivesRestart() async throws {
+        let storage = MemoryProgressStorage()
+        let repository = ProgressServer(page: 1)
+        let sync = makeSync(repository, storage: storage)
+        _ = try await sync.prepare(bookID: 7)
+        await repository.pauseNextSave()
+        await repository.loseNextResponse()
+        sync.record(bookID: 7, position: pdf(25))
+        let flushing = Task { await sync.flush(bookID: 7) }
+        await repository.waitForSave()
+        sync.record(bookID: 7, position: pdf(40))
+        await repository.releaseSave()
+        await flushing.value
+        XCTAssertEqual(sync.states[7], .failed)
+        XCTAssertEqual(sync.records[7]?.position?.page, 40)
+        XCTAssertEqual(sync.records[7]?.attemptedWrite?.position.page, 25)
+        sync.activate(account: nil) // cancels debounce before simulating restart
+        let restarted = makeSync(repository, storage: storage)
+        await restarted.retryPending()
+        let pages = await repository.writes.map(\.page)
+        XCTAssertEqual(pages, [25, 40])
+        XCTAssertEqual(restarted.records[7]?.position?.page, 40)
+        XCTAssertNil(restarted.records[7]?.attemptedWrite)
+        XCTAssertEqual(restarted.states[7], .synced)
+    }
+
+    func testWebChangeAfterLostAcknowledgementStillWinsOverNewerLocalPage() async throws {
+        let repository = ProgressServer(page: 1)
+        let sync = makeSync(repository)
+        _ = try await sync.prepare(bookID: 7)
+        await repository.pauseNextSave()
+        await repository.loseNextResponse()
+        sync.record(bookID: 7, position: pdf(25))
+        let flushing = Task { await sync.flush(bookID: 7) }
+        await repository.waitForSave()
+        sync.record(bookID: 7, position: pdf(40))
+        await repository.releaseSave()
+        await flushing.value
+        await repository.webRead(page: 12)
+        await sync.retryPending()
+        let pages = await repository.writes.map(\.page)
+        XCTAssertEqual(pages, [25])
+        XCTAssertEqual(sync.records[7]?.position?.page, 12)
+        XCTAssertFalse(sync.records[7]?.pending ?? true)
+        XCTAssertNil(sync.records[7]?.attemptedWrite)
+    }
+
+    func testSavedAttemptRoundTripsAndOldCacheWithoutMarkerStillDecodes() throws {
+        let position = pdf(40)
+        var saved = SavedReaderProgress(position: position, revision: "1", pending: true)
+        saved.attemptedWrite = ReaderProgressAttempt(position: pdf(25), baseRevision: "1", changeID: UUID())
+        let encoded = try JSONEncoder().encode(saved)
+        XCTAssertEqual(try JSONDecoder().decode(SavedReaderProgress.self, from: encoded), saved)
+        let object = try XCTUnwrap(JSONSerialization.jsonObject(with: encoded) as? [String: Any])
+        let legacy = try JSONSerialization.data(withJSONObject: object.filter { $0.key != "attemptedWrite" })
+        let decoded = try JSONDecoder().decode(SavedReaderProgress.self, from: legacy)
+        XCTAssertNil(decoded.attemptedWrite)
+        XCTAssertEqual(decoded.position, position)
     }
 
     func testSwitchingAccountIgnoresInFlightResponse() async throws {

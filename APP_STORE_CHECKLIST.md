@@ -100,3 +100,12 @@ See `GIFT_WHEEL_VALIDATION.md`. Windows core results do not establish App Store 
 - [ ] Enabled weekly digest preferences verified against actual iOS notification delivery.
 
 See AI_ASSISTANT_VALIDATION.md for executed evidence and outstanding checks. No new StoreKit product or entitlement is required.
+## Chat/profile release gate (2026-10-03)
+
+- [ ] Run iOS clean/Production builds, `ChatModelTests`, `ProfileReadingRefreshTests`, chat UI tests and existing native regression suites on macOS.
+- [ ] Verify full messages, avatar navigation, reply/reaction controls and keyboard on a narrow iPhone, landscape, iPad and accessibility text sizes.
+- [ ] Install the reviewed IosApi 1.0.31 package in staging and prove two-account APNs reply/reaction delivery. Prove zero chat pushes for ordinary messages, mentions, self-interactions and Siropu private/external chat; verify existing non-chat notifications.
+- [ ] With the shipped older app, verify safe quote-only and quote/reply messages remain visible after installing 1.0.31. With the updated app, verify quotes render once and logout during token registration leaves no old-account token registered.
+- [ ] Produce the appropriate iOS test artifact (IPA/TestFlight). This SwiftUI iOS project does not generate Android APKs.
+
+See `CHAT_PROFILE_STABILITY_VALIDATION.md`. Purchase implementation and configuration are unchanged.

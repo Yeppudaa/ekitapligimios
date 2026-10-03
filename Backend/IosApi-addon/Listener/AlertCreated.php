@@ -4,6 +4,7 @@ namespace Ekitapligim\IosApi\Listener;
 
 use Ekitapligim\IosApi\Service\AlertAppRoute;
 use Ekitapligim\IosApi\Service\ApnsPush;
+use Ekitapligim\IosApi\Service\ChatPushProducer;
 use XF\Entity\UserAlert;
 
 /**
@@ -13,7 +14,7 @@ class AlertCreated
 {
 	public static function onUserAlert(UserAlert $alert): void
 	{
-		if (!$alert->isInsert() || !$alert->alert_id)
+		if (!$alert->isInsert() || !$alert->alert_id || ChatPushProducer::isChatAlertType((string) $alert->content_type))
 		{
 			return;
 		}
@@ -30,6 +31,12 @@ class AlertCreated
 	{
 		try
 		{
+			// Also suppress already queued generic Siropu/private/general chat alerts.
+			// Verified live-room replies/reactions use SendChatInteractionPush exclusively.
+			if (ChatPushProducer::isChatAlertType((string) $alert->content_type))
+			{
+				return ['attempted' => 0, 'sent' => 0, 'failed' => 0, 'removed' => 0];
+			}
 			$userId = (int) $alert->alerted_user_id;
 			if ($userId <= 0)
 			{

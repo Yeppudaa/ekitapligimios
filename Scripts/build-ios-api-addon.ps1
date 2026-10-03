@@ -108,6 +108,10 @@ if ($phpPath) {
     if ($LASTEXITCODE -ne 0) {
         throw "Push integration contract tests failed."
     }
+    foreach ($test in @('ChatInteractionTest', 'ChatInteractionPushTest', 'ChatControllerTest', 'ChatSerializerTest')) {
+        & $phpPath (Join-Path $repoRoot "Tests/Backend/$test.php")
+        if ($LASTEXITCODE -ne 0) { throw "$test failed." }
+    }
     & $phpPath (Join-Path $repoRoot "Tests\Backend\ReaderProgressTest.php")
     if ($LASTEXITCODE -ne 0) {
         throw "Reader progress service tests failed."
@@ -144,8 +148,13 @@ $requiredFiles = @(
 )
 foreach ($relative in $requiredFiles) { Assert-Path (Join-Path $addonRoot $relative) }
 $addonManifest = Get-Content -Raw -LiteralPath (Join-Path $addonRoot "addon.json") | ConvertFrom-Json
-if ([int]$addonManifest.version_id -ne 1000029 -or $addonManifest.version_string -ne "1.0.29") {
-    throw "IosApi package must be exactly 1.0.29 / 1000029 for this release."
+if ([int]$addonManifest.version_id -ne 1000032 -or $addonManifest.version_string -ne "1.0.32") {
+    throw "IosApi package must be exactly 1.0.32 / 1000032 for this release."
+}
+foreach ($relative in @('Api/Controller/ChatReactions.php', 'Pub/Controller/ChatReactions.php',
+    'Service/ChatInteraction.php', 'Service/ChatPushProducer.php', 'Service/ChatSerializer.php',
+    'Listener/ChatInteractionCreated.php', 'Job/SendChatInteractionPush.php', 'XF/Siropu/Chat/Entity/Message.php')) {
+    Assert-Path (Join-Path $addonRoot $relative)
 }
 $routeText = Get-Content -Raw -LiteralPath (Join-Path $addonRoot "_data\routes.xml")
 foreach ($requiredRoute in @(
@@ -207,7 +216,8 @@ if ($CreateZip) {
         $archive.Dispose()
     }
 
-    $entryCount = ([System.IO.Compression.ZipFile]::OpenRead($zipPath)).Entries.Count
+    $countArchive = [System.IO.Compression.ZipFile]::OpenRead($zipPath)
+    try { $entryCount = $countArchive.Entries.Count } finally { $countArchive.Dispose() }
     if ($entryCount -lt 10) {
         throw "Created ZIP looks invalid: only $entryCount entries."
     }

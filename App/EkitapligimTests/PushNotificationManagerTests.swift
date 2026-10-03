@@ -38,7 +38,7 @@ final class PushNotificationManagerTests: XCTestCase {
         XCTAssertEqual(registeredStatus, .registered)
     }
 
-    func testLogoutUnregistersOnlySuccessfullyRegisteredToken() async {
+    func testLogoutUnregistersRegisteredToken() async {
         var unregistered: [String] = []
         let manager = PushNotificationManager(
             registerToken: { _ in },
@@ -69,6 +69,41 @@ final class PushNotificationManagerTests: XCTestCase {
 
         XCTAssertEqual(route, .thread(15))
         XCTAssertEqual(readTarget, .alert(73))
+    }
+
+    func testLogoutWaitsForInFlightTokenUploadThenRemovesIt() async {
+        let started = expectation(description: "registration in flight")
+        var registrationGate: CheckedContinuation<Void, Never>?
+        var removed: [String] = []
+        let manager = PushNotificationManager(registerToken: { _ in
+            started.fulfill()
+            await withCheckedContinuation { registrationGate = $0 }
+        }, unregisterToken: { removed.append($0) })
+        let registration = Task { await manager.didReceiveDeviceToken("old-account-token") }
+        await fulfillment(of: [started], timeout: 3)
+        let logoutStarted = expectation(description: "logout started")
+        let logout = Task { logoutStarted.fulfill(); await manager.unregisterToken() }
+        await fulfillment(of: [logoutStarted], timeout: 3)
+        XCTAssertTrue(removed.isEmpty)
+        await manager.didReceiveDeviceToken("late-token")
+        registrationGate?.resume()
+        await registration.value
+        await logout.value
+        XCTAssertEqual(removed, ["old-account-token"])
+        XCTAssertEqual(manager.registrationStatus, .idle)
+        await manager.retryPendingRegistration()
+        XCTAssertEqual(manager.registrationStatus, .idle)
+    }
+
+    func testLostTokenUploadAcknowledgementStillAttemptsRemovalOnLogout() async {
+        var removed: [String] = []
+        let manager = PushNotificationManager(registerToken: { _ in throw TestError.unavailable },
+            unregisterToken: { removed.append($0) })
+        await manager.didReceiveDeviceToken("possibly-registered-token")
+        XCTAssertEqual(manager.registrationStatus, .failed)
+        await manager.unregisterToken()
+        XCTAssertEqual(removed, ["possibly-registered-token"])
+        XCTAssertEqual(manager.registrationStatus, .idle)
     }
 
     func testConversationPushUsesConversationAcknowledgement() {

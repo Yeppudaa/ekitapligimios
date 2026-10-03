@@ -12,6 +12,12 @@ public struct ReaderBookMetadata: Codable, Equatable, Sendable {
     }
 }
 
+public struct ReaderProgressAttempt: Codable, Equatable, Sendable {
+    public let position: ReaderPositionDTO
+    public let baseRevision: String
+    public let changeID: UUID
+}
+
 public struct SavedReaderProgress: Codable, Equatable, Sendable {
     public var position: ReaderPositionDTO?
     public var revision: String
@@ -19,6 +25,9 @@ public struct SavedReaderProgress: Codable, Equatable, Sendable {
     public var changeID: UUID
     public var changedAt: Int
     public var book: ReaderBookMetadata?
+    // Persist before sending, so a lost response can be reconciled after restart
+    // even when the reader has moved again since that request started.
+    public var attemptedWrite: ReaderProgressAttempt?
 
     public init(position: ReaderPositionDTO?, revision: String, pending: Bool = false, changedAt: Int = 0) {
         self.position = position
@@ -140,6 +149,7 @@ public final class ReaderProgressSync {
         records[bookID] = SavedReaderProgress(position: position, revision: previous.revision, pending: true,
             changedAt: Int(Date().timeIntervalSince1970))
         records[bookID]?.book = previous.book
+        records[bookID]?.attemptedWrite = previous.attemptedWrite
         let stored = persist()
         notify(bookID, state: stored ? .syncing : .failed)
         timers[bookID]?.cancel()
@@ -152,8 +162,13 @@ public final class ReaderProgressSync {
     }
 
     public func register(bookID: Int, metadata: ReaderBookMetadata) {
+        guard account != nil, records[bookID] != nil else { return }
         records[bookID]?.book = metadata
-        _ = persist()
+        let stored = persist()
+        // prepare() publishes the restored position before book metadata is available.
+        // Publish again so a book outside the fetched shelves immediately appears in
+        // Home/Profile's continue-reading card, even if the reader stays on this page.
+        notify(bookID, state: stored ? (states[bookID] ?? .idle) : .failed)
     }
 
     public func captureFailed(bookID: Int) { notify(bookID, state: .failed) }
@@ -188,9 +203,18 @@ public final class ReaderProgressSync {
                         acknowledge(remote, sent: pending, bookID: bookID)
                         continue
                     }
+                    if let attempted = pending.attemptedWrite,
+                       attempted.baseRevision == pending.revision,
+                       attempted.position.hasSameLocation(as: remote.progress) {
+                        acknowledge(remote, sentChangeID: attempted.changeID, bookID: bookID)
+                        continue
+                    }
                     accept(remote, bookID: bookID)
                     return
                 }
+                records[bookID]?.attemptedWrite = ReaderProgressAttempt(position: position,
+                    baseRevision: pending.revision, changeID: pending.changeID)
+                guard persist() else { throw APIClientError.invalidResponse }
                 let result = try await repository.saveReaderProgress(bookID: bookID, position: position, baseRevision: pending.revision, accountName: account)
                 guard identity == generation else { return }
                 if result.conflict { accept(result, bookID: bookID); return }
@@ -205,8 +229,13 @@ public final class ReaderProgressSync {
     }
 
     private func acknowledge(_ response: ReaderProgressResponseDTO, sent: SavedReaderProgress, bookID: Int) {
-        if var newer = records[bookID], newer.changeID != sent.changeID {
+        acknowledge(response, sentChangeID: sent.changeID, bookID: bookID)
+    }
+
+    private func acknowledge(_ response: ReaderProgressResponseDTO, sentChangeID: UUID, bookID: Int) {
+        if var newer = records[bookID], newer.changeID != sentChangeID {
             newer.revision = response.revision
+            newer.attemptedWrite = nil
             records[bookID] = newer
             _ = persist()
         } else { accept(response, bookID: bookID) }

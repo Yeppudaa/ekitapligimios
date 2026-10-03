@@ -44,6 +44,7 @@ $iosControllers = @{
     "BookComments" = $true
     "BookReaderSource" = $true
     "ChatMessages" = $true
+    "ChatReactions" = $true
     "Conversations" = $true
     "MeNotifications" = $true
     "MeNotificationCounts" = $true
@@ -81,12 +82,25 @@ foreach ($route in @($source.routes.route | Where-Object { $_.route_type -eq "pu
 
 foreach ($customRoute in @(
     @{ sub_name = "legal-terms"; format = "v1/legal/terms"; controller = "Ekitapligim\IosApi:LegalTerms" },
+    @{ sub_name = "chat-message-detail"; format = "v1/chat/rooms/:+int<room_id>/messages/:+int<message_id>"; controller = "Ekitapligim\IosApi:ChatMessages" },
+    @{ sub_name = "chat-message-reactions"; format = "v1/chat/rooms/:+int<room_id>/messages/:+int<message_id>/reactions"; controller = "Ekitapligim\IosApi:ChatReactions" },
     @{ sub_name = "safety-reports"; format = "v1/safety/reports"; controller = "Ekitapligim\IosApi:SafetyReports" },
     @{ sub_name = "post-item"; format = "v1/posts/:int<post_id>/"; controller = "Ekitapligim\IosApi:ForumPost" },
     @{ sub_name = "post-item-id"; format = "v1/posts/:int<post_id>"; controller = "Ekitapligim\IosApi:ForumPost" },
     @{ sub_name = "post-edit"; format = "v1/posts/:int<post_id>/edit"; controller = "Ekitapligim\IosApi:ForumPost"; action_prefix = "edit" },
     @{ sub_name = "post-delete"; format = "v1/posts/:int<post_id>/delete"; controller = "Ekitapligim\IosApi:ForumPost"; action_prefix = "delete" }
 )) {
+    $existingRoutes = @($routesNode.ChildNodes | Where-Object { $_.GetAttribute('format') -eq $customRoute.format })
+    if ($existingRoutes.Count -gt 0) {
+        # XF orders routes by sub_name length: detail/reaction must precede messages.
+        if ($customRoute.sub_name -in @('chat-message-detail', 'chat-message-reactions')) {
+            foreach ($existingRoute in $existingRoutes) {
+                $existingRoute.SetAttribute('sub_name', $customRoute.sub_name)
+                $existingRoute.SetAttribute('controller', $customRoute.controller)
+            }
+        }
+        continue
+    }
     $node = $doc.CreateElement("route")
     $node.SetAttribute("route_type", "public")
     $node.SetAttribute("route_prefix", "ios-api")

@@ -2,4 +2,5 @@
 <class_extensions>
   <extension from_class="Ekitapligim\MobileApi\Api\Controller\AbstractMobileController" to_class="Ekitapligim\IosApi\XF\Extension\AbstractMobileController" execute_order="10" active="1"/>
   <extension from_class="XF\Service\Conversation\Notifier" to_class="Ekitapligim\IosApi\XF\Service\Conversation\Notifier" execute_order="10" active="1"/>
+  <extension from_class="Siropu\Chat\Entity\Message" to_class="Ekitapligim\IosApi\XF\Siropu\Chat\Entity\Message" execute_order="10" active="1"/>
 </class_extensions>

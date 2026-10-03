@@ -20,6 +20,7 @@ struct EkitapligimApp: App {
                     if ProcessInfo.processInfo.arguments.contains("-ai-ui-fixture") { return }
                     if ProcessInfo.processInfo.arguments.contains("-gift-wheel-ui-fixture") { return }
                     if ProcessInfo.processInfo.arguments.contains("-reader-ui-fixture") { return }
+                    if ProcessInfo.processInfo.arguments.contains("-chat-ui-fixture") { return }
                     #endif
                     appDelegate.pushManager = container.pushManager
                     await container.bootstrap()
@@ -32,6 +33,7 @@ struct EkitapligimApp: App {
         if ProcessInfo.processInfo.arguments.contains("-ai-ui-fixture") { AIUITestHost() }
         else if ProcessInfo.processInfo.arguments.contains("-gift-wheel-ui-fixture") { GiftWheelUITestHost() }
         else if ProcessInfo.processInfo.arguments.contains("-reader-ui-fixture") { ReaderUITestHost() }
+        else if ProcessInfo.processInfo.arguments.contains("-chat-ui-fixture") { ChatUITestHost() }
         else { RootView() }
         #else
         RootView()

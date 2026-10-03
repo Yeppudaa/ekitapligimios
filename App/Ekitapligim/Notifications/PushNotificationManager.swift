@@ -1,4 +1,5 @@
 import Foundation
+import Combine
 import UIKit
 import UserNotifications
 import EkitapligimCore
@@ -30,6 +31,10 @@ final class PushNotificationManager: ObservableObject {
     private var registeredToken: String?
     private var pendingToken: String?
     private var isRegistering = false
+    private var registeringToken: String?
+    private var registrationTask: Task<Void, Never>?
+    private var unregistrationTask: Task<Void, Never>?
+    private var isUnregistering = false
 
     init(apiClient: APIClient) {
         self.registerToken = { token in
@@ -81,6 +86,7 @@ final class PushNotificationManager: ObservableObject {
 
     /// Called by AppDelegate when APNs delivers a device token.
     func didReceiveDeviceToken(_ token: String) async {
+        guard !isUnregistering else { return }
         guard token != registeredToken else {
             pendingToken = nil
             registrationStatus = .registered
@@ -92,13 +98,23 @@ final class PushNotificationManager: ObservableObject {
 
     /// Retries a token upload that previously failed without exposing the token in diagnostics.
     func retryPendingRegistration() async {
+        guard !isUnregistering else { return }
+        if let registrationTask { await registrationTask.value; return }
+        let task = Task { await performPendingRegistration() }
+        registrationTask = task
+        await task.value
+        registrationTask = nil
+    }
+
+    private func performPendingRegistration() async {
         guard let token = pendingToken,
               token != registeredToken,
               !isRegistering else { return }
 
         isRegistering = true
+        registeringToken = token
         registrationStatus = .registering
-        defer { isRegistering = false }
+        defer { isRegistering = false; registeringToken = nil }
 
         do {
             try await registerToken(token)
@@ -122,20 +138,34 @@ final class PushNotificationManager: ObservableObject {
 
     /// Removes the current device token from the backend (called on logout).
     func unregisterToken() async {
-        guard let token = registeredToken else {
-            pendingToken = nil
-            registrationStatus = .idle
-            return
-        }
+        // Logout must wait for an upload that already started while its bearer
+        // remains valid. Otherwise a late upload can restore the old token.
+        if let unregistrationTask { await unregistrationTask.value; return }
+        isUnregistering = true
+        let task = Task { await performTokenRemoval() }
+        unregistrationTask = task
+        await task.value
+        unregistrationTask = nil
+        isUnregistering = false
+    }
+
+    private func performTokenRemoval() async {
+        // A failed upload response may still have committed on the server.
+        let attemptedToken = registeringToken ?? pendingToken
+        pendingToken = nil
+        await registrationTask?.value
+        let tokens = Set([registeredToken, attemptedToken].compactMap { $0 })
         registeredToken = nil
         pendingToken = nil
         registrationStatus = .idle
-        do {
-            try await unregisterTokenRequest(token)
-        } catch {
-            #if DEBUG
-            print("[Push] Token unregister failed.")
-            #endif
+        for token in tokens {
+            do {
+                try await unregisterTokenRequest(token)
+            } catch {
+                #if DEBUG
+                print("[Push] Token unregister failed.")
+                #endif
+            }
         }
     }
 

@@ -1,47 +1,47 @@
 import SwiftUI
 import EkitapligimCore
 
-/// Okur Sohbeti — room tabs, message bubbles and the 5 second `after_id` poll used by Android.
+/// Native room transcript; requests and interaction state are owned by ChatModel.
 @MainActor
 struct ChatView: View {
     @EnvironmentObject private var container: AppContainer
+    @Environment(\.scenePhase) private var scenePhase
+    @Environment(\.dynamicTypeSize) private var dynamicTypeSize
     var initialRoomID: String?
+    private let serviceOverride: (any ChatServing)?
+    private let signedInOverride: Bool?
 
-    @State private var rooms: [ChatRoomDTO] = []
-    @State private var capabilities = ChatCapabilitiesDTO()
-    @State private var selectedRoomID: String?
-    @State private var messages: [ChatMessageDTO] = []
-    @State private var oldestID: String?
-    @State private var newestID: String?
-    @State private var hasOlder = false
-    @State private var draft = ""
+    @StateObject private var model = ChatModel()
     @FocusState private var isComposerFocused: Bool
-    @State private var isLoadingRooms = false
-    @State private var isLoadingMessages = false
-    @State private var isLoadingOlder = false
-    @State private var isSending = false
-    @State private var errorMessage: String?
-    @State private var sendError: String?
     @State private var showingLogin = false
-    @State private var pollTask: Task<Void, Never>?
+    @State private var isFollowingLatest = true
+    @State private var reactionTarget: ChatMessageDTO?
+    @State private var loadedSessionRevision: UUID?
+    @State private var isVisible = false
 
-    private static let pollInterval: Duration = .seconds(5)
-    private static let draftCharacterLimit = 1_000
-
-    private var selectedRoom: ChatRoomDTO? {
-        rooms.first { $0.id == selectedRoomID }
+    init(initialRoomID: String? = nil, service: (any ChatServing)? = nil, signedIn: Bool? = nil) {
+        self.initialRoomID = initialRoomID
+        self.serviceOverride = service
+        self.signedInOverride = signedIn
     }
 
-    private var canSend: Bool {
-        container.isSignedIn
-            && capabilities.authenticated
-            && capabilities.canUse
-            && (selectedRoom?.canSend ?? false)
-    }
+    private var signedIn: Bool { signedInOverride ?? container.isSignedIn }
 
-    private var sessionReady: Bool {
-        container.isSignedIn && capabilities.authenticated
-    }
+    private var rooms: [ChatRoomDTO] { model.rooms }
+    private var capabilities: ChatCapabilitiesDTO { model.capabilities }
+    private var selectedRoomID: String? { model.selectedRoomID }
+    private var selectedRoom: ChatRoomDTO? { model.selectedRoom }
+    private var messages: [ChatMessageDTO] { model.messages }
+    private var hasOlder: Bool { model.hasOlder }
+    private var isLoadingRooms: Bool { model.isLoadingRooms }
+    private var isLoadingMessages: Bool { model.isLoadingMessages }
+    private var isLoadingOlder: Bool { model.isLoadingOlder }
+    private var isSending: Bool { model.isSending }
+    private var errorMessage: String? { model.errorMessage }
+    private var sendError: String? { model.sendError }
+    private var draft: String { model.draft }
+    private var canSend: Bool { signedIn && model.canSend }
+    private var sessionReady: Bool { signedIn && model.sessionReady }
 
     var body: some View {
         ZStack {
@@ -65,7 +65,7 @@ struct ChatView: View {
         .toolbar {
             ToolbarItem(placement: .topBarTrailing) {
                 Button {
-                    Task { await loadMessages(reset: true) }
+                    Task { await model.loadMessages() }
                 } label: {
                     Image(systemName: "arrow.clockwise")
                 }
@@ -73,18 +73,40 @@ struct ChatView: View {
             }
         }
         .sheet(isPresented: $showingLogin) { LoginView() }
-        .task { await loadRooms() }
-        .onChange(of: container.isSignedIn) { _, signedIn in
-            if signedIn {
-                Task { await loadRooms() }
+        .sheet(item: $reactionTarget) { message in
+            ChatReactionPicker(
+                options: model.reactionOptions,
+                selectedID: message.visitorReactionId
+            ) { id in
+                reactionTarget = nil
+                Task { await model.setReaction(messageID: message.id, reactionID: id) }
+            }
+            .presentationDetents([.medium, .large])
+            .presentationDragIndicator(.visible)
+        }
+        .task(id: container.sessionRevision) {
+            reactionTarget = nil
+            model.setBlockedUsers(Set(container.blockedUserIDs.map(String.init)))
+            if loadedSessionRevision == container.sessionRevision, !model.rooms.isEmpty {
+                await model.resume()
+            } else {
+                loadedSessionRevision = container.sessionRevision
+                await model.connect(service: serviceOverride ?? container.chat, signedIn: signedIn, initialRoomID: initialRoomID)
             }
         }
-        .onDisappear { stopPolling() }
-        .onChange(of: draft) { _, newValue in
-            if newValue.count > Self.draftCharacterLimit {
-                draft = String(newValue.prefix(Self.draftCharacterLimit))
+        .onChange(of: scenePhase) { _, phase in
+            if phase == .active {
+                Task { await model.resume(visible: isVisible) }
+            } else {
+                model.disconnect()
+                reactionTarget = nil
             }
         }
+        .onChange(of: container.blockedUserIDs) { _, blockedIDs in
+            model.setBlockedUsers(Set(blockedIDs.map(String.init)))
+        }
+        .onAppear { isVisible = true }
+        .onDisappear { isVisible = false; model.disconnect() }
     }
 
     // MARK: Hero + odalar
@@ -109,6 +131,7 @@ struct ChatView: View {
                     Text(L10n.chatHeroTitle)
                         .font(.headline.weight(.heavy))
                         .foregroundStyle(EKitapligimPalette.chatInk)
+                        .fixedSize(horizontal: false, vertical: true)
                     Text(L10n.chatHeroSubtitle)
                         .font(.caption)
                         .foregroundStyle(EKitapligimPalette.chatMuted)
@@ -147,7 +170,7 @@ struct ChatView: View {
                 Text(L10n.chatHeroLiveUpdate)
                     .font(.system(size: 10))
                     .foregroundStyle(EKitapligimPalette.chatMuted)
-                    .lineLimit(1)
+                    .fixedSize(horizontal: false, vertical: true)
             }
         }
         .padding(17)
@@ -192,8 +215,8 @@ struct ChatView: View {
         let selected = selectedRoomID == room.id
         return Button {
             guard selectedRoomID != room.id else { return }
-            selectedRoomID = room.id
-            Task { await loadMessages(reset: true) }
+            reactionTarget = nil
+            Task { await model.selectRoom(room.id) }
         } label: {
             HStack(spacing: expanded ? 10 : 6) {
                 Image(systemName: room.isPrivate ? "lock.fill" : "person.3.fill")
@@ -213,9 +236,9 @@ struct ChatView: View {
                         .lineLimit(1)
                     if expanded {
                         Text(roomDescription(room))
-                            .font(.system(size: 10))
+                            .font(.caption2)
                             .foregroundStyle(EKitapligimPalette.chatMuted)
-                            .lineLimit(1)
+                            .fixedSize(horizontal: false, vertical: true)
                     }
                 }
                 .frame(maxWidth: expanded ? .infinity : nil, alignment: .leading)
@@ -274,7 +297,7 @@ struct ChatView: View {
 
     private var chatHeroStatusText: String {
         if sessionReady { return L10n.chatStatusMember }
-        if container.isSignedIn { return L10n.chatStatusSecureRead }
+        if signedIn { return L10n.chatStatusSecureRead }
         return L10n.chatStatusGuest
     }
 
@@ -289,7 +312,7 @@ struct ChatView: View {
                     } else if rooms.isEmpty {
                         if let errorMessage {
                             chatReconnectCard(message: errorMessage) {
-                                Task { await loadRooms() }
+                                Task { await model.reloadRooms(signedIn: signedIn) }
                             }
                         } else {
                             chatEmptyCard(message: L10n.chatRoomsEmpty)
@@ -303,7 +326,7 @@ struct ChatView: View {
 
                         if hasOlder {
                             Button {
-                                Task { await loadOlder() }
+                                Task { await model.loadOlder() }
                             } label: {
                                 HStack(spacing: 7) {
                                     if isLoadingOlder {
@@ -333,7 +356,7 @@ struct ChatView: View {
                             chatLoadingCard(title: L10n.chatMessagesLoading)
                         } else if let errorMessage, messages.isEmpty {
                             chatReconnectCard(message: errorMessage) {
-                                Task { await loadRooms() }
+                                Task { await model.reloadRooms(signedIn: signedIn) }
                             }
                         } else if messages.isEmpty {
                             chatEmptyCard(message: L10n.chatMessagesEmpty)
@@ -342,21 +365,43 @@ struct ChatView: View {
                                 guard let userID = Int(message.userId) else { return true }
                                 return !container.blockedUserIDs.contains(userID)
                             }) { message in
-                                ChatMessageBubble(message: message) {
-                                    let userID = message.userId
-                                    messages.removeAll { $0.userId == userID }
-                                }
-                                    .id(message.id)
+                                ChatMessageBubble(
+                                    message: message,
+                                    canInteract: model.canSend,
+                                    isReacting: model.reactingMessageIDs.contains(message.id),
+                                    onQuote: {
+                                        model.quote(message)
+                                        isComposerFocused = true
+                                    },
+                                    onReact: { reactionTarget = message },
+                                    onSelectReaction: { id in
+                                        Task { await model.setReaction(messageID: message.id, reactionID: id) }
+                                    },
+                                    onBlocked: { model.removeBlockedUser(message.userId) }
+                                )
+                                .id(message.id)
+                                .onAppear { model.setMessageVisible(message.id, visible: true) }
+                                .onDisappear { model.setMessageVisible(message.id, visible: false) }
                             }
                         }
                     }
+                    Color.clear.frame(height: 1)
+                    .id("chat-latest")
+                    .onAppear { isFollowingLatest = true }
+                    .onDisappear { isFollowingLatest = false }
                 }
+                .frame(maxWidth: 720)
+                .frame(maxWidth: .infinity)
                 .padding(.horizontal, 14)
                 .padding(.vertical, 12)
             }
+            .scrollDismissesKeyboard(.interactively)
             .onChange(of: messages.last?.id) { _, id in
-                guard let id else { return }
+                guard isFollowingLatest, let id else { return }
                 withAnimation(.easeOut(duration: 0.2)) { proxy.scrollTo(id, anchor: .bottom) }
+            }
+            .onChange(of: model.scrollRequest) { _, _ in
+                withAnimation(.easeOut(duration: 0.2)) { proxy.scrollTo("chat-latest", anchor: .bottom) }
             }
         }
     }
@@ -389,7 +434,7 @@ struct ChatView: View {
 
     private var welcomeTitle: String {
         if sessionReady { return L10n.chatWelcomeReady }
-        if container.isSignedIn { return L10n.chatWelcomeSecure }
+        if signedIn { return L10n.chatWelcomeSecure }
         return L10n.chatWelcomeGuest
     }
 
@@ -412,7 +457,7 @@ struct ChatView: View {
                     .frame(maxWidth: .infinity, alignment: .leading)
             }
 
-            if !container.isSignedIn {
+            if !signedIn {
                 chatAccessCallToAction(
                     icon: "arrow.right.circle.fill",
                     title: L10n.chatComposerGuestTitle,
@@ -421,9 +466,9 @@ struct ChatView: View {
                 ) {
                     showingLogin = true
                 }
-            } else if container.isSignedIn && isLoadingRooms {
+            } else if signedIn && isLoadingRooms {
                 chatSessionPreparing
-            } else if container.isSignedIn && !capabilities.authenticated {
+            } else if signedIn && !capabilities.authenticated {
                 chatAccessCallToAction(
                     icon: "wifi.slash",
                     title: L10n.chatComposerSessionTitle,
@@ -432,7 +477,7 @@ struct ChatView: View {
                 ) {
                     Task {
                         await container.refreshSessionData()
-                        await loadRooms()
+                        await model.reloadRooms(signedIn: signedIn)
                     }
                 }
             } else if !capabilities.canUse || selectedRoom?.isReadOnly == true {
@@ -448,15 +493,34 @@ struct ChatView: View {
                     subtitle: L10n.chatComposerNoPermission
                 )
             } else {
+                if let quoted = model.quotedMessage {
+                    HStack(alignment: .top, spacing: 8) {
+                        ChatQuotePreview(username: quoted.username, message: quoted.message, onDark: false,
+                                         lineLimit: dynamicTypeSize.isAccessibilitySize ? 1 : 3)
+                        Button {
+                            model.cancelQuote()
+                        } label: {
+                            Image(systemName: "xmark.circle.fill")
+                                .font(.title3)
+                                .foregroundStyle(EKitapligimPalette.chatMuted)
+                                .frame(width: 44, height: 44)
+                        }
+                        .buttonStyle(.plain)
+                        .accessibilityLabel(L10n.chatCancelReply)
+                        .accessibilityIdentifier("chat-cancel-reply")
+                    }
+                    .accessibilityIdentifier("chat-reply-context")
+                }
                 HStack(alignment: .bottom, spacing: 9) {
                     HStack(spacing: 8) {
                         Image(systemName: "person.fill")
                             .font(.subheadline)
                             .foregroundStyle(EKitapligimPalette.chatTeal)
                             .accessibilityHidden(true)
-                        TextField(L10n.chatComposerPlaceholder, text: $draft, axis: .vertical)
+                        TextField(L10n.chatComposerPlaceholder, text: $model.draft, axis: .vertical)
                             .focused($isComposerFocused)
-                            .lineLimit(1...4)
+                            .lineLimit(1...(dynamicTypeSize.isAccessibilitySize ? 2 : 4))
+                            .accessibilityIdentifier("chat-composer")
                     }
                     .padding(.horizontal, 12)
                     .padding(.vertical, 10)
@@ -471,7 +535,7 @@ struct ChatView: View {
                     }
 
                     Button {
-                        Task { await send() }
+                        Task { await model.send() }
                     } label: {
                         Group {
                             if isSending {
@@ -490,6 +554,7 @@ struct ChatView: View {
                         )
                     }
                     .accessibilityLabel(L10n.chatComposerSend)
+                    .accessibilityIdentifier("chat-send")
                     .buttonStyle(.plain)
                     .disabled(!canSend || isSending || draft.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty)
                 }
@@ -532,6 +597,7 @@ struct ChatView: View {
                 Text(L10n.chatSessionPreparingSubtitle)
                     .font(.caption2)
                     .foregroundStyle(EKitapligimPalette.chatMuted)
+                    .fixedSize(horizontal: false, vertical: true)
             }
             Spacer(minLength: 0)
         }
@@ -646,6 +712,7 @@ struct ChatView: View {
                     .font(.caption2)
                     .foregroundStyle(EKitapligimPalette.chatMuted)
                     .multilineTextAlignment(.leading)
+                    .fixedSize(horizontal: false, vertical: true)
             }
 
             Spacer(minLength: 0)
@@ -683,116 +750,6 @@ struct ChatView: View {
         }
     }
 
-    // MARK: Veri
-
-    private func loadRooms() async {
-        guard !isLoadingRooms else { return }
-        isLoadingRooms = true
-        errorMessage = nil
-        defer { isLoadingRooms = false }
-
-        do {
-            let response = try await container.chat.rooms()
-            rooms = response.rooms
-            capabilities = response.capabilities
-            if selectedRoomID == nil {
-                selectedRoomID = initialRoomID.flatMap { id in rooms.first { $0.id == id }?.id } ?? rooms.first?.id
-            }
-            if !rooms.isEmpty {
-                await loadMessages(reset: true)
-            }
-        } catch {
-            errorMessage = L10n.chatRoomsFailed
-        }
-    }
-
-    private func loadMessages(reset: Bool) async {
-        guard let roomID = selectedRoomID else { return }
-        stopPolling()
-        if reset {
-            messages = []
-            oldestID = nil
-            newestID = nil
-            hasOlder = false
-        }
-        isLoadingMessages = true
-        defer { isLoadingMessages = false }
-
-        do {
-            let page = try await container.chat.messages(roomID: roomID, limit: 40)
-            messages = page.messages
-            oldestID = page.oldestId
-            newestID = page.newestId
-            hasOlder = page.hasMore
-            if let room = page.room {
-                if let index = rooms.firstIndex(where: { $0.id == room.id }) {
-                    rooms[index] = room
-                } else {
-                    rooms.insert(room, at: 0)
-                }
-            }
-            errorMessage = nil
-            startPolling()
-        } catch {
-            errorMessage = L10n.chatMessagesFailed
-        }
-    }
-
-    private func loadOlder() async {
-        guard let roomID = selectedRoomID, let beforeID = oldestID, !isLoadingOlder else { return }
-        isLoadingOlder = true
-        defer { isLoadingOlder = false }
-
-        guard let page = try? await container.chat.messages(roomID: roomID, limit: 40, beforeID: beforeID) else { return }
-        let existing = Set(messages.map(\.id))
-        messages.insert(contentsOf: page.messages.filter { !existing.contains($0.id) }, at: 0)
-        oldestID = page.oldestId ?? oldestID
-        hasOlder = page.hasMore
-    }
-
-    private func pollNewMessages() async {
-        guard let roomID = selectedRoomID, let afterID = newestID else { return }
-        guard let page = try? await container.chat.messages(roomID: roomID, limit: 40, afterID: afterID) else { return }
-        guard !page.messages.isEmpty else { return }
-        let existing = Set(messages.map(\.id))
-        messages.append(contentsOf: page.messages.filter { !existing.contains($0.id) })
-        newestID = page.newestId ?? newestID
-    }
-
-    private func send() async {
-        let text = draft.trimmingCharacters(in: .whitespacesAndNewlines)
-        guard canSend, selectedRoom?.isReadOnly != true, !text.isEmpty, let roomID = selectedRoomID else { return }
-        isSending = true
-        sendError = nil
-        defer { isSending = false }
-
-        do {
-            let sent = try await container.chat.send(roomID: roomID, message: text)
-            draft = ""
-            if !messages.contains(where: { $0.id == sent.id }) {
-                messages.append(sent)
-            }
-            newestID = sent.id
-        } catch {
-            sendError = (error as? APIClientError)?.serverMessage ?? L10n.chatSendFailed
-        }
-    }
-
-    private func startPolling() {
-        stopPolling()
-        pollTask = Task { [pollInterval = Self.pollInterval] in
-            while !Task.isCancelled {
-                try? await Task.sleep(for: pollInterval)
-                if Task.isCancelled { return }
-                await pollNewMessages()
-            }
-        }
-    }
-
-    private func stopPolling() {
-        pollTask?.cancel()
-        pollTask = nil
-    }
 }
 
 private struct ChatNavigationSubtitleModifier: ViewModifier {
@@ -814,8 +771,14 @@ private struct ChatNavigationSubtitleModifier: ViewModifier {
 
 // MARK: - Mesaj baloncuğu
 
-private struct ChatMessageBubble: View {
+struct ChatMessageBubble: View {
+    @ScaledMetric(relativeTo: .caption) private var reactionChipWidth = 76.0
     let message: ChatMessageDTO
+    let canInteract: Bool
+    let isReacting: Bool
+    let onQuote: () -> Void
+    let onReact: () -> Void
+    let onSelectReaction: (Int) -> Void
     let onBlocked: () -> Void
 
     private var profileMemberID: String? {
@@ -853,6 +816,7 @@ private struct ChatMessageBubble: View {
                     .font(.subheadline)
                     .foregroundStyle(EKitapligimPalette.chatAnnouncementInk)
                     .multilineTextAlignment(.leading)
+                    .fixedSize(horizontal: false, vertical: true)
                     .frame(maxWidth: .infinity, alignment: .leading)
             }
         }
@@ -874,9 +838,8 @@ private struct ChatMessageBubble: View {
     }
 
     private var bubble: some View {
-        HStack(alignment: .bottom, spacing: 8) {
-            if message.isMine { Spacer(minLength: 40) }
-
+        HStack(alignment: .top, spacing: 8) {
+            if message.isMine { Spacer(minLength: 20) }
             if !message.isMine {
                 MemberProfileLink(memberID: profileMemberID) {
                     EKAvatar(
@@ -886,78 +849,145 @@ private struct ChatMessageBubble: View {
                         background: message.isBot ? EKitapligimPalette.chatBotBubble : EKitapligimPalette.chatTealSoft,
                         foreground: message.isBot ? Color(hex: 0x95610A) : EKitapligimPalette.chatTeal
                     )
+                    .frame(width: 44, height: 44)
+                    .contentShape(Rectangle())
                 }
+                .accessibilityLabel(L10n.chatOpenProfile(message.username))
+                .accessibilityIdentifier("chat-avatar-\(message.id)")
             }
-
-            VStack(alignment: message.isMine ? .trailing : .leading, spacing: 4) {
-                if !message.isMine {
-                    HStack(spacing: 6) {
-                        MemberProfileLink(memberID: profileMemberID) {
-                            Text(message.username)
-                                .font(.system(size: 12, weight: .bold))
-                                .foregroundStyle(message.isBot ? Color(hex: 0x95610A) : EKitapligimPalette.chatTeal)
+            VStack(alignment: message.isMine ? .trailing : .leading, spacing: 5) {
+                VStack(alignment: .leading, spacing: 8) {
+                    if !message.isMine {
+                        ViewThatFits(in: .horizontal) {
+                            HStack(alignment: .firstTextBaseline, spacing: 6) {
+                                senderName
+                                if let roleBadge { badge(roleBadge) }
+                            }
+                            VStack(alignment: .leading, spacing: 4) {
+                                senderName
+                                if let roleBadge { badge(roleBadge) }
+                            }
                         }
-                        if let roleBadge {
-                            Text(roleBadge)
-                                .font(.system(size: 8, weight: .heavy))
-                                .foregroundStyle(.white)
+                    }
+                    if let quote = message.quotedMessage {
+                        ChatQuotePreview(username: quote.username, message: quote.message, onDark: message.isMine)
+                    }
+                    Text(EKitapligimFormat.plainText(message.message))
+                        .font(.body)
+                        .foregroundStyle(message.isMine ? .white : EKitapligimPalette.chatInk)
+                        .multilineTextAlignment(.leading)
+                        .lineLimit(nil)
+                        .fixedSize(horizontal: false, vertical: true)
+                        .frame(maxWidth: .infinity, alignment: .leading)
+                        .textSelection(.enabled)
+                        .accessibilityIdentifier("chat-message-\(message.id)")
+                    Text(timestampLabel)
+                        .font(.caption2)
+                        .foregroundStyle(message.isMine ? Color.white.opacity(0.82) : EKitapligimPalette.chatMuted)
+                        .frame(maxWidth: .infinity, alignment: .trailing)
+                }
+                .padding(13)
+                .frame(maxWidth: .infinity, alignment: .leading)
+                .background { bubbleBackground }
+                .clipShape(chatBubbleShape)
+                .overlay {
+                    if !message.isMine { chatBubbleShape.stroke(EKitapligimPalette.chatBorder, lineWidth: 1) }
+                }
+                .shadow(color: EKitapligimPalette.chatTeal.opacity(message.isMine ? 0.12 : 0.04), radius: 6, y: 3)
+
+                if !message.reactions.isEmpty {
+                    LazyVGrid(columns: [GridItem(.adaptive(minimum: min(reactionChipWidth, 160)), spacing: 6)], alignment: .leading, spacing: 6) {
+                        ForEach(message.reactions) { reaction in
+                            Button {
+                                onSelectReaction(message.visitorReactionId == reaction.reactionId ? 0 : reaction.reactionId)
+                            } label: {
+                                ViewThatFits(in: .horizontal) {
+                                    HStack(spacing: 4) {
+                                        ChatReactionSymbol(reaction: reaction)
+                                        Text(reaction.count.formatted()).font(.caption.weight(.semibold))
+                                    }
+                                    VStack(spacing: 2) {
+                                        ChatReactionSymbol(reaction: reaction)
+                                        Text(reaction.count.formatted()).font(.caption.weight(.semibold))
+                                    }
+                                }
                                 .padding(.horizontal, 6)
                                 .padding(.vertical, 2)
-                                .background(EKitapligimPalette.chatAmber, in: Capsule())
+                                .frame(minHeight: 44)
+                                .frame(maxWidth: .infinity)
+                                .foregroundStyle(EKitapligimPalette.chatTeal)
+                                .background(
+                                    message.visitorReactionId == reaction.reactionId ? EKitapligimPalette.chatTealSoft : Color.white,
+                                    in: Capsule()
+                                )
+                                .overlay(Capsule().stroke(EKitapligimPalette.chatBorder))
+                            }
+                            .buttonStyle(.plain)
+                            .disabled(!canInteract || !message.canReact || isReacting)
+                            .accessibilityLabel(L10n.chatReactionCount(reaction.title, reaction.count))
+                            .accessibilityAddTraits(message.visitorReactionId == reaction.reactionId ? .isSelected : [])
+                            .accessibilityIdentifier("chat-reaction-\(message.id)-\(reaction.reactionId)")
                         }
                     }
                 }
-
-                Text(EKitapligimFormat.plainText(message.message))
-                    .font(.subheadline)
-                    .foregroundStyle(message.isMine ? .white : EKitapligimPalette.chatInk)
-                    .multilineTextAlignment(message.isMine ? .trailing : .leading)
-
-                if message.isMine {
-                    Text(timestampLabel)
-                        .font(.system(size: 10, weight: .medium))
-                        .foregroundStyle(Color.white.opacity(0.72))
-                } else {
-                    HStack {
-                        Spacer(minLength: 0)
-                        Text(timestampLabel)
-                            .font(.system(size: 10, weight: .medium))
-                            .foregroundStyle(EKitapligimPalette.chatMuted)
+                HStack(spacing: 6) {
+                    if canInteract && message.canQuote {
+                        Button(action: onQuote) {
+                            Image(systemName: "arrowshape.turn.up.left")
+                                .frame(width: 44, height: 44)
+                                .contentShape(Rectangle())
+                        }
+                            .accessibilityLabel(L10n.chatReply)
+                            .accessibilityIdentifier("chat-reply-\(message.id)")
+                    }
+                    if canInteract && message.canReact {
+                        Button(action: onReact) {
+                            Group {
+                                if isReacting { ProgressView().controlSize(.small) }
+                                else { Image(systemName: "face.smiling") }
+                            }
+                            .frame(width: 44, height: 44)
+                            .contentShape(Rectangle())
+                        }
+                        .disabled(isReacting)
+                        .accessibilityLabel(L10n.chatReact)
+                        .accessibilityIdentifier("chat-react-\(message.id)")
+                    }
+                    if !message.isMine, let contentID = Int(message.id) {
+                        UGCSafetyMenu(type: .chatMessage, contentID: contentID,
+                                      userID: Int(message.userId), onBlocked: onBlocked)
+                            .frame(width: 44, height: 44)
                     }
                 }
+                .buttonStyle(.plain)
+                .font(.body)
+                .foregroundStyle(EKitapligimPalette.chatTeal)
+                .frame(maxWidth: .infinity, alignment: message.isMine ? .trailing : .leading)
             }
-            .padding(.horizontal, 14)
-            .padding(.vertical, 11)
-            .fixedSize(horizontal: true, vertical: false)
-            .frame(maxWidth: 310, alignment: message.isMine ? .trailing : .leading)
-            .background { bubbleBackground }
-            .clipShape(chatBubbleShape)
-            .overlay {
-                if !message.isMine {
-                    chatBubbleShape.stroke(EKitapligimPalette.chatBorder, lineWidth: 1)
-                }
-            }
-            .shadow(
-                color: message.isMine
-                    ? EKitapligimPalette.chatTeal.opacity(0.22)
-                    : Color.black.opacity(0.05),
-                radius: message.isMine ? 8 : 4,
-                y: message.isMine ? 4 : 2
-            )
-
-            if !message.isMine, let contentID = Int(message.id) {
-                UGCSafetyMenu(
-                    type: .chatMessage,
-                    contentID: contentID,
-                    userID: Int(message.userId),
-                    onBlocked: onBlocked
-                )
-            }
-
-            if !message.isMine { Spacer(minLength: 40) }
+            .frame(maxWidth: .infinity)
+            if !message.isMine { Spacer(minLength: 8) }
         }
         .frame(maxWidth: .infinity, alignment: message.isMine ? .trailing : .leading)
-        .accessibilityElement(children: .combine)
+        .accessibilityElement(children: .contain)
+    }
+
+    private var senderName: some View {
+        MemberProfileLink(memberID: profileMemberID) {
+            Text(message.username)
+                .font(.caption.weight(.bold))
+                .foregroundStyle(message.isBot ? Color(hex: 0x95610A) : EKitapligimPalette.chatTeal)
+                .fixedSize(horizontal: false, vertical: true)
+        }
+        .accessibilityLabel(L10n.chatOpenProfile(message.username))
+    }
+
+    private func badge(_ title: String) -> some View {
+        Text(title)
+            .font(.caption2.weight(.bold))
+            .foregroundStyle(EKitapligimPalette.chatAmber)
+            .padding(.horizontal, 7)
+            .padding(.vertical, 3)
+            .background(EKitapligimPalette.chatAnnouncement, in: Capsule())
     }
 
     private var timestampLabel: String {
@@ -999,4 +1029,119 @@ private struct ChatMessageBubble: View {
         return nil
     }
 
+}
+
+struct ChatQuotePreview: View {
+    let username: String
+    let message: String
+    let onDark: Bool
+    var lineLimit: Int? = nil
+
+    var body: some View {
+        HStack(alignment: .top, spacing: 8) {
+            RoundedRectangle(cornerRadius: 2)
+                .fill(onDark ? Color.white.opacity(0.8) : EKitapligimPalette.chatTeal)
+                .frame(width: 3)
+            VStack(alignment: .leading, spacing: 3) {
+                Text(L10n.chatReplyTo(username))
+                    .font(.caption.weight(.bold))
+                Text(EKitapligimFormat.plainText(message))
+                    .font(.caption)
+                    .lineLimit(lineLimit)
+                    .fixedSize(horizontal: false, vertical: true)
+            }
+            .frame(maxWidth: .infinity, alignment: .leading)
+        }
+        .fixedSize(horizontal: false, vertical: true)
+        .foregroundStyle(onDark ? Color.white.opacity(0.9) : EKitapligimPalette.chatInk)
+        .padding(10)
+        .background(onDark ? Color.white.opacity(0.12) : EKitapligimPalette.chatTealSoft,
+                    in: RoundedRectangle(cornerRadius: 10, style: .continuous))
+    }
+}
+
+private struct ChatReactionSymbol: View {
+    let reaction: ChatReactionDTO
+
+    var body: some View {
+        Group {
+            if !reaction.emoji.isEmpty {
+                Text(reaction.emoji).font(.title3)
+            } else if let raw = reaction.imageUrl, let url = URL(string: raw), url.scheme == "https" {
+                AsyncImage(url: url) { phase in
+                    if let image = phase.image {
+                        if reaction.spriteMode, let sprite = reaction.spriteParams {
+                            Canvas { context, size in
+                                let resolved = context.resolve(image)
+                                if let viewport = sprite.viewport(imageWidth: resolved.size.width,
+                                                                  imageHeight: resolved.size.height,
+                                                                  size: min(size.width, size.height)) {
+                                    context.clip(to: Path(CGRect(x: viewport.insetX, y: viewport.insetY,
+                                                                width: viewport.cellWidth, height: viewport.cellHeight)))
+                                    context.draw(resolved, in: CGRect(x: viewport.offsetX, y: viewport.offsetY,
+                                                                     width: viewport.sheetWidth, height: viewport.sheetHeight))
+                                } else {
+                                    context.draw(context.resolve(Image(systemName: "face.smiling")),
+                                                 in: CGRect(origin: .zero, size: size))
+                                }
+                            }
+                        } else if !reaction.spriteMode {
+                            image.resizable().scaledToFit()
+                        } else {
+                            Image(systemName: "face.smiling")
+                        }
+                    } else {
+                        Image(systemName: "face.smiling")
+                    }
+                }
+                .frame(width: 24, height: 24)
+            } else {
+                Image(systemName: "face.smiling").font(.title3)
+            }
+        }
+        .accessibilityHidden(true)
+    }
+}
+
+struct ChatReactionPicker: View {
+    let options: [ChatReactionDTO]
+    let selectedID: Int
+    let onSelect: (Int) -> Void
+
+    var body: some View {
+        NavigationStack {
+            ScrollView {
+                LazyVGrid(columns: [GridItem(.adaptive(minimum: 110), spacing: 12)], spacing: 12) {
+                    ForEach(options) { reaction in
+                        Button { onSelect(selectedID == reaction.reactionId ? 0 : reaction.reactionId) } label: {
+                            VStack(spacing: 8) {
+                                ChatReactionSymbol(reaction: reaction)
+                                Text(reaction.title)
+                                    .font(.subheadline.weight(.semibold))
+                                    .multilineTextAlignment(.center)
+                                    .fixedSize(horizontal: false, vertical: true)
+                            }
+                            .padding(12)
+                            .frame(maxWidth: .infinity, minHeight: 80)
+                            .foregroundStyle(EKitapligimPalette.chatInk)
+                            .background(selectedID == reaction.reactionId ? EKitapligimPalette.chatTealSoft : Color(hex: 0xF4F7F8),
+                                        in: RoundedRectangle(cornerRadius: 16, style: .continuous))
+                        }
+                        .buttonStyle(.plain)
+                        .accessibilityLabel(reaction.title)
+                        .accessibilityAddTraits(selectedID == reaction.reactionId ? .isSelected : [])
+                        .accessibilityIdentifier("chat-picker-reaction-\(reaction.reactionId)")
+                    }
+                }
+                .padding(16)
+                if selectedID > 0 {
+                    Button(L10n.chatRemoveReaction) { onSelect(0) }
+                        .padding(12)
+                        .frame(minHeight: 44)
+                }
+            }
+            .navigationTitle(L10n.chatReact)
+            .navigationBarTitleDisplayMode(.inline)
+        }
+    }
 }

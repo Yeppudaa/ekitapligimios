@@ -1,8 +1,9 @@
 [CmdletBinding()]
-param([switch]$Clean, [switch]$Release)
+param([switch]$Clean, [switch]$Release, [string]$PackagePath = "")
 
 $ErrorActionPreference = "Stop"
 $root = Resolve-Path (Join-Path $PSScriptRoot "..")
+if ($PackagePath) { $root = Resolve-Path -LiteralPath $PackagePath }
 
 function Find-SwiftExecutable {
     $command = Get-Command swift.exe -ErrorAction SilentlyContinue

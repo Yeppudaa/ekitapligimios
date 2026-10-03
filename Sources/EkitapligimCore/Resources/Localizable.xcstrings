@@ -1,6 +1,30 @@
 {
   "sourceLanguage": "tr",
   "strings": {
+    "chat.reply": {
+      "localizations": { "tr": { "stringUnit": { "state": "translated", "value": "Yanıtla / Alıntıla" } } }
+    },
+    "chat.cancelReply": {
+      "localizations": { "tr": { "stringUnit": { "state": "translated", "value": "Yanıtı iptal et" } } }
+    },
+    "chat.react": {
+      "localizations": { "tr": { "stringUnit": { "state": "translated", "value": "İfade ekle" } } }
+    },
+    "chat.removeReaction": {
+      "localizations": { "tr": { "stringUnit": { "state": "translated", "value": "İfadeyi kaldır" } } }
+    },
+    "chat.reactionFailed": {
+      "localizations": { "tr": { "stringUnit": { "state": "translated", "value": "İfade kaydedilemedi. Lütfen tekrar deneyin." } } }
+    },
+    "chat.replyTo": {
+      "localizations": { "tr": { "stringUnit": { "state": "translated", "value": "%@ kişisine yanıt" } } }
+    },
+    "chat.openProfile": {
+      "localizations": { "tr": { "stringUnit": { "state": "translated", "value": "%@ profilini aç" } } }
+    },
+    "chat.reactionCount": {
+      "localizations": { "tr": { "stringUnit": { "state": "translated", "value": "%@: %d ifade" } } }
+    },
     "home.agendaRail.emptyPost": {
       "localizations": { "tr": { "stringUnit": { "state": "translated", "value": "Yeni bir kitap paylaşımı" } } }
     },

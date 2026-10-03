@@ -39,6 +39,7 @@ final class AppContainer: ObservableObject {
     @Published private(set) var libraryItems: [LibraryItemDTO] = []
     @Published private(set) var readerSyncStates: [Int: ReaderProgressSyncState] = [:]
     private var libraryGeneration = UUID()
+    private var activeReaderAccount: String?
     private let readerConnectivity = ReaderProgressConnectivity()
     @Published private(set) var unreadNotifications = 0
     @Published private(set) var unreadMessages = 0
@@ -87,6 +88,10 @@ final class AppContainer: ObservableObject {
     private func activateReaderAccount() {
         let name: String?
         if case .signedIn(let session) = authState { name = session.username } else { name = nil }
+        // Token rotation keeps the same reader account. It must not discard sync labels
+        // or invalidate a library request already fetching this account's progress.
+        guard name != activeReaderAccount else { return }
+        activeReaderAccount = name
         readerProgressSync.activate(account: name)
         if name != nil {
             readerConnectivity.start { [weak self] in await self?.readerProgressSync.retryPending() }
@@ -106,20 +111,9 @@ final class AppContainer: ObservableObject {
     private func applyReaderRecord(bookID: Int, record: SavedReaderProgress) {
         let id = String(bookID)
         let existing = libraryItems.first { $0.bookId == id }
-        guard let position = record.position else {
-            if let existing { upsertLibraryItem(existing.updating(progressPercent: 0, lastReadPage: 0, lastReadAt: 0)) }
-            return
-        }
-        let date = record.pending ? record.changedAt : position.lastReadDate
-        if let existing {
-            upsertLibraryItem(existing.updating(progressPercent: Int(position.progressPercent.rounded()),
-                lastReadPage: position.page ?? 0, lastReadAt: date, positionType: position.positionType))
-        } else if let book = record.book {
-            upsertLibraryItem(LibraryItemDTO(bookId: id, shelfState: "NONE", progressPercent: Int(position.progressPercent.rounded()),
-                lastReadPage: position.page ?? 0, isDownloaded: downloadManager.localFile(for: id) != nil,
-                isFavorite: false, title: book.title, author: book.author, coverUrl: book.coverURL,
-                pageCount: book.pageCount, lastReadAt: date, positionType: position.positionType))
-        }
+        guard let item = ReaderLibraryProjection.item(bookID: bookID, record: record, existing: existing,
+            isDownloaded: downloadManager.localFile(for: id) != nil) else { return }
+        upsertLibraryItem(item)
     }
 
     private func applyLibrary(_ items: [LibraryItemDTO]) {
@@ -315,9 +309,12 @@ final class AppContainer: ObservableObject {
 
     /// Loads everything the shell and profile need in one pass; each call degrades independently.
     func refreshSessionData() async {
-        guard isSignedIn else { return }
+        guard isSignedIn, !Task.isCancelled else { return }
         let generation = sessionGeneration
-        let readingGeneration = libraryGeneration
+        // Each library fetch gets its own revision. An older session refresh must not
+        // overwrite a later library refresh or a reader position recorded while it awaits.
+        let readingGeneration = UUID()
+        libraryGeneration = readingGeneration
         isRefreshingSession = true
         defer { if generation == sessionGeneration { isRefreshingSession = false } }
 
@@ -363,14 +360,14 @@ final class AppContainer: ObservableObject {
 
     @discardableResult
     func refreshLibrary() async -> Bool {
-        guard isSignedIn else { return false }
+        guard isSignedIn, !Task.isCancelled else { return false }
         let sessionRevision = sessionGeneration
         await readerProgressSync.retryPending()
-        guard sessionRevision == sessionGeneration, isSignedIn else { return false }
+        guard sessionRevision == sessionGeneration, isSignedIn, !Task.isCancelled else { return false }
         let generation = UUID()
         libraryGeneration = generation
         guard let page = try? await books.library(), generation == libraryGeneration,
-              sessionRevision == sessionGeneration, isSignedIn else { return false }
+              sessionRevision == sessionGeneration, isSignedIn, !Task.isCancelled else { return false }
         applyLibrary(page.items)
         return true
     }

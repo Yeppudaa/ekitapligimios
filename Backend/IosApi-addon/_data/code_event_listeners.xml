@@ -1,4 +1,6 @@
 <?xml version="1.0" encoding="utf-8"?>
 <code_event_listeners>
   <listener event_id="entity_post_save" execute_order="100" callback_class="Ekitapligim\IosApi\Listener\AlertCreated" callback_method="onUserAlert" active="1" hint="XF\Entity\UserAlert" description="Queue APNs delivery for newly created XenForo alerts."/>
+  <listener event_id="entity_post_save" execute_order="100" callback_class="Ekitapligim\IosApi\Listener\ChatInteractionCreated" callback_method="onRoomMessage" active="1" hint="Siropu\Chat\Entity\Message" description="Queue APNs only for structured live-room quotes to the original author."/>
+  <listener event_id="entity_post_save" execute_order="100" callback_class="Ekitapligim\IosApi\Listener\ChatInteractionCreated" callback_method="onReaction" active="1" hint="XF\Entity\ReactionContent" description="Queue APNs only for reactions to live-room chat messages."/>
 </code_event_listeners>

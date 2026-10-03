@@ -913,6 +913,7 @@ public struct ChatCapabilitiesDTO: Decodable, Equatable, Sendable {
 public struct ChatRoomsDTO: Decodable, Equatable, Sendable {
     public let rooms: [ChatRoomDTO]
     public let capabilities: ChatCapabilitiesDTO
+    public let reactionOptions: [ChatReactionDTO]
 
     public init(from decoder: Decoder) throws {
         let container = try decoder.container(keyedBy: CodingKeys.self)
@@ -921,12 +922,17 @@ public struct ChatRoomsDTO: Decodable, Equatable, Sendable {
             ?? []
         self.capabilities = try container.decodeIfPresent(ChatCapabilitiesDTO.self, forKey: .capabilities)
             ?? ChatCapabilitiesDTO()
+        self.reactionOptions = try container.decodeIfPresent([ChatReactionDTO].self, forKey: .reactionOptions)
+            ?? container.decodeIfPresent([ChatReactionDTO].self, forKey: .availableReactions)
+            ?? []
     }
 
     private enum CodingKeys: String, CodingKey {
         case items
         case rooms
         case capabilities
+        case reactionOptions
+        case availableReactions
     }
 }
 
@@ -945,6 +951,12 @@ public struct ChatMessageDTO: Decodable, Equatable, Identifiable, Sendable {
     public let isAdmin: Bool
     public let isModerator: Bool
     public let isStaff: Bool
+    public let canQuote: Bool
+    public let canReact: Bool
+    public let visitorReactionId: Int
+    public let reactionCount: Int
+    public let reactions: [ChatReactionDTO]
+    public let quotedMessage: ChatQuotedMessageDTO?
 
     public init(from decoder: Decoder) throws {
         let container = try decoder.container(keyedBy: CodingKeys.self)
@@ -952,7 +964,11 @@ public struct ChatMessageDTO: Decodable, Equatable, Identifiable, Sendable {
         self.roomId = try container.decodeFlexibleString(forKey: .roomId)
         self.userId = try container.decodeFlexibleString(forKey: .userId)
         self.username = try container.decodeIfPresent(String.self, forKey: .username) ?? ""
-        self.message = try container.decodeIfPresent(String.self, forKey: .message) ?? ""
+        // New servers retain the quote in `message` for older clients. Prefer
+        // the separate body to avoid showing it twice beside quotedMessage.
+        self.message = try container.decodeIfPresent(String.self, forKey: .messageBody)
+            ?? container.decodeIfPresent(String.self, forKey: .message)
+            ?? ""
         self.messageDate = container.decodeFlexibleInt(forKey: .messageDate)
         self.avatarUrl = try container.decodeIfPresent(String.self, forKey: .avatarUrl)
         self.isMine = container.decodeFlexibleBool(forKey: .isMine)
@@ -962,6 +978,13 @@ public struct ChatMessageDTO: Decodable, Equatable, Identifiable, Sendable {
         self.isAdmin = container.decodeFlexibleBool(forKey: .isAdmin)
         self.isModerator = container.decodeFlexibleBool(forKey: .isModerator)
         self.isStaff = container.decodeFlexibleBool(forKey: .isStaff)
+        self.canQuote = container.decodeFlexibleBool(forKey: .canQuote)
+        self.canReact = container.decodeFlexibleBool(forKey: .canReact)
+        self.visitorReactionId = max(container.decodeFlexibleInt(forKey: .visitorReactionId), 0)
+        self.reactions = try container.decodeIfPresent([ChatReactionDTO].self, forKey: .reactions) ?? []
+        self.reactionCount = max(container.decodeFlexibleInt(forKey: .reactionCount,
+            default: self.reactions.reduce(0) { $0 + $1.count }), 0)
+        self.quotedMessage = try container.decodeIfPresent(ChatQuotedMessageDTO.self, forKey: .quotedMessage)
     }
 
     private enum CodingKeys: String, CodingKey {
@@ -971,6 +994,7 @@ public struct ChatMessageDTO: Decodable, Equatable, Identifiable, Sendable {
         case userId
         case username
         case message
+        case messageBody
         case messageDate
         case avatarUrl
         case isMine
@@ -980,6 +1004,12 @@ public struct ChatMessageDTO: Decodable, Equatable, Identifiable, Sendable {
         case isAdmin
         case isModerator
         case isStaff
+        case canQuote
+        case canReact
+        case visitorReactionId
+        case reactionCount
+        case reactions
+        case quotedMessage
     }
 }
 
@@ -989,6 +1019,7 @@ public struct ChatMessagesPageDTO: Decodable, Equatable, Sendable {
     public let oldestId: String?
     public let newestId: String?
     public let hasMore: Bool
+    public let reactionOptions: [ChatReactionDTO]
 
     public init(from decoder: Decoder) throws {
         let container = try decoder.container(keyedBy: CodingKeys.self)
@@ -1000,6 +1031,9 @@ public struct ChatMessagesPageDTO: Decodable, Equatable, Sendable {
         self.oldestId = pagination?.oldestId
         self.newestId = pagination?.newestId
         self.hasMore = pagination?.hasMore ?? false
+        self.reactionOptions = try container.decodeIfPresent([ChatReactionDTO].self, forKey: .reactionOptions)
+            ?? container.decodeIfPresent([ChatReactionDTO].self, forKey: .availableReactions)
+            ?? []
     }
 
     private enum CodingKeys: String, CodingKey {
@@ -1007,6 +1041,8 @@ public struct ChatMessagesPageDTO: Decodable, Equatable, Sendable {
         case items
         case messages
         case pagination
+        case reactionOptions
+        case availableReactions
     }
 }
 
