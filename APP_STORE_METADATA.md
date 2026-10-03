@@ -2,7 +2,7 @@
 
 ## Version 1.0.8 TestFlight candidate (2026-10-04)
 
-Turkish testing note: “Canlı sohbette uzun mesaj görünümü, profil bağlantıları, alıntılı yanıtlar ve ifadeler iyileştirildi. Profilde kaldığın yerden devam et bilgisi güncellenir.” The native candidate at b794fea passed 102 unit and 24 UI tests in Codemagic build 51. Apple rejected uploading it as 1.0.7 because that version was already approved. Version metadata is synchronized to 1.0.8/build 41 for a new TestFlight upload; App Store public review is not requested. Purchase implementation, products and entitlements are unchanged. Actual cross-device notification delivery remains a separate device check.
+Turkish testing note: “Canlı sohbette uzun mesaj görünümü, profil bağlantıları, alıntılı yanıtlar ve ifadeler iyileştirildi. Profilde kaldığın yerden devam et bilgisi güncellenir.” Version 1.0.8/build 41 at aacc7fa was uploaded successfully by Codemagic build 52 after 102 native unit and 24 UI tests passed with zero failures. App Store Connect shows TestFlight Waiting for Review and the existing Ekitapligim Internal Testers group (2 invites). App Store public submission remained disabled. Purchase implementation, products and entitlements are unchanged; only version/build metadata changed in configuration. Actual cross-device notification delivery remains a separate device check. Local evidence: artifacts/testflight-20261004/TESTFLIGHT-RAPORU.md.
 
 ## Version 1.0.7 (2026-10-01)
 
