@@ -1,5 +1,9 @@
 # App Store Metadata Draft
 
+## Version 1.0.8 TestFlight candidate (2026-10-04)
+
+Turkish testing note: “Canlı sohbette uzun mesaj görünümü, profil bağlantıları, alıntılı yanıtlar ve ifadeler iyileştirildi. Profilde kaldığın yerden devam et bilgisi güncellenir.” The native candidate at b794fea passed 102 unit and 24 UI tests in Codemagic build 51. Apple rejected uploading it as 1.0.7 because that version was already approved. Version metadata is synchronized to 1.0.8/build 41 for a new TestFlight upload; App Store public review is not requested. Purchase implementation, products and entitlements are unchanged. Actual cross-device notification delivery remains a separate device check.
+
 ## Version 1.0.7 (2026-10-01)
 
 Turkish What's New saved in App Store Connect: “Kitap okuma bağlantıları ile Premium satın alma ve geri yükleme işlemlerinde güvenilirlik iyileştirmeleri.” Version 1.0.7 build 40 was uploaded to TestFlight and submitted to App Review; App Store Connect shows Waiting for Review. Codemagic Production build and native tests passed; GitHub CI #157 passed iPhone/iPad simulator tests, Production build, API/source checks and screenshot generation. The tester reported successful monthly purchase/restore and the four other current products in TestFlight. This report does not cover second-device, wrong-account, refund, expiry or notification-retry scenarios.
