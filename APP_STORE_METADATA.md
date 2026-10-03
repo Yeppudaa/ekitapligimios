@@ -1,5 +1,15 @@
 # App Store Metadata Draft
 
+## Version 1.0.8 App Store submission (2026-10-04)
+
+At the user's explicit request, version 1.0.8/build 41 was submitted to App Review after the Codemagic/TestFlight upload. App Store Connect confirms **Waiting for Review** for submission `3df94232-e3e6-4c46-a788-09d540c0c6bd`. **Automatically release this version** is selected, with immediate availability after approval. This is submission evidence, not Apple approval or current public availability of 1.0.8. Existing screenshots, reviewer sign-in information, purchase products, pricing and entitlements were preserved. The IosApi 1.0.32 server installation and physical cross-device reply/reaction notification delivery remain unconfirmed; the user was asked about installation.
+
+Turkish What's New saved: “Canlı sohbet görünümü yenilendi. Uzun mesajların tamamının görünmesi, dar ekranlarda metin düzeni ve profil fotoğrafından kişi profiline geçiş iyileştirildi. Profilde kaldığınız yerden devam et bilgisi için güncelleme sorunları giderildi.”
+
+Review Notes saved: “Version 1.0.8, build 41 updates the native SwiftUI live chat layout and profile reading progress. Sign in with the existing reviewer account above. Open live chat to inspect full multiline messages, narrow-screen and large-text layout, and tap a member avatar to open their profile. Open a permitted book, advance the reading position, close the reader and revisit Profile to inspect Continue Reading. Reply and reaction controls use the server-provided chat API. Existing StoreKit 2 purchase/restore implementation, products and entitlements are unchanged in this update. Codemagic Production build and 102 native unit plus 24 UI tests passed with zero failures. API: https://ekitapligim.com/ios-api/v1/ Support: https://ekitapligim.com/diger/iletisim”
+
+Evidence: `artifacts/testflight-20261004/appstore-1.0.8-waiting-review.jpg` and `APPSTORE-GONDERIMI.md` in that directory.
+
 ## Version 1.0.8 TestFlight candidate (2026-10-04)
 
 Turkish testing note: “Canlı sohbette uzun mesaj görünümü, profil bağlantıları, alıntılı yanıtlar ve ifadeler iyileştirildi. Profilde kaldığın yerden devam et bilgisi güncellenir.” Version 1.0.8/build 41 at aacc7fa was uploaded successfully by Codemagic build 52 after 102 native unit and 24 UI tests passed with zero failures. App Store Connect shows TestFlight Waiting for Review and the existing Ekitapligim Internal Testers group (2 invites). App Store public submission remained disabled. Purchase implementation, products and entitlements are unchanged; only version/build metadata changed in configuration. Actual cross-device notification delivery remains a separate device check. Local evidence: artifacts/testflight-20261004/TESTFLIGHT-RAPORU.md.
