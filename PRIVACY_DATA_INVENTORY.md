@@ -1,5 +1,21 @@
 # Privacy Data Inventory
 
+## Purchase safety follow-up (2026-10-12)
+
+IosApi 1.0.35 derives fixed-term delivery from the existing filtered verified transaction ledger. Optional purchase-preparation booleans describe the authenticated account's current plans. No new collected category, third-party disclosure, table, SDK, entitlement or required-reason API is introduced. Existing ownership, deletion and retention controls apply. Raw payment/JWS/token values remain excluded from logs.
+
+## APNs cleanup correction (2026-10-12)
+
+The APNs response's invalidation timestamp is used transiently to clean existing first-party device-token registrations safely. It is not persisted and adds no collection category or tracking. Expected inactive-token responses no longer create a XenForo error entry. Operational errors retain sanitized status/reason/APNs request ID; raw cURL text that may contain device-token URLs is omitted. Existing APNs retention, device-registration data, schema, SDKs, manifest and entitlements remain unchanged.
+
+## APNs cleanup correction (2026-10-12)
+
+The APNs response's invalidation timestamp is used transiently to clean existing first-party device-token registrations safely. It is not persisted and adds no collection category or tracking. Expected inactive-token responses no longer create a XenForo error entry. Operational errors retain sanitized status/reason/APNs request ID; raw cURL text that may contain device-token URLs is omitted. Existing APNs retention, device-registration data, schema, SDKs, manifest and entitlements remain unchanged.
+
+## Session and chat presentation update (2026-10-12)
+
+The existing Keychain session optionally retains the first-party XenForo user ID to prevent account mixing during refresh; access/refresh tokens remain Keychain-only under the unchanged service/account names. The backend's short refresh retry uses existing hash-only session rows and the existing server secret without storing raw successor tokens. Chat premium display and announcement profile links use public member identifiers/names already covered by account/community app functionality. Cover artwork uses existing book title/author data locally. No new SDK, tracking, third-party destination, required-reason API or collected-data category is added; the privacy manifest and entitlements remain applicable without changes.
+
 ## Purchase reliability update (2026-10-01)
 
 The client sends the signed transaction, optional signed renewal information and the active account name to the first-party billing endpoint. The server stores transaction/original IDs, product, environment, purchase/expiry/revocation/signing dates, upgrade state and payload hashes. The additive `xf_ekitapligim_ios_appstore_state` table contains a filtered entitlement snapshot; it does not store raw JWS, app-account tokens, payment details or secrets. Verified notifications can exist temporarily without a claimed user. Purchase-history and UserID/AppFunctionality categories already cover this; no new SDK, tracking, entitlement or required-reason API is introduced. Purchase/legal retention and account-deletion cleanup still require server-policy validation before release.

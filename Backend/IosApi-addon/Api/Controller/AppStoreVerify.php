@@ -24,7 +24,8 @@ class AppStoreVerify extends \Ekitapligim\MobileApi\Api\Controller\AbstractMobil
 			{
 				AppStoreTransactionStore::ensureTables();
 				return $this->apiResult(['success' => true,
-					'app_account_token' => AppStoreTransactionStore::accountToken((int) $visitor->user_id)]);
+					'app_account_token' => AppStoreTransactionStore::accountToken((int) $visitor->user_id)]
+					+ AppStoreTransactionStore::purchaseContext((int) $visitor->user_id));
 			}
 			catch (\Throwable $e)
 			{

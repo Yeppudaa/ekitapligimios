@@ -3,10 +3,11 @@ import XCTest
 final class ChatUITests: XCTestCase {
     override func setUpWithError() throws { continueAfterFailure = false }
 
-    private func launch(largeText: Bool = false) -> XCUIApplication {
+    private func launch(largeText: Bool = false, premium: Bool = false) -> XCUIApplication {
         let app = XCUIApplication()
         app.launchArguments = ["-chat-ui-fixture", "-chat-narrow", "-AppleLanguages", "(tr)", "-AppleLocale", "tr_TR"]
         if largeText { app.launchArguments.append("-chat-large-text") }
+        if premium { app.launchArguments.append("-chat-premium-fixture") }
         app.launch()
         return app
     }
@@ -66,6 +67,31 @@ final class ChatUITests: XCTestCase {
         reaction.tap()
         let gone = expectation(for: NSPredicate(format: "exists == false"), evaluatedWith: reaction)
         wait(for: [gone], timeout: 3)
+    }
+
+    func testPremiumUsernameKeepsNativeProfileNavigationAtLargeTextSize() {
+        let app = launch(largeText: true, premium: true)
+        let username = app.buttons["chat-username-81"]
+        XCTAssertTrue(username.waitForExistence(timeout: 5))
+        reveal(username, in: app)
+        XCTAssertEqual(username.value as? String, "Premium Üye")
+        XCTAssertLessThanOrEqual(username.frame.width, 260)
+        XCTAssertGreaterThanOrEqual(username.frame.height, 44)
+        capture(app, name: "chat-premium-username-large-text")
+        username.tap()
+        XCTAssertTrue(app.navigationBars["Ada"].waitForExistence(timeout: 5))
+    }
+
+    func testPremiumAnnouncementRecipientOpensProfileWithoutRepeatingNameInBody() {
+        let app = launch(premium: true)
+        let member = app.buttons["chat-announcement-member-80"]
+        XCTAssertTrue(member.waitForExistence(timeout: 5))
+        reveal(member, in: app)
+        let body = app.staticTexts["chat-announcement-body-80"]
+        XCTAssertEqual(body.label, "👑 Premium üyeliğe yükseldi.")
+        capture(app, name: "chat-premium-announcement-profile-link")
+        member.tap()
+        XCTAssertTrue(app.navigationBars["Ada"].waitForExistence(timeout: 5))
     }
 
     @MainActor func testLargeTextAccessibilityAndMessageWidth() throws {

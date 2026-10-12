@@ -466,7 +466,7 @@ private struct DirectoryBookGridCard: View {
 
     var body: some View {
         VStack(alignment: .leading, spacing: 8) {
-            EKitapligimRemoteCover(urlString: book.coverUrl)
+            EKitapligimRemoteCover(urlString: book.coverUrl, title: book.title, author: book.author)
                 .aspectRatio(2 / 3, contentMode: .fit)
                 .clipShape(RoundedRectangle(cornerRadius: 12, style: .continuous))
                 .shadow(color: EKitapligimPalette.ink.opacity(0.08), radius: 8, y: 4)

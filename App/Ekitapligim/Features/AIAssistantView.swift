@@ -187,7 +187,7 @@ struct AIAssistantView: View {
     }
     private var contextCard: some View {
         HStack(spacing: 12) {
-            EKitapligimRemoteCover(urlString: model.book?.coverUrl ?? "")
+            EKitapligimRemoteCover(urlString: model.book?.coverUrl ?? "", title: model.book?.title ?? "", author: model.book?.author ?? "")
                 .frame(width: 40, height: 58).clipShape(RoundedRectangle(cornerRadius: 6))
             VStack(alignment: .leading, spacing: 4) {
                 Text(AIL10n.text("bookContext")).font(.caption.weight(.semibold)).foregroundStyle(AIStyle.blue)
@@ -347,7 +347,7 @@ struct AIBookStrip: View {
                         ForEach(books.filter { $0.threadId > 0 }) { book in
                             NavigationLink { BookDetailView(bookID: book.threadId) } label: {
                                 VStack(alignment: .leading, spacing: 9) {
-                                    EKitapligimRemoteCover(urlString: book.coverUrl).frame(width: 154, height: 154)
+                                    EKitapligimRemoteCover(urlString: book.coverUrl, title: book.title, author: book.author).frame(width: 154, height: 154)
                                         .clipShape(RoundedRectangle(cornerRadius: 12))
                                     Text(book.title).font(.subheadline.weight(.semibold)).foregroundStyle(AIStyle.navy)
                                         .lineLimit(2)

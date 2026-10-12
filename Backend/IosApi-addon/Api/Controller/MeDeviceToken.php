@@ -14,7 +14,7 @@ class MeDeviceToken extends \Ekitapligim\MobileApi\Api\Controller\AbstractMobile
 
 		if ($token === '')
 		{
-			return $this->apiError('device_token is required.', 'missing_device_token', 400);
+			return $this->apiError('device_token is required.', 'missing_device_token', null, 400);
 		}
 
 		$db = $this->app()->db();
@@ -37,7 +37,7 @@ class MeDeviceToken extends \Ekitapligim\MobileApi\Api\Controller\AbstractMobile
 
 		if ($token === '')
 		{
-			return $this->apiError('device_token is required.', 'missing_device_token', 400);
+			return $this->apiError('device_token is required.', 'missing_device_token', null, 400);
 		}
 
 		$db = $this->app()->db();

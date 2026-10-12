@@ -623,6 +623,7 @@ public struct SafetyRepository: Sendable {
 
 public protocol PurchaseVerifying: Sendable {
     func prepareAppStorePurchase(accountName: String) async throws -> UUID
+    func prepareAppStorePurchaseContext(accountName: String) async throws -> PurchaseAccountDTO
     func verifyAppStorePurchase(
         signedTransaction: String,
         productID: String,
@@ -630,6 +631,12 @@ public protocol PurchaseVerifying: Sendable {
         signedRenewalInfo: String?,
         accountName: String
     ) async throws -> BillingResponseDTO
+}
+
+public extension PurchaseVerifying {
+    func prepareAppStorePurchaseContext(accountName: String) async throws -> PurchaseAccountDTO {
+        PurchaseAccountDTO(success: true, appAccountToken: try await prepareAppStorePurchase(accountName: accountName))
+    }
 }
 
 public struct PurchaseRepository: PurchaseVerifying, Sendable {
@@ -640,9 +647,13 @@ public struct PurchaseRepository: PurchaseVerifying, Sendable {
     }
 
     public func prepareAppStorePurchase(accountName: String) async throws -> UUID {
+        try await prepareAppStorePurchaseContext(accountName: accountName).appAccountToken
+    }
+
+    public func prepareAppStorePurchaseContext(accountName: String) async throws -> PurchaseAccountDTO {
         let response = try await apiClient.request(.prepareAppStorePurchase(accountName: accountName), as: PurchaseAccountDTO.self)
         guard response.success else { throw APIClientError.invalidResponse }
-        return response.appAccountToken
+        return response
     }
 
     public func verifyAppStorePurchase(
@@ -904,6 +915,18 @@ public struct BlockedMemberDTO: Decodable, Equatable, Identifiable, Sendable {
 public struct PurchaseAccountDTO: Decodable, Equatable, Sendable {
     public let success: Bool
     public let appAccountToken: UUID
+    public let hasLifetime: Bool?
+    public let hasActiveSubscription: Bool?
+    public let hasFixedTerm: Bool?
+
+    public init(success: Bool, appAccountToken: UUID, hasLifetime: Bool? = nil,
+                hasActiveSubscription: Bool? = nil, hasFixedTerm: Bool? = nil) {
+        self.success = success
+        self.appAccountToken = appAccountToken
+        self.hasLifetime = hasLifetime
+        self.hasActiveSubscription = hasActiveSubscription
+        self.hasFixedTerm = hasFixedTerm
+    }
 }
 
 public struct BillingResponseDTO: Decodable, Equatable, Sendable {

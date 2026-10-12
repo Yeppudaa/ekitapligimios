@@ -1,5 +1,11 @@
 # App Store Metadata Draft
 
+## Next-update draft (2026-10-12; not submitted)
+
+Proposed Turkish What's New after native validation: “Oturumun korunması ve kitap okuma bağlantılarında iyileştirmeler yapıldı. Canlı sohbette Premium üye adları ve profil bağlantıları güncellendi. Kapağı olmayan kitaplar için yeni kitap kapağı görünümü eklendi.”
+
+The purchase follow-up adds warnings before moving between renewable and fixed/lifetime products, prevents unnecessary new payment when lifetime is already active, and corrects lifetime expiration display. IosApi 1.0.35 carries unused fixed App Store time forward. Products, prices, signature/ownership checks and privacy categories are unchanged. Deploy 1.0.35 before the matching native update. The iOS version/build remains 1.0.8/41 until an upload is prepared. Earlier evidence does not validate this update; complete `PURCHASE_FIX_VALIDATION.md` and `SESSION_CHAT_COVER_VALIDATION.md` gates first.
+
 ## Version 1.0.8 App Store submission (2026-10-04)
 
 At the user's explicit request, version 1.0.8/build 41 was submitted to App Review after the Codemagic/TestFlight upload. App Store Connect confirms **Waiting for Review** for submission `3df94232-e3e6-4c46-a788-09d540c0c6bd`. **Automatically release this version** is selected, with immediate availability after approval. This is submission evidence, not Apple approval or current public availability of 1.0.8. Existing screenshots, reviewer sign-in information, purchase products, pricing and entitlements were preserved. The IosApi 1.0.32 server installation and physical cross-device reply/reaction notification delivery remain unconfirmed; the user was asked about installation.

@@ -284,6 +284,37 @@ final class PremiumPurchaseTests: XCTestCase {
         XCTAssertEqual(service.entitlement, .none)
     }
 
+    func testLifetimeAdvicePreventsNewApplePayment() async throws {
+        let service = StoreKitPurchaseService(purchaseRepository: PurchaseAdviceVerifier(lifetime: true), accountName: "tester")
+        await service.purchase(productID: "com.ekitapligim.app.premium.monthly")
+        XCTAssertEqual(service.state, .failed(message: L10n.premiumAlreadyLifetime))
+        XCTAssertTrue(session.allTransactions().isEmpty)
+    }
+
+    func testExistingSubscriptionRequiresAcknowledgementBeforeLifetimePayment() async throws {
+        let service = StoreKitPurchaseService(purchaseRepository: PurchaseAdviceVerifier(subscription: true), accountName: "tester")
+        await service.purchase(productID: "com.ekitapligim.app.premium.lifetime")
+        let notice = try XCTUnwrap(service.purchaseNotice)
+        XCTAssertEqual(notice.decision, .warnExistingSubscription)
+        XCTAssertTrue(session.allTransactions().isEmpty)
+        await service.confirmPurchase(notice)
+        XCTAssertTrue(service.entitlement.isActive)
+        XCTAssertEqual(session.allTransactions().count, 1)
+    }
+
+    func testCancelledNoticeAndChangedAccountNeverStartApplePayment() async throws {
+        let service = StoreKitPurchaseService(purchaseRepository: PurchaseAdviceVerifier(subscription: true), accountName: "tester")
+        defer { service.stopObservingTransactions() }
+        await service.purchase(productID: "com.ekitapligim.app.premium.lifetime")
+        let notice = try XCTUnwrap(service.purchaseNotice)
+        service.dismissPurchaseNotice()
+        XCTAssertNil(service.purchaseNotice)
+        XCTAssertTrue(session.allTransactions().isEmpty)
+        service.activateAccount(nil)
+        await service.confirmPurchase(notice)
+        XCTAssertTrue(session.allTransactions().isEmpty)
+    }
+
     private func waitForEntitlement(
         _ service: StoreKitPurchaseService,
         until predicate: (PremiumEntitlement) -> Bool
@@ -421,5 +452,21 @@ private struct ExpiredPurchaseVerifier: PurchaseVerifying {
                                originalTransactionID: String?, signedRenewalInfo: String?,
                                accountName: String) async throws -> BillingResponseDTO {
         BillingResponseDTO(success: false, isPremium: false)
+    }
+}
+
+private struct PurchaseAdviceVerifier: PurchaseVerifying {
+    var lifetime = false
+    var subscription = false
+    func prepareAppStorePurchaseContext(accountName: String) async throws -> PurchaseAccountDTO {
+        PurchaseAccountDTO(success: true,
+            appAccountToken: try XCTUnwrap(UUID(uuidString: "9249ceaa-60dd-4a61-917b-0057f22818aa")),
+            hasLifetime: lifetime, hasActiveSubscription: subscription, hasFixedTerm: false)
+    }
+    func verifyAppStorePurchase(signedTransaction: String, productID: String,
+                               originalTransactionID: String?, signedRenewalInfo: String?,
+                               accountName: String) async throws -> BillingResponseDTO {
+        BillingResponseDTO(success: true, isPremium: true,
+            expirationTime: productID.hasSuffix(".lifetime") ? nil : Int(Date().addingTimeInterval(86_400).timeIntervalSince1970))
     }
 }

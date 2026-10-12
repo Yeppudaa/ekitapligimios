@@ -8,18 +8,27 @@ final class MobileSession
 {
 	private const ACCESS_LIFETIME = 3600;
 	private const REFRESH_LIFETIME = 2592000;
+	private const REFRESH_RETRY_GRACE = 120;
+	// Reserve this past timestamp for terminal logout without a schema migration.
+	private const REVOKED_EXPLICITLY = 1;
 
 	public static function issue(User $user, string $ipAddress = '', string $userAgent = ''): array
 	{
+		return self::issueWithTokens($user, [
+			'access_token' => self::newToken('ms_at_'),
+			'refresh_token' => self::newToken('ms_rt_'),
+		], $ipAddress, $userAgent);
+	}
+
+	private static function issueWithTokens(User $user, array $tokens, string $ipAddress, string $userAgent): array
+	{
 		self::ensureTable();
-		$accessToken = self::newToken('ms_at_');
-		$refreshToken = self::newToken('ms_rt_');
 		$now = \XF::$time;
 
 		\XF::db()->insert('xf_ekitapligim_mobile_session', [
 			'user_id' => (int) $user->user_id,
-			'access_token_hash' => self::hash($accessToken),
-			'refresh_token_hash' => self::hash($refreshToken),
+			'access_token_hash' => self::hash($tokens['access_token']),
+			'refresh_token_hash' => self::hash($tokens['refresh_token']),
 			'created_date' => $now,
 			'access_expires_date' => $now + self::ACCESS_LIFETIME,
 			'refresh_expires_date' => $now + self::REFRESH_LIFETIME,
@@ -27,10 +36,7 @@ final class MobileSession
 			'user_agent' => substr($userAgent, 0, 255),
 		]);
 
-		return [
-			'access_token' => $accessToken,
-			'refresh_token' => $refreshToken,
-		];
+		return $tokens;
 	}
 
 	public static function userIdForAccessToken(string $token): int
@@ -60,24 +66,51 @@ final class MobileSession
 		try
 		{
 			$session = $db->fetchRow(
-				'SELECT session_id, user_id FROM xf_ekitapligim_mobile_session WHERE refresh_token_hash = ? AND revoked_date = 0 AND refresh_expires_date > ? FOR UPDATE',
-				[self::hash($refreshToken), \XF::$time]
+				'SELECT session_id, user_id, revoked_date, refresh_expires_date FROM xf_ekitapligim_mobile_session WHERE refresh_token_hash = ? FOR UPDATE',
+				[self::hash($refreshToken)]
 			);
-			if (!$session)
+			if (!$session || (int) $session['refresh_expires_date'] <= \XF::$time)
 			{
 				$db->commit();
 				return null;
 			}
 
-			$db->update('xf_ekitapligim_mobile_session', ['revoked_date' => \XF::$time], 'session_id = ?', [(int) $session['session_id']]);
 			$user = \XF::em()->find('XF:User', (int) $session['user_id']);
 			if (!$user || $user->is_banned || in_array($user->user_state, ['rejected', 'disabled'], true))
 			{
+				if (!(int) $session['revoked_date'])
+				{
+					$db->update('xf_ekitapligim_mobile_session', ['revoked_date' => \XF::$time], 'session_id = ?', [(int) $session['session_id']]);
+				}
 				$db->commit();
 				return null;
 			}
 
-			$tokens = self::issue($user, $ipAddress, $userAgent);
+			$revokedDate = (int) $session['revoked_date'];
+			if ($revokedDate === self::REVOKED_EXPLICITLY
+				|| ($revokedDate && ($revokedDate <= \XF::$time - self::REFRESH_RETRY_GRACE || $revokedDate > \XF::$time)))
+			{
+				$db->commit();
+				return null;
+			}
+
+			$tokens = self::rotationTokens($refreshToken);
+			if ($revokedDate)
+			{
+				// A lost response may retry only the exact, still-active successor.
+				// Explicit logout/revocation has no active successor and cannot revive it.
+				$successor = $db->fetchRow(
+					'SELECT user_id FROM xf_ekitapligim_mobile_session WHERE access_token_hash = ? AND refresh_token_hash = ? AND revoked_date = 0 AND access_expires_date > ? AND refresh_expires_date > ? FOR UPDATE',
+					[self::hash($tokens['access_token']), self::hash($tokens['refresh_token']), \XF::$time, \XF::$time]
+				);
+				$db->commit();
+				return $successor && (int) $successor['user_id'] === (int) $session['user_id']
+					? ['user' => $user, 'tokens' => $tokens]
+					: null;
+			}
+
+			$db->update('xf_ekitapligim_mobile_session', ['revoked_date' => \XF::$time], 'session_id = ?', [(int) $session['session_id']]);
+			self::issueWithTokens($user, $tokens, $ipAddress, $userAgent);
 			$db->commit();
 			return ['user' => $user, 'tokens' => $tokens];
 		}
@@ -98,8 +131,9 @@ final class MobileSession
 		self::ensureTable();
 		\XF::db()->update(
 			'xf_ekitapligim_mobile_session',
-			['revoked_date' => \XF::$time],
-			'access_token_hash = ? AND revoked_date = 0',
+			// An explicit logout must also terminate a pending retry of a rotated token.
+			['revoked_date' => self::REVOKED_EXPLICITLY],
+			'access_token_hash = ?',
 			[self::hash($token)]
 		);
 	}
@@ -130,6 +164,23 @@ final class MobileSession
 		return $prefix . rtrim(strtr(base64_encode(random_bytes(32)), '+/', '-_'), '=');
 	}
 
+	private static function rotationTokens(string $refreshToken): array
+	{
+		$key = (string) \XF::config('globalSalt');
+		if (trim($key) === '')
+		{
+			throw new \RuntimeException('Mobile session refresh signing key is unavailable.');
+		}
+
+		$tokens = [];
+		foreach (['access_token' => 'ms_at_', 'refresh_token' => 'ms_rt_'] AS $type => $prefix)
+		{
+			$bytes = hash_hmac('sha256', 'ekitapligim.mobile-session.rotation.v1.' . $type . "\0" . $refreshToken, $key, true);
+			$tokens[$type] = $prefix . rtrim(strtr(base64_encode($bytes), '+/', '-_'), '=');
+		}
+		return $tokens;
+	}
+
 	private static function hash(string $token): string
 	{
 		return hash('sha256', $token);
@@ -147,4 +198,3 @@ final class MobileSession
 		$created = true;
 	}
 }
-

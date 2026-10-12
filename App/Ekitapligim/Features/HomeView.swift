@@ -183,7 +183,7 @@ struct HomeView: View {
     private var heroCoverStack: some View {
         ZStack {
             ForEach(Array(newestBooks.prefix(3).enumerated()), id: \.offset) { index, book in
-                EKitapligimRemoteCover(urlString: book.coverUrl)
+                EKitapligimRemoteCover(urlString: book.coverUrl, title: book.title, author: book.author)
                     .frame(width: index == 1 ? 56 : 48, height: index == 1 ? 88 : 76)
                     .clipShape(RoundedRectangle(cornerRadius: 8, style: .continuous))
                     .rotationEffect(.degrees(Double(index - 1) * 8))
@@ -288,7 +288,7 @@ struct HomeView: View {
                 if let item = container.continueReadingItem {
                     NavigationLink(value: item.bookId) {
                         HStack(spacing: 14) {
-                            EKitapligimRemoteCover(urlString: item.coverUrl)
+                            EKitapligimRemoteCover(urlString: item.coverUrl, title: item.title, author: item.author)
                                 .frame(width: 72, height: 108)
                                 .clipShape(RoundedRectangle(cornerRadius: 10, style: .continuous))
                             VStack(alignment: .leading, spacing: 6) {
@@ -833,7 +833,7 @@ private struct HomeBookCard: View {
 
     var body: some View {
         HStack(spacing: 0) {
-            EKitapligimRemoteCover(urlString: book.coverUrl)
+            EKitapligimRemoteCover(urlString: book.coverUrl, title: book.title, author: book.author)
                 .frame(width: 88, height: 112)
                 .clipShape(RoundedRectangle(cornerRadius: 0))
                 .clipShape(
@@ -1073,7 +1073,7 @@ struct HomeAgendaCard: View {
 
     private func bookContext(_ book: BookAgendaBookDTO) -> some View {
         HStack(alignment: .top, spacing: 12) {
-            EKitapligimRemoteCover(urlString: book.coverUrl ?? "")
+            EKitapligimRemoteCover(urlString: book.coverUrl ?? "", title: book.title, author: book.author)
                 .frame(width: 42, height: 60)
                 .clipShape(RoundedRectangle(cornerRadius: 7))
                 .accessibilityHidden(true)

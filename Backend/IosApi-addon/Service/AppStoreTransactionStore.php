@@ -49,6 +49,28 @@ final class AppStoreTransactionStore
 		return (string) \XF::db()->fetchOne('SELECT app_account_token FROM xf_ekitapligim_ios_appstore_account WHERE user_id = ?', [$userId]);
 	}
 
+	/** Additive pre-purchase advice; never rejects an already-paid verification. */
+	public static function purchaseContext(int $userId): array
+	{
+		$context = ['has_lifetime' => false, 'has_active_subscription' => false, 'has_fixed_term' => false];
+		$rows = \XF::db()->fetchAll('SELECT product_id, original_transaction_id FROM xf_ekitapligim_mobile_appstore_entitlement
+			WHERE user_id = ? AND active = 1 AND (expires_date = 0 OR expires_date > ?)', [$userId, \XF::$time]);
+		foreach ($rows as $row)
+		{
+			$owner = (int) \XF::db()->fetchOne('SELECT user_id FROM xf_ekitapligim_mobile_appstore_entitlement
+				WHERE original_transaction_id = ? AND user_id > 0 ORDER BY entitlement_id ASC LIMIT 1', [$row['original_transaction_id']]);
+			if ($owner !== $userId) { continue; }
+			$product = (string) $row['product_id'];
+			if ($product === 'com.ekitapligim.app.premium.lifetime') { $context['has_lifetime'] = true; }
+			else if (AppStoreEntitlementPolicy::nonRenewingMonths(['productId' => $product, 'type' => 'Non-Renewing Subscription']) > 0)
+			{
+				$context['has_fixed_term'] = true;
+			}
+			else { $context['has_active_subscription'] = true; }
+		}
+		return $context;
+	}
+
 	/** Caller has already verified signatures, bundle, environment, products and renewal binding. */
 	public static function record(int $userId, array $transaction, array $renewalInfo, string $signedHash): array
 	{
@@ -68,8 +90,25 @@ final class AppStoreTransactionStore
 		{
 			throw new \RuntimeException('App Store storage busy.');
 		}
+		$userLock = null;
 		try
 		{
+			$owner = (int) $db->fetchOne("SELECT user_id FROM xf_ekitapligim_mobile_appstore_entitlement
+				WHERE original_transaction_id = ? AND user_id > 0 ORDER BY entitlement_id ASC LIMIT 1", [$originalId]);
+			if ($userId > 0 && $owner > 0 && $userId !== $owner)
+			{
+				throw new \DomainException('original_transaction_already_linked');
+			}
+			$owner = $owner ?: $userId;
+			if ($owner > 0)
+			{
+				$lock = 'ek_ios_purchase_' . $owner;
+				if ((int) $db->fetchOne('SELECT GET_LOCK(?, 5)', [$lock]) !== 1)
+				{
+					throw new \RuntimeException('App Store account storage busy.');
+				}
+				$userLock = $lock;
+			}
 			$db->beginTransaction();
 			try
 			{
@@ -117,6 +156,10 @@ final class AppStoreTransactionStore
 				{
 					$db->query("UPDATE xf_ekitapligim_mobile_appstore_entitlement SET user_id = ?
 						WHERE original_transaction_id = ? AND user_id = 0", [$owner, $originalId]);
+					AppStoreTermSchedule::rebuild($owner);
+					$delivered = $db->fetchRow('SELECT active, expires_date FROM xf_ekitapligim_mobile_appstore_entitlement WHERE transaction_id = ?', [$transactionId]);
+					$active = (bool) $delivered['active'];
+					$expires = (int) $delivered['expires_date'];
 				}
 				$db->commit();
 				return ['active' => $active, 'expires_date' => $expires, 'revoked' => !empty($effective['revocationDate']), 'user_id' => $owner];
@@ -129,6 +172,7 @@ final class AppStoreTransactionStore
 		}
 		finally
 		{
+			if ($userLock !== null) { $db->fetchOne('SELECT RELEASE_LOCK(?)', [$userLock]); }
 			$db->fetchOne('SELECT RELEASE_LOCK(?)', [$lockName]);
 		}
 	}

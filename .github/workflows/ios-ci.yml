@@ -22,6 +22,7 @@ jobs:
         run: |
           php Tests/Backend/ReaderProgressTest.php
           php Tests/Backend/ReaderProgressControllerTest.php
+          php Tests/Backend/MobileSessionRetryTest.php
       - name: Live-room chat interactions and notification isolation
         run: |
           php Tests/Backend/ChatInteractionTest.php
@@ -36,9 +37,15 @@ jobs:
           php Tests/Backend/AppStoreControllerTest.php
           php Tests/Backend/AppStoreSignatureTest.php
           php Tests/Backend/AppStoreMembershipTest.php
+          php Tests/Backend/AppStoreTermScheduleTest.php
+          php Tests/Backend/AppStoreLegacyContractTest.php
           php Tests/Backend/PublicBearerIsolationTest.php
           php Tests/Backend/AccountDeletionRequestTest.php
           php Tests/Backend/AlertPrivacyTest.php
+          php Tests/Backend/ApnsPushPolicyTest.php
+          php Tests/Backend/ApnsDeliveryTest.php
+          php Tests/Backend/MeDeviceTokenTest.php
+          php Tests/Backend/ApnsTransportContractTest.php
       - name: EPUB.js and Readium position contract
         run: |
           npm install --prefix "$RUNNER_TEMP/reader-test-runtime" jsdom@26.1.0 epubjs@0.3.93 --no-audit --no-fund

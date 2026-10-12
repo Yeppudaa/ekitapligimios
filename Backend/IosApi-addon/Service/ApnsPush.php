@@ -29,8 +29,8 @@ class ApnsPush
 		}
 
 		$db = \XF::db();
-		$tokens = $db->fetchAllColumn(
-			'SELECT device_token FROM xf_ios_device_tokens WHERE user_id = ?',
+		$tokens = $db->fetchAll(
+			'SELECT token_id, device_token, created_at FROM xf_ios_device_tokens WHERE user_id = ?',
 			[$userId]
 		);
 
@@ -39,7 +39,7 @@ class ApnsPush
 			return $summary;
 		}
 
-		$jwt = self::generateJwt();
+		$jwt = static::generateJwt();
 		if ($jwt === null)
 		{
 			$summary['failed'] = count($tokens);
@@ -54,10 +54,11 @@ class ApnsPush
 			return $summary;
 		}
 
-		foreach ($tokens as $token)
+		foreach ($tokens as $registration)
 		{
 			$summary['attempted']++;
-			$response = self::sendSingle($token, $jsonPayload, $jwt);
+			$startedAt = time();
+			$response = static::sendSingle((string) $registration['device_token'], $jsonPayload, $jwt);
 			$responseCode = (int) $response['status'];
 			$reason = (string) $response['reason'];
 
@@ -68,12 +69,25 @@ class ApnsPush
 			}
 
 			$summary['failed']++;
-			self::logFailure($responseCode, $reason, (string) $response['apns_id']);
 
 			if (self::shouldRemoveToken($responseCode, $reason))
 			{
-				$db->delete('xf_ios_device_tokens', 'device_token = ?', [$token]);
-				$summary['removed']++;
+				// APNs reports invalidation in milliseconds, registrations in seconds.
+				// Preserve registrations from the same second or later, and compare the
+				// selected row so a late response cannot remove a newer/reassigned token.
+				$invalidatedAt = $response['timestamp'] ?? null;
+				$before = $responseCode === 410 && is_int($invalidatedAt) && $invalidatedAt > 0
+					? min($startedAt, intdiv($invalidatedAt, 1000)) : $startedAt;
+				$summary['removed'] += (int) $db->delete('xf_ios_device_tokens',
+					'token_id = ? AND device_token = ? AND user_id = ? AND created_at = ? AND created_at < ?',
+					[(int) $registration['token_id'], (string) $registration['device_token'], $userId,
+						(int) $registration['created_at'], $before]);
+			}
+			// Unregistered is expected device-token lifecycle cleanup, not an app
+			// failure. Other delivery/configuration errors remain visible to operators.
+			if ($responseCode !== 410 || $reason !== 'Unregistered')
+			{
+				self::logFailure($responseCode, $reason, (string) $response['apns_id']);
 			}
 		}
 
@@ -112,7 +126,7 @@ class ApnsPush
 		return array_merge(['aps' => $aps], $customData);
 	}
 
-	private static function sendSingle(string $deviceToken, string $jsonPayload, string $jwt): array
+	protected static function sendSingle(string $deviceToken, string $jsonPayload, string $jwt): array
 	{
 		$options = \XF::options();
 		$topic = $options->ekitapligimApnsTopic ?? 'com.ekitapligim.app';
@@ -149,11 +163,13 @@ class ApnsPush
 		$responseBody = curl_exec($ch);
 		$httpCode = (int) curl_getinfo($ch, CURLINFO_HTTP_CODE);
 		$reason = '';
+		$timestamp = null;
 
 		if (curl_errno($ch))
 		{
 			$reason = 'curl_' . curl_errno($ch);
-			\XF::logError('APNs transport error (' . $reason . '): ' . curl_error($ch));
+			// The delivery logger records the numeric cURL reason once. Raw cURL
+			// diagnostics may include the URL containing a device token.
 		}
 		elseif (is_string($responseBody) && $responseBody !== '')
 		{
@@ -161,12 +177,16 @@ class ApnsPush
 			if (is_array($decoded))
 			{
 				$reason = (string) ($decoded['reason'] ?? '');
+				if (isset($decoded['timestamp']) && is_int($decoded['timestamp']) && $decoded['timestamp'] > 0)
+				{
+					$timestamp = $decoded['timestamp'];
+				}
 			}
 		}
 
 		curl_close($ch);
 
-		return ['status' => $httpCode, 'reason' => $reason, 'apns_id' => $apnsId];
+		return ['status' => $httpCode, 'reason' => $reason, 'apns_id' => $apnsId, 'timestamp' => $timestamp];
 	}
 
 	private static function logFailure(int $status, string $reason, string $apnsId): void
@@ -186,7 +206,7 @@ class ApnsPush
 	/**
 	 * Generates a JWT for APNs authentication using the ES256 algorithm.
 	 */
-	private static function generateJwt(): ?string
+	protected static function generateJwt(): ?string
 	{
 		$options = \XF::options();
 		$keyId = $options->ekitapligimApnsKeyId ?? '';

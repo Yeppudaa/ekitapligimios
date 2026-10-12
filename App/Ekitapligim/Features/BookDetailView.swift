@@ -208,7 +208,7 @@ struct BookDetailView: View {
     }
 
     private func heroCover(_ book: BookDTO, compact: Bool) -> some View {
-        EKitapligimRemoteCover(urlString: book.coverUrl)
+        EKitapligimRemoteCover(urlString: book.coverUrl, title: book.title, author: book.author)
             .frame(width: compact ? 112 : 170, height: compact ? 166 : 250)
             .clipShape(RoundedRectangle(cornerRadius: 12, style: .continuous))
             .background(.white, in: RoundedRectangle(cornerRadius: 12, style: .continuous))
@@ -1125,7 +1125,7 @@ private struct SimilarBookCard: View {
             Color.white
                 .aspectRatio(0.66, contentMode: .fit)
                 .overlay {
-                    EKitapligimRemoteCover(urlString: book.coverUrl)
+                    EKitapligimRemoteCover(urlString: book.coverUrl, title: book.title, author: book.author)
                         .padding(4)
                         .clipShape(RoundedRectangle(cornerRadius: 9, style: .continuous))
                 }

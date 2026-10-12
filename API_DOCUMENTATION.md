@@ -1,8 +1,26 @@
 # iOS API Documentation
 
-## iOS session handling correction (2026-09-28)
+## Purchase duration preservation and device-token errors — IosApi 1.0.35
 
-Client refresh commits and invalidations now atomically compare the current Keychain session with the session that initiated refresh. Late responses after sign-out/account switching are canceled, and replay is limited to the matching rotated session. Parallel 401 responses share refresh work. A resource 403 after successful refresh is returned as a permission error without signing out; another 401 invalidates only the matching session. These changes do not alter any endpoint, request/response schema, backend or purchase contract. See [GENERAL_APP_REVIEW.md](GENERAL_APP_REVIEW.md).
+Fixed App Store terms are derived from verified purchase history in purchase-date order, with unused fixed time and overlapping verified subscription coverage carried forward. Repeated verification does not add time twice. Refunds remove only the refunded contribution; lifetime and Apple renewable expiration values remain unchanged. Account-level locking and transaction rollback protect concurrent purchases. Production and Sandbox timelines are separate. Pre-ledger grants without signed state are preserved. Recalculation occurs when a transaction is verified or a notification is processed, not as a bulk install migration.
+
+Preparation retains `success` and `app_account_token`, adding optional `has_lifetime`, `has_active_subscription`, and `has_fixed_term` booleans. Existing clients may ignore these; tokenless legacy paid transactions remain supported. New clients use the advice before opening Apple payment, never to reject already-paid verification. Deploy this server before distributing the client that describes carryover. No product IDs, prices, permissions or authentication routes change.
+
+Missing `device_token` in POST/DELETE now returns HTTP 400 `missing_device_token` instead of a PHP TypeError. Valid registration/deletion and user-scoped ownership checks are unchanged. Empty requests never delete all device tokens. This fixes error handling; the submitted log alone does not establish why the token was absent.
+
+## APNs token lifecycle — IosApi 1.0.34 (2026-10-12)
+
+HTTP 410 `Unregistered` from Apple is counted as an undelivered notification with quiet device-token cleanup rather than a XenForo server error. Cleanup is constrained by selected token row, owner, saved registration time and Apple's millisecond invalidation timestamp; a late failure cannot delete a newer registration or one reassigned to another user. Same-second registrations are conservatively retained. If Apple omits the timestamp, cleanup uses the request-start time. Other APNs failures still log sanitized status/reason/request ID, without raw device URLs, JWT or notification payloads. The device registration routes, fields, tables, mobile sessions and purchase contracts are unchanged. See [APNS_UNREGISTERED_VALIDATION.md](APNS_UNREGISTERED_VALIDATION.md).
+
+## Session reliability and chat presentation — IosApi 1.0.33 (2026-10-12)
+
+Refresh commits and invalidations atomically compare the current Keychain session with the initiating session. API requests and protected reader downloads share one refresh coordinator. A retried resource 401/403, generic refresh 401/403, temporary network error, malformed payload or temporarily inaccessible Keychain no longer signs out the user. Only an explicit invalid/expired/revoked refresh-token response invalidates matching credentials. A legacy session without a refresh token remains stored; it cannot renew automatically. Refresh responses cannot change account identity; optional stable `user_id` is retained in the existing Keychain item, and older saved sessions remain decodable. Missing/blank returned refresh tokens retain the previous value. Auth login failures do not refresh the old signed-in account.
+
+Protected reader downloads retry once after a first-party API 401 using that same coordinator. Foreign hosts, ports, embedded URL credentials and non-API paths cannot receive a bearer or trigger refresh. A second rejection is surfaced without clearing the session. File signature validation and server reader permissions/quotas still apply.
+
+IosApi 1.0.33 adds display-only `is_premium` and `role_type` fields to chat messages. `announcement_member` is null unless a trusted ChatStyle upgrade announcement (category 9301) has matching author, recipient and leading `[USER=id]` identity. When present it contains `user_id`, `username`, and `body` (announcement text after the name). Native clients link that recipient to the existing member profile; old clients keep the unchanged `message` field. Premium decoration does not grant permissions or modify memberships.
+
+This source update and its package are not a production deployment. See [SESSION_CHAT_COVER_VALIDATION.md](SESSION_CHAT_COVER_VALIDATION.md) for executed checks and remaining native/staging gates. Purchase products, verification, entitlement delivery and Android sources are unchanged.
 
 ## Gift wheel: independent PremiumWheel API (2026-09-27)
 
@@ -41,7 +59,9 @@ Client behavior: the native registration form requires password confirmation plu
 ### POST `/auth/refresh`
 Auth: none; the refresh token is accepted only in the request body.
 Body: `refresh_token`.
-Response: new auth payload. The previous access and refresh tokens are revoked atomically.
+Response: new auth payload. The previous access and refresh tokens are revoked atomically. **Routing clarification (2026-10-12):** the public `/ios-api/v1/auth/refresh` and logout routes in 1.0.32–1.0.34 still delegate to MobileApi's controllers/service. Upgrading IosApi alone does not change that deployed refresh implementation. The standalone IosApi `MobileSession` source contains the bounded retry below, but its direct service tests are not proof that the public route executes it. The local reference MobileApi also contains this retry; the production MobileApi version/code must be checked before claiming that behavior live.
+
+When the routed MobileApi service supports the reviewed retry, the same rotated refresh token within **120 seconds** returns the exact still-active successor pair, recovering a lost response. This does not create another session or extend expiry. The retry is rejected at the 120-second boundary, after explicit logout/user revocation, if the successor has rotated/expired, or if the account is no longer eligible. Rotation tokens use the existing server secret and domain-separated HMAC; only hashes are persisted. Access lifetime remains one hour and refresh lifetime 30 days. No schema migration or raw-token storage is added.
 
 ### POST `/auth/google`
 Auth: none.
@@ -299,7 +319,7 @@ Android uses Google Play verification; iOS uses the following StoreKit 2 endpoin
 Auth: login required.
 Body: `signed_transaction`, `product_id`, `original_transaction_id`, and optional
 `signed_renewal_info`. New clients also send `account_name`, captured before the purchase/restore starts; a mismatch with the bearer account returns `409 purchase_account_changed`. Omitting it remains supported for shipped clients. Verified renewal JWS supplies Apple billing grace periods; omitting it does not erase a newer grace state already stored.
-Response: subscription entitlement, effective expiration, and optional grace-period expiration. The three-month, six-month, and yearly-once products expire 3, 6, or 12 calendar months after the signed purchase date. The non-consumable lifetime product has no expiration. Monthly and legacy yearly products retain Apple's signed subscription expiration.
+Response: subscription entitlement, effective expiration, and optional grace-period expiration. The three-month, six-month, and yearly-once products deliver 3, 6, or 12 calendar months. From 1.0.35, unused verified App Store time is carried forward as described above; a standalone purchase still starts on its signed purchase date. The non-consumable lifetime product has no expiration. Monthly and legacy yearly products retain Apple's signed subscription expiration.
 Security: both JWS chains are anchored to a configured Apple root, bundle/product/environment are
 allowlisted, and each `originalTransactionId` is atomically bound to its first Ekitapligim account.
 IosApi 1.0.28 responds from the stored, newest signed state rather than the submitted receipt alone. Ownership conflicts return `409 original_transaction_already_linked`; storage/lock/Premium group synchronization failures return `503 purchase_storage_unavailable`. A successful response means both ledger persistence and XenForo permission synchronization completed. Verified inactive transactions return HTTP 200 with `success=false`, `is_premium=false`; the app acknowledges them without granting access. Effective expiration already includes grace. Non-renewing calendar periods clamp month ends.

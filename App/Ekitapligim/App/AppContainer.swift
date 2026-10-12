@@ -7,6 +7,7 @@ import EkitapligimCore
 final class AppContainer: ObservableObject {
     @Published var authState: AuthenticationState = .signedOut {
         didSet {
+            if authState != .signedOut { needsSessionRestore = false }
             let previousAccount: String? = { if case .signedIn(let session) = oldValue { return session.username }; return nil }()
             let currentAccount: String? = { if case .signedIn(let session) = authState { return session.username }; return nil }()
             if previousAccount != currentAccount || (currentAccount == nil && oldValue != authState) {
@@ -21,6 +22,8 @@ final class AppContainer: ObservableObject {
         }
     }
     private var sessionGeneration = UUID()
+    private var needsSessionRestore = true
+    private var isRestoringSession = false
     var sessionRevision: UUID { sessionGeneration }
     @Published var selectedTab: AppTab = .home {
         didSet { isForumPresented = false }
@@ -180,7 +183,8 @@ final class AppContainer: ObservableObject {
         let tokenStore: any TokenStore = suppliedTokenStore ?? KeychainTokenStore(service: "com.ekitapligim.app")
         let sessionLifecycle = SessionLifecycleHandlers()
         let apiClient = APIClient(config: config, session: apiSession ?? .shared, tokenProvider: tokenStore, assistantSession: apiSession, sessionLifecycle: sessionLifecycle)
-        let fileTransfer = ValidatedBookFileTransfer(tokenProvider: tokenStore, apiBaseURL: apiURL)
+        let fileTransfer = ValidatedBookFileTransfer(tokenProvider: tokenStore, apiBaseURL: apiURL,
+            refreshAccessToken: { token in try await apiClient.refreshAccessToken(afterUnauthorized: token) })
 
         self.config = config
         self.tokenStore = tokenStore
@@ -243,14 +247,29 @@ final class AppContainer: ObservableObject {
     }
 
     func bootstrap() async {
+        guard needsSessionRestore, !isRestoringSession else { return }
+        isRestoringSession = true
+        defer { isRestoringSession = false }
+        let generation = sessionGeneration
         do {
             try config.validateForRelease()
         } catch {
+            needsSessionRestore = false
             authState = .signedOut
             return
         }
 
-        guard let session = await loadPersistedSession() else { return }
+        let persisted: Session?
+        do {
+            persisted = try await loadPersistedSession()
+        } catch {
+            // Keychain may be unavailable before the device's first unlock. Retry
+            // on foreground activation without deleting or replacing its contents.
+            return
+        }
+        guard generation == sessionGeneration, !Task.isCancelled else { return }
+        needsSessionRestore = false
+        guard let session = persisted else { return }
 
         authState = .signedIn(session)
         downloadManager.restoreDownloads()
@@ -264,16 +283,12 @@ final class AppContainer: ObservableObject {
         await pushManager.requestPermissionAndRegister()
     }
 
-    private func loadPersistedSession() async -> Session? {
+    private func loadPersistedSession() async throws -> Session? {
         do {
             return try await tokenStore.loadSession()
         } catch {
-            try? await Task.sleep(for: .milliseconds(250))
-            do {
-                return try await tokenStore.loadSession()
-            } catch {
-                return nil
-            }
+            try await Task.sleep(for: .milliseconds(250))
+            return try await tokenStore.loadSession()
         }
     }
 
@@ -281,7 +296,7 @@ final class AppContainer: ObservableObject {
         let generation = sessionGeneration
         guard let stored = try? await tokenStore.loadSession(), stored == session,
               sessionGeneration == generation, case .signedIn(let current) = authState,
-              current.username == session.username else { return }
+              current.belongsToSameAccount(as: session) else { return }
         authState = .signedIn(session)
     }
 
@@ -293,14 +308,17 @@ final class AppContainer: ObservableObject {
         clearSessionData()
     }
 
-    private func reconcileAuthStateWithKeychain() async {
+    func reconcileAuthStateWithKeychain() async {
         guard isSignedIn else { return }
         let generation = sessionGeneration
-        let persisted = try? await tokenStore.loadSession()
+        let persisted: Session?
+        do { persisted = try await tokenStore.loadSession() }
+        catch { return } // An inaccessible Keychain is not an absent session.
         guard generation == sessionGeneration, isSignedIn else { return }
         if persisted == nil {
             markRemoteSessionInvalidated()
-        } else if case .signedIn(let session) = authState, let persisted, persisted != session {
+        } else if case .signedIn(let session) = authState, let persisted, persisted != session,
+                  session.belongsToSameAccount(as: persisted) {
             authState = .signedIn(persisted)
         }
     }
@@ -439,6 +457,7 @@ final class AppContainer: ObservableObject {
     /// Called when the scene becomes active again so badges are never stale on return.
     func handleScenePhaseActive() {
         Task {
+            if needsSessionRestore { await bootstrap() }
             await reconcileAuthStateWithKeychain()
             guard isSignedIn else { return }
             startUnreadPolling()
@@ -580,7 +599,8 @@ final class AppContainer: ObservableObject {
         let session = Session(
             accessToken: response.accessToken,
             refreshToken: response.refreshToken,
-            username: response.user.username
+            username: response.user.username,
+            userID: response.user.userId
         )
         try await tokenStore.save(session: session)
         authState = .signedIn(session)
@@ -601,6 +621,7 @@ final class AppContainer: ObservableObject {
     }
 
     private func clearLocalSession() async {
+        needsSessionRestore = false
         await pushManager.unregisterToken()
         storeKit.stopObservingTransactions()
         downloadManager.removeAllDownloads()

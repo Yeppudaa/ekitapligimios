@@ -68,6 +68,27 @@ private struct PremiumContentView: View {
         } message: {
             Text(operationErrorMessage ?? L10n.premiumPurchaseFailed)
         }
+        .confirmationDialog(L10n.premiumPurchaseNoticeTitle, isPresented: Binding(
+            get: { storeKit.purchaseNotice != nil },
+            set: { if !$0 { storeKit.dismissPurchaseNotice() } }
+        ), titleVisibility: .visible, presenting: storeKit.purchaseNotice) { notice in
+            Button(L10n.premiumManageSubscriptions) {
+                storeKit.dismissPurchaseNotice()
+                isManagingSubscriptions = true
+            }
+            Button(L10n.premiumContinuePurchase) {
+                Task {
+                    await storeKit.confirmPurchase(notice)
+                    if case .failed(let message) = storeKit.state {
+                        operationErrorTitle = L10n.premiumPurchaseFailed
+                        operationErrorMessage = message
+                    }
+                }
+            }
+            Button(L10n.commonClose, role: .cancel) { storeKit.dismissPurchaseNotice() }
+        } message: { notice in
+            Text(notice.message)
+        }
         .task { await storeKit.prepare() }
         .preference(key: AILauncherHiddenKey.self, value: true)
     }
@@ -232,6 +253,10 @@ private struct PremiumContentView: View {
                     tone: PremiumStyle.muted
                 )
             }
+            Text(L10n.premiumFixedTermCarryover)
+                .font(.footnote)
+                .foregroundStyle(PremiumStyle.muted)
+                .fixedSize(horizontal: false, vertical: true)
         }
     }
 
@@ -371,8 +396,7 @@ private struct PremiumContentView: View {
     }
 
     private var effectiveExpiration: Date? {
-        storeKit.entitlement.expiration
-            ?? subscription.flatMap { $0.expirationTime > 0 ? Date(timeIntervalSince1970: TimeInterval($0.expirationTime)) : nil }
+        PurchaseOfferPolicy.displayedExpiration(entitlement: storeKit.entitlement, serverExpiration: subscription?.expirationTime)
     }
 
     private var statusTitle: String {

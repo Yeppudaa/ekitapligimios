@@ -44,8 +44,10 @@ private actor ChatFixtureService: ChatServing {
             from: Data("{\"items\":[\(Self.room)],\"capabilities\":{\"authenticated\":true,\"can_use\":true}}".utf8))
     }
     func messages(roomID: String, limit: Int, beforeID: String?, afterID: String?) async throws -> ChatMessagesPageDTO {
-        let items = afterID == nil ? [Self.message(reaction: reacted ? 7 : 0)] : []
-        let payload = "{\"room\":\(Self.room),\"items\":[\(items.joined(separator: ","))],\"pagination\":{\"oldest_id\":81,\"newest_id\":81},\"reaction_options\":\(Self.options)}"
+        let presentation = ProcessInfo.processInfo.arguments.contains("-chat-premium-fixture")
+        let initial = presentation ? [Self.announcement, Self.message(reaction: reacted ? 7 : 0)] : [Self.message(reaction: reacted ? 7 : 0)]
+        let items = afterID == nil ? initial : []
+        let payload = "{\"room\":\(Self.room),\"items\":[\(items.joined(separator: ","))],\"pagination\":{\"oldest_id\":\(presentation ? 80 : 81),\"newest_id\":81},\"reaction_options\":\(Self.options)}"
         return try JSONDecoder.ekitapligim.decode(ChatMessagesPageDTO.self, from: Data(payload.utf8))
     }
     func send(roomID: String, message: String, quoteMessageID: String?) async throws -> ChatMessageDTO {
@@ -58,8 +60,9 @@ private actor ChatFixtureService: ChatServing {
     }
     private static let room = #"{"id":4,"name":"Okur Sohbeti","can_send":true}"#
     private static let options = #"[{"reaction_id":1,"title":"Like","emoji":"👍"},{"reaction_id":7,"title":"Love","emoji":"❤️"},{"reaction_id":6,"title":"Angry","emoji":"😡"}]"#
+    private static let announcement = #"{"id":80,"room_id":4,"user_id":9,"username":"Ada","message":"Ada 👑 Premium üyeliğe yükseldi.","is_announcement":true,"announcement_member":{"user_id":9,"username":"Ada","body":"👑 Premium üyeliğe yükseldi."}}"#
     private static func message(reaction: Int) -> String {
-        "{\"id\":81,\"room_id\":4,\"user_id\":9,\"username\":\"Ada\",\"message\":\"Merhaba herkese, yeni katılmama rağmen uygulamada kitapları keşfetmek çok hoşuma gitti. Bu uzun mesajın tamamı dar ekranda da okunabilmeli. İkinci cümle ve mesajın SONU burada.\",\"can_quote\":true,\"can_react\":true,\"visitor_reaction_id\":\(reaction),\"reactions\":\(reaction > 0 ? "[{\"reaction_id\":7,\"title\":\"Love\",\"emoji\":\"❤️\",\"count\":1}]" : "[]")}"
+        "{\"id\":81,\"room_id\":4,\"user_id\":9,\"username\":\"Ada\",\"is_premium\":true,\"role_type\":\"premium\",\"message\":\"Merhaba herkese, yeni katılmama rağmen uygulamada kitapları keşfetmek çok hoşuma gitti. Bu uzun mesajın tamamı dar ekranda da okunabilmeli. İkinci cümle ve mesajın SONU burada.\",\"can_quote\":true,\"can_react\":true,\"visitor_reaction_id\":\(reaction),\"reactions\":\(reaction > 0 ? "[{\"reaction_id\":7,\"title\":\"Love\",\"emoji\":\"❤️\",\"count\":1}]" : "[]")}"
     }
 }
 

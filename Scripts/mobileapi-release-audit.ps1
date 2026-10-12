@@ -28,8 +28,8 @@ try {
     $prefix = "upload/src/addons/Ekitapligim/IosApi/"
     $addon = Get-EntryText ($prefix + "addon.json") | ConvertFrom-Json
     if ($addon.title -ne "Ekitapligim iOS API") { throw "Unexpected add-on title: $($addon.title)" }
-    if ([int]$addon.version_id -ne 1000032 -or $addon.version_string -ne "1.0.32") {
-        throw "IosApi must be exactly 1.0.32 / 1000032; found $($addon.version_string) / $($addon.version_id)."
+    if ([int]$addon.version_id -ne 1000035 -or $addon.version_string -ne "1.0.35") {
+        throw "IosApi must be exactly 1.0.35 / 1000035; found $($addon.version_string) / $($addon.version_id)."
     }
     if ([int]$addon.require.'Ekitapligim/MobileApi'[0] -ne 1000145) {
         throw "IosApi must retain the 1.0.27 server baseline dependency: MobileApi 1.0.145+."
@@ -52,6 +52,17 @@ try {
     $chatListeners = Get-EntryText ($prefix + "_data/code_event_listeners.xml")
     $chatSerializer = Get-EntryText ($prefix + "Service/ChatSerializer.php")
     Assert-Contains $chatSerializer "'message_body'" "additive old/new-client chat body"
+    Assert-Contains $chatSerializer "'announcement_member'" "verified announcement profile target"
+    Assert-Contains $chatSerializer "'is_premium'" "premium username presentation"
+    $mobileSession = Get-EntryText ($prefix + "Service/MobileSession.php")
+    Assert-Contains $mobileSession 'REFRESH_RETRY_GRACE = 120' "bounded lost-response recovery"
+    Assert-Contains $mobileSession 'REVOKED_EXPLICITLY = 1' "terminal explicit logout"
+    Assert-Contains $mobileSession 'private static function rotationTokens' "stable successor retry"
+    $apns = Get-EntryText ($prefix + "Service/ApnsPush.php")
+    Assert-Contains $apns 'created_at < ?' "conservative timestamp-aware APNs token cleanup"
+    Assert-Contains $apns 'token_id = ? AND device_token = ? AND user_id = ? AND created_at = ?' "APNs registration ownership guard"
+    Assert-Contains $apns 'intdiv($invalidatedAt, 1000)' "APNs milliseconds conversion"
+    Assert-Contains $apns 'if ($responseCode !== 410 || $reason !== ''Unregistered'')' "quiet expected token expiry with operational errors retained"
     Assert-Contains $chatSerializer "'sprite_params'" "configured web reaction sprite metadata"
     $chatReaction = Get-EntryText ($prefix + "Api/Controller/ChatReactions.php")
     Assert-Contains $chatReaction "clearCache('Reactions')" "saved visitor reaction response"

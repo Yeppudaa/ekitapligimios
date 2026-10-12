@@ -9,6 +9,45 @@ public protocol ChatServing: Sendable {
 
 extension ChatRepository: ChatServing {}
 
+/// Only emitted for a server-verified premium announcement recipient. The body
+/// excludes the linked name so it is displayed once, without parsing HTML in the UI.
+public struct ChatAnnouncementMemberDTO: Decodable, Equatable, Sendable {
+    public let userId: String
+    public let username: String
+    public let body: String
+
+    public init(from decoder: Decoder) throws {
+        let container = try decoder.container(keyedBy: CodingKeys.self)
+        self.userId = try container.decodeFlexibleString(forKey: .userId)
+        self.username = try container.decode(String.self, forKey: .username)
+        self.body = try container.decode(String.self, forKey: .body)
+    }
+
+    private enum CodingKeys: String, CodingKey { case userId, username, body }
+}
+
+public extension ChatMessageDTO {
+    var hasPremiumUsername: Bool {
+        let role = roleType.trimmingCharacters(in: .whitespacesAndNewlines).lowercased()
+        return !isBot && !isAnnouncement && !isAdmin && !isModerator && !isStaff
+            && role != "admin" && role != "moderator" && role != "staff"
+            && (isPremium || role == "premium")
+    }
+
+    var profileMemberID: String? {
+        guard !isBot, !isAnnouncement, let id = Int(userId), id > 0 else { return nil }
+        return String(id)
+    }
+
+    var linkedAnnouncementMember: ChatAnnouncementMemberDTO? {
+        guard isAnnouncement, !isBot, let member = announcementMember,
+              let id = Int(member.userId), id > 0,
+              !member.username.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty,
+              !member.body.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty else { return nil }
+        return member
+    }
+}
+
 /// Uses the forum's configured reaction IDs; zero is reserved for removing a reaction.
 public struct ChatReactionDTO: Decodable, Equatable, Identifiable, Sendable {
     public let reactionId: Int

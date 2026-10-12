@@ -104,11 +104,15 @@ if ($phpPath) {
     if ($LASTEXITCODE -ne 0) {
         throw "APNs token removal policy tests failed."
     }
+    & $phpPath (Join-Path $repoRoot "Tests\Backend\ApnsDeliveryTest.php")
+    if ($LASTEXITCODE -ne 0) { throw "APNs delivery cleanup tests failed." }
+    & $phpPath (Join-Path $repoRoot "Tests\Backend\MeDeviceTokenTest.php")
+    if ($LASTEXITCODE -ne 0) { throw "Device token controller tests failed." }
     & $phpPath (Join-Path $repoRoot "Tests\Backend\PushIntegrationContractTest.php")
     if ($LASTEXITCODE -ne 0) {
         throw "Push integration contract tests failed."
     }
-    foreach ($test in @('ChatInteractionTest', 'ChatInteractionPushTest', 'ChatControllerTest', 'ChatSerializerTest')) {
+    foreach ($test in @('ChatInteractionTest', 'ChatInteractionPushTest', 'ChatControllerTest', 'ChatSerializerTest', 'MobileSessionRetryTest')) {
         & $phpPath (Join-Path $repoRoot "Tests/Backend/$test.php")
         if ($LASTEXITCODE -ne 0) { throw "$test failed." }
     }
@@ -118,7 +122,7 @@ if ($phpPath) {
     }
     & $phpPath (Join-Path $repoRoot "Tests\Backend\ReaderProgressControllerTest.php")
     if ($LASTEXITCODE -ne 0) { throw "Reader progress controller tests failed." }
-    foreach ($test in @('AppStoreEntitlementPolicyTest', 'AppStoreTransactionStoreTest', 'AppStoreControllerTest', 'AppStoreSignatureTest', 'AppStoreMembershipTest', 'PublicBearerIsolationTest', 'AccountDeletionRequestTest', 'AlertPrivacyTest')) {
+    foreach ($test in @('AppStoreEntitlementPolicyTest', 'AppStoreTransactionStoreTest', 'AppStoreControllerTest', 'AppStoreSignatureTest', 'AppStoreMembershipTest', 'AppStoreTermScheduleTest', 'AppStoreLegacyContractTest', 'PublicBearerIsolationTest', 'AccountDeletionRequestTest', 'AlertPrivacyTest')) {
         & $phpPath (Join-Path $repoRoot "Tests/Backend/$test.php")
         if ($LASTEXITCODE -ne 0) { throw "$test failed." }
     }
@@ -148,8 +152,8 @@ $requiredFiles = @(
 )
 foreach ($relative in $requiredFiles) { Assert-Path (Join-Path $addonRoot $relative) }
 $addonManifest = Get-Content -Raw -LiteralPath (Join-Path $addonRoot "addon.json") | ConvertFrom-Json
-if ([int]$addonManifest.version_id -ne 1000032 -or $addonManifest.version_string -ne "1.0.32") {
-    throw "IosApi package must be exactly 1.0.32 / 1000032 for this release."
+if ([int]$addonManifest.version_id -ne 1000035 -or $addonManifest.version_string -ne "1.0.35") {
+    throw "IosApi package must be exactly 1.0.35 / 1000035 for this release."
 }
 foreach ($relative in @('Api/Controller/ChatReactions.php', 'Pub/Controller/ChatReactions.php',
     'Service/ChatInteraction.php', 'Service/ChatPushProducer.php', 'Service/ChatSerializer.php',

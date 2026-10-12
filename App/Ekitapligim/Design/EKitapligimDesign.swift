@@ -286,6 +286,8 @@ struct EKitapligimSectionHeader: View {
 
 struct EKitapligimRemoteCover: View {
     let urlString: String
+    var title: String? = nil
+    var author: String = ""
     var accessibilityTitle: String? = nil
 
     var body: some View {
@@ -310,8 +312,7 @@ struct EKitapligimRemoteCover: View {
     }
 
     private var coverAccessibilityLabel: String? {
-        guard let accessibilityTitle, !accessibilityTitle.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty,
-              secureURL != nil else { return nil }
+        guard let accessibilityTitle, !accessibilityTitle.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty else { return nil }
         return L10n.libraryCoverAccessibility(accessibilityTitle)
     }
 
@@ -320,11 +321,16 @@ struct EKitapligimRemoteCover: View {
         return url
     }
 
-    private var placeholder: some View {
-        Image(systemName: "book.closed.fill")
-            .font(.title2)
-            .foregroundStyle(EKitapligimPalette.teal)
-            .frame(maxWidth: .infinity, maxHeight: .infinity)
+    @ViewBuilder private var placeholder: some View {
+        if let title {
+            EKitapligimMissingBookCover(title: title, author: author)
+        } else {
+            // Some agenda attachments also reuse this image loader without book metadata.
+            Image(systemName: "book.closed.fill")
+                .font(.title2)
+                .foregroundStyle(EKitapligimPalette.teal)
+                .frame(maxWidth: .infinity, maxHeight: .infinity)
+        }
     }
 }
 

@@ -5,6 +5,7 @@ namespace Ekitapligim\IosApi\Service;
 class ChatSerializer
 {
 	protected ?array $reactionOptions = null;
+	protected array $premiumUsernameCache = [];
 	public function room(\Siropu\Chat\Entity\Room $room): array
 	{
 		return [
@@ -29,6 +30,10 @@ class ChatSerializer
 		$user = $message->User;
 		$visitor = \XF::visitor();
 		$username = (string) ($message->message_username ?: $message->message_bot_name ?: 'E-Kitaplığım');
+		// Author decoration only. Never refresh purchases or change entitlements here.
+		$isPremium = !$message->isBot() && !$message->isAnnouncement() && $this->hasPremiumUsername($user);
+		$roleType = $user && $user->is_admin ? 'admin'
+			: ($user && ($user->is_moderator || $user->is_staff) ? 'moderator' : ($isPremium ? 'premium' : 'member'));
 		$rawText = ChatInteraction::filterQuotes((string) $message->getMessage(),
 			fn(array $quote) => $this->quoteIsVisible($quote, (int) $message->message_room_id));
 		$split = ChatInteraction::splitQuote($rawText);
@@ -66,6 +71,9 @@ class ChatSerializer
 			'is_admin' => (bool) ($user && $user->is_admin),
 			'is_moderator' => (bool) ($user && $user->is_moderator),
 			'is_staff' => (bool) ($user && $user->is_staff),
+			'is_premium' => $isPremium,
+			'role_type' => $roleType,
+			'announcement_member' => $this->announcementMember($message, $rawText),
 			'like_count' => (int) $message->message_like_count,
 			'is_liked' => (bool) ($visitor->user_id && $message->isLiked()),
 			'can_quote' => (bool) ($canInteract && $message->canQuote()),
@@ -75,6 +83,35 @@ class ChatSerializer
 			'reactions' => $reactions,
 			'quoted_message' => $quoted,
 		];
+	}
+
+	protected function hasPremiumUsername(?\XF\Entity\User $user): bool
+	{
+		if (!$user || !$user->user_id || !method_exists($user, 'isBookPremiumMember')) return false;
+		$userId = (int) $user->user_id;
+		if (!array_key_exists($userId, $this->premiumUsernameCache))
+		{
+			$this->premiumUsernameCache[$userId] = (bool) $user->isBookPremiumMember();
+		}
+		return $this->premiumUsernameCache[$userId];
+	}
+
+	protected function announcementMember(\Siropu\Chat\Entity\Message $message, string $rawText): ?array
+	{
+		// ChatStyle records the upgrade recipient as type_id in category 9301.
+		// Require that identity and the leading USER tag to agree; ordinary bot or
+		// administrator announcements must never link to an inferred person.
+		if (!$message->isAnnouncement() || $message->isBot()
+			|| (int) $message->message_type_category_id !== 9301) return null;
+		$user = $message->User;
+		$userId = (int) $message->message_type_id;
+		if (!$user || $userId <= 0 || (int) $user->user_id !== $userId
+			|| (int) $message->message_user_id !== $userId || (string) $message->message_bot_name !== '') return null;
+		if (!preg_match('/^\s*\[USER=(\d+)\]([^\[]+)\[\/USER\]\s*(.+)$/isu', $rawText, $match)
+			|| (int) $match[1] !== $userId) return null;
+		$username = $this->plainText($match[2]);
+		if ($username === '') return null;
+		return ['user_id' => $userId, 'username' => $username, 'body' => $this->plainText($match[3])];
 	}
 
 	public function reactionOptions(): array

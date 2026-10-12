@@ -5,6 +5,16 @@ import EkitapligimCore
 
 @MainActor
 final class StoreKitPurchaseService: ObservableObject {
+    struct PurchaseNotice: Identifiable {
+        let id = UUID()
+        let productID: String
+        let decision: PurchaseOfferDecision
+        let accountGeneration: UUID
+        var message: String {
+            decision == .warnExistingSubscription
+                ? L10n.premiumExistingSubscriptionNotice : L10n.premiumStartingSubscriptionNotice
+        }
+    }
     static let productIDs = [
         "com.ekitapligim.app.premium.monthly",
         "com.ekitapligim.app.premium.three_months",
@@ -22,6 +32,7 @@ final class StoreKitPurchaseService: ObservableObject {
     @Published private(set) var state: PurchaseState = .notLoaded
     @Published private(set) var products: [StoreProduct] = []
     @Published private(set) var entitlement: PremiumEntitlement = .none
+    @Published private(set) var purchaseNotice: PurchaseNotice?
 
     var entitlementDidChange: (@MainActor @Sendable () async -> Void)?
 
@@ -105,6 +116,7 @@ final class StoreKitPurchaseService: ObservableObject {
         statusUpdatesTask = nil
         storefrontUpdatesTask = nil
         entitlement = .none
+        purchaseNotice = nil
         state = products.isEmpty ? .notLoaded : .available(products: products)
     }
 
@@ -206,7 +218,20 @@ final class StoreKitPurchaseService: ObservableObject {
     }
 
     func purchase(productID: String) async {
+        await purchase(productID: productID, acknowledgedNotice: nil)
+    }
+
+    func dismissPurchaseNotice() { purchaseNotice = nil }
+
+    func confirmPurchase(_ notice: PurchaseNotice) async {
+        guard notice.accountGeneration == accountGeneration else { return }
+        purchaseNotice = nil
+        await purchase(productID: notice.productID, acknowledgedNotice: notice.decision)
+    }
+
+    private func purchase(productID: String, acknowledgedNotice: PurchaseOfferDecision?) async {
         guard !isBusy, accountName != nil else { return }
+        purchaseNotice = nil
         let generation = accountGeneration
         guard let purchaseAccount = accountName else { return }
         synchronizationRevision = UUID()
@@ -235,9 +260,20 @@ final class StoreKitPurchaseService: ObservableObject {
             }
 
             try requireCurrentAccount(generation)
-            let appAccountToken = try await purchaseRepository.prepareAppStorePurchase(accountName: purchaseAccount)
+            let context = try await purchaseRepository.prepareAppStorePurchaseContext(accountName: purchaseAccount)
             try requireCurrentAccount(generation)
-            let result = try await product.purchase(options: [.appAccountToken(appAccountToken)])
+            guard context.success else { throw APIClientError.invalidResponse }
+            let decision = PurchaseOfferPolicy.decision(productID: productID, context: context, entitlement: entitlement)
+            if decision == .alreadyLifetime {
+                state = .failed(message: L10n.premiumAlreadyLifetime)
+                return
+            }
+            if decision != .allowed && decision != acknowledgedNotice {
+                purchaseNotice = PurchaseNotice(productID: productID, decision: decision, accountGeneration: generation)
+                state = .available(products: products)
+                return
+            }
+            let result = try await product.purchase(options: [.appAccountToken(context.appAccountToken)])
             try requireCurrentAccount(generation)
             switch result {
             case .success(let verification):

@@ -190,7 +190,7 @@ struct CatalogView: View {
     private var catalogCoverStack: some View {
         ZStack {
             ForEach(Array(books.prefix(3).enumerated()), id: \.element.id) { index, book in
-                EKitapligimRemoteCover(urlString: book.coverUrl)
+                EKitapligimRemoteCover(urlString: book.coverUrl, title: book.title, author: book.author)
                     .frame(width: index == 1 ? 58 : 50, height: index == 1 ? 88 : 76)
                     .clipShape(RoundedRectangle(cornerRadius: 8, style: .continuous))
                     .rotationEffect(.degrees(Double(index - 1) * 9))
@@ -716,43 +716,12 @@ private struct BookCover: View {
     var body: some View {
         Color.clear
             .overlay {
-                Group {
-                    if let secureCoverURL {
-                        AsyncImage(url: secureCoverURL) { phase in
-                            switch phase {
-                            case .success(let image):
-                                image.resizable().scaledToFill()
-                            case .empty:
-                                ZStack {
-                                    Rectangle().fill(.quaternary)
-                                    ProgressView()
-                                }
-                            default:
-                                coverPlaceholder
-                            }
-                        }
-                    } else {
-                        coverPlaceholder
-                    }
-                }
+                EKitapligimRemoteCover(urlString: book.coverUrl, title: book.title, author: book.author)
             }
             .clipped()
             .background(EKitapligimPalette.tealSoft)
             .clipShape(RoundedRectangle(cornerRadius: 10, style: .continuous))
             .accessibilityHidden(true)
-    }
-
-    private var secureCoverURL: URL? {
-        guard let url = URL(string: book.coverUrl), url.scheme?.lowercased() == "https" else { return nil }
-        return url
-    }
-
-    private var coverPlaceholder: some View {
-        ZStack {
-            Rectangle().fill(.quaternary)
-            Image(systemName: "book.closed")
-                .foregroundStyle(.secondary)
-        }
     }
 }
 

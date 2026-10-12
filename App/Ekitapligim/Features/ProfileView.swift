@@ -773,7 +773,7 @@ private struct ContinueReadingCard: View {
             if let item {
                 NavigationLink { BookDetailDestination(bookIDString: item.bookId) } label: {
                     HStack(spacing: 13) {
-                        EKitapligimRemoteCover(urlString: item.coverUrl)
+                        EKitapligimRemoteCover(urlString: item.coverUrl, title: item.title, author: item.author)
                             .frame(width: 56, height: 82)
                             .clipShape(RoundedRectangle(cornerRadius: 10, style: .continuous))
                         VStack(alignment: .leading, spacing: 5) {

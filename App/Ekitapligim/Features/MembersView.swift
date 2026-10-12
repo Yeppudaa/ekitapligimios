@@ -504,7 +504,7 @@ struct MemberProfileView: View {
             if let book = profile.lastReadBook, !book.bookId.isEmpty {
                 NavigationLink { BookDetailDestination(bookIDString: book.bookId) } label: {
                     HStack(spacing: 13) {
-                        EKitapligimRemoteCover(urlString: book.coverUrl)
+                        EKitapligimRemoteCover(urlString: book.coverUrl, title: book.title, author: book.author)
                             .frame(width: 56, height: 82)
                             .clipShape(RoundedRectangle(cornerRadius: 10, style: .continuous))
                         VStack(alignment: .leading, spacing: 5) {

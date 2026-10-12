@@ -1041,10 +1041,25 @@ public struct EmailChangeResponseDTO: Decodable, Equatable, Sendable {
 }
 
 public struct UserProfileDTO: Decodable, Equatable, Sendable {
+    public let userId: String?
     public let username: String
     public let email: String
     public let isPremium: Bool
     public let premiumPlanName: String
+
+    public init(from decoder: Decoder) throws {
+        let container = try decoder.container(keyedBy: CodingKeys.self)
+        let id = try container.decodeFlexibleString(forKey: .userId, fallbackKeys: [.id])
+        self.userId = id.isEmpty || id == "0" ? nil : id
+        self.username = try container.decode(String.self, forKey: .username)
+        self.email = try container.decode(String.self, forKey: .email)
+        self.isPremium = try container.decode(Bool.self, forKey: .isPremium)
+        self.premiumPlanName = try container.decode(String.self, forKey: .premiumPlanName)
+    }
+
+    private enum CodingKeys: String, CodingKey {
+        case userId, id, username, email, isPremium, premiumPlanName
+    }
 }
 
 public struct ForumDTO: Decodable, Equatable, Identifiable, Sendable {

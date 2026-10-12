@@ -951,6 +951,10 @@ public struct ChatMessageDTO: Decodable, Equatable, Identifiable, Sendable {
     public let isAdmin: Bool
     public let isModerator: Bool
     public let isStaff: Bool
+    /// Read-only author presentation metadata, never used to grant account entitlements.
+    public let isPremium: Bool
+    public let roleType: String
+    public let announcementMember: ChatAnnouncementMemberDTO?
     public let canQuote: Bool
     public let canReact: Bool
     public let visitorReactionId: Int
@@ -978,6 +982,9 @@ public struct ChatMessageDTO: Decodable, Equatable, Identifiable, Sendable {
         self.isAdmin = container.decodeFlexibleBool(forKey: .isAdmin)
         self.isModerator = container.decodeFlexibleBool(forKey: .isModerator)
         self.isStaff = container.decodeFlexibleBool(forKey: .isStaff)
+        self.isPremium = container.decodeFlexibleBool(forKey: .isPremium)
+        self.roleType = (try? container.decodeIfPresent(String.self, forKey: .roleType)) ?? "member"
+        self.announcementMember = try? container.decodeIfPresent(ChatAnnouncementMemberDTO.self, forKey: .announcementMember)
         self.canQuote = container.decodeFlexibleBool(forKey: .canQuote)
         self.canReact = container.decodeFlexibleBool(forKey: .canReact)
         self.visitorReactionId = max(container.decodeFlexibleInt(forKey: .visitorReactionId), 0)
@@ -1004,6 +1011,9 @@ public struct ChatMessageDTO: Decodable, Equatable, Identifiable, Sendable {
         case isAdmin
         case isModerator
         case isStaff
+        case isPremium
+        case roleType
+        case announcementMember
         case canQuote
         case canReact
         case visitorReactionId

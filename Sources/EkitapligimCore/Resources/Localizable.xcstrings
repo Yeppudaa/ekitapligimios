@@ -1,6 +1,9 @@
 {
   "sourceLanguage": "tr",
   "strings": {
+    "profile.role.premiumMember": {
+      "localizations": { "tr": { "stringUnit": { "state": "translated", "value": "Premium Üye" } } }
+    },
     "chat.reply": {
       "localizations": { "tr": { "stringUnit": { "state": "translated", "value": "Yanıtla / Alıntıla" } } }
     },

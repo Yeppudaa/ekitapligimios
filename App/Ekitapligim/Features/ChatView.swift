@@ -783,8 +783,7 @@ struct ChatMessageBubble: View {
     let onBlocked: () -> Void
 
     private var profileMemberID: String? {
-        guard !message.isBot else { return nil }
-        return message.userId
+        message.profileMemberID
     }
 
     var body: some View {
@@ -813,12 +812,26 @@ struct ChatMessageBubble: View {
                 Text(L10n.chatAnnouncementLabel)
                     .font(.caption2.weight(.heavy))
                     .foregroundStyle(EKitapligimPalette.chatAmber)
-                Text(EKitapligimFormat.plainText(message.message))
+                if let member = message.linkedAnnouncementMember {
+                    MemberProfileLink(memberID: member.userId) {
+                        Text(member.username)
+                            .font(.subheadline.weight(.bold))
+                            .underline()
+                            .foregroundStyle(EKitapligimPalette.chatAnnouncementInk)
+                            .fixedSize(horizontal: false, vertical: true)
+                            .frame(minHeight: 44, alignment: .leading)
+                            .contentShape(Rectangle())
+                    }
+                    .accessibilityLabel(L10n.chatOpenProfile(member.username))
+                    .accessibilityIdentifier("chat-announcement-member-\(message.id)")
+                }
+                Text(EKitapligimFormat.plainText(message.linkedAnnouncementMember?.body ?? message.message))
                     .font(.subheadline)
                     .foregroundStyle(EKitapligimPalette.chatAnnouncementInk)
                     .multilineTextAlignment(.leading)
                     .fixedSize(horizontal: false, vertical: true)
                     .frame(maxWidth: .infinity, alignment: .leading)
+                    .accessibilityIdentifier("chat-announcement-body-\(message.id)")
             }
         }
         .padding(13)
@@ -974,12 +987,22 @@ struct ChatMessageBubble: View {
 
     private var senderName: some View {
         MemberProfileLink(memberID: profileMemberID) {
-            Text(message.username)
-                .font(.caption.weight(.bold))
-                .foregroundStyle(message.isBot ? Color(hex: 0x95610A) : EKitapligimPalette.chatTeal)
-                .fixedSize(horizontal: false, vertical: true)
+            Group {
+                if message.hasPremiumUsername {
+                    ChatPremiumUsername(username: message.username)
+                } else {
+                    Text(message.username)
+                        .font(.caption.weight(.bold))
+                        .foregroundStyle(message.isBot ? Color(hex: 0x95610A) : EKitapligimPalette.chatTeal)
+                        .fixedSize(horizontal: false, vertical: true)
+                }
+            }
+            .frame(minHeight: 44, alignment: .leading)
+            .contentShape(Rectangle())
         }
         .accessibilityLabel(L10n.chatOpenProfile(message.username))
+        .accessibilityValue(message.hasPremiumUsername ? L10n.profileRolePremiumMember : "")
+        .accessibilityIdentifier("chat-username-\(message.id)")
     }
 
     private func badge(_ title: String) -> some View {

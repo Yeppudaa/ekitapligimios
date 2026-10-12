@@ -411,7 +411,7 @@ private struct LibraryBookCard: View {
 
     var body: some View {
         HStack(spacing: 14) {
-            EKitapligimRemoteCover(urlString: item.coverUrl, accessibilityTitle: item.title)
+            EKitapligimRemoteCover(urlString: item.coverUrl, title: item.title, author: item.author, accessibilityTitle: item.title)
                 .frame(width: 76, height: 112)
                 .background(EKitapligimPalette.profileTealSoft)
                 .clipShape(RoundedRectangle(cornerRadius: 12, style: .continuous))

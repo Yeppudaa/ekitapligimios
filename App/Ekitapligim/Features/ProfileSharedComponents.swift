@@ -77,7 +77,7 @@ struct ProfileBookRow: View {
 
     var body: some View {
         HStack(spacing: 12) {
-            EKitapligimRemoteCover(urlString: item.coverUrl)
+            EKitapligimRemoteCover(urlString: item.coverUrl, title: item.title, author: item.author)
                 .frame(width: 48, height: 70)
                 .clipShape(RoundedRectangle(cornerRadius: 9, style: .continuous))
                 .shadow(color: EKitapligimPalette.ink.opacity(0.12), radius: 6, y: 3)

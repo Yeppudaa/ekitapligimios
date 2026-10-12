@@ -1,5 +1,31 @@
 # Release Checklist
 
+## Purchase/device-token correction — 2026-10-12
+
+- [ ] IosApi 1.0.35 on HTTPS staging: old installed app purchase/restore and missing-token HTTP 400 verified.
+- [ ] Native clean/Production builds and iPhone/iPad unit/UI tests for purchase warnings and lifetime guard pass.
+- [ ] Sandbox: repeat fixed purchases, restore, refund, notification retry and account change verified end to end.
+- [ ] Live subscription level discrepancy resolved and crossgrade timing checked before release.
+
+Offline source/contract tests do not substitute for these release gates. See `PURCHASE_FIX_VALIDATION.md`.
+
+## APNs service correction — 2026-10-12
+
+- [ ] IosApi 1.0.34 installed on HTTPS staging; an existing valid device receives a notification, and its re-registration is retained after a late 410.
+- [ ] Normal device-token expiry no longer creates a server error; real APNs configuration/transport failures remain visible.
+
+This server update needs no new native app build and changes no billing/session contract. Offline regression/package evidence is in [APNS_UNREGISTERED_VALIDATION.md](APNS_UNREGISTERED_VALIDATION.md).
+
+## Current change gates (2026-10-12)
+
+- [ ] Native clean/Production builds and iPhone/iPad unit/UI tests for the session, chat and cover update executed on macOS.
+- [ ] Signed install-over-existing-build preserves the Keychain login; first-unlock, foreground, expired-token and interrupted-refresh recovery verified on device.
+- [ ] IosApi 1.0.33 staged; premium chat appearance/profile targets and concurrent reader/API refresh validated against public HTTPS staging.
+- [ ] Premium sender/announcement and missing-cover visuals inspected on iPhone/iPad with Dynamic Type and VoiceOver.
+- [ ] Existing purchase/restore and membership access pass native regression checks including the purchase follow-up.
+
+Windows evidence and package details: [SESSION_CHAT_COVER_VALIDATION.md](SESSION_CHAT_COVER_VALIDATION.md). Historical gates below are retained and do not imply completion of this update.
+
 - [ ] Bundle identifier selected.
 - [ ] Apple Developer Team ID configured.
 - [ ] App Store Connect app created.

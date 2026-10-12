@@ -1,5 +1,11 @@
 # Android To iOS Feature Parity
 
+## Session, chat and cover corrections (2026-10-12)
+
+Compared with the user's Android checkout at `C:\Users\Monster\Downloads\startdesign (1)` and the rendered local `sosyolojik-dusunmek.4326` page. Native iOS now uses the site's cream/teal title-and-author artwork for missing or failed cover images across catalog, home, book details, library, profiles and other book cards. Real cover images retain their existing rendering.
+
+Live chat uses the site's gold crown/name treatment for premium senders while retaining staff presentation. Verified upgrade-announcement names open the recipient's native profile. Older API responses remain readable. The native app shares token refresh with reader downloads; the standalone iOS backend ports Android's bounded lost-refresh-response recovery. Billing, membership grants and Android files are unchanged. Executed tests and pending iPhone/iPad visual checks: [SESSION_CHAT_COVER_VALIDATION.md](SESSION_CHAT_COVER_VALIDATION.md).
+
 ## Reader experience update (2026-09-28)
 
 The native reader follows Android `ReaderScreen.kt` with sepia (`#F4ECD8`), white and night paper themes, full-screen presentation, collapsible reading tools and page status. PDFKit retains continuous/paged reading, zoom, bookmarks, thumbnails and saved-page restoration; Readium retains EPUB CFI restoration. The paper choice is a local app preference. Continue-reading selection and server progress contracts remain unchanged.

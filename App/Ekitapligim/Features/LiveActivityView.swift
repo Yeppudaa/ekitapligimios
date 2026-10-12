@@ -261,7 +261,7 @@ struct LiveActivityRow: View {
 
             if let book = item.book, !book.title.isEmpty {
                 HStack(spacing: 8) {
-                    EKitapligimRemoteCover(urlString: book.coverUrl ?? "")
+                    EKitapligimRemoteCover(urlString: book.coverUrl ?? "", title: book.title, author: book.author)
                         .frame(width: 26, height: 38)
                         .clipShape(RoundedRectangle(cornerRadius: 5, style: .continuous))
                     VStack(alignment: .leading, spacing: 1) {

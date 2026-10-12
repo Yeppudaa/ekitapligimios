@@ -189,7 +189,7 @@ final class SessionRefreshTests: XCTestCase {
         try await assertStaleRefresh(status: 200, nextSession: nil)
     }
 
-    func testSecond401AfterRefreshInvalidatesOnlyThatSession() async throws {
+    func testSecondResource401AfterRefreshPreservesRotatedSession() async throws {
         let store = SessionRefreshTestStore()
         let client = try makeClient(store: store)
         SessionRefreshStubProtocol.handler = { request in
@@ -200,10 +200,193 @@ final class SessionRefreshTests: XCTestCase {
         }
         do {
             _ = try await client.request(.library, as: LibraryPageDTO.self)
-            XCTFail("Expected authenticationRequired")
+            XCTFail("Expected resource authentication error")
+        } catch APIClientError.httpStatus(let status, _) { XCTAssertEqual(status, 401) }
+        let stored = await store.currentSession()
+        XCTAssertEqual(stored?.accessToken, "refreshed-access")
+        XCTAssertEqual(stored?.refreshToken, "refreshed-refresh")
+    }
+
+    func testGatewayAndPermissionRefreshErrorsPreserveSession() async throws {
+        for (status, body) in [
+            (401, "<html>Gateway authentication required</html>"),
+            (403, #"{"errors":[{"code":"permission_denied","message":"Forbidden"}]}"#),
+            (429, #"{"errors":[{"code":"rate_limit","message":"Try later"}]}"#)
+        ] {
+            let store = SessionRefreshTestStore()
+            let invalidated = SessionRefreshFlag()
+            let lifecycle = SessionLifecycleHandlers()
+            lifecycle.configure(onInvalidated: { await invalidated.set() })
+            let client = try makeClient(store: store, lifecycle: lifecycle)
+            SessionRefreshStubProtocol.handler = { request in
+                request.url?.path == "/ios-api/v1/auth/refresh" ? (status, body) : (401, "{}")
+            }
+            do {
+                _ = try await client.request(.library, as: LibraryPageDTO.self)
+                XCTFail("Expected refresh failure")
+            } catch APIClientError.httpStatus(let code, _) { XCTAssertEqual(code, status) }
+            let stored = await store.currentSession()
+            let didInvalidate = await invalidated.isSetValue()
+            XCTAssertEqual(stored?.accessToken, "expired")
+            XCTAssertEqual(stored?.refreshToken, "refresh-token")
+            XCTAssertFalse(didInvalidate)
+        }
+    }
+
+    func testRefreshWithoutReplacementRefreshTokenPreservesExistingToken() async throws {
+        for field in ["", #", "refresh_token":null"#, #", "refresh_token":"   ""#] {
+            let store = SessionRefreshTestStore()
+            let client = try makeClient(store: store)
+            SessionRefreshStubProtocol.handler = { _ in
+                (200, """
+                {"access_token":"refreshed-access"\(field),"user":{"username":"reader","email":"reader@example.invalid","is_premium":false,"premium_plan_name":"member"}}
+                """)
+            }
+            let token = try await client.refreshAccessToken(afterUnauthorized: "expired")
+            let stored = await store.currentSession()
+            XCTAssertEqual(token, "refreshed-access")
+            XCTAssertEqual(stored?.refreshToken, "refresh-token")
+        }
+    }
+
+    func testMalformedOrWrongAccountRefreshCannotReplaceStoredCredentials() async throws {
+        for body in [
+            "{}",
+            #"{"access_token":" ","refresh_token":"next","user":{"username":"reader","email":"reader@example.invalid","is_premium":false,"premium_plan_name":"member"}}"#,
+            #"{"access_token":"other","refresh_token":"next","user":{"username":"other","email":"reader@example.invalid","is_premium":false,"premium_plan_name":"member"}}"#
+        ] {
+            let store = SessionRefreshTestStore()
+            let client = try makeClient(store: store)
+            SessionRefreshStubProtocol.handler = { _ in (200, body) }
+            do {
+                _ = try await client.refreshAccessToken(afterUnauthorized: "expired")
+                XCTFail("Expected invalid refresh payload")
+            } catch APIClientError.invalidResponse {
+            } catch APIClientError.decodingFailed {}
+            let stored = await store.currentSession()
+            XCTAssertEqual(stored?.accessToken, "expired")
+            XCTAssertEqual(stored?.refreshToken, "refresh-token")
+        }
+    }
+
+    func testRefreshUsesStableUserIDForRenamedAccountAndRejectsOtherID() async throws {
+        for responseID in [7, 8] {
+            let store = SessionRefreshTestStore()
+            let original = Session(accessToken: "expired", refreshToken: "refresh-token", username: "reader", userID: "7")
+            try await store.save(session: original)
+            let client = try makeClient(store: store)
+            SessionRefreshStubProtocol.handler = { _ in
+                (200, """
+                {"access_token":"refreshed-access","refresh_token":"next","user":{"user_id":\(responseID),"username":"renamed-reader","email":"reader@example.invalid","is_premium":false,"premium_plan_name":"member"}}
+                """)
+            }
+            do {
+                _ = try await client.refreshAccessToken(afterUnauthorized: "expired")
+                XCTAssertEqual(responseID, 7)
+            } catch APIClientError.invalidResponse { XCTAssertEqual(responseID, 8) }
+            let stored = await store.currentSession()
+            XCTAssertEqual(stored?.userID, "7")
+            XCTAssertEqual(stored?.accessToken, responseID == 7 ? "refreshed-access" : "expired")
+        }
+    }
+
+    func testLoginRejectionDoesNotRefreshOrInvalidateExistingSession() async throws {
+        let store = SessionRefreshTestStore()
+        let client = try makeClient(store: store)
+        SessionRefreshStubProtocol.handler = { request in
+            XCTAssertEqual(request.url?.path, "/ios-api/v1/auth/login")
+            return (401, #"{"errors":[{"code":"login_invalid","message":"Invalid credentials"}]}"#)
+        }
+        do {
+            _ = try await client.request(APIEndpoint(method: .post, path: "auth/login"), as: AuthResponseDTO.self)
+            XCTFail("Expected login rejection")
+        } catch APIClientError.httpStatus(let status, _) { XCTAssertEqual(status, 401) }
+        let stored = await store.currentSession()
+        XCTAssertEqual(stored?.accessToken, "expired")
+    }
+
+    func testLegacySessionWithoutRefreshTokenIsNotDeletedByResource401() async throws {
+        let store = SessionRefreshTestStore()
+        let original = Session(accessToken: "legacy", refreshToken: nil, username: "reader")
+        try await store.save(session: original)
+        let client = try makeClient(store: store)
+        SessionRefreshStubProtocol.handler = { request in
+            XCTAssertEqual(request.url?.path, "/ios-api/v1/me/library")
+            return (401, "{}")
+        }
+        do {
+            _ = try await client.request(.library, as: LibraryPageDTO.self)
+            XCTFail("Expected authentication error")
         } catch APIClientError.authenticationRequired {}
         let stored = await store.currentSession()
-        XCTAssertNil(stored)
+        XCTAssertEqual(stored, original)
+    }
+
+    func testRejectedFileTokenFromPreviousAccountCannotRefreshCurrentAccount() async throws {
+        let store = SessionRefreshTestStore()
+        let client = try makeClient(store: store)
+        SessionRefreshStubProtocol.handler = { _ in
+            XCTFail("An unknown stale token must never start a refresh")
+            return (500, "{}")
+        }
+        do {
+            _ = try await client.refreshAccessToken(afterUnauthorized: "previous-account-access")
+            XCTFail("Expected stale request cancellation")
+        } catch is CancellationError {}
+        let stored = await store.currentSession()
+        XCTAssertEqual(stored?.accessToken, "expired")
+    }
+
+    func testClosingCallerDuringRefreshStillPersistsRotatedCredentials() async throws {
+        let store = SessionRefreshTestStore()
+        let client = try makeClient(store: store)
+        let started = expectation(description: "refresh started")
+        let gate = SessionRefreshResponseGate()
+        SessionRefreshStubProtocol.asyncHandler = { _ in
+            started.fulfill()
+            await gate.wait()
+            return (200, #"{"access_token":"refreshed-access","refresh_token":"next","user":{"username":"reader","email":"reader@example.invalid","is_premium":false,"premium_plan_name":"member"}}"#)
+        }
+        let caller = Task { try await client.refreshAccessToken(afterUnauthorized: "expired") }
+        await fulfillment(of: [started], timeout: 3)
+        caller.cancel()
+        await gate.release()
+        _ = try await caller.value
+        let stored = await store.currentSession()
+        XCTAssertEqual(stored?.accessToken, "refreshed-access")
+        XCTAssertEqual(stored?.refreshToken, "next")
+    }
+
+    func testProtectedFileAndAPIRequestsShareOneRefresh() async throws {
+        let store = SessionRefreshTestStore()
+        let client = try makeClient(store: store)
+        let gate = SessionRefreshResponseGate()
+        let started = expectation(description: "file refresh started")
+        let apiStarted = expectation(description: "API request started")
+        let refreshCount = SessionRefreshCount()
+        SessionRefreshStubProtocol.asyncHandler = { request in
+            if request.url?.path == "/ios-api/v1/auth/refresh" {
+                await refreshCount.increment()
+                started.fulfill()
+                await gate.wait()
+                return (200, #"{"access_token":"refreshed-access","refresh_token":"next","user":{"username":"reader","email":"reader@example.invalid","is_premium":false,"premium_plan_name":"member"}}"#)
+            }
+            if request.value(forHTTPHeaderField: "Authorization") == "Bearer expired" {
+                apiStarted.fulfill()
+                return (401, "{}")
+            }
+            return (200, #"{"items":[]}"#)
+        }
+        let file = Task { try await client.refreshAccessToken(afterUnauthorized: "expired") }
+        await fulfillment(of: [started], timeout: 3)
+        let api = Task { try await client.request(.library, as: LibraryPageDTO.self) }
+        await fulfillment(of: [apiStarted], timeout: 3)
+        await gate.release()
+        let token = try await file.value
+        _ = try await api.value
+        let count = await refreshCount.value
+        XCTAssertEqual(token, "refreshed-access")
+        XCTAssertEqual(count, 1)
     }
 
     func testLateParallel401UsesAlreadyRotatedSessionWithoutRefreshingAgain() async throws {
@@ -243,7 +426,21 @@ final class SessionRefreshTests: XCTestCase {
         try await assertStaleRefresh(status: 401, nextSession: Session(accessToken: "other", refreshToken: "other-refresh", username: "other"))
     }
 
-    private func assertStaleRefresh(status: Int, nextSession: Session?) async throws {
+    func testLateExplicitRefreshRejectionCannotClearNextAccount() async throws {
+        try await assertStaleRefresh(status: 401,
+            nextSession: Session(accessToken: "other", refreshToken: "other-refresh", username: "other"),
+            failureBody: #"{"errors":[{"code":"refresh_token_invalid","message":"Expired"}]}"#)
+    }
+
+    func testLateTemporaryRefreshFailureIsCancelledAfterAccountSwitch() async throws {
+        try await assertStaleRefresh(status: 503, nextSession: Session(accessToken: "other", refreshToken: "other-refresh", username: "other"))
+    }
+
+    func testLateTemporaryRefreshFailureIsCancelledAfterLogout() async throws {
+        try await assertStaleRefresh(status: 503, nextSession: nil)
+    }
+
+    private func assertStaleRefresh(status: Int, nextSession: Session?, failureBody: String? = nil) async throws {
         let store = SessionRefreshTestStore()
         let invalidated = SessionRefreshFlag()
         let refreshed = SessionRefreshCapture()
@@ -255,7 +452,7 @@ final class SessionRefreshTests: XCTestCase {
                 // The account changes after refresh starts and before its HTTP response arrives.
                 if let nextSession { try await store.save(session: nextSession) }
                 else { try await store.clear() }
-                return (status, #"{"access_token":"late-access","refresh_token":"late-refresh","user":{"username":"reader","email":"reader@example.invalid","is_premium":false,"premium_plan_name":"member"}}"#)
+                return (status, failureBody ?? #"{"access_token":"late-access","refresh_token":"late-refresh","user":{"username":"reader","email":"reader@example.invalid","is_premium":false,"premium_plan_name":"member"}}"#)
             }
             XCTAssertEqual(request.value(forHTTPHeaderField: "Authorization"), "Bearer expired",
                            "An old request must not replay under the next account")
@@ -334,6 +531,21 @@ private actor SessionRefreshFlag {
 
     func set() { isSet = true }
     func isSetValue() -> Bool { isSet }
+}
+
+private actor SessionRefreshCount {
+    var value = 0
+    func increment() { value += 1 }
+}
+
+private actor SessionRefreshResponseGate {
+    private var released = false
+    private var continuation: CheckedContinuation<Void, Never>?
+    func wait() async {
+        guard !released else { return }
+        await withCheckedContinuation { continuation = $0 }
+    }
+    func release() { released = true; continuation?.resume(); continuation = nil }
 }
 
 private final class SessionRefreshStubProtocol: URLProtocol, @unchecked Sendable {

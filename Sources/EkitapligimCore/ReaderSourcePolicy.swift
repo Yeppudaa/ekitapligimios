@@ -152,7 +152,9 @@ public enum ReaderSourcePolicy {
 
     private static func isUnderAPIBase(_ url: URL, apiBaseURL: URL) -> Bool {
         guard url.scheme?.lowercased() == "https",
-              apiBaseURL.scheme?.lowercased() == "https" else { return false }
+              apiBaseURL.scheme?.lowercased() == "https",
+              (url.port ?? 443) == (apiBaseURL.port ?? 443),
+              url.user == nil, url.password == nil else { return false }
         let requestHost = url.host?.lowercased() ?? ""
         let apiHost = apiBaseURL.host?.lowercased() ?? ""
         guard !requestHost.isEmpty, requestHost == apiHost else { return false }

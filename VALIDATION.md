@@ -1,5 +1,17 @@
 # Validation
 
+## Deep backward compatibility review — 2026-10-12
+
+IosApi 1.0.34 was exercised with the actual previous Core sources for app versions 1.0.4–1.0.8: 20 XCTest cases passed. All legacy chat fields/types/values matched 1.0.32 over 15 message scenarios. The actual local XF upgrade trait selected no new mutation from 1.0.32/33; actual APNs JWT/transport construction and response parsing passed with zero network traffic. Public auth routes remain delegated to MobileApi; earlier documentation claiming the standalone session change alone activated public refresh recovery was corrected. No new runtime/package change was introduced in this review. See [IOS_API_1_0_34_COMPATIBILITY.md](IOS_API_1_0_34_COMPATIBILITY.md).
+
+## APNs Unregistered correction — 2026-10-12
+
+IosApi 1.0.34 treats APNs 410 Unregistered as timestamp-aware device-token cleanup without producing a XenForo server error. Delivery/policy tests, full backend packaging tests, workspace scan and package audit passed. Compared with 1.0.33, only the APNs service, version manifest and README differ; no native app or purchasing code changed. See [APNS_UNREGISTERED_VALIDATION.md](APNS_UNREGISTERED_VALIDATION.md) for evidence, package and unexecuted live delivery checks.
+
+## Current session/chat/cover update — 2026-10-12
+
+Debug and clean Release core runs each passed 346 XCTest cases. Actual reader-transfer and chat-model Windows harnesses passed 11 and 13 tests respectively. Workspace validation (including secret/static accessibility checks), backend regression/package audit, real-source offline chat integration, and Swift syntax parsing passed. The IosApi 1.0.33 package is prepared without deployment; purchase/entitlement implementation is unchanged. Native iOS build/UI/Keychain and signed app-upgrade evidence remain pending macOS/device validation. See [SESSION_CHAT_COVER_VALIDATION.md](SESSION_CHAT_COVER_VALIDATION.md) for commands, package hash and limits. Earlier results below are historical.
+
 ## Local Windows Validation
 
 Run:

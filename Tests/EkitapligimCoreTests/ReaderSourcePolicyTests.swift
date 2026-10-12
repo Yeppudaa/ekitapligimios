@@ -142,6 +142,20 @@ final class ReaderSourcePolicyTests: XCTestCase {
         XCTAssertTrue(ReaderSourcePolicy.shouldAttachAccessToken(to: source, apiBaseURL: apiBase))
         XCTAssertFalse(ReaderSourcePolicy.shouldAttachAccessToken(to: drive, apiBaseURL: apiBase))
 
+        for untrusted in [
+            "https://ekitapligim.com:8443/ios-api/v1/books/1/reader/source",
+            "https://name:password@ekitapligim.com/ios-api/v1/books/1/reader/source",
+            "https://ekitapligim.com/ios-api/v10/books/1/reader/source"
+        ] {
+            XCTAssertFalse(ReaderSourcePolicy.shouldAttachAccessToken(
+                to: try XCTUnwrap(URL(string: untrusted)), apiBaseURL: apiBase
+            ))
+        }
+        XCTAssertTrue(ReaderSourcePolicy.shouldAttachAccessToken(
+            to: try XCTUnwrap(URL(string: "https://ekitapligim.com:443/ios-api/v1/books/1/reader/source")),
+            apiBaseURL: apiBase
+        ))
+
         let xenforoAPI = try XCTUnwrap(URL(string: "https://ekitapligim.com/api/books/1/reader/source?t=x"))
         XCTAssertFalse(ReaderSourcePolicy.shouldAttachAccessToken(to: xenforoAPI, apiBaseURL: apiBase))
     }

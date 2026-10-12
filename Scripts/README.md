@@ -40,6 +40,28 @@ Loads the installed Visual Studio C++ environment and official Swift for Windows
 
 This validates the portable core package. Xcode is still required for the SwiftUI app target, Readium, StoreKit, PDFKit, Keychain, simulator, and UI tests.
 
+## `reader-transfer-test-windows.ps1`
+
+Compiles the actual reader transfer implementation and its XCTest cases in an isolated harness. Injected file downloads cover expired-token retry, permission/external-host failures, account changes, temporary refresh/storage failures, file validation and cleanup. FoundationNetworking imports and test-only file-protection compatibility names are supplied only to the generated Windows copies. This does not verify native Apple URLSession delegates, Keychain, iOS data protection or rendering.
+
+```powershell
+.\Scripts\reader-transfer-test-windows.ps1
+```
+
+## `legacy-client-compatibility-test-windows.ps1`
+
+Checks reviewed 1.0.33 through 1.0.35 ZIPs against the fixed 1.0.32 baseline, exercises sessions created by the previous PHP service, and compiles the previous 1.0.8 Core with actual new-server chat fixtures. The 1.0.34 gate additionally permits only the reviewed APNs service change. This is an offline check with synthetic accounts and in-memory storage; it does not validate an installed old iOS binary or live purchases. `-AddonZip` accepts another package path; unexpected baseline differences fail for review.
+
+```powershell
+.\Scripts\legacy-client-compatibility-test-windows.ps1
+```
+
+`-ClientRef` selects a previous native app's Core independently of the fixed 1.0.32 server baseline. Verified refs: `d1dd139` (1.0.8), `c11799b` (1.0.7), `b8dbb6f` (1.0.6), `3e8c81f` (1.0.5), `08537db` (1.0.4). The check compares every existing chat field/type/value across 15 message cases before compiling the selected old client. It retains readable full quotes for apps predating structured replies.
+
+`php Tests/Integration/IosApiUpgradeCompatibilityTest.php` loads the actual local XF upgrade trait without bootstrapping its app/database and verifies that upgrades from 1.0.32/33 select no new setup mutation. Pass the XF `src` directory as its first argument if the default local path is unavailable.
+
+`php Tests/Backend/ApnsTransportContractTest.php` requires a PHP runtime with OpenSSL and cURL constants (Windows example: `C:\xampp\php\php.exe`). It verifies the actual JWT signature and transport construction/response parsing using a temporary generated test key and mocked cURL functions; no APNs requests occur. The preferred PATH PHP in this workspace lacks cURL, so use the installed XAMPP PHP for this particular check.
+
 ## `chat-state-test-windows.ps1`
 
 `chat-state-test-windows.ps1` additionally compiles the actual `ChatModel` and its XCTest cases against the core package. Its temporary Combine module provides only property storage, so it validates request/state concurrency on Windows; Apple Combine publication, SwiftUI layout and device behavior still require the native macOS tests. It does not connect to production.
@@ -114,7 +136,7 @@ The Team ID must be ten uppercase letters or digits. Existing output directories
 
 ## `mobileapi-release-audit.ps1`
 
-Inspects the standalone IosApi 1.0.32 release ZIP before deployment. It verifies the iOS routes, old-client chat serialization, UGC controls, purchase ledger, membership reconciliation and the server-baseline MobileApi 1.0.145+ dependency without modifying the package:
+Inspects the standalone IosApi 1.0.35 release ZIP before deployment. It verifies the iOS routes, old-client chat serialization, premium display/announcement metadata, bounded session retry, timestamp-aware APNs cleanup, UGC controls, purchase ledger, membership reconciliation and the server-baseline MobileApi 1.0.145+ dependency without modifying the package:
 
 ```powershell
 .\Scripts\mobileapi-release-audit.ps1

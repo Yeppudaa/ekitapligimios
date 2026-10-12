@@ -35,6 +35,9 @@ class AppStoreTestDb
     public bool $mysql = false;
     public bool $lockAvailable = true;
     public bool $failWrite = false;
+    public bool $failUpdate = false;
+    public string $blockedLockPrefix = '';
+    public array $lockTrace = [];
     public function __construct()
     {
         $path = getenv('APPSTORE_TEST_MYSQL_CONFIG');
@@ -77,6 +80,7 @@ class AppStoreTestDb
             }
         }
         if ($this->failWrite && str_contains($sql, 'INSERT INTO')) { throw new RuntimeException('Injected database outage'); }
+        if ($this->failUpdate && str_starts_with(trim($sql), 'UPDATE')) { throw new RuntimeException('Injected projection outage'); }
         if (!$this->mysql) {
             $key = str_contains($sql, 'ios_appstore_account') ? 'user_id'
                 : (str_contains($sql, 'mobile_appstore_notification') ? 'notification_uuid' : 'transaction_id');
@@ -88,11 +92,17 @@ class AppStoreTestDb
         return $statement;
     }
     public function fetchOne($sql, $args = []) {
+        if (str_contains($sql, 'GET_LOCK')) {
+            $this->lockTrace[] = ['acquire', $args[0]];
+            if ($this->blockedLockPrefix !== '' && str_starts_with($args[0], $this->blockedLockPrefix)) { return 0; }
+        }
+        if (str_contains($sql, 'RELEASE_LOCK')) { $this->lockTrace[] = ['release', $args[0]]; }
         if (str_contains($sql, 'GET_LOCK') && !$this->lockAvailable) { return 0; }
         if (!$this->mysql && (str_contains($sql, 'GET_LOCK') || str_contains($sql, 'RELEASE_LOCK'))) { return 1; }
         return $this->query($sql, $args)->fetchColumn();
     }
     public function fetchRow($sql, $args = []) { return $this->query($sql, $args)->fetch(PDO::FETCH_ASSOC); }
+    public function fetchAll($sql, $args = []) { return $this->query($sql, $args)->fetchAll(PDO::FETCH_ASSOC); }
     public function fetchAllColumn($sql, $args = []) { return $this->query($sql, $args)->fetchAll(PDO::FETCH_COLUMN); }
     public function beginTransaction() { $this->pdo->beginTransaction(); }
     public function commit() { $this->pdo->commit(); }
@@ -100,6 +110,7 @@ class AppStoreTestDb
 }
 
 require_once __DIR__ . '/../../../Backend/IosApi-addon/Service/AppStoreEntitlementPolicy.php';
+require_once __DIR__ . '/../../../Backend/IosApi-addon/Service/AppStoreTermSchedule.php';
 require_once __DIR__ . '/../../../Backend/IosApi-addon/Service/AppStoreTransactionStore.php';
 require_once __DIR__ . '/../../../Backend/IosApi-addon/Service/IosMembershipSynchronizer.php';
 

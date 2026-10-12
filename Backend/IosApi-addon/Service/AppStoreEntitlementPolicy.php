@@ -73,7 +73,7 @@ final class AppStoreEntitlementPolicy
 		return ($transaction['type'] ?? '') === 'Auto-Renewable Subscription';
 	}
 
-	private static function nonRenewingMonths(array $transaction): int
+	public static function nonRenewingMonths(array $transaction): int
 	{
 		if (($transaction['type'] ?? '') !== 'Non-Renewing Subscription')
 		{

@@ -12,11 +12,19 @@ public struct Session: Codable, Equatable, Sendable {
     public let accessToken: String
     public let refreshToken: String?
     public let username: String
+    /// Optional so Keychain sessions written by earlier app versions remain decodable.
+    public let userID: String?
 
-    public init(accessToken: String, refreshToken: String?, username: String) {
+    public init(accessToken: String, refreshToken: String?, username: String, userID: String? = nil) {
         self.accessToken = accessToken
         self.refreshToken = refreshToken
         self.username = username
+        self.userID = userID
+    }
+
+    public func belongsToSameAccount(as other: Session) -> Bool {
+        if let userID, let otherID = other.userID { return userID == otherID }
+        return username == other.username
     }
 }
 

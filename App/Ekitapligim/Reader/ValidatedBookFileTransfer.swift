@@ -36,12 +36,16 @@ final class ValidatedBookFileTransfer: BookFileTransferring {
     private let fileManager: FileManager
     private let tokenProvider: AccessTokenProviding?
     private let apiBaseURL: URL?
+    private let refreshAccessToken: (@Sendable (String) async throws -> String)?
+    private let downloadFile: (URLRequest, URLSessionTaskDelegate) async throws -> (URL, URLResponse)
 
     init(
         session: URLSession? = nil,
         fileManager: FileManager = .default,
         tokenProvider: AccessTokenProviding? = nil,
-        apiBaseURL: URL? = nil
+        apiBaseURL: URL? = nil,
+        refreshAccessToken: (@Sendable (String) async throws -> String)? = nil,
+        downloadFile: ((URLRequest, URLSessionTaskDelegate) async throws -> (URL, URLResponse))? = nil
     ) {
         let configuration = URLSessionConfiguration.ephemeral
         configuration.timeoutIntervalForRequest = 180
@@ -49,10 +53,15 @@ final class ValidatedBookFileTransfer: BookFileTransferring {
         configuration.urlCache = nil
         configuration.httpCookieStorage = nil
         configuration.httpShouldSetCookies = false
-        self.session = session ?? URLSession(configuration: configuration)
+        let transport = session ?? URLSession(configuration: configuration)
+        self.session = transport
         self.fileManager = fileManager
         self.tokenProvider = tokenProvider
         self.apiBaseURL = apiBaseURL
+        self.refreshAccessToken = refreshAccessToken
+        self.downloadFile = downloadFile ?? { request, delegate in
+            try await transport.download(for: request, delegate: delegate)
+        }
     }
 
     func download(from sourceURL: URL, fileType: String, to destinationURL: URL,
@@ -69,26 +78,11 @@ final class ValidatedBookFileTransfer: BookFileTransferring {
         while attemptedURLs.count < 4, attemptedURLs.insert(requestURL).inserted {
             try Task.checkCancellation()
             onProgress(.downloading(BookTransferProgress(receivedBytes: 0, expectedBytes: 0)))
-            let progressDelivery = BookDownloadProgressDelivery(onProgress: onProgress)
-            let delegate = BookDownloadProgressDelegate(apiBaseURL: apiBaseURL, progressDelivery: progressDelivery)
-            let temporaryURL: URL
-            let response: URLResponse
-            do {
-                (temporaryURL, response) = try await session.download(
-                    for: await request(for: requestURL, fileExtension: fileExtension), delegate: delegate
-                )
-            } catch {
-                progressDelivery.finish()
-                if Self.isOutOfSpace(error) { throw BookFileTransferError.insufficientStorage }
-                throw error
-            }
-            // Pending delegate callbacks must not overwrite validation/opening UI.
-            progressDelivery.finish()
+            let (temporaryURL, http) = try await downloadResponse(
+                from: requestURL, fileExtension: fileExtension, onProgress: onProgress
+            )
             defer { try? fileManager.removeItem(at: temporaryURL) }
             try Task.checkCancellation()
-            guard let http = response as? HTTPURLResponse, (200..<300).contains(http.statusCode) else {
-                throw BookFileTransferError.serverRejected
-            }
 
             do {
                 onProgress(.validating)
@@ -170,7 +164,62 @@ final class ValidatedBookFileTransfer: BookFileTransferring {
         try DownloadFilePolicy.validateHeader(header, fileExtension: fileType)
     }
 
-    private func request(for url: URL, fileExtension: String) async -> URLRequest {
+    private func downloadResponse(
+        from url: URL, fileExtension: String,
+        onProgress: @escaping @MainActor @Sendable (ReaderLoadingPhase) -> Void
+    ) async throws -> (URL, HTTPURLResponse) {
+        var downloadRequest = try await request(for: url, fileExtension: fileExtension)
+        for attempt in 0..<2 {
+            try Task.checkCancellation()
+            let delivery = BookDownloadProgressDelivery(onProgress: onProgress)
+            let delegate = BookDownloadProgressDelegate(apiBaseURL: apiBaseURL, progressDelivery: delivery)
+            let temporaryURL: URL
+            let response: URLResponse
+            do {
+                (temporaryURL, response) = try await downloadFile(downloadRequest, delegate)
+            } catch {
+                delivery.finish()
+                if Self.isOutOfSpace(error) { throw BookFileTransferError.insufficientStorage }
+                throw error
+            }
+            delivery.finish()
+            do {
+                try Task.checkCancellation()
+                guard let http = response as? HTTPURLResponse else {
+                    throw BookFileTransferError.serverRejected
+                }
+                if http.statusCode == 401, attempt == 0,
+                   let apiBaseURL, let refreshAccessToken,
+                   ReaderSourcePolicy.shouldAttachAccessToken(to: url, apiBaseURL: apiBaseURL),
+                   ReaderSourcePolicy.shouldAttachAccessToken(to: http.url ?? url, apiBaseURL: apiBaseURL),
+                   let authorization = downloadRequest.value(forHTTPHeaderField: "Authorization"),
+                   authorization.hasPrefix("Bearer ") {
+                    let rejectedToken = String(authorization.dropFirst(7))
+                    let refreshedToken = try await refreshAccessToken(rejectedToken)
+                    try Task.checkCancellation()
+                    // The shared API client guards refresh against account changes. Also
+                    // recheck here so sign-out cannot attach a stale token to the retry.
+                    guard !refreshedToken.isEmpty,
+                          try await tokenProvider?.accessToken() == refreshedToken else {
+                        throw CancellationError()
+                    }
+                    downloadRequest.setValue("Bearer \(refreshedToken)", forHTTPHeaderField: "Authorization")
+                    try? fileManager.removeItem(at: temporaryURL)
+                    continue
+                }
+                guard (200..<300).contains(http.statusCode) else {
+                    throw BookFileTransferError.serverRejected
+                }
+                return (temporaryURL, http)
+            } catch {
+                try? fileManager.removeItem(at: temporaryURL)
+                throw error
+            }
+        }
+        throw BookFileTransferError.serverRejected
+    }
+
+    private func request(for url: URL, fileExtension: String) async throws -> URLRequest {
         var request = URLRequest(url: url)
         request.timeoutInterval = 180
         request.cachePolicy = .reloadIgnoringLocalCacheData
@@ -181,7 +230,7 @@ final class ValidatedBookFileTransfer: BookFileTransferring {
         )
         request.setValue("Ekitapligim-iOS/1.0", forHTTPHeaderField: "User-Agent")
         if let apiBaseURL, ReaderSourcePolicy.shouldAttachAccessToken(to: url, apiBaseURL: apiBaseURL),
-           let token = try? await tokenProvider?.accessToken(), !token.isEmpty {
+           let token = try await tokenProvider?.accessToken(), !token.isEmpty {
             request.setValue("Bearer \(token)", forHTTPHeaderField: "Authorization")
         }
         return request

@@ -562,7 +562,7 @@ struct EKShelfCard: View {
     var body: some View {
         VStack(alignment: .leading, spacing: 7) {
             ZStack(alignment: .topLeading) {
-                EKitapligimRemoteCover(urlString: coverUrl)
+                EKitapligimRemoteCover(urlString: coverUrl, title: title)
                     .frame(width: width, height: width * 1.45)
                     .clipShape(RoundedRectangle(cornerRadius: 13, style: .continuous))
                 if let badge {
@@ -631,10 +631,14 @@ struct EKChatPreviewMessageRow: View {
 
             VStack(alignment: .leading, spacing: 4) {
                 HStack(spacing: 6) {
-                    Text(message.username)
-                        .font(.caption2.weight(.bold))
-                        .foregroundStyle(message.isBot ? Color(hex: 0x95610A) : EKitapligimPalette.chatTeal)
-                        .lineLimit(1)
+                    if message.hasPremiumUsername {
+                        ChatPremiumUsername(username: message.username)
+                    } else {
+                        Text(message.username)
+                            .font(.caption2.weight(.bold))
+                            .foregroundStyle(message.isBot ? Color(hex: 0x95610A) : EKitapligimPalette.chatTeal)
+                            .lineLimit(1)
+                    }
                     if message.isAdmin || message.isModerator || message.isStaff {
                         Text(roleLabel)
                             .font(.system(size: 7, weight: .heavy))

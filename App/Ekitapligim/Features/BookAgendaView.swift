@@ -883,7 +883,7 @@ struct BookAgendaBookChip: View {
 
     var body: some View {
         HStack(spacing: 10) {
-            EKitapligimRemoteCover(urlString: book.coverUrl ?? "")
+            EKitapligimRemoteCover(urlString: book.coverUrl ?? "", title: book.title, author: book.author)
                 .frame(width: 46, height: 66)
                 .background(Color(hex: 0xE6EBEF))
                 .clipShape(RoundedRectangle(cornerRadius: 8, style: .continuous))
@@ -1552,7 +1552,7 @@ private struct BookAgendaBookPicker: View {
                     onSelect(book)
                 } label: {
                     HStack(alignment: .center, spacing: 10) {
-                        EKitapligimRemoteCover(urlString: book.coverUrl)
+                        EKitapligimRemoteCover(urlString: book.coverUrl, title: book.title, author: book.author)
                             .frame(width: 38, height: 54)
                             .clipShape(RoundedRectangle(cornerRadius: 6, style: .continuous))
                         VStack(alignment: .leading, spacing: 3) {

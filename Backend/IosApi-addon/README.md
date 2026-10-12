@@ -1,5 +1,39 @@
 # Ekitapligim iOS API XenForo Add-on
 
+## 1.0.35 — backwards-compatible purchase duration repair (2026-10-12)
+
+Also fixes the reported `MeDeviceToken` POST/DELETE TypeError: missing input returns HTTP 400 with the existing error code. Valid device-token registration and user-scoped deletion are unchanged; an empty request cannot remove all tokens.
+
+Fixed three/six/twelve-month App Store purchases now retain unused time across distinct purchases. Delivery is derived from verified signed transactions under both original-transaction and per-account locks, so replays/restores never accumulate time twice. Out-of-order events and signed refunds/reversals rebuild only their account's fixed-term delivery. Production and Sandbox schedules are separate. Existing Apple subscription periods retain Apple expiry; overlapping fixed-term time is carried forward. Opaque pre-ledger grants are preserved, not guessed or migrated.
+
+Existing purchase/restore routes, product IDs, ownership, signature checks, field types and optional legacy request fields remain supported. `prepare_purchase` still returns the same successful UUID response, with optional `has_lifetime`, `has_active_subscription`, and `has_fixed_term` advice for new clients. Already-paid transactions are never rejected merely because the account has another premium plan. No new table, destructive migration, auth/session change, Android edit or price change is part of this purchase repair.
+
+Install this server package before the matching app update. Older apps receive carried expiration dates without an app update. New pre-purchase warnings and prevention of unnecessary payments require the native update; Apple subscription cancellation always remains a user action in Apple's subscription management. The package itself does not install or submit anything. See `PURCHASE_FIX_VALIDATION.md` for tests and release limits.
+
+## 1.0.34 — APNs Unregistered cleanup (2026-10-12)
+
+APNs HTTP 410 `Unregistered` indicates an inactive device-notification token. It is now handled as quiet cleanup while remaining counted in the delivery summary. Configuration, topic, provider-authentication, rate-limit and transport/server failures continue to appear in the server error log. Raw cURL diagnostics are omitted because they may contain a device-token URL.
+
+Cleanup compares the selected token row, account and registration time, and honors APNs's invalidation timestamp in milliseconds. A new registration or account reassignment is not removed by a late failure. Since registrations use second precision, registrations within the invalidation/request-start second are conservatively retained. Missing timestamps fall back to the send-start time. No schema or public API changes are required; old iOS apps use the same device registration endpoint.
+
+Includes all 1.0.33 changes. No app update is required for this server logging/cleanup correction. The earlier native reader/chat/cover fixes still require an app update. Package preparation does not install it on the server. See `APNS_UNREGISTERED_VALIDATION.md` in the repository for executed tests and deployment notes.
+
+## 1.0.34 — APNs Unregistered cleanup (2026-10-12)
+
+APNs HTTP 410 `Unregistered` indicates an inactive device-notification token. It is now handled as quiet cleanup while remaining counted in the delivery summary. Configuration, topic, provider-authentication, rate-limit and transport/server failures continue to appear in the server error log. Raw cURL diagnostics are omitted because they may contain a device-token URL.
+
+Cleanup compares the selected token row, account and registration time, and honors APNs's invalidation timestamp in milliseconds. A new registration or account reassignment is not removed by a late failure. Since registrations use second precision, registrations within the invalidation/request-start second are conservatively retained. Missing timestamps fall back to the send-start time. No schema or public API changes are required; old iOS apps use the same device registration endpoint.
+
+Includes all 1.0.33 changes. No app update is required for this server logging/cleanup correction. The earlier native reader/chat/cover fixes still require an app update. Package preparation does not install it on the server. See `APNS_UNREGISTERED_VALIDATION.md` in the repository for executed tests and deployment notes.
+
+## 1.0.33 — session retry and chat presentation (2026-10-12)
+
+Ports the Android reference's bounded 120-second recovery into the standalone IosApi `MobileSession` service. **Public-route clarification:** the existing `auth/refresh` and logout routes remain delegated to MobileApi, so installing IosApi alone does not activate the standalone service on those public routes. The local MobileApi reference has the same recovery logic; deployed behavior depends on its installed code. The exact still-active successor is returned without extending session lifetimes when that implementation is routed; logout, revoked/expired successors, disabled users and later rotations remain rejected. Token hashes remain the only stored token representation; there is no schema migration.
+
+Chat serialization adds display-only `is_premium`, `role_type`, and validated `announcement_member` metadata for native premium styling and upgrade-recipient profile navigation. Existing fields and old-client message text are preserved. Purchase verification, membership reconciliation, StoreKit products, shared MobileApi routes and Android source are unchanged.
+
+Install through the normal XenForo archive upgrade flow after staging verification; this repository change does not install or deploy the add-on. Keep the previous package and a server backup for rollback. The matching iOS app is needed for native display/download changes. See the repository's `SESSION_CHAT_COVER_VALIDATION.md` for evidence and remaining device gates.
+
 ## 1.0.29 — reader Drive source validation (2026-10-01)
 
 Reject missing or invalid Drive URLs with `ebook_unavailable` before calling the shared fetcher. Valid sources retain the existing access and preview pipeline. This full add-on package includes the 1.0.28 changes below; back up the installed add-on and database before upgrading through XenForo's add-on archive installer. Invalid book source records still require correction by an administrator.
