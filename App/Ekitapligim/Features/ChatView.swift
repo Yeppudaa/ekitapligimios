@@ -158,6 +158,7 @@ struct ChatView: View {
                     Image(systemName: sessionReady ? "checkmark.shield.fill" : "eye.fill")
                         .font(.caption2)
                         .foregroundStyle(EKitapligimPalette.chatTeal)
+                        .accessibilityHidden(true)
                     Text(chatHeroStatusText)
                         .font(.system(size: 10, weight: .semibold))
                         .foregroundStyle(EKitapligimPalette.chatInk)
@@ -411,6 +412,7 @@ struct ChatView: View {
             Image(systemName: sessionReady ? "checkmark.shield.fill" : "eye.fill")
                 .font(.body)
                 .foregroundStyle(sessionReady ? EKitapligimPalette.chatTeal : EKitapligimPalette.chatAmber)
+                .accessibilityHidden(true)
             VStack(alignment: .leading, spacing: 3) {
                 Text(welcomeTitle)
                     .font(.caption.weight(.bold))

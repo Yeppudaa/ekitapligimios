@@ -63,9 +63,19 @@ jobs:
         run: ./Scripts/appstore-preflight.ps1 -AllowPlaceholders
 
   ios-build:
-    name: iOS build and tests
+    name: iOS build and tests (${{ matrix.device }})
     runs-on: macos-15
     timeout-minutes: 45
+    strategy:
+      fail-fast: false
+      matrix:
+        include:
+          - device: iPhone
+            destination: 'platform=iOS Simulator,name=iPhone 16,OS=latest'
+            resultBundle: TestResults.xcresult
+          - device: iPad
+            destination: 'platform=iOS Simulator,name=iPad Air 11-inch (M3),OS=latest'
+            resultBundle: TestResults-iPad.xcresult
     steps:
       - uses: actions/checkout@v4
       - name: Select and verify Xcode 16.4
@@ -102,28 +112,14 @@ jobs:
           PY
       - name: Swift package tests
         run: swift test
-      - name: iOS simulator unit tests
+      - name: ${{ matrix.device }} simulator unit and UI tests
         run: >-
           xcodebuild test
           -project Ekitapligim.xcodeproj
           -scheme Ekitapligim
           -configuration Development
-          -destination 'platform=iOS Simulator,name=iPhone 16,OS=latest'
-          -resultBundlePath TestResults.xcresult
-          -clonedSourcePackagesDirPath .build/xcode-packages
-          -disableAutomaticPackageResolution
-          CODE_SIGNING_ALLOWED=YES
-          CODE_SIGN_IDENTITY=-
-          CODE_SIGN_STYLE=Manual
-          CODE_SIGN_ENTITLEMENTS="$GITHUB_WORKSPACE/Scripts/ci-simulator.entitlements"
-      - name: iPad simulator unit and UI tests
-        run: >-
-          xcodebuild test
-          -project Ekitapligim.xcodeproj
-          -scheme Ekitapligim
-          -configuration Development
-          -destination 'platform=iOS Simulator,name=iPad Air 11-inch (M3),OS=latest'
-          -resultBundlePath TestResults-iPad.xcresult
+          -destination '${{ matrix.destination }}'
+          -resultBundlePath ${{ matrix.resultBundle }}
           -clonedSourcePackagesDirPath .build/xcode-packages
           -disableAutomaticPackageResolution
           CODE_SIGNING_ALLOWED=YES
@@ -131,6 +127,7 @@ jobs:
           CODE_SIGN_STYLE=Manual
           CODE_SIGN_ENTITLEMENTS="$GITHUB_WORKSPACE/Scripts/ci-simulator.entitlements"
       - name: Production unsigned build
+        if: matrix.device == 'iPhone'
         run: >-
           xcodebuild clean build
           -project Ekitapligim.xcodeproj
@@ -142,6 +139,7 @@ jobs:
           -disableAutomaticPackageResolution
           CODE_SIGNING_ALLOWED=NO
       - name: Verify Production Google Sign-In plist values
+        if: matrix.device == 'iPhone'
         run: |
           APP_PLIST="$(find "$PWD/build/Build/Products" -path '*/Ekitapligim.app/Info.plist' | head -n 1)"
           if [ -z "$APP_PLIST" ]; then
@@ -165,7 +163,7 @@ jobs:
         if: always()
         uses: actions/upload-artifact@v4
         with:
-          name: ai-simulator-evidence
+          name: ai-simulator-evidence-${{ matrix.device }}
           path: AISimulatorEvidence
           if-no-files-found: warn
           retention-days: 14
@@ -173,23 +171,15 @@ jobs:
         if: always()
         uses: actions/upload-artifact@v4
         with:
-          name: ios-test-results
-          path: TestResults.xcresult
-          if-no-files-found: warn
-          retention-days: 14
-      - name: Upload iPad XCTest result bundle
-        if: always()
-        uses: actions/upload-artifact@v4
-        with:
-          name: ios-ipad-test-results
-          path: TestResults-iPad.xcresult
+          name: ios-${{ matrix.device }}-test-results
+          path: ${{ matrix.resultBundle }}
           if-no-files-found: warn
           retention-days: 14
       - name: Upload resolved package evidence
         if: always()
         uses: actions/upload-artifact@v4
         with:
-          name: swift-package-resolution
+          name: swift-package-resolution-${{ matrix.device }}
           path: Ekitapligim.xcodeproj/project.xcworkspace/xcshareddata/swiftpm/Package.resolved
           if-no-files-found: error
           retention-days: 14
