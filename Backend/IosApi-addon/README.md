@@ -2,7 +2,7 @@
 
 ## 1.0.35 — backwards-compatible purchase duration repair (2026-10-12)
 
-Also fixes the reported `MeDeviceToken` POST/DELETE TypeError: missing input returns HTTP 400 with the existing error code. Valid device-token registration and user-scoped deletion are unchanged; an empty request cannot remove all tokens.
+Also fixes the reported `MeDeviceToken` POST/DELETE TypeError: missing input returns HTTP 400 with the existing error code. DELETE accepts shipped clients' form bodies with charset parameters that some XenForo versions leave unparsed. Fallback is bounded and accepts only form MIME and string tokens. Valid registration and user-scoped deletion are unchanged; an empty request cannot remove all tokens.
 
 Fixed three/six/twelve-month App Store purchases now retain unused time across distinct purchases. Delivery is derived from verified signed transactions under both original-transaction and per-account locks, so replays/restores never accumulate time twice. Out-of-order events and signed refunds/reversals rebuild only their account's fixed-term delivery. Production and Sandbox schedules are separate. Existing Apple subscription periods retain Apple expiry; overlapping fixed-term time is carried forward. Opaque pre-ledger grants are preserved, not guessed or migrated.
 

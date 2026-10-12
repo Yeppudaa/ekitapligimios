@@ -34,6 +34,24 @@ class MeDeviceToken extends \Ekitapligim\MobileApi\Api\Controller\AbstractMobile
 		$visitor = $this->assertRegisteredApiUser();
 
 		$token = trim((string) $this->filter('device_token', 'str'));
+		if ($token === '')
+		{
+			// Shipped clients use a charset parameter. Some XenForo versions only
+			// parse DELETE forms when Content-Type exactly matches the bare MIME.
+			$contentType = strtolower(trim(explode(';', (string) $this->request->getServer('CONTENT_TYPE', ''))[0]));
+			if ($contentType === 'application/x-www-form-urlencoded')
+			{
+				$body = (string) $this->request->getInputRaw();
+				if (strlen($body) <= 8192)
+				{
+					parse_str($body, $form);
+					if (isset($form['device_token']) && is_string($form['device_token']))
+					{
+						$token = trim($form['device_token']);
+					}
+				}
+			}
+		}
 
 		if ($token === '')
 		{

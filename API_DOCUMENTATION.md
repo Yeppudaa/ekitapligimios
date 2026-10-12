@@ -6,7 +6,7 @@ Fixed App Store terms are derived from verified purchase history in purchase-dat
 
 Preparation retains `success` and `app_account_token`, adding optional `has_lifetime`, `has_active_subscription`, and `has_fixed_term` booleans. Existing clients may ignore these; tokenless legacy paid transactions remain supported. New clients use the advice before opening Apple payment, never to reject already-paid verification. Deploy this server before distributing the client that describes carryover. No product IDs, prices, permissions or authentication routes change.
 
-Missing `device_token` in POST/DELETE now returns HTTP 400 `missing_device_token` instead of a PHP TypeError. Valid registration/deletion and user-scoped ownership checks are unchanged. Empty requests never delete all device tokens. This fixes error handling; the submitted log alone does not establish why the token was absent.
+Missing `device_token` in POST/DELETE now returns HTTP 400 `missing_device_token` instead of a PHP TypeError. DELETE also accepts the shipped clients' `application/x-www-form-urlencoded; charset=utf-8` body when XenForo's exact MIME comparison leaves it unparsed. Fallback is restricted to form MIME, at most 8192 bytes, and a string token. Valid registration/deletion and user-scoped ownership checks are unchanged. Empty requests never delete all device tokens. The submitted log does not expose the raw request body.
 
 ## APNs token lifecycle — IosApi 1.0.34 (2026-10-12)
 

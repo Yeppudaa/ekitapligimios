@@ -1,12 +1,12 @@
 # Satın alma ve cihaz anahtarı düzeltmeleri — 12 Ekim 2026
 
-Sunucu paketi: IosApi 1.0.35. Üretime kurulmadı. Native uygulama henüz gönderilmedi.
+Sunucu paketi: IosApi 1.0.35 (`artifacts/purchase-fix-20261012/server-package/Ekitapligim-IosApi.zip`). Üretime kurulmadı. Native uygulama henüz gönderilmedi.
 
 ## Düzeltilen davranışlar
 
 - Üç/altı/on iki aylık doğrulanmış App Store paketlerinde kalan süre korunur. Tekrar gönderilen aynı işlem süreyi ikinci kez eklemez. İade, geri yükleme, sıra dışı bildirim sırası, ayrı hesaplar ve Sandbox/Production ayrımı test edilir. Apple aboneliklerinin kendi bitiş tarihleri değişmez.
 - Yeni native istemci ödeme açılmadan önce mevcut yenilenen abonelik için açıklama gösterir; ömür boyu üyelik etkinse gereksiz ek ödemeyi engeller. Ömür boyu hak süreli bir bitiş tarihiyle gösterilmez. Ürün kimlikleri, fiyatlar, imza doğrulaması ve sahiplik denetimi korunur.
-- `MeDeviceToken` POST/DELETE, boş anahtarda XenForo `apiError` üçüncü parametresine tamsayı veriyordu. İki çağrı da `null, 400` olarak düzeltildi. Boş istek artık HTTP 400 üretir; geçerli kayıt/silme ve kullanıcı sınırı korunur. Bu hata satın alma hatası değildir. Logdaki boş `_POST`, DELETE gövdesinin bulunmadığını tek başına kanıtlamaz; XenForo DELETE form gövdesini ayrıca ayrıştırır.
+- `MeDeviceToken` POST/DELETE, boş anahtarda XenForo `apiError` üçüncü parametresine tamsayı veriyordu. İki çağrı da `null, 400` olarak düzeltildi. Ek neden: eski uygulama `application/x-www-form-urlencoded; charset=utf-8` gönderirken yerel XenForo `Request.php:1039` yalnız tam MIME eşleşmesinde DELETE gövdesini ayrıştırıyor. Controller artık yalnız form MIME türünde, en fazla 8192 baytlık gövdeden metin anahtarı okuyabiliyor. Boş/dizi/uygunsuz MIME istekleri HTTP 400 üretir; geçerli kayıt/silme ve kullanıcı sınırı korunur. Bu hata satın alma hatası değildir. Canlı hata logunda ham gövde bulunmadığından o tek isteğin içeriği kesinleştirilemez.
 
 ## Geriye uyumluluk
 
@@ -21,11 +21,14 @@ Süre düzeltmesi bir işlem doğrulaması/bildirimi sırasında aynı hesabın 
 - MySQL: gerçek üye tablolarına yazmadan, yalnız bağlantıya özel TEMPORARY tablolarla süre devri ve eski satın alma controller sözleşmeleri geçti (`mysql-terms.log`, `mysql-legacy.log`). SQLite kontrolleri de geçti.
 - Cihaz anahtarı testi: boş/boşluk POST ve DELETE, geçerli kayıt, kullanıcıya sınırlı silme ve yetkisiz istek geçti (`Tests/Backend/MeDeviceTokenTest.php`).
 - Çalışma alanı doğrulaması, statik erişilebilirlik ve sır taraması geçti (`workspace-validation.log`).
-- Eski istemci testleri gerçek Git kaynaklarından derlenir; yeni controller tarafından üretilmiş süreli/ömür boyu satın alma yanıtlarını ve ek alanları okur. `client-*.log` dosyalarının son satırı ilgili sürüm sonucudur. Bu, telefonda kurulu eski binary testi değildir.
+- Değişen 26 native Swift dosyası sözdizimi ayrıştırmasından geçti (`native-syntax.log`); bu typecheck, build veya StoreKitTest değildir. İlk sandbox denemesi derleyici çalıştırma hatası verdi; izinli tekrar geçti.
+- 1.0.4, 1.0.5, 1.0.6, 1.0.7 ve 1.0.8 eski istemci kaynaklarının her birinde altı uyumluluk testi geçti. Testler gerçek Git kaynaklarından derlenir; yeni controller tarafından üretilmiş süreli/ömür boyu satın alma yanıtlarını ve ek alanları okur. `client-*.log` dosyalarının son satırı ilgili sürüm sonucudur. Bu, telefonda kurulu eski binary testi değildir.
 
 ## Yayın için kalan doğrulama
 
 Native StoreKitTest testleri eklendi; Windows üzerinde Xcode çalıştırılamaz. iPhone/iPad temiz/Production derleme, unit/UI testleri ve HTTPS staging/Sandbox üzerinde eski kurulu uygulamayla satın alma/geri yükleme yapılmadan tüm satın alma akışları için sorunsuzluk garantisi verilemez.
+
+`codex/purchase-device-safety-20261012` yerel doğrulama dalı oluşturuldu. GitHub'a push, otomatik onay denetimince özel kaynak kodunun hedef depoya aktarım izni eksik olduğu gerekçesiyle reddedildi. Kullanıcıdan açık gönderim onayı istendi. Uzak CI başlatılmış değildir. Bu dal Codemagic'in App Store/TestFlight yükleme dalı eşlemesine dahil değildir.
 
 Canlı App Store Connect'te aylık v2 seviye 2, eski yıllık v2 seviye 3 olarak gözlendi. Aynı haklara rağmen seviye farklılığı sürüyor. Bu oturumda fiyat veya canlı ürün ayarı kaydedilmedi. Bu yapılandırma ve gerçek plan geçişi ayrıca doğrulanmalıdır. Apple bildirim geçmişinden otomatik toparlama eksikliği önceki incelemedeki sınır olarak devam eder; bu değişiklikte genişletilmedi.
 
