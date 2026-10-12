@@ -112,7 +112,10 @@ jobs:
           -resultBundlePath TestResults.xcresult
           -clonedSourcePackagesDirPath .build/xcode-packages
           -disableAutomaticPackageResolution
-          CODE_SIGNING_ALLOWED=NO
+          CODE_SIGNING_ALLOWED=YES
+          CODE_SIGN_IDENTITY=-
+          CODE_SIGN_STYLE=Manual
+          CODE_SIGN_ENTITLEMENTS=Scripts/ci-simulator.entitlements
       - name: iPad simulator unit and UI tests
         run: >-
           xcodebuild test
@@ -123,7 +126,10 @@ jobs:
           -resultBundlePath TestResults-iPad.xcresult
           -clonedSourcePackagesDirPath .build/xcode-packages
           -disableAutomaticPackageResolution
-          CODE_SIGNING_ALLOWED=NO
+          CODE_SIGNING_ALLOWED=YES
+          CODE_SIGN_IDENTITY=-
+          CODE_SIGN_STYLE=Manual
+          CODE_SIGN_ENTITLEMENTS=Scripts/ci-simulator.entitlements
       - name: Production unsigned build
         run: >-
           xcodebuild clean build
