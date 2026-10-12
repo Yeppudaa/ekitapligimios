@@ -1,6 +1,6 @@
 # Satın alma ve cihaz anahtarı düzeltmeleri — 12 Ekim 2026
 
-Sunucu paketi: IosApi 1.0.35 (`artifacts/purchase-fix-20261012/server-package/Ekitapligim-IosApi.zip`). Üretime kurulmadı. Native uygulama henüz gönderilmedi.
+Sunucu paketi: IosApi 1.0.35 (`artifacts/purchase-fix-20261012/server-package/Ekitapligim-IosApi.zip`). 12 Ekim'de canlı XenForo kurulum-tamamlandı sayfası (batch 539) başarılı 1.0.35 kurulumunu gösterdi; kullanıcı da kurulumu doğruladı. Native 1.0.9/build 42 Codemagic 53 ile TestFlight'a yüklendi; mevcut test grubuna bağlı, Waiting for Review. Kullanıcının son talebiyle önce TestFlight testi yapılacak; public App Store incelemesine gönderilmedi. CI #167 exact release source `3ebafec` için tamamen başarılı. Fiziksel eski uygulama/Sandbox satın alma matrisi hâlâ ayrıca yapılmalıdır.
 
 ## Düzeltilen davranışlar
 

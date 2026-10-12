@@ -1,6 +1,8 @@
 # App Store Metadata Draft
 
-## Version 1.0.9 release preparation (2026-10-12; not submitted)
+## Version 1.0.9 TestFlight upload (2026-10-12; App Store submission pending)
+
+At the user's request, TestFlight takes priority over public App Store submission. Codemagic build 53 (`3ebafec`) uploaded version 1.0.9/build 42 after 114 native unit and 26 UI tests passed with zero failures, signed Production archive creation, and production APNs entitlement verification. App Store Connect TestFlight shows build 42 as **Waiting for Review**, assigned to the existing Ekitapligim Internal Testers group (2 testers). GitHub CI #167 also completed successfully for the exact release source: https://github.com/Yeppudaa/ekitapligimios/actions/runs/38290344490 . Public App Store version 1.0.9 remains **Prepare for Submission**; it was not submitted for public release. TestFlight test notes request install-over-existing-build, session/reader/chat/cover, Sandbox purchase/restore, remaining-time and second-device/account-change checks. These device/transaction checks remain unexecuted by the agent.
 
 Proposed Turkish What's New after native validation: “Oturumun korunması ve kitap okuma bağlantılarında iyileştirmeler yapıldı. Canlı sohbette Premium üye adları ve profil bağlantıları güncellendi. Kapağı olmayan kitaplar için yeni kitap kapağı görünümü eklendi.”
 
