@@ -115,7 +115,7 @@ jobs:
           CODE_SIGNING_ALLOWED=YES
           CODE_SIGN_IDENTITY=-
           CODE_SIGN_STYLE=Manual
-          CODE_SIGN_ENTITLEMENTS=Scripts/ci-simulator.entitlements
+          CODE_SIGN_ENTITLEMENTS="$GITHUB_WORKSPACE/Scripts/ci-simulator.entitlements"
       - name: iPad simulator unit and UI tests
         run: >-
           xcodebuild test
@@ -129,7 +129,7 @@ jobs:
           CODE_SIGNING_ALLOWED=YES
           CODE_SIGN_IDENTITY=-
           CODE_SIGN_STYLE=Manual
-          CODE_SIGN_ENTITLEMENTS=Scripts/ci-simulator.entitlements
+          CODE_SIGN_ENTITLEMENTS="$GITHUB_WORKSPACE/Scripts/ci-simulator.entitlements"
       - name: Production unsigned build
         run: >-
           xcodebuild clean build
