@@ -3,9 +3,10 @@
 ## Purchase/device-token correction — 2026-10-12
 
 - [ ] IosApi 1.0.35 on HTTPS staging: old installed app purchase/restore and missing-token HTTP 400 verified.
-- [ ] Native clean/Production builds and iPhone/iPad unit/UI tests for purchase warnings and lifetime guard pass.
+- [x] Native clean/Production builds and iPhone/iPad unit/UI tests for purchase warnings and lifetime guard pass (CI #166, cfbcc62).
 - [ ] Sandbox: repeat fixed purchases, restore, refund, notification retry and account change verified end to end.
-- [ ] Live subscription level discrepancy resolved and crossgrade timing checked before release.
+- [x] Live monthly/yearly v2 subscription level discrepancy resolved: both level 1 / Approved, matching local StoreKit configuration (2026-10-12).
+- [ ] Sandbox crossgrade timing checked before release.
 
 Offline source/contract tests do not substitute for these release gates. See `PURCHASE_FIX_VALIDATION.md`.
 
@@ -18,11 +19,11 @@ This server update needs no new native app build and changes no billing/session 
 
 ## Current change gates (2026-10-12)
 
-- [ ] Native clean/Production builds and iPhone/iPad unit/UI tests for the session, chat and cover update executed on macOS.
+- [x] Native clean/Production builds and iPhone/iPad unit/UI tests for the session, chat and cover update executed on macOS (CI #166).
 - [ ] Signed install-over-existing-build preserves the Keychain login; first-unlock, foreground, expired-token and interrupted-refresh recovery verified on device.
 - [ ] IosApi 1.0.33 staged; premium chat appearance/profile targets and concurrent reader/API refresh validated against public HTTPS staging.
 - [ ] Premium sender/announcement and missing-cover visuals inspected on iPhone/iPad with Dynamic Type and VoiceOver.
-- [ ] Existing purchase/restore and membership access pass native regression checks including the purchase follow-up.
+- [x] Existing purchase/restore and membership access pass native regression checks including the purchase follow-up (20 purchase tests per device, CI #166; live Sandbox remains above).
 
 Windows evidence and package details: [SESSION_CHAT_COVER_VALIDATION.md](SESSION_CHAT_COVER_VALIDATION.md). Historical gates below are retained and do not imply completion of this update.
 

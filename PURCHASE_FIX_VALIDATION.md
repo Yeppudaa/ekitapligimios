@@ -26,7 +26,7 @@ Süre düzeltmesi bir işlem doğrulaması/bildirimi sırasında aynı hesabın 
 
 ## Yayın için kalan doğrulama
 
-Native StoreKitTest testleri eklendi; Windows üzerinde Xcode çalıştırılamaz. iPhone/iPad temiz/Production derleme, unit/UI testleri ve HTTPS staging/Sandbox üzerinde eski kurulu uygulamayla satın alma/geri yükleme yapılmadan tüm satın alma akışları için sorunsuzluk garantisi verilemez.
+Native StoreKitTest testleri CI üzerinde çalıştırıldı. CI #166'da iPhone ve iPad'in her birinde 114 native unit testi (20 satın alma testi ve gerçek Keychain testi dahil), 26 UI testi ve 353 Core testi geçti. Temiz Production derleme ve Google Sign-In plist kontrolü de geçti. HTTPS staging/Sandbox üzerinde eski kurulu uygulamayla satın alma/geri yükleme ve gerçek plan geçişi henüz yapılmadığından tüm canlı akışlar için sorunsuzluk garantisi verilemez.
 
 `codex/purchase-device-safety-20261012` doğrulama dalı oluşturuldu. İlk aktarım denetimi sonrasında kullanıcı açıkça aynı GitHub deposu/dalına gönderimi onayladı; push tamamlandı. Bu dal Codemagic'in App Store/TestFlight yükleme dalı eşlemesine dahil değildir.
 
@@ -38,6 +38,8 @@ CI #164'te göreli entitlement yolu paket hedeflerinin klasörüne göre çözü
 
 Son doğrulamada iPhone ve iPad aynı tam test kapsamını ayrı CI işleriyle çalıştırır; biri başarısız olursa diğeri iptal edilmez. Production temiz derleme iPhone işinde bir kez çalışır. Bu, iki platformun seri test süresinin 45 dakikalık iş sınırını tüketmesini önler; test sayısı/kapsamı azaltılmaz. Artefaktlar cihaz adıyla ayrı kaydedilir.
 
-Canlı App Store Connect'te aylık v2 seviye 2, eski yıllık v2 seviye 3 olarak gözlendi. Aynı haklara rağmen seviye farklılığı sürüyor. Bu oturumda fiyat veya canlı ürün ayarı kaydedilmedi. Bu yapılandırma ve gerçek plan geçişi ayrıca doğrulanmalıdır. Apple bildirim geçmişinden otomatik toparlama eksikliği önceki incelemedeki sınır olarak devam eder; bu değişiklikte genişletilmedi.
+CI #166 tamamı başarılı: https://github.com/Yeppudaa/ekitapligimios/actions/runs/38286777279 . Test edilen native kaynak commit'i `cfbcc62`; sonuç ve loglar `artifacts/purchase-fix-20261012/ci-166-*` dosyalarında. Ekran yakalama işi başarılı olsa da geliştirme ortamındaki boş/hata ekranları App Store görselleri olarak yayımlanmadı.
+
+12 Ekim 2026'da kullanıcı Apple girişini tamamladıktan sonra canlı App Store Connect abonelik grubu 22334120'de aylık v2 (6805877014) seviye 2'den ve yıllık v2 (6805880467) seviye 3'ten aynı seviye 1'e alındı. Kaydedilmiş tabloda ikisi de seviye 1 / Approved olarak doğrulandı; eski Developer Rejected ürünler seviye 1'de kaldı. Bu, yerel StoreKit dosyasındaki aynı Premium haklarıyla uyumludur. Fiyat, ürün kimliği, satış durumu ve mevcut kullanıcı üyelikleri düzenlenmedi. Kanıt: `artifacts/purchase-fix-20261012/apple-subscription-levels.jpg`. Gerçek Sandbox plan geçişi ayrıca doğrulanmalıdır. Apple bildirim geçmişinden otomatik toparlama eksikliği önceki incelemedeki sınır olarak devam eder; bu değişiklikte genişletilmedi.
 
 Kurulum: mevcut dosya/veritabanı yedeği alındıktan sonra XenForo eklenti yükseltmesiyle aynı ZIP HTTPS staging'e kurulmalı; kontroller geçince aynı paket üretime alınmalıdır. Daha eski pakete düşürmek yeni devredilmiş süre hesabını geri alabilir; sorun halinde dosyaları rastgele düşürmek yerine bu sürümün kayıtlarıyla incelenmelidir.
