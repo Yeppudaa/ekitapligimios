@@ -1,10 +1,14 @@
 # App Store Metadata Draft
 
-## Next-update draft (2026-10-12; not submitted)
+## Version 1.0.9 release preparation (2026-10-12; not submitted)
 
 Proposed Turkish What's New after native validation: “Oturumun korunması ve kitap okuma bağlantılarında iyileştirmeler yapıldı. Canlı sohbette Premium üye adları ve profil bağlantıları güncellendi. Kapağı olmayan kitaplar için yeni kitap kapağı görünümü eklendi.”
 
-The purchase follow-up adds warnings before moving between renewable and fixed/lifetime products, prevents unnecessary new payment when lifetime is already active, and corrects lifetime expiration display. IosApi 1.0.35 carries unused fixed App Store time forward. Products, prices, signature/ownership checks and privacy categories are unchanged. Deploy 1.0.35 before the matching native update. The iOS version/build remains 1.0.8/41 until an upload is prepared. Earlier evidence does not validate this update; complete `PURCHASE_FIX_VALIDATION.md` and `SESSION_CHAT_COVER_VALIDATION.md` gates first.
+The purchase follow-up adds warnings before moving between renewable and fixed/lifetime products, prevents unnecessary new payment when lifetime is already active, and corrects lifetime expiration display. IosApi 1.0.35 carries unused fixed App Store time forward. Products, prices, signature/ownership checks and privacy categories are unchanged. The live XenForo installation-complete page confirms IosApi 1.0.35 installed successfully on 2026-10-12. Native version is now 1.0.9; local build baseline is 42 and Codemagic assigns the next available App Store build number. CI #166 passed the native code on iPhone/iPad and a clean Production build. Signed publication and physical/Sandbox follow-up are separate from that result; see `PURCHASE_FIX_VALIDATION.md`.
+
+Turkish What's New: “Oturumun korunması ve kitap okuma bağlantıları iyileştirildi. Canlı sohbette Premium üye görünümü ve profil bağlantıları güncellendi. Kapağı olmayan kitapların görünümü yenilendi. Premium satın alma öncesindeki açıklamalar ve ömür boyu üyelik gösterimi iyileştirildi.”
+
+Review notes draft: “Version 1.0.9 updates native SwiftUI session recovery, book-reader connection recovery, Premium chat/profile links and missing-cover presentation. StoreKit 2 warns before moving between renewable and fixed-term/lifetime products and prevents redundant new payment when lifetime is already active; existing purchase and restore verification remains in place. Use the existing reviewer account. Inspect chat member/profile links, read a permitted PDF/EPUB, and inspect Premium purchase/restore. Public HTTPS API: https://ekitapligim.com/ios-api/v1/ . IosApi 1.0.35 is installed. GitHub CI #166 passed 114 native unit tests (including 20 purchase tests) and 26 UI tests on each of iPhone/iPad, plus 353 Core tests and clean Production compilation. Physical-device and live Sandbox transactions were not executed in that CI run.”
 
 ## Version 1.0.8 App Store submission (2026-10-04)
 
