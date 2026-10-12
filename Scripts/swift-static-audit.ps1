@@ -53,7 +53,7 @@ $project = Get-Content -Raw -LiteralPath "project.yml"
 }
 foreach ($requiredReadiumReference in @(
     "https://github.com/readium/swift-toolkit.git",
-    "exactVersion: 3.9.0",
+    "revision: de07026e9f825a5791f27a7ac4cd6bb1a784ab8d",
     "product: ReadiumShared",
     "product: ReadiumStreamer",
     "product: ReadiumNavigator"

@@ -97,8 +97,8 @@ jobs:
           readium = next((pin for pin in pins if pin.get("identity") == "swift-toolkit" or pin.get("package") == "swift-toolkit"), None)
           assert readium is not None, "Readium pin missing"
           state = readium.get("state", readium.get("repositoryURL", {}))
-          assert state.get("version") == "3.9.0", f"Unexpected Readium version: {state}"
-          print("Readium 3.9.0 resolved from Package.resolved")
+          assert state.get("revision") == "de07026e9f825a5791f27a7ac4cd6bb1a784ab8d", f"Unexpected Readium revision: {state}"
+          print("Readium 3.9.0 resolved at its immutable release commit from Package.resolved")
           PY
       - name: Swift package tests
         run: swift test

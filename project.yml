@@ -14,7 +14,8 @@ packages:
     path: .
   Readium:
     url: https://github.com/readium/swift-toolkit.git
-    exactVersion: 3.9.0
+    # Readium 3.9.0 release commit; its upstream tag is currently unavailable.
+    revision: de07026e9f825a5791f27a7ac4cd6bb1a784ab8d
   GoogleSignIn:
     url: https://github.com/google/GoogleSignIn-iOS.git
     exactVersion: 9.2.0

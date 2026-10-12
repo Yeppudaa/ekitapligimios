@@ -28,7 +28,9 @@ Süre düzeltmesi bir işlem doğrulaması/bildirimi sırasında aynı hesabın 
 
 Native StoreKitTest testleri eklendi; Windows üzerinde Xcode çalıştırılamaz. iPhone/iPad temiz/Production derleme, unit/UI testleri ve HTTPS staging/Sandbox üzerinde eski kurulu uygulamayla satın alma/geri yükleme yapılmadan tüm satın alma akışları için sorunsuzluk garantisi verilemez.
 
-`codex/purchase-device-safety-20261012` yerel doğrulama dalı oluşturuldu. GitHub'a push, otomatik onay denetimince özel kaynak kodunun hedef depoya aktarım izni eksik olduğu gerekçesiyle reddedildi. Kullanıcıdan açık gönderim onayı istendi. Uzak CI başlatılmış değildir. Bu dal Codemagic'in App Store/TestFlight yükleme dalı eşlemesine dahil değildir.
+`codex/purchase-device-safety-20261012` doğrulama dalı oluşturuldu. İlk aktarım denetimi sonrasında kullanıcı açıkça aynı GitHub deposu/dalına gönderimi onayladı; push tamamlandı. Bu dal Codemagic'in App Store/TestFlight yükleme dalı eşlemesine dahil değildir.
+
+CI #162: kaynak denetimi ve backend/reader sözleşmeleri geçti; native işler Readium 3.9.0 etiketi uzak Git deposunda bulunamadığından testlere ulaşmadan durdu. Resmî 3.9.0 sürüm sayfasındaki imzalı `de07026e9f825a5791f27a7ac4cd6bb1a784ab8d` commit'i GitHub API ile doğrulandı (`3.9.0 (#795)`, 12 Mayıs 2026). `project.yml` aynı sürümün bu değişmez commit'ine sabitlendi, CI çözümleme kontrolü tam SHA'yı doğrular. Kitap okuyucu farklı sürüme yükseltilmedi. Kaynak: https://github.com/readium/swift-toolkit/releases/tag/3.9.0 .
 
 Canlı App Store Connect'te aylık v2 seviye 2, eski yıllık v2 seviye 3 olarak gözlendi. Aynı haklara rağmen seviye farklılığı sürüyor. Bu oturumda fiyat veya canlı ürün ayarı kaydedilmedi. Bu yapılandırma ve gerçek plan geçişi ayrıca doğrulanmalıdır. Apple bildirim geçmişinden otomatik toparlama eksikliği önceki incelemedeki sınır olarak devam eder; bu değişiklikte genişletilmedi.
 
