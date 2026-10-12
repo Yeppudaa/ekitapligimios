@@ -1,5 +1,9 @@
 # App Store Metadata Draft
 
+## Version 1.0.9 App Store submission (2026-10-12)
+
+After TestFlight delivery, the user explicitly requested public release. Version 1.0.9/build 42 was selected and submitted to App Review. App Store Connect confirms **Waiting for Review**, submission `9b547783-41e9-451c-8e3a-e058cdf3a1ac`, submitted on 12 October 2026 at 21:53 Europe/Istanbul. **Automatically release this version** remains selected, with immediate availability after Apple approval. This confirms submission, not approval or public availability. Review notes were updated to identify build 42, successful CI #167 and Codemagic build 53, and the unexecuted physical-device/live Sandbox transaction checks. Existing reviewer credentials, screenshots, pricing and purchase products were preserved. Evidence: `artifacts/release-20261012/appstore-1.0.9-waiting-review.jpg`.
+
 ## Version 1.0.9 TestFlight upload (2026-10-12; App Store submission pending)
 
 At the user's request, TestFlight takes priority over public App Store submission. Codemagic build 53 (`3ebafec`) uploaded version 1.0.9/build 42 after 114 native unit and 26 UI tests passed with zero failures, signed Production archive creation, and production APNs entitlement verification. App Store Connect TestFlight shows build 42 as **Waiting for Review**, assigned to the existing Ekitapligim Internal Testers group (2 testers). GitHub CI #167 also completed successfully for the exact release source: https://github.com/Yeppudaa/ekitapligimios/actions/runs/38290344490 . Public App Store version 1.0.9 remains **Prepare for Submission**; it was not submitted for public release. TestFlight test notes request install-over-existing-build, session/reader/chat/cover, Sandbox purchase/restore, remaining-time and second-device/account-change checks. These device/transaction checks remain unexecuted by the agent.
