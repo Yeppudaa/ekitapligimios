@@ -238,6 +238,9 @@ final class PremiumPurchaseTests: XCTestCase {
             purchaseRepository: SuccessfulPurchaseVerifier(), accountName: "tester",
             appStoreSynchronizer: {
                 _ = try await testSession.buyProduct(identifier: PremiumProductCatalog.lifetimeID)
+                // SKTestSession's out-of-app purchase is not necessarily in
+                // Transaction.currentEntitlements until StoreKit syncs it.
+                try await AppStore.sync()
             }
         )
         await service.purchase(productID: "com.ekitapligim.app.premium.monthly")
