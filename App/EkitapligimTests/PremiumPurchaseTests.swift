@@ -318,6 +318,7 @@ final class PremiumPurchaseTests: XCTestCase {
         let verifier = SuspendedPurchaseVerifier()
         let service = StoreKitPurchaseService(purchaseRepository: verifier, accountName: "tester")
         await service.loadProducts()
+        await waitForStoreKitToClearEntitlements()
         let purchase = Task { await service.purchase(productID: "com.ekitapligim.app.premium.monthly") }
         await verifier.waitUntilRequested()
         service.activateAccount(nil)
