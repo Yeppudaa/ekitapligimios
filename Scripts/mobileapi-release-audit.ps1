@@ -28,8 +28,8 @@ try {
     $prefix = "upload/src/addons/Ekitapligim/IosApi/"
     $addon = Get-EntryText ($prefix + "addon.json") | ConvertFrom-Json
     if ($addon.title -ne "Ekitapligim iOS API") { throw "Unexpected add-on title: $($addon.title)" }
-    if ([int]$addon.version_id -ne 1000035 -or $addon.version_string -ne "1.0.35") {
-        throw "IosApi must be exactly 1.0.35 / 1000035; found $($addon.version_string) / $($addon.version_id)."
+    if ([int]$addon.version_id -ne 1000036 -or $addon.version_string -ne "1.0.36") {
+        throw "IosApi must be exactly 1.0.36 / 1000036; found $($addon.version_string) / $($addon.version_id)."
     }
     if ([int]$addon.require.'Ekitapligim/MobileApi'[0] -ne 1000145) {
         throw "IosApi must retain the 1.0.27 server baseline dependency: MobileApi 1.0.145+."

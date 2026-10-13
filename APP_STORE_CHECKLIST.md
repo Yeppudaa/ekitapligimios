@@ -1,5 +1,15 @@
 # App Store Checklist
 
+## 2026-10-13 renewable catalog — release blockers
+
+- [ ] Deploy IosApi 1.0.36 and confirm authenticated preparation advertises quarterly/semiannual support.
+- [ ] Create and approve `com.ekitapligim.app.premium.quarterly` (3 months) and `.semiannual` (6 months); verify monthly/yearly and both new plans share one subscription group and service level 1. Target Türkiye prices and descriptions are in APP_STORE_METADATA.md.
+- [ ] Execute new StoreKitTest tests plus clean iOS build, Production build and UI tests on this exact source. Windows core tests do not replace them.
+- [ ] Verify real Sandbox/TestFlight purchase, automatic renewal, restoration, account binding, outage recovery, cancellation, expiry, grace and refund for all four intervals; verify lifetime and legacy fixed-term restoration.
+- [ ] Verify Production/Sandbox signed notification delivery while the app is closed. Review new plan copy with VoiceOver and Dynamic Type.
+
+The local catalog preserves old purchases without changing their original billing consent. See [validation and deployment order](SUBSCRIPTION_RENEWAL_VALIDATION.md). Earlier dated store observations below are historical.
+
 ## Purchase/API audit gate (2026-10-01)
 
 - [x] Production AdminCP shows IosApi 1.0.29 and MobileApi 1.0.148; authenticated live purchase preparation returned an account UUID. A permitted reader session and native PDF source returned HTTP 200 and a `%PDF-` header. These checks do not exercise Apple payment or restore.

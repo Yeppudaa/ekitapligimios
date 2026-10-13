@@ -8,11 +8,11 @@ public enum PurchaseOfferDecision: Equatable, Sendable {
 }
 
 public enum PurchaseOfferPolicy {
-    public static let lifetimeID = "com.ekitapligim.app.premium.lifetime"
-    private static let subscriptions: Set<String> = [
-        "com.ekitapligim.app.premium.monthly", "com.ekitapligim.app.premium.yearly",
-        "ekitapligim.premium.monthly", "ekitapligim.premium.yearly"
-    ]
+    public static let lifetimeID = PremiumProductCatalog.lifetimeID
+    private static let subscriptions = Set(
+        (PremiumProductCatalog.productIDs + PremiumProductCatalog.legacyProductIDs)
+            .filter { PremiumProductCatalog.subscriptionMonths(for: $0) != nil }
+    )
 
     public static func decision(productID: String, context: PurchaseAccountDTO,
                                 entitlement: PremiumEntitlement, now: Date = Date()) -> PurchaseOfferDecision {

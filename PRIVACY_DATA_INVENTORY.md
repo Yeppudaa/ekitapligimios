@@ -1,5 +1,7 @@
 # Privacy Data Inventory
 
+2026-10-13 renewal catalog review: quarterly/semiannual use the existing Apple purchase-history, account UUID and entitlement processing. No new data category, tracking, SDK, permission, endpoint or raw payment storage is introduced. The existing purchase-history declaration in `PrivacyInfo.xcprivacy` and app entitlements remain applicable.
+
 ## Purchase safety follow-up (2026-10-12)
 
 IosApi 1.0.35 derives fixed-term delivery from the existing filtered verified transaction ledger. Optional purchase-preparation booleans describe the authenticated account's current plans. No new collected category, third-party disclosure, table, SDK, entitlement or required-reason API is introduced. Existing ownership, deletion and retention controls apply. Raw payment/JWS/token values remain excluded from logs.

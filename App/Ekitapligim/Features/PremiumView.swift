@@ -237,8 +237,8 @@ private struct PremiumContentView: View {
                         PremiumPlanCard(
                             name: product.displayName,
                             price: product.displayPrice,
-                            period: period(for: product.id),
-                            tagline: product.id.hasSuffix("monthly") ? L10n.premiumMonthlyTagline : nil
+                            period: PremiumProductCatalog.period(for: product.id),
+                            tagline: PremiumProductCatalog.tagline(for: product.id)
                         )
                     }
                     .buttonStyle(PremiumPressStyle())
@@ -253,20 +253,7 @@ private struct PremiumContentView: View {
                     tone: PremiumStyle.muted
                 )
             }
-            Text(L10n.premiumFixedTermCarryover)
-                .font(.footnote)
-                .foregroundStyle(PremiumStyle.muted)
-                .fixedSize(horizontal: false, vertical: true)
         }
-    }
-
-    private func period(for productID: String) -> String {
-        if productID.hasSuffix("three_months") { return L10n.premiumThreeMonthPeriod }
-        if productID.hasSuffix("six_months") { return L10n.premiumSixMonthPeriod }
-        if productID.hasSuffix("lifetime") { return L10n.premiumLifetimePeriod }
-        if productID.hasSuffix("yearly_once") { return L10n.premiumYearlyOncePeriod }
-        if productID.hasSuffix("yearly") { return L10n.premiumYearlyPeriod }
-        return L10n.premiumMonthlyPeriod
     }
 
     @ViewBuilder

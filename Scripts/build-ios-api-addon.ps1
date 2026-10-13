@@ -122,7 +122,7 @@ if ($phpPath) {
     }
     & $phpPath (Join-Path $repoRoot "Tests\Backend\ReaderProgressControllerTest.php")
     if ($LASTEXITCODE -ne 0) { throw "Reader progress controller tests failed." }
-    foreach ($test in @('AppStoreEntitlementPolicyTest', 'AppStoreTransactionStoreTest', 'AppStoreControllerTest', 'AppStoreSignatureTest', 'AppStoreMembershipTest', 'AppStoreTermScheduleTest', 'AppStoreLegacyContractTest', 'PublicBearerIsolationTest', 'AccountDeletionRequestTest', 'AlertPrivacyTest')) {
+    foreach ($test in @('AppStoreEntitlementPolicyTest', 'AppStoreTransactionStoreTest', 'AppStoreControllerTest', 'AppStoreSignatureTest', 'AppStoreMembershipTest', 'AppStoreTermScheduleTest', 'AppStoreLegacyContractTest', 'AppStoreRenewableCatalogTest', 'PublicBearerIsolationTest', 'AccountDeletionRequestTest', 'AlertPrivacyTest')) {
         & $phpPath (Join-Path $repoRoot "Tests/Backend/$test.php")
         if ($LASTEXITCODE -ne 0) { throw "$test failed." }
     }
@@ -152,8 +152,8 @@ $requiredFiles = @(
 )
 foreach ($relative in $requiredFiles) { Assert-Path (Join-Path $addonRoot $relative) }
 $addonManifest = Get-Content -Raw -LiteralPath (Join-Path $addonRoot "addon.json") | ConvertFrom-Json
-if ([int]$addonManifest.version_id -ne 1000035 -or $addonManifest.version_string -ne "1.0.35") {
-    throw "IosApi package must be exactly 1.0.35 / 1000035 for this release."
+if ([int]$addonManifest.version_id -ne 1000036 -or $addonManifest.version_string -ne "1.0.36") {
+    throw "IosApi package must be exactly 1.0.36 / 1000036 for this release."
 }
 foreach ($relative in @('Api/Controller/ChatReactions.php', 'Pub/Controller/ChatReactions.php',
     'Service/ChatInteraction.php', 'Service/ChatPushProducer.php', 'Service/ChatSerializer.php',

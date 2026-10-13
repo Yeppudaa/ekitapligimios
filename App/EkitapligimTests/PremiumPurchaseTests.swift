@@ -1,4 +1,5 @@
 import XCTest
+import StoreKit
 import StoreKitTest
 import EkitapligimCore
 @testable import Ekitapligim
@@ -60,6 +61,76 @@ final class PremiumPurchaseTests: XCTestCase {
         XCTAssertEqual(verificationCount, 0)
     }
 
+    func testOfferedProductsHaveCorrectStoreKitTypesAndPeriods() async throws {
+        let products = try await Product.products(for: StoreKitPurchaseService.productIDs)
+        XCTAssertEqual(products.count, 5)
+        for product in products {
+            XCTAssertTrue(StoreKitPurchaseService.isPurchasableProduct(product), product.id)
+            if product.id == PremiumProductCatalog.lifetimeID {
+                XCTAssertEqual(product.type, .nonConsumable)
+            } else {
+                XCTAssertEqual(product.type, .autoRenewable)
+            }
+        }
+        let legacyTerms = StoreKitPurchaseService.legacyProductIDs.filter { $0.hasPrefix("com.") }
+        for product in try await Product.products(for: legacyTerms) {
+            XCTAssertFalse(StoreKitPurchaseService.isPurchasableProduct(product))
+        }
+    }
+
+    func testMonthlyRenewalAndRestore() async throws { try await assertRenewalAndRestore("monthly") }
+    func testQuarterlyRenewalAndRestore() async throws { try await assertRenewalAndRestore("quarterly") }
+    func testSemiannualRenewalAndRestore() async throws { try await assertRenewalAndRestore("semiannual") }
+    func testYearlyRenewalAndRestore() async throws { try await assertRenewalAndRestore("yearly") }
+
+    private func assertRenewalAndRestore(_ suffix: String) async throws {
+        let productID = "com.ekitapligim.app.premium." + suffix
+        let verifier = SuccessfulPurchaseVerifier()
+        let service = StoreKitPurchaseService(purchaseRepository: verifier, accountName: "tester")
+        defer { service.stopObservingTransactions() }
+        await service.purchase(productID: productID)
+        XCTAssertTrue(service.entitlement.isActive)
+        XCTAssertTrue(service.entitlement.willAutoRenew)
+        let original = try XCTUnwrap(session.allTransactions().last)
+
+        service.startObservingTransactions()
+        try session.forceRenewalOfSubscription(productIdentifier: productID)
+        let deadline = ContinuousClock.now.advanced(by: .seconds(15))
+        var didVerifyRenewal = false
+        repeat {
+            didVerifyRenewal = await verifier.hasVerifiedRenewal
+            if didVerifyRenewal { break }
+            try await Task.sleep(for: .milliseconds(100))
+        } while ContinuousClock.now < deadline
+        XCTAssertTrue(didVerifyRenewal, "Renewal must reach server verification through Transaction.updates")
+        XCTAssertTrue(session.allTransactions().contains { $0.identifier != original.identifier })
+        service.stopObservingTransactions()
+
+        let restored = StoreKitPurchaseService(purchaseRepository: verifier, accountName: "tester")
+        defer { restored.stopObservingTransactions() }
+        await restored.restore()
+        XCTAssertEqual(restored.state, .restored)
+        XCTAssertEqual(restored.entitlement.productID, productID)
+        XCTAssertTrue(restored.entitlement.willAutoRenew)
+        let renewed = try XCTUnwrap(session.allTransactions().last)
+        try session.disableAutoRenewForTransaction(identifier: renewed.identifier)
+        await waitForEntitlement(restored) { $0.renewalState == .cancelled && !$0.willAutoRenew }
+        XCTAssertEqual(restored.entitlement.renewalState, .cancelled)
+        XCTAssertTrue(restored.entitlement.isActive)
+        try session.expireSubscription(productIdentifier: productID)
+        await waitForEntitlement(restored) { $0 == .none }
+        XCTAssertEqual(restored.entitlement, .none)
+    }
+
+    func testNewSubscriptionNeverStartsPaymentAgainstOlderBackend() async {
+        let service = StoreKitPurchaseService(purchaseRepository: ExpiredPurchaseVerifier(), accountName: "tester")
+        for suffix in ["quarterly", "semiannual"] {
+            await service.purchase(productID: "com.ekitapligim.app.premium." + suffix)
+            XCTAssertEqual(service.state, .failed(message: L10n.premiumPlanUnavailable))
+            XCTAssertTrue(session.allTransactions().isEmpty)
+        }
+    }
+
     func testDisabledAutoRenewRemainsActiveUntilPeriodEnd() async throws {
         let verifier = SuccessfulPurchaseVerifier()
         let service = StoreKitPurchaseService(purchaseRepository: verifier, accountName: "tester")
@@ -117,7 +188,7 @@ final class PremiumPurchaseTests: XCTestCase {
         XCTAssertEqual(message, L10n.premiumNothingToRestore)
     }
 
-    func testRestoreUsesCurrentVerifiedEntitlementBeforeAppStoreSync() async throws {
+    func testRestoreStillVerifiesCachedEntitlementWhenAppStoreSyncFails() async throws {
         let syncRecorder = AppStoreSyncRecorder()
         let service = StoreKitPurchaseService(
             purchaseRepository: SuccessfulPurchaseVerifier(),
@@ -135,7 +206,7 @@ final class PremiumPurchaseTests: XCTestCase {
         XCTAssertEqual(service.state, .restored)
         XCTAssertTrue(service.entitlement.isActive)
         let syncCallCount = await syncRecorder.callCount
-        XCTAssertEqual(syncCallCount, 0)
+        XCTAssertEqual(syncCallCount, 1)
     }
 
     func testRestoreRechecksEntitlementsWhenAppStoreSyncFails() async throws {
@@ -159,6 +230,50 @@ final class PremiumPurchaseTests: XCTestCase {
         XCTAssertEqual(message, L10n.premiumRestoreFailed)
         let syncCallCount = await syncRecorder.callCount
         XCTAssertEqual(syncCallCount, 1)
+    }
+
+    func testRestoreDiscoversLifetimeFromSyncEvenWithCachedMonthly() async throws {
+        let testSession = try XCTUnwrap(session)
+        let service = StoreKitPurchaseService(
+            purchaseRepository: SuccessfulPurchaseVerifier(), accountName: "tester",
+            appStoreSynchronizer: {
+                _ = try await testSession.buyProduct(identifier: PremiumProductCatalog.lifetimeID)
+            }
+        )
+        await service.purchase(productID: "com.ekitapligim.app.premium.monthly")
+        XCTAssertNotNil(service.entitlement.expiration)
+        await service.restore()
+        XCTAssertEqual(service.state, .restored)
+        XCTAssertEqual(service.entitlement.productID, PremiumProductCatalog.lifetimeID)
+        XCTAssertNil(service.entitlement.expiration)
+    }
+
+    func testCancelledAppleSyncStillRestoresVerifiedCachedPurchase() async {
+        let service = StoreKitPurchaseService(
+            purchaseRepository: SuccessfulPurchaseVerifier(), accountName: "tester",
+            appStoreSynchronizer: { throw CancellationError() }
+        )
+        await service.purchase(productID: PremiumProductCatalog.lifetimeID)
+        await service.restore()
+        XCTAssertEqual(service.state, .restored)
+        XCTAssertTrue(service.entitlement.isActive)
+    }
+
+    func testPendingPaidVerificationBlocksAdditionalPaymentUntilRestoreSucceeds() async throws {
+        let verifier = RecoverablePurchaseVerifier()
+        let service = StoreKitPurchaseService(purchaseRepository: verifier, accountName: "tester", appStoreSynchronizer: {})
+        defer { service.stopObservingTransactions() }
+        await service.purchase(productID: "com.ekitapligim.app.premium.monthly")
+        XCTAssertEqual(service.state, .failed(message: L10n.premiumVerificationPending))
+        let paidCount = session.allTransactions().count
+        XCTAssertEqual(paidCount, 1)
+        await service.purchase(productID: PremiumProductCatalog.lifetimeID)
+        XCTAssertEqual(session.allTransactions().count, paidCount)
+        XCTAssertEqual(service.state, .failed(message: L10n.premiumVerificationPending))
+        await verifier.recover()
+        await service.restore()
+        XCTAssertEqual(service.state, .restored)
+        XCTAssertTrue(service.entitlement.isActive)
     }
 
     func testRestoreKeepsVerifiedEntitlementWhenAnotherVerificationFails() throws {
@@ -257,9 +372,10 @@ final class PremiumPurchaseTests: XCTestCase {
         XCTAssertFalse(restored.entitlement.willAutoRenew)
     }
 
-    func testExpiredNonRenewingPurchaseShowsNothingToRestore() async {
+    func testExpiredNonRenewingPurchaseShowsNothingToRestore() async throws {
         let service = StoreKitPurchaseService(purchaseRepository: SuccessfulPurchaseVerifier(), accountName: "tester")
-        await service.purchase(productID: "com.ekitapligim.app.premium.three_months")
+        try await session.buyProduct(identifier: "com.ekitapligim.app.premium.three_months")
+        await service.restore()
         XCTAssertTrue(service.entitlement.isActive)
         let expired = StoreKitPurchaseService(
             purchaseRepository: ExpiredPurchaseVerifier(), accountName: "tester", appStoreSynchronizer: {}
@@ -370,6 +486,13 @@ private actor AppStoreSyncRecorder {
 
 private actor SuccessfulPurchaseVerifier: PurchaseVerifying {
     private(set) var verificationCount = 0
+    private var verifiedTransactions: Set<String> = []
+    var hasVerifiedRenewal: Bool { verifiedTransactions.count > 1 }
+
+    func prepareAppStorePurchaseContext(accountName: String) async throws -> PurchaseAccountDTO {
+        PurchaseAccountDTO(success: true, appAccountToken: try await prepareAppStorePurchase(accountName: accountName),
+            supportedProductIds: PremiumProductCatalog.productIDs)
+    }
 
     func verifyAppStorePurchase(
         signedTransaction: String,
@@ -379,6 +502,18 @@ private actor SuccessfulPurchaseVerifier: PurchaseVerifying {
         accountName: String
     ) async throws -> BillingResponseDTO {
         verificationCount += 1
+        // Test double only: StoreKit has already verified this payload. Record
+        // transaction identity to distinguish a renewal from repeated requests.
+        let components = signedTransaction.split(separator: ".")
+        if components.count == 3 {
+            var payload = String(components[1]).replacingOccurrences(of: "-", with: "+").replacingOccurrences(of: "_", with: "/")
+            payload += String(repeating: "=", count: (4 - payload.count % 4) % 4)
+            if let data = Data(base64Encoded: payload),
+               let object = try JSONSerialization.jsonObject(with: data) as? [String: Any],
+               let id = object["transactionId"] as? String {
+                verifiedTransactions.insert(id)
+            }
+        }
         return BillingResponseDTO(
             success: true,
             isPremium: true,

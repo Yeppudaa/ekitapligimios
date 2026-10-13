@@ -1,5 +1,13 @@
 # iOS API Documentation
 
+## Renewable catalog — IosApi 1.0.36 (2026-10-13)
+
+New purchases offer `com.ekitapligim.app.premium.monthly` (1 month), `.quarterly` (3 months), `.semiannual` (6 months), and `.yearly` (1 year), all auto-renewable subscriptions. `.lifetime` remains non-consumable. Apple supplies the signed expiration for every renewable interval; the server must never add calendar months to a renewal. The four subscriptions must be configured in the same App Store subscription group at the same service level.
+
+`POST /billing/app-store/verify` with `prepare_purchase=1` now also returns `supported_product_ids: [String]`. The client requires explicit support for quarterly/semiannual before opening Apple's payment sheet. This prevents charging against an older backend that would reject the new product. The field is additive; old clients retain their preparation and verification contracts. Deploy 1.0.36 before distributing this catalog.
+
+Previously sold `.three_months`, `.six_months`, and `.yearly_once` remain non-renewing, accepted for verification, restore and signed notifications, and retain the 1.0.35 unused-time preservation rules. They are no longer offered in the new client. Existing purchases are never silently converted into recurring billing. Unprefixed legacy monthly/yearly IDs remain restorable. All account ownership, signature, revocation and permission-delivery checks remain mandatory. See [renewal validation and rollout](SUBSCRIPTION_RENEWAL_VALIDATION.md).
+
 ## Purchase duration preservation and device-token errors — IosApi 1.0.35
 
 Fixed App Store terms are derived from verified purchase history in purchase-date order, with unused fixed time and overlapping verified subscription coverage carried forward. Repeated verification does not add time twice. Refunds remove only the refunded contribution; lifetime and Apple renewable expiration values remain unchanged. Account-level locking and transaction rollback protect concurrent purchases. Production and Sandbox timelines are separate. Pre-ledger grants without signed state are preserved. Recalculation occurs when a transaction is verified or a notification is processed, not as a bulk install migration.
@@ -319,7 +327,7 @@ Android uses Google Play verification; iOS uses the following StoreKit 2 endpoin
 Auth: login required.
 Body: `signed_transaction`, `product_id`, `original_transaction_id`, and optional
 `signed_renewal_info`. New clients also send `account_name`, captured before the purchase/restore starts; a mismatch with the bearer account returns `409 purchase_account_changed`. Omitting it remains supported for shipped clients. Verified renewal JWS supplies Apple billing grace periods; omitting it does not erase a newer grace state already stored.
-Response: subscription entitlement, effective expiration, and optional grace-period expiration. The three-month, six-month, and yearly-once products deliver 3, 6, or 12 calendar months. From 1.0.35, unused verified App Store time is carried forward as described above; a standalone purchase still starts on its signed purchase date. The non-consumable lifetime product has no expiration. Monthly and legacy yearly products retain Apple's signed subscription expiration.
+Response: subscription entitlement, effective expiration, and optional grace-period expiration. Monthly, quarterly, semiannual and yearly subscriptions retain Apple's signed expiration (including verified grace). Previously sold three-month, six-month, and yearly-once non-renewing products deliver 3, 6, or 12 calendar months, retaining 1.0.35 unused-time preservation; a standalone legacy purchase starts on its signed purchase date. The non-consumable lifetime product has no expiration.
 Security: both JWS chains are anchored to a configured Apple root, bundle/product/environment are
 allowlisted, and each `originalTransactionId` is atomically bound to its first Ekitapligim account.
 IosApi 1.0.28 responds from the stored, newest signed state rather than the submitted receipt alone. Ownership conflicts return `409 original_transaction_already_linked`; storage/lock/Premium group synchronization failures return `503 purchase_storage_unavailable`. A successful response means both ledger persistence and XenForo permission synchronization completed. Verified inactive transactions return HTTP 200 with `success=false`, `is_premium=false`; the app acknowledges them without granting access. Effective expiration already includes grace. Non-renewing calendar periods clamp month ends.

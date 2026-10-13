@@ -1,141 +1,175 @@
 {
-  "identifier" : "Ekitapligim",
-  "nonRenewingSubscriptions" : [
+  "identifier": "Ekitapligim",
+  "nonRenewingSubscriptions": [
     {
-      "displayPrice" : "₺239,99",
-      "familyShareable" : false,
-      "internalID" : "com.ekitapligim.app.premium.three_months",
-      "localizations" : [
+      "displayPrice": "239.99",
+      "familyShareable": false,
+      "internalID": "com.ekitapligim.app.premium.three_months",
+      "localizations": [
         {
-          "description" : "Otomatik yenilenmeyen üç aylık Premium erişim",
-          "displayName" : "3 Aylık Premium",
-          "locale" : "tr_TR"
+          "description": "Otomatik yenilenmeyen üç aylık Premium erişim",
+          "displayName": "3 Aylık Premium",
+          "locale": "tr_TR"
         }
       ],
-      "productID" : "com.ekitapligim.app.premium.three_months",
-      "referenceName" : "Three Month Premium",
-      "type" : "NonRenewingSubscription"
+      "productID": "com.ekitapligim.app.premium.three_months",
+      "referenceName": "Legacy Three Month Premium",
+      "type": "NonRenewingSubscription"
     },
     {
-      "displayPrice" : "₺400,00",
-      "familyShareable" : false,
-      "internalID" : "com.ekitapligim.app.premium.six_months",
-      "localizations" : [
+      "displayPrice": "400.00",
+      "familyShareable": false,
+      "internalID": "com.ekitapligim.app.premium.six_months",
+      "localizations": [
         {
-          "description" : "Otomatik yenilenmeyen altı aylık Premium erişim",
-          "displayName" : "6 Aylık Premium",
-          "locale" : "tr_TR"
+          "description": "Otomatik yenilenmeyen altı aylık Premium erişim",
+          "displayName": "6 Aylık Premium",
+          "locale": "tr_TR"
         }
       ],
-      "productID" : "com.ekitapligim.app.premium.six_months",
-      "referenceName" : "Six Month Premium",
-      "type" : "NonRenewingSubscription"
+      "productID": "com.ekitapligim.app.premium.six_months",
+      "referenceName": "Legacy Six Month Premium",
+      "type": "NonRenewingSubscription"
     },
     {
-      "displayPrice" : "₺750,00",
-      "familyShareable" : false,
-      "internalID" : "com.ekitapligim.app.premium.yearly_once",
-      "localizations" : [
+      "displayPrice": "750.00",
+      "familyShareable": false,
+      "internalID": "com.ekitapligim.app.premium.yearly_once",
+      "localizations": [
         {
-          "description" : "Otomatik yenilenmeyen yıllık Premium erişim",
-          "displayName" : "1 Yıllık Premium",
-          "locale" : "tr_TR"
+          "description": "Otomatik yenilenmeyen yıllık Premium erişim",
+          "displayName": "1 Yıllık Premium",
+          "locale": "tr_TR"
         }
       ],
-      "productID" : "com.ekitapligim.app.premium.yearly_once",
-      "referenceName" : "One Year Premium",
-      "type" : "NonRenewingSubscription"
+      "productID": "com.ekitapligim.app.premium.yearly_once",
+      "referenceName": "Legacy One Year Premium",
+      "type": "NonRenewingSubscription"
     }
   ],
-  "products" : [
+  "products": [
     {
-      "displayPrice" : "₺2.500,00",
-      "familyShareable" : false,
-      "internalID" : "com.ekitapligim.app.premium.lifetime",
-      "localizations" : [
+      "displayPrice": "2500.00",
+      "familyShareable": false,
+      "internalID": "com.ekitapligim.app.premium.lifetime",
+      "localizations": [
         {
-          "description" : "Tek ödemeyle kalıcı Premium erişim",
-          "displayName" : "Sınırsız Premium",
-          "locale" : "tr_TR"
+          "description": "Okuma yolculuğunuzda Premium hep sizinle.",
+          "displayName": "Sınırsız Premium",
+          "locale": "tr_TR"
         }
       ],
-      "productID" : "com.ekitapligim.app.premium.lifetime",
-      "referenceName" : "Lifetime Premium",
-      "type" : "NonConsumable"
+      "productID": "com.ekitapligim.app.premium.lifetime",
+      "referenceName": "Lifetime Premium",
+      "type": "NonConsumable"
     }
   ],
-  "settings" : {
-    "_failTransactionsEnabled" : false,
-    "_locale" : "tr_TR",
-    "_storefront" : "TUR"
+  "settings": {
+    "_failTransactionsEnabled": false,
+    "_locale": "tr_TR",
+    "_storefront": "TUR"
   },
-  "subscriptionGroups" : [
+  "subscriptionGroups": [
     {
-      "id" : "ekitapligim.premium",
-      "localizations" : [
+      "id": "ekitapligim.premium",
+      "localizations": [
         {
-          "description" : "Premium okuma ve indirme hakları",
-          "displayName" : "Ekitaplığım Premium",
-          "locale" : "tr_TR"
+          "description": "Premium okuma ve indirme hakları",
+          "displayName": "Ekitaplığım Premium",
+          "locale": "tr_TR"
         }
       ],
-      "name" : "Ekitaplığım Premium",
-      "subscriptions" : [
+      "name": "Ekitaplığım Premium",
+      "subscriptions": [
         {
-          "adHocOffers" : [
-
-          ],
-          "codeOffers" : [
-
-          ],
-          "displayPrice" : "₺100,00",
-          "familyShareable" : false,
-          "groupNumber" : 1,
-          "internalID" : "com.ekitapligim.app.premium.monthly",
-          "introductoryOffer" : null,
-          "localizations" : [
+          "adHocOffers": [],
+          "codeOffers": [],
+          "displayPrice": "100.00",
+          "familyShareable": false,
+          "groupNumber": 1,
+          "internalID": "com.ekitapligim.app.premium.monthly",
+          "introductoryOffer": null,
+          "localizations": [
             {
-              "description" : "Aylık premium kitap okuma ve indirme erişimi",
-              "displayName" : "Aylık Premium",
-              "locale" : "tr_TR"
+              "description": "Her ay yeni kitaplarla tanışın.",
+              "displayName": "Aylık Premium",
+              "locale": "tr_TR"
             }
           ],
-          "productID" : "com.ekitapligim.app.premium.monthly",
-          "recurringSubscriptionPeriod" : "P1M",
-          "referenceName" : "Monthly Premium",
-          "subscriptionGroupID" : "ekitapligim.premium",
-          "type" : "RecurringSubscription"
+          "productID": "com.ekitapligim.app.premium.monthly",
+          "recurringSubscriptionPeriod": "P1M",
+          "referenceName": "Monthly Premium",
+          "subscriptionGroupID": "ekitapligim.premium",
+          "type": "RecurringSubscription"
         },
         {
-          "adHocOffers" : [
-
-          ],
-          "codeOffers" : [
-
-          ],
-          "displayPrice" : "₺750,00",
-          "familyShareable" : false,
-          "groupNumber" : 1,
-          "internalID" : "com.ekitapligim.app.premium.yearly",
-          "introductoryOffer" : null,
-          "localizations" : [
+          "adHocOffers": [],
+          "codeOffers": [],
+          "displayPrice": "239.99",
+          "familyShareable": false,
+          "groupNumber": 1,
+          "internalID": "com.ekitapligim.app.premium.quarterly",
+          "introductoryOffer": null,
+          "localizations": [
             {
-              "description" : "Yıllık premium kitap okuma ve indirme erişimi",
-              "displayName" : "Yıllık Premium",
-              "locale" : "tr_TR"
+              "description": "Kitaplığınız hep yanınızda.",
+              "displayName": "3 Aylık Premium",
+              "locale": "tr_TR"
             }
           ],
-          "productID" : "com.ekitapligim.app.premium.yearly",
-          "recurringSubscriptionPeriod" : "P1Y",
-          "referenceName" : "Yearly Premium",
-          "subscriptionGroupID" : "ekitapligim.premium",
-          "type" : "RecurringSubscription"
+          "productID": "com.ekitapligim.app.premium.quarterly",
+          "recurringSubscriptionPeriod": "P3M",
+          "referenceName": "Quarterly Premium",
+          "subscriptionGroupID": "ekitapligim.premium",
+          "type": "RecurringSubscription"
+        },
+        {
+          "adHocOffers": [],
+          "codeOffers": [],
+          "displayPrice": "400.00",
+          "familyShareable": false,
+          "groupNumber": 1,
+          "internalID": "com.ekitapligim.app.premium.semiannual",
+          "introductoryOffer": null,
+          "localizations": [
+            {
+              "description": "Sevdiğiniz hikâyelere daha çok zaman ayırın.",
+              "displayName": "6 Aylık Premium",
+              "locale": "tr_TR"
+            }
+          ],
+          "productID": "com.ekitapligim.app.premium.semiannual",
+          "recurringSubscriptionPeriod": "P6M",
+          "referenceName": "Semiannual Premium",
+          "subscriptionGroupID": "ekitapligim.premium",
+          "type": "RecurringSubscription"
+        },
+        {
+          "adHocOffers": [],
+          "codeOffers": [],
+          "displayPrice": "750.00",
+          "familyShareable": false,
+          "groupNumber": 1,
+          "internalID": "com.ekitapligim.app.premium.yearly",
+          "introductoryOffer": null,
+          "localizations": [
+            {
+              "description": "Bir yıl boyunca keşfedin, okuyun, ilham alın.",
+              "displayName": "Yıllık Premium",
+              "locale": "tr_TR"
+            }
+          ],
+          "productID": "com.ekitapligim.app.premium.yearly",
+          "recurringSubscriptionPeriod": "P1Y",
+          "referenceName": "Yearly Premium",
+          "subscriptionGroupID": "ekitapligim.premium",
+          "type": "RecurringSubscription"
         }
       ]
     }
   ],
-  "version" : {
-    "major" : 4,
-    "minor" : 0
+  "version": {
+    "major": 4,
+    "minor": 0
   }
 }

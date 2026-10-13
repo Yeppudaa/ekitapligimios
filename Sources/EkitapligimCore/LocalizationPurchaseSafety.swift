@@ -9,5 +9,6 @@ public extension L10n {
     static var premiumExistingSubscriptionNotice: String { purchaseSafety("existingSubscription") }
     static var premiumStartingSubscriptionNotice: String { purchaseSafety("startingSubscription") }
     static var premiumContinuePurchase: String { purchaseSafety("continuePurchase") }
-    static var premiumFixedTermCarryover: String { purchaseSafety("fixedTermCarryover") }
+    static var premiumPlanUnavailable: String { purchaseSafety("planUnavailable") }
+    static var premiumVerificationPending: String { purchaseSafety("verificationPending") }
 }

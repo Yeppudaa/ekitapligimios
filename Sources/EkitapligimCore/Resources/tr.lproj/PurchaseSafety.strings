@@ -1,6 +1,7 @@
 "alreadyLifetime" = "Hesabınızda Sınırsız Premium zaten etkin. Yeniden ödeme yapmanız gerekmiyor. Satın alımınızı geri yükleyebilirsiniz.";
 "noticeTitle" = "Mevcut aboneliğiniz hakkında";
 "existingSubscription" = "Bu paketi almak mevcut Apple aboneliğinizin otomatik yenilemesini kapatmaz. Ek yenileme ücreti istemiyorsanız Apple abonelik yönetiminden mevcut aboneliğinizi iptal edin. İptal, ödediğiniz dönemin kalan erişimini kaldırmaz.";
-"startingSubscription" = "Hesabınızda süreli Premium erişim var. Aylık abonelik ayrı bir ödemeyle başlar ve iptal edilene kadar otomatik yenilenir. Devam etmek istiyor musunuz?";
+"startingSubscription" = "Hesabınızda daha önce satın aldığınız süreli Premium erişim var. Yeni aboneliğiniz ayrı bir ödemeyle başlar ve seçtiğiniz dönemde iptal edilene kadar otomatik yenilenir. Önceki paketinizin kullanılmamış süresi korunur. Devam etmek istiyor musunuz?";
 "continuePurchase" = "Bilgiyi okudum, devam et";
-"fixedTermCarryover" = "3 aylık, 6 aylık ve yıllık paketlerde kullanılmamış App Store Premium süreniz korunur. Mevcut Apple aboneliğinin otomatik yenilemesi ayrıca yönetilir.";
+"planUnavailable" = "Bu abonelik henüz satın almaya hazır değil. Ödeme başlatılmadı. Lütfen daha sonra tekrar deneyin.";
+"verificationPending" = "Apple satın alma işlemini iletti; üyeliğinizin doğrulanması bekleniyor. Yeniden satın almanıza gerek yok. Bağlantınız geldiğinde tekrar denenecek; Satın almaları geri yükle seçeneğini de kullanabilirsiniz.";

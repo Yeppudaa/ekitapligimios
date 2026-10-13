@@ -15,18 +15,8 @@ final class StoreKitPurchaseService: ObservableObject {
                 ? L10n.premiumExistingSubscriptionNotice : L10n.premiumStartingSubscriptionNotice
         }
     }
-    static let productIDs = [
-        "com.ekitapligim.app.premium.monthly",
-        "com.ekitapligim.app.premium.three_months",
-        "com.ekitapligim.app.premium.six_months",
-        "com.ekitapligim.app.premium.yearly_once",
-        "com.ekitapligim.app.premium.lifetime"
-    ]
-    static let legacyProductIDs = [
-        "com.ekitapligim.app.premium.yearly",
-        "ekitapligim.premium.monthly",
-        "ekitapligim.premium.yearly"
-    ]
+    static let productIDs = PremiumProductCatalog.productIDs
+    static let legacyProductIDs = PremiumProductCatalog.legacyProductIDs
     static let recognizedProductIDs = Set(productIDs + legacyProductIDs)
 
     @Published private(set) var state: PurchaseState = .notLoaded
@@ -50,6 +40,7 @@ final class StoreKitPurchaseService: ObservableObject {
     private var isRestoring = false
     private var retryTask: Task<Void, Never>?
     private var hasPendingVerification = false
+    private var pendingPurchaseProductID: String?
     private var isBusy: Bool { isPurchasing || isRestoring }
 
     init(
@@ -109,6 +100,7 @@ final class StoreKitPurchaseService: ObservableObject {
         retryTask?.cancel()
         retryTask = nil
         hasPendingVerification = false
+        pendingPurchaseProductID = nil
         updatesTask?.cancel()
         statusUpdatesTask?.cancel()
         storefrontUpdatesTask?.cancel()
@@ -178,7 +170,7 @@ final class StoreKitPurchaseService: ObservableObject {
             }
             do {
                 let loaded = try await Product.products(for: Self.productIDs)
-                for product in loaded where Self.productIDs.contains(product.id) {
+                for product in loaded where Self.isPurchasableProduct(product) {
                     loadedByID[product.id] = product
                 }
             } catch is CancellationError {
@@ -196,7 +188,7 @@ final class StoreKitPurchaseService: ObservableObject {
             for productID in Self.productIDs where loadedByID[productID] == nil {
                 do {
                     if let product = try await Product.products(for: [productID]).first,
-                       product.id == productID {
+                       product.id == productID, Self.isPurchasableProduct(product) {
                         loadedByID[productID] = product
                     }
                 } catch is CancellationError {
@@ -221,6 +213,19 @@ final class StoreKitPurchaseService: ObservableObject {
         await purchase(productID: productID, acknowledgedNotice: nil)
     }
 
+    static func isPurchasableProduct(_ product: Product) -> Bool {
+        guard Self.productIDs.contains(product.id) else { return false }
+        if product.id == PremiumProductCatalog.lifetimeID { return product.type == .nonConsumable }
+        guard product.type == .autoRenewable,
+              let expectedMonths = PremiumProductCatalog.subscriptionMonths(for: product.id),
+              let period = product.subscription?.subscriptionPeriod else { return false }
+        switch period.unit {
+        case .month: return period.value == expectedMonths
+        case .year: return period.value * 12 == expectedMonths
+        default: return false
+        }
+    }
+
     func dismissPurchaseNotice() { purchaseNotice = nil }
 
     func confirmPurchase(_ notice: PurchaseNotice) async {
@@ -231,6 +236,11 @@ final class StoreKitPurchaseService: ObservableObject {
 
     private func purchase(productID: String, acknowledgedNotice: PurchaseOfferDecision?) async {
         guard !isBusy, accountName != nil else { return }
+        guard pendingPurchaseProductID == nil else {
+            state = .failed(message: L10n.premiumVerificationPending)
+            scheduleVerificationRetry()
+            return
+        }
         purchaseNotice = nil
         let generation = accountGeneration
         guard let purchaseAccount = accountName else { return }
@@ -260,9 +270,17 @@ final class StoreKitPurchaseService: ObservableObject {
             }
 
             try requireCurrentAccount(generation)
+            guard product.id == productID, Self.isPurchasableProduct(product) else {
+                state = .failed(message: L10n.premiumProductMissing)
+                return
+            }
             let context = try await purchaseRepository.prepareAppStorePurchaseContext(accountName: purchaseAccount)
             try requireCurrentAccount(generation)
             guard context.success else { throw APIClientError.invalidResponse }
+            guard PremiumProductCatalog.canPurchase(productID, context: context) else {
+                state = .failed(message: L10n.premiumPlanUnavailable)
+                return
+            }
             let decision = PurchaseOfferPolicy.decision(productID: productID, context: context, entitlement: entitlement)
             if decision == .alreadyLifetime {
                 state = .failed(message: L10n.premiumAlreadyLifetime)
@@ -277,6 +295,7 @@ final class StoreKitPurchaseService: ObservableObject {
             try requireCurrentAccount(generation)
             switch result {
             case .success(let verification):
+                pendingPurchaseProductID = productID
                 do {
                     let transaction = try checkVerified(verification)
                     let response = try await verifyWithServer(verification, transaction: transaction, generation: generation)
@@ -285,13 +304,15 @@ final class StoreKitPurchaseService: ObservableObject {
                     try requireCurrentAccount(generation)
                     await transaction.finish()
                     try requireCurrentAccount(generation)
+                    pendingPurchaseProductID = nil
                     if isLater(updated, than: entitlement.isActive ? entitlement : nil) { entitlement = updated }
                     state = .purchased(productID: transaction.productID, expiration: updated.expiration)
                     await entitlementDidChange?()
                 } catch {
                     guard generation == accountGeneration, !Task.isCancelled else { return }
                     hasPendingVerification = true
-                    state = .failed(message: PurchaseVerificationPolicy.failureMessage(for: error))
+                    state = .failed(message: PurchaseVerificationPolicy.isLinkedAccountError(error)
+                        ? L10n.premiumLinkedToAnotherAccount : L10n.premiumVerificationPending)
                 }
             case .pending:
                 state = .pending
@@ -322,31 +343,16 @@ final class StoreKitPurchaseService: ObservableObject {
 
         var lastFailure: Error?
 
-        // An active StoreKit entitlement may already be available and verified
-        // server-side. Do not make that successful restore depend on the
-        // account-dialog based AppStore.sync() call, which can fail or be
-        // cancelled even though the entitlement itself is valid.
-        do {
-            if let restored = try await synchronizeCurrentEntitlements(generation: generation) {
-                try requireCurrentAccount(generation)
-                await completeRestore(restored)
-                return
-            }
-        } catch is CancellationError {
-            if !isBusy, state == .loading {
-                state = products.isEmpty ? .notLoaded : .available(products: products)
-            }
-            return
-        } catch {
-            if lastFailure == nil { lastFailure = error }
-        }
-
+        // A user-requested restore must contact Apple even if this device has a
+        // cached subscription: another device may have purchased lifetime access.
+        // Automatic foreground refreshes never prompt for App Store sign-in.
         do {
             try requireCurrentAccount(generation)
             try await appStoreSynchronizer()
             try requireCurrentAccount(generation)
         } catch is CancellationError {
-            return
+            guard generation == accountGeneration, !Task.isCancelled else { return }
+            lastFailure = CancellationError()
         } catch {
             if lastFailure == nil || PurchaseVerificationPolicy.isLinkedAccountError(error) {
                 lastFailure = error
@@ -383,7 +389,7 @@ final class StoreKitPurchaseService: ObservableObject {
 
     private func completeRestore(_ restored: PremiumEntitlement) async {
         entitlement = restored
-        state = .restored
+        state = pendingPurchaseProductID == nil ? .restored : .failed(message: L10n.premiumVerificationPending)
         await entitlementDidChange?()
     }
 
@@ -399,7 +405,7 @@ final class StoreKitPurchaseService: ObservableObject {
             guard revision == synchronizationRevision else { return }
             let previous = entitlement
             entitlement = synchronized ?? .none
-            if entitlement.isActive, let productID = entitlement.productID {
+            if pendingPurchaseProductID == nil, entitlement.isActive, let productID = entitlement.productID {
                 switch state {
                 case .failed, .pending:
                     state = .purchased(productID: productID, expiration: entitlement.expiration)
@@ -444,12 +450,15 @@ final class StoreKitPurchaseService: ObservableObject {
                 catch PurchaseVerificationError.inactiveEntitlement, PurchaseVerificationError.expiredEntitlement {
                     // Non-renewing purchases remain in currentEntitlements after expiry.
                     await transaction.finish()
+                    try requireCurrentAccount(generation)
+                    if pendingPurchaseProductID == transaction.productID { pendingPurchaseProductID = nil }
                     continue
                 }
                 let candidate = await entitlementSnapshot(for: transaction, serverExpiration: serverExpiration)
                 try requireCurrentAccount(generation)
                 await transaction.finish()
                 try requireCurrentAccount(generation)
+                if pendingPurchaseProductID == transaction.productID { pendingPurchaseProductID = nil }
                 if isLater(candidate, than: best) { best = candidate }
             } catch is CancellationError {
                 throw CancellationError()
@@ -579,6 +588,7 @@ final class StoreKitPurchaseService: ObservableObject {
         }
         await transaction.finish()
         try requireCurrentAccount(generation)
+        if pendingPurchaseProductID == transaction.productID { pendingPurchaseProductID = nil }
     }
 
     private func retryUnfinishedTransactions(generation: UUID) async {

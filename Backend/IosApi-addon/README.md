@@ -135,8 +135,8 @@ Set these environment/config values on the server (never commit secrets):
 
 - `EKITAPLIGIM_IOS_BUNDLE_ID` — iOS app bundle identifier
 - `EKITAPLIGIM_IOS_PRODUCT_IDS` — comma-separated App Store product allowlist. Set it to
-  `com.ekitapligim.app.premium.monthly,com.ekitapligim.app.premium.three_months,com.ekitapligim.app.premium.six_months,com.ekitapligim.app.premium.yearly_once,com.ekitapligim.app.premium.lifetime,com.ekitapligim.app.premium.yearly,ekitapligim.premium.monthly,ekitapligim.premium.yearly`.
-  The monthly, three-month, six-month, yearly-once, and lifetime IDs are used for new purchases; the previous yearly and unprefixed IDs remain accepted for restoration.
+  `com.ekitapligim.app.premium.monthly,com.ekitapligim.app.premium.quarterly,com.ekitapligim.app.premium.semiannual,com.ekitapligim.app.premium.three_months,com.ekitapligim.app.premium.six_months,com.ekitapligim.app.premium.yearly_once,com.ekitapligim.app.premium.lifetime,com.ekitapligim.app.premium.yearly,ekitapligim.premium.monthly,ekitapligim.premium.yearly`.
+  From IosApi 1.0.36, new purchases use monthly, quarterly, semiannual, yearly (auto-renewable) and lifetime (non-consumable). Previously sold three_months, six_months, yearly_once and unprefixed IDs remain accepted for restoration. Preparation returns supported_product_ids so new clients can check support before payment. Deploy this backend before distributing the renewable catalog.
   IosApi 1.0.9+ always retains these source-controlled shipped IDs and merges any configured IDs into the list,
   so an outdated server value cannot reject an active App Store product.
 - `EKITAPLIGIM_APPSTORE_ENVIRONMENT` — `Production` for production-only traffic, `Sandbox` for sandbox-only staging, or `Both` when TestFlight and production use the same API. An unset value also accepts only Production/Sandbox. Apple JWS verification is always required; local Xcode receipts must use test doubles rather than a public-server verification bypass.

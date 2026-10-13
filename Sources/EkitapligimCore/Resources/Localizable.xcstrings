@@ -3552,26 +3552,35 @@
     "premium.plan": {
       "localizations": { "tr": { "stringUnit": { "state": "translated", "value": "Plan" } } }
     },
+    "premium.threeMonthTagline": {
+      "localizations": { "tr": { "stringUnit": { "state": "translated", "value": "Kitaplığınız hep yanınızda." } } }
+    },
+    "premium.sixMonthTagline": {
+      "localizations": { "tr": { "stringUnit": { "state": "translated", "value": "Sevdiğiniz hikâyelere daha çok zaman ayırın." } } }
+    },
+    "premium.yearlyTagline": {
+      "localizations": { "tr": { "stringUnit": { "state": "translated", "value": "Bir yıl boyunca keşfedin, okuyun, ilham alın." } } }
+    },
+    "premium.lifetimeTagline": {
+      "localizations": { "tr": { "stringUnit": { "state": "translated", "value": "Okuma yolculuğunuzda Premium hep sizinle." } } }
+    },
     "premium.monthlyTagline": {
-      "localizations": { "tr": { "stringUnit": { "state": "translated", "value": "Kitaplar beklemez. Sen de bekleme..." } } }
+      "localizations": { "tr": { "stringUnit": { "state": "translated", "value": "Her ay yeni kitaplarla tanışın." } } }
     },
     "premium.period.monthly": {
       "localizations": { "tr": { "stringUnit": { "state": "translated", "value": "Aylık abonelik" } } }
     },
     "premium.period.threeMonths": {
-      "localizations": { "tr": { "stringUnit": { "state": "translated", "value": "3 ay geçerli · otomatik yenilenmez" } } }
+      "localizations": { "tr": { "stringUnit": { "state": "translated", "value": "3 aylık abonelik" } } }
     },
     "premium.period.sixMonths": {
-      "localizations": { "tr": { "stringUnit": { "state": "translated", "value": "6 ay geçerli · otomatik yenilenmez" } } }
+      "localizations": { "tr": { "stringUnit": { "state": "translated", "value": "6 aylık abonelik" } } }
     },
     "premium.period.lifetime": {
       "localizations": { "tr": { "stringUnit": { "state": "translated", "value": "Tek ödeme · süresiz erişim" } } }
     },
-    "premium.period.yearlyOnce": {
-      "localizations": { "tr": { "stringUnit": { "state": "translated", "value": "1 yıl geçerli · otomatik yenilenmez" } } }
-    },
     "premium.period.yearly": {
-      "localizations": { "tr": { "stringUnit": { "state": "translated", "value": "Her yıl otomatik yenilenir" } } }
+      "localizations": { "tr": { "stringUnit": { "state": "translated", "value": "Yıllık abonelik" } } }
     },
     "premium.status.active": {
       "localizations": { "tr": { "stringUnit": { "state": "translated", "value": "Premium aboneliğiniz aktif" } } }
@@ -3712,7 +3721,7 @@
         "tr": {
           "stringUnit": {
             "state": "translated",
-            "value": "Ödeme Apple ID hesabınızdan alınır. Aylık abonelik, dönem bitiminden en az 24 saat önce iptal edilmezse otomatik yenilenir. 3 aylık, 6 aylık ve yıllık paketler otomatik yenilenmez; Sınırsız Premium tek ödemedir. Fiyat ve dönem Apple satın alma ekranında gösterilir."
+            "value": "Ödeme Apple hesabınızdan alınır. Aylık, 3 aylık, 6 aylık ve yıllık abonelikler; dönem bitiminden en az 24 saat önce iptal edilmezse sırasıyla her ay, 3 ayda bir, 6 ayda bir ve her yıl otomatik yenilenir. Yenileme ücreti dönem bitiminden önceki 24 saat içinde alınır. Sınırsız Premium tek ödemeyle süresiz erişim sağlar. Fiyat ve dönem Apple satın alma ekranında gösterilir. Aboneliğinizi Apple abonelik ayarlarından yönetebilir veya iptal edebilirsiniz."
           }
         }
       }

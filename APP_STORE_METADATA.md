@@ -128,19 +128,25 @@ Suggested review flow:
 
 Backend prerequisite: IosApi 1.0.13+ on production with non-empty `ekIosUgcModeratorEmails` and `ekIosUgcBlockedTerms`.
 
+## 1.0.10 TestFlight review draft — 2026-10-13
+
+Four renewable Premium intervals (1/3/6/12 months) and single-payment lifetime. Restore explicitly synchronizes with Apple before verifying entitlements, so purchases from another device can be discovered even when a local monthly subscription exists. A paid transaction awaiting verification prevents starting another payment; users see recovery guidance and can restore. Existing non-renewing purchases keep their original rights. Native, server and deployment evidence is recorded in SUBSCRIPTION_RENEWAL_VALIDATION.md; no production App Store submission is requested in this release task.
+
 ## In-App Purchase Review Notes
 Subscription group: `ekitapligim.premium`
 
 Product IDs:
 - `com.ekitapligim.app.premium.monthly`
-- `com.ekitapligim.app.premium.three_months`
-- `com.ekitapligim.app.premium.six_months`
-- `com.ekitapligim.app.premium.yearly_once`
+- `com.ekitapligim.app.premium.quarterly`
+- `com.ekitapligim.app.premium.semiannual`
+- `com.ekitapligim.app.premium.yearly`
 - `com.ekitapligim.app.premium.lifetime`
 
-Turkey prices: ₺100 monthly, ₺239.99 three months, ₺400 six months, ₺750 one year, and ₺2,500 lifetime. Apple does not offer the website's exact ₺240 price point; ₺239.99 was approved by the owner. The monthly product renews; the three-month, six-month, and yearly products do not. Lifetime is a non-consumable purchase. The previous auto-renewing yearly product remains recognized for restoration.
+Turkey target prices remain ₺100 monthly, ₺239.99 three months, ₺400 six months, ₺750 one year, and ₺2,500 lifetime. Actual prices always come from StoreKit. All four timed plans auto-renew at their own intervals until cancelled; lifetime is a single non-consumable purchase. Keep all four subscriptions in one group at service level 1. New quarterly and semiannual IDs require App Store Connect creation/approval; the existing yearly subscription is offered again. Old `three_months`, `six_months`, and `yearly_once` purchases retain their original non-renewing terms and restoration support.
 
-App Store Connect status on 2026-09-27: the approved monthly and legacy auto-renewing yearly products are on sale at ₺99.99 and ₺999.99, respectively. Their Türkiye prices are scheduled to become ₺100 and ₺750 on 2026-09-28. The three new fixed-term products and lifetime product are still Prepare for Submission; only a new approved app version can make those available to customers.
+2026-10-13 source draft: this catalog has not been published or validated in live App Store Connect in this change. Deploy IosApi 1.0.36 first and complete the [rollout and Sandbox checks](SUBSCRIPTION_RENEWAL_VALIDATION.md). Do not infer store readiness from the local StoreKit configuration.
+
+Turkish plan descriptions: monthly “Her ay yeni kitaplarla tanışın.”; three months “Kitaplığınız hep yanınızda.”; six months “Sevdiğiniz hikâyelere daha çok zaman ayırın.”; yearly “Bir yıl boyunca keşfedin, okuyun, ilham alın.”; lifetime “Okuma yolculuğunuzda Premium hep sizinle.” Renewal intervals, charging and cancellation terms remain visible separately before purchase.
 
 The app displays localized names and prices returned by StoreKit. It provides purchase, restore, Manage Subscriptions, Terms, Privacy Policy, and auto-renewal disclosure. A verified Apple transaction JWS is sent to the backend; premium is not granted for unverified or server-rejected transactions.
 

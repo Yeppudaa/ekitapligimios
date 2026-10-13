@@ -304,8 +304,8 @@ Write-Step "Checking StoreKit purchase and restore surface"
 $premiumView = Get-Content -Raw -LiteralPath "App/Ekitapligim/Features/PremiumView.swift"
 $storeKitService = Get-Content -Raw -LiteralPath "App/Ekitapligim/Purchases/StoreKitPurchaseService.swift"
 foreach ($requiredPremiumControl in @(
-    "premium.monthly",
-    "premium.yearly",
+    "PremiumProductCatalog.productIDs",
+    "PremiumProductCatalog.legacyProductIDs",
     "Transaction.currentEntitlements",
     "verifyAppStorePurchase",
     "AppStore.sync()",
@@ -338,7 +338,7 @@ if ($forbiddenBillingFindings) {
 
 $storeKitConfig = Get-Content -Raw -LiteralPath "App/Ekitapligim/StoreKit/Ekitapligim.storekit" | ConvertFrom-Json
 $configuredProductIds = @($storeKitConfig.subscriptionGroups.subscriptions.productID | Sort-Object -Unique)
-$expectedProductIds = @("com.ekitapligim.app.premium.monthly", "com.ekitapligim.app.premium.yearly")
+$expectedProductIds = @("com.ekitapligim.app.premium.monthly", "com.ekitapligim.app.premium.quarterly", "com.ekitapligim.app.premium.semiannual", "com.ekitapligim.app.premium.yearly")
 if (Compare-Object $expectedProductIds $configuredProductIds) {
     throw "StoreKit configuration product IDs do not match the native purchase service"
 }

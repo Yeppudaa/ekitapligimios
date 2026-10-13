@@ -918,14 +918,17 @@ public struct PurchaseAccountDTO: Decodable, Equatable, Sendable {
     public let hasLifetime: Bool?
     public let hasActiveSubscription: Bool?
     public let hasFixedTerm: Bool?
+    public let supportedProductIds: [String]?
 
     public init(success: Bool, appAccountToken: UUID, hasLifetime: Bool? = nil,
-                hasActiveSubscription: Bool? = nil, hasFixedTerm: Bool? = nil) {
+                hasActiveSubscription: Bool? = nil, hasFixedTerm: Bool? = nil,
+                supportedProductIds: [String]? = nil) {
         self.success = success
         self.appAccountToken = appAccountToken
         self.hasLifetime = hasLifetime
         self.hasActiveSubscription = hasActiveSubscription
         self.hasFixedTerm = hasFixedTerm
+        self.supportedProductIds = supportedProductIds
     }
 }
 

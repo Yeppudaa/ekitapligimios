@@ -9,29 +9,45 @@ function Require-Text([string]$Path, [string]$Text) {
     }
 }
 
-$expectedProducts = @("com.ekitapligim.app.premium.monthly", "com.ekitapligim.app.premium.three_months", "com.ekitapligim.app.premium.six_months", "com.ekitapligim.app.premium.yearly_once", "com.ekitapligim.app.premium.lifetime")
-$legacyProducts = @("ekitapligim.premium.monthly", "ekitapligim.premium.yearly")
+$expectedProducts = @("com.ekitapligim.app.premium.monthly", "com.ekitapligim.app.premium.quarterly", "com.ekitapligim.app.premium.semiannual", "com.ekitapligim.app.premium.yearly", "com.ekitapligim.app.premium.lifetime")
+$legacyTerms = @("com.ekitapligim.app.premium.three_months", "com.ekitapligim.app.premium.six_months", "com.ekitapligim.app.premium.yearly_once")
+$legacyProducts = @($legacyTerms + "ekitapligim.premium.monthly" + "ekitapligim.premium.yearly")
 $configuration = Get-Content -Raw -LiteralPath "App/Ekitapligim/StoreKit/Ekitapligim.storekit" | ConvertFrom-Json
 $subscriptions = @($configuration.subscriptionGroups.subscriptions)
 $configuredProducts = @(($subscriptions + $configuration.nonRenewingSubscriptions + $configuration.products).productID | Sort-Object)
-$expectedConfiguredProducts = @($expectedProducts + "com.ekitapligim.app.premium.yearly" | Sort-Object)
+$expectedConfiguredProducts = @($expectedProducts + $legacyTerms | Sort-Object)
 if (Compare-Object $expectedConfiguredProducts $configuredProducts) {
     throw "StoreKit product IDs do not match the client/backend Premium contract."
 }
 if (@($subscriptions.groupNumber | Sort-Object -Unique).Count -ne 1) {
-    throw "Monthly and yearly Premium products must use the same subscription service level."
+    throw "All renewable Premium plans must use the same subscription service level."
+}
+$periods = @{ monthly = "P1M"; quarterly = "P3M"; semiannual = "P6M"; yearly = "P1Y" }
+if ($subscriptions.Count -ne 4 -or @($configuration.subscriptionGroups).Count -ne 1) {
+    throw "Exactly four renewable plans must belong to one subscription group."
+}
+foreach ($suffix in $periods.Keys) {
+    $plan = @($subscriptions | Where-Object productID -eq "com.ekitapligim.app.premium.$suffix")
+    if ($plan.Count -ne 1 -or $plan[0].type -ne "RecurringSubscription" -or $plan[0].recurringSubscriptionPeriod -ne $periods[$suffix]) {
+        throw "Incorrect renewal type or period for $suffix."
+    }
+}
+if (@($configuration.products).Count -ne 1 -or $configuration.products[0].type -ne "NonConsumable") {
+    throw "Lifetime must remain a single non-consumable purchase."
 }
 
 foreach ($product in $expectedProducts) {
-    Require-Text "App/Ekitapligim/Purchases/StoreKitPurchaseService.swift" $product
+    Require-Text "Sources/EkitapligimCore/PremiumProductCatalog.swift" $product
     Require-Text "Backend/IosApi-addon/Api/Controller/AppStoreVerify.php" $product
 }
 
 foreach ($product in $legacyProducts) {
-    Require-Text "App/Ekitapligim/Purchases/StoreKitPurchaseService.swift" $product
+    Require-Text "Sources/EkitapligimCore/PremiumProductCatalog.swift" $product
     Require-Text "Backend/IosApi-addon/Api/Controller/AppStoreVerify.php" $product
 }
-Require-Text "App/Ekitapligim/Purchases/StoreKitPurchaseService.swift" "com.ekitapligim.app.premium.yearly"
+Require-Text "App/Ekitapligim/Purchases/StoreKitPurchaseService.swift" "PremiumProductCatalog.canPurchase"
+Require-Text "App/Ekitapligim/Purchases/StoreKitPurchaseService.swift" "isPurchasableProduct"
+Require-Text "Backend/IosApi-addon/Api/Controller/AppStoreVerify.php" "supported_product_ids"
 
 foreach ($control in @('$shippedProducts', 'array_unique', 'array_merge')) {
     Require-Text "Backend/IosApi-addon/Api/Controller/AppStoreVerify.php" $control

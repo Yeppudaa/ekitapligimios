@@ -24,7 +24,8 @@ class AppStoreVerify extends \Ekitapligim\MobileApi\Api\Controller\AbstractMobil
 			{
 				AppStoreTransactionStore::ensureTables();
 				return $this->apiResult(['success' => true,
-					'app_account_token' => AppStoreTransactionStore::accountToken((int) $visitor->user_id)]
+					'app_account_token' => AppStoreTransactionStore::accountToken((int) $visitor->user_id),
+					'supported_product_ids' => $this->allowedProductIds()]
 					+ AppStoreTransactionStore::purchaseContext((int) $visitor->user_id));
 			}
 			catch (\Throwable $e)
@@ -323,6 +324,8 @@ class AppStoreVerify extends \Ekitapligim\MobileApi\Api\Controller\AbstractMobil
 	{
 		$shippedProducts = [
 			'com.ekitapligim.app.premium.monthly',
+			'com.ekitapligim.app.premium.quarterly',
+			'com.ekitapligim.app.premium.semiannual',
 			'com.ekitapligim.app.premium.three_months',
 			'com.ekitapligim.app.premium.six_months',
 			'com.ekitapligim.app.premium.yearly',
