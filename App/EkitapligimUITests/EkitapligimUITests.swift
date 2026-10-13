@@ -157,6 +157,9 @@ final class EkitapligimUITests: XCTestCase {
         app.scrollViews.firstMatch.swipeUp()
         XCTAssertTrue(app.staticTexts["Abonelik Planları"].waitForExistence(timeout: 10))
         keepScreenshot(named: "premium-review-plans")
+
+        app.scrollViews.firstMatch.swipeUp()
+        keepScreenshot(named: "premium-review-semiannual")
     }
 
     private func selectPrimaryDestination(_ app: XCUIApplication, titled title: String) {
