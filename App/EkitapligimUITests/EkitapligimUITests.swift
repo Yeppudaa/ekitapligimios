@@ -142,6 +142,23 @@ final class EkitapligimUITests: XCTestCase {
         keepScreenshot(named: "06-profile")
     }
 
+    func testCapturePremiumReviewScreenshot() throws {
+        let app = launchApp()
+        let menuButton = app.buttons["Menü"]
+        XCTAssertTrue(menuButton.waitForExistence(timeout: 15))
+        menuButton.tap()
+
+        let premiumButton = app.buttons["Ekitaplığım Premium"]
+        XCTAssertTrue(premiumButton.waitForExistence(timeout: 5))
+        premiumButton.tap()
+        XCTAssertTrue(app.navigationBars["Ekitaplığım Premium"].waitForExistence(timeout: 10))
+        keepScreenshot(named: "premium-review-top")
+
+        app.scrollViews.firstMatch.swipeUp()
+        XCTAssertTrue(app.staticTexts["Abonelik Planları"].waitForExistence(timeout: 10))
+        keepScreenshot(named: "premium-review-plans")
+    }
+
     private func selectPrimaryDestination(_ app: XCUIApplication, titled title: String) {
         let identifiers = [
             "Ana sayfa": "primary-tab-home",
