@@ -128,9 +128,13 @@ Suggested review flow:
 
 Backend prerequisite: IosApi 1.0.13+ on production with non-empty `ekIosUgcModeratorEmails` and `ekIosUgcBlockedTerms`.
 
+## Version 1.0.10 App Store submission — 2026-10-13
+
+At the user's request, version 1.0.10/build 43 and the new six-month auto-renewable subscription were submitted together to public App Review. App Store Connect shows both **Waiting for Review** in submission `6072d278-5f92-4b53-ad13-acfb1b700c05` at 22:48 Europe/Istanbul. The three-month subscription remains in separate submission `3595d57f-0341-4783-b8b0-58a051a02552`, also Waiting for Review. Its separate six-month submission `0de1214d-00b7-4009-b9a9-abecfe3fb93a` was withdrawn solely to combine that product with the app version. The selected build is 43; reviewer notes explain both submissions and StoreKit purchase/restore. Turkish What's New: “Premium seçenekleri yenilendi: aylık, 3 aylık, 6 aylık ve yıllık abonelikler dönem sonunda otomatik yenilenir; süresiz üyelik tek seferliktir. Satın alma doğrulaması ve satın alınanları geri yükleme iyileştirildi. Kitaplığınız hep yanınızda.” **Manually release this version** is selected. Submission is not approval or public availability; live Sandbox and physical-device purchase/restore checks remain open. Evidence: `artifacts/purchase-recheck-20261013/appstore-1.0.10-submitted.png`.
+
 ## 1.0.10 TestFlight review draft — 2026-10-13
 
-Four renewable Premium intervals (1/3/6/12 months) and single-payment lifetime. Restore explicitly synchronizes with Apple before verifying entitlements, so purchases from another device can be discovered even when a local monthly subscription exists. A paid transaction awaiting verification prevents starting another payment; users see recovery guidance and can restore. Existing non-renewing purchases keep their original rights. Native, server and deployment evidence is recorded in SUBSCRIPTION_RENEWAL_VALIDATION.md; no production App Store submission is requested in this release task.
+Four renewable Premium intervals (1/3/6/12 months) and single-payment lifetime. Restore explicitly synchronizes with Apple before verifying entitlements, so purchases from another device can be discovered even when a local monthly subscription exists. A paid transaction awaiting verification prevents starting another payment; users see recovery guidance and can restore. Existing non-renewing purchases keep their original rights. Native, server and deployment evidence is recorded in SUBSCRIPTION_RENEWAL_VALIDATION.md. This was the original TestFlight-only scope; the later public submission request and outcome are recorded above.
 
 ## In-App Purchase Review Notes
 Subscription group: `ekitapligim.premium`
@@ -144,7 +148,7 @@ Product IDs:
 
 Turkey target prices remain ₺100 monthly, ₺239.99 three months, ₺400 six months, ₺750 one year, and ₺2,500 lifetime. Actual prices always come from StoreKit. All four timed plans auto-renew at their own intervals until cancelled; lifetime is a single non-consumable purchase. Keep all four subscriptions in one group at service level 1. New quarterly and semiannual IDs require App Store Connect creation/approval; the existing yearly subscription is offered again. Old `three_months`, `six_months`, and `yearly_once` purchases retain their original non-renewing terms and restoration support.
 
-2026-10-13 source draft: this catalog has not been published or validated in live App Store Connect in this change. Deploy IosApi 1.0.36 first and complete the [rollout and Sandbox checks](SUBSCRIPTION_RENEWAL_VALIDATION.md). Do not infer store readiness from the local StoreKit configuration.
+2026-10-13 update: IosApi 1.0.36 was deployed and the new product records were created and submitted in App Store Connect. Complete the [rollout and Sandbox checks](SUBSCRIPTION_RENEWAL_VALIDATION.md) before manual public release. Store approval and real transaction validation cannot be inferred from local StoreKit configuration.
 
 Turkish plan descriptions: monthly “Her ay yeni kitaplarla tanışın.”; three months “Kitaplığınız hep yanınızda.”; six months “Sevdiğiniz hikâyelere daha çok zaman ayırın.”; yearly “Bir yıl boyunca keşfedin, okuyun, ilham alın.”; lifetime “Okuma yolculuğunuzda Premium hep sizinle.” Renewal intervals, charging and cancellation terms remain visible separately before purchase.
 

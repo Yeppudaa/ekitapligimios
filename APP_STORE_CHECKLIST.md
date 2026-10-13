@@ -4,10 +4,12 @@
 
 - [x] Deploy IosApi 1.0.36 and confirm authenticated preparation advertises quarterly/semiannual support. Live public HTTPS smoke test passed on 2026-10-13.
 - [x] Create `com.ekitapligim.app.premium.quarterly` (3 months) and `.semiannual` (6 months); verify monthly/yearly and both new plans share one subscription group and service level 1. Target Türkiye prices and descriptions are in APP_STORE_METADATA.md.
-- [x] Submit both new subscriptions to App Review with actual iPhone paywall screenshots. Quarterly submission `3595d57f-0341-4783-b8b0-58a051a02552` and semiannual submission `0de1214d-00b7-4009-b9a9-abecfe3fb93a` were Waiting for Review on 2026-10-13.
+- [x] Submit both new subscriptions to App Review with actual iPhone paywall screenshots. Quarterly remains Waiting for Review in submission `3595d57f-0341-4783-b8b0-58a051a02552`. The separate semiannual submission `0de1214d-00b7-4009-b9a9-abecfe3fb93a` was withdrawn to combine the product with app version 1.0.10; both are Waiting for Review in submission `6072d278-5f92-4b53-ad13-acfb1b700c05` (2026-10-13).
 - [ ] Obtain Apple's approval for both new subscriptions before App Store release.
 - [x] Execute StoreKitTest and iOS UI tests on the submitted source `7d6a89b`: Codemagic production build 56 passed all iOS tests, produced a signed IPA, and uploaded TestFlight 1.0.10 (43). GitHub iPad and screenshot jobs passed; the separate GitHub iPhone job failed an intermittent chat-profile UI assertion outside purchasing while its PremiumPurchaseTests passed.
 - [x] Submit TestFlight 1.0.10 (43) to Beta App Review; App Store Connect showed Waiting for Review on 2026-10-13. This is not public App Store release.
+- [x] Submit public App Store version 1.0.10 (43) with the semiannual subscription to App Review; submission `6072d278-5f92-4b53-ad13-acfb1b700c05` shows both items Waiting for Review. Manual release is selected, so Apple approval alone will not publish this update.
+- [ ] Obtain Apple's approval for the app version and TestFlight build, then recheck the selected build, all product statuses, and reviewer feedback.
 - [ ] Verify real Sandbox/TestFlight purchase, automatic renewal, restoration, account binding, outage recovery, cancellation, expiry, grace and refund for all four intervals; verify lifetime and legacy fixed-term restoration.
 - [ ] Verify Production/Sandbox signed notification delivery while the app is closed. Review new plan copy with VoiceOver and Dynamic Type.
 
