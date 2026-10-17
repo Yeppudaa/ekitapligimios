@@ -119,6 +119,16 @@ targets:
         SWIFT_ENABLE_BATCH_MODE: NO
         GENERATE_INFOPLIST_FILE: YES
 schemes:
+  EkitapligimModernUnit:
+    build:
+      targets:
+        Ekitapligim: all
+    test:
+      config: Development
+      environmentVariables:
+        MODERN_PARITY_UNIT_HOST: "1"
+      targets:
+        - EkitapligimTests
   Ekitapligim:
     build:
       targets:

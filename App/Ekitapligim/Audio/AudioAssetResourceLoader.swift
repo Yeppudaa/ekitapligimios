@@ -14,6 +14,20 @@ final class AudioAssetResourceLoader: NSObject, AVAssetResourceLoaderDelegate {
     private var jobs: [ObjectIdentifier: Task<Void, Never>] = [:]
     private var metadata: AudioMediaMetadata?
     private var stopped = false
+    #if DEBUG
+    private var requestCount = 0
+    private var informationCount = 0
+    private var dataRequestCount = 0
+    private var responseBytes: Int64 = 0
+    private var finishedCount = 0
+    private var cancelledCount = 0
+    private var failureCount = 0
+    private var lastRequestedLength = 0
+    /// Numeric transport state only. No URL, account, token, title, or response body is retained.
+    var debugSnapshot: String {
+        "requests=\(requestCount),info=\(informationCount),data=\(dataRequestCount),bytes=\(responseBytes),finished=\(finishedCount),cancelled=\(cancelledCount),failures=\(failureCount),lastLength=\(lastRequestedLength),jobs=\(jobs.count),metadata=\(metadata != nil)"
+    }
+    #endif
     var onFailure: ((Error) -> Void)?
     init(repository: AudioRepository, bookID: Int, chapter: AudioChapterDTO, account: String) {
         self.repository = repository; self.bookID = bookID; self.chapter = chapter; self.account = account
@@ -31,11 +45,21 @@ final class AudioAssetResourceLoader: NSObject, AVAssetResourceLoaderDelegate {
         return true
     }
     nonisolated func resourceLoader(_ resourceLoader: AVAssetResourceLoader, didCancel loadingRequest: AVAssetResourceLoadingRequest) {
-        Task { @MainActor [weak self] in self?.jobs.removeValue(forKey: ObjectIdentifier(loadingRequest))?.cancel() }
+        Task { @MainActor [weak self] in
+            #if DEBUG
+            self?.cancelledCount += 1
+            #endif
+            self?.jobs.removeValue(forKey: ObjectIdentifier(loadingRequest))?.cancel()
+        }
     }
     func stop() { stopped = true; for job in jobs.values { job.cancel() }; jobs.removeAll() }
     private func begin(_ request: AVAssetResourceLoadingRequest) {
         guard !stopped, !request.isCancelled else { request.finishLoading(with: CancellationError()); return }
+        #if DEBUG
+        requestCount += 1
+        if request.contentInformationRequest != nil { informationCount += 1 }
+        if let target = request.dataRequest { dataRequestCount += 1; lastRequestedLength = target.requestedLength }
+        #endif
         let key = ObjectIdentifier(request)
         jobs[key] = Task { [weak self] in
             guard let self else { return }
@@ -73,10 +97,21 @@ final class AudioAssetResourceLoader: NSObject, AVAssetResourceLoaderDelegate {
                         try Task.checkCancellation()
                         guard !request.isCancelled else { throw CancellationError() }
                         target.respond(with: data); offset += Int64(data.count)
+                        #if DEBUG
+                        self.responseBytes += Int64(data.count)
+                        #endif
                     }
                 }
-                if !request.isCancelled { request.finishLoading() }
+                if !request.isCancelled {
+                    request.finishLoading()
+                    #if DEBUG
+                    self.finishedCount += 1
+                    #endif
+                }
             } catch {
+                #if DEBUG
+                if !(error is CancellationError) { self.failureCount += 1 }
+                #endif
                 if !request.isCancelled { request.finishLoading(with: error) }
                 if !(error is CancellationError), !self.stopped { self.onFailure?(error) }
             }

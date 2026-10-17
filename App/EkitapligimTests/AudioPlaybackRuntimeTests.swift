@@ -9,6 +9,36 @@ import EkitapligimCore
 /// These exercise AVPlayer -> AVAssetResourceLoader -> authenticated HEAD/206 transport, not a mock player.
 @MainActor
 final class AudioPlaybackRuntimeTests: XCTestCase {
+    override func setUpWithError() throws { executionTimeAllowance = 90 }
+
+    func testAssetDurationLoadsThroughAuthenticatedRangesWithoutStartingAudioOutput() async throws {
+        let fixture = try AudioRuntimeFixture()
+        defer { fixture.cleanUp() }
+        let manifest = try await fixture.repository.manifest(bookID: AudioRuntimeOrigin.bookID, account: "runtime-reader")
+        let chapter = try XCTUnwrap(manifest.chapters.first)
+        let loader = AudioAssetResourceLoader(repository: fixture.repository, bookID: AudioRuntimeOrigin.bookID,
+                                              chapter: chapter, account: "runtime-reader")
+        let asset = try loader.asset()
+        var duration: CMTime?
+        var loadingError: Error?
+        let task = Task { @MainActor in
+            do { duration = try await asset.load(.duration) }
+            catch { loadingError = error }
+        }
+        defer { asset.cancelLoading(); task.cancel(); loader.stop() }
+        try await waitUntil("Native asset parses the local WAV before any audio output", controller: fixture.controller,
+                            diagnostics: { loader.debugSnapshot }) {
+            duration != nil || loadingError != nil
+        }
+        if let loadingError { throw loadingError }
+        XCTAssertEqual(try XCTUnwrap(duration).seconds, 20, accuracy: 0.15)
+        XCTAssertGreaterThan(fixture.origin.snapshot.headRequests, 0)
+        XCTAssertGreaterThan(fixture.origin.snapshot.rangeRequests, 0)
+        XCTAssertEqual(fixture.origin.snapshot.unexpectedRequests, [])
+        XCTAssertFalse(fixture.controller.playing)
+        XCTAssertFalse(fixture.controller.visible)
+    }
+
     func testGeneratedWavePlaysThroughNativeRangesAndSupportsPauseResumeAndFifteenSecondSkips() async throws {
         let fixture = try AudioRuntimeFixture()
         defer { fixture.cleanUp() }
@@ -165,6 +195,7 @@ final class AudioPlaybackRuntimeTests: XCTestCase {
     private func waitUntil(_ description: String, controller: AudioPlaybackController,
                            allowPlaybackError: Bool = false, timeout: Duration = .seconds(15),
                            file: StaticString = #filePath, line: UInt = #line,
+                           diagnostics: (() -> String)? = nil,
                            predicate: () -> Bool) async throws {
         let clock = ContinuousClock()
         let deadline = clock.now.advanced(by: timeout)
@@ -175,7 +206,7 @@ final class AudioPlaybackRuntimeTests: XCTestCase {
                 throw AudioRuntimeFailure.playbackFailed
             }
             if clock.now >= deadline {
-                XCTFail("\(description): timed out waiting for the real AVPlayer", file: file, line: line)
+                XCTFail("\(description): timed out waiting for the real AVPlayer; \(controller.debugPlaybackState); \(diagnostics?() ?? "")", file: file, line: line)
                 throw AudioRuntimeFailure.timedOut
             }
             try await Task.sleep(for: .milliseconds(50))

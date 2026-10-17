@@ -36,17 +36,23 @@ small = small or next((d for d in phones if 'Pro' not in d['name'] and 'Max' not
 large = next((d for d in phones if 'Pro Max' in d['name'] and d['udid'] != small['udid']), None)
 large = large or next(d for d in phones if d['udid'] != small['udid'])
 pad = next((d for d in pads if '13-inch' in d['name'] or '12.9' in d['name']), pads[0])
-selected = [('iPhone-compact', small), ('iPhone-large', large), ('iPad', pad)]
+selected = [('native-unit', small), ('iPhone-compact', small), ('iPhone-large', large), ('iPad', pad)]
 (root / 'selected-simulators.json').write_text(json.dumps(selected, indent=2))
 (root / 'simulators.tsv').write_text('\n'.join(f"{label}\t{device['udid']}" for label, device in selected) + '\n')
 PY
 
 while IFS=$'\t' read -r label device; do
   test_status=0
+  scheme=Ekitapligim
   arguments=(-only-testing:EkitapligimUITests/ModernParityUITests)
-  if [ "$label" = "iPhone-compact" ]; then arguments+=(-only-testing:EkitapligimTests); fi
-  xcodebuild test -project Ekitapligim.xcodeproj -scheme Ekitapligim \
+  # Unit tests use a blank app host and never share a launch environment with UI tests.
+  if [ "$label" = "native-unit" ]; then
+    scheme=EkitapligimModernUnit
+    arguments=(-only-testing:EkitapligimTests)
+  fi
+  xcodebuild test -project Ekitapligim.xcodeproj -scheme "$scheme" \
     -configuration Development -destination "platform=iOS Simulator,id=$device" \
+    -parallel-testing-enabled NO -test-timeouts-enabled YES \
     -resultBundlePath "$EVIDENCE/$label.xcresult" \
     -clonedSourcePackagesDirPath .build/xcode-packages -disableAutomaticPackageResolution \
     "${arguments[@]}" CODE_SIGNING_ALLOWED=YES CODE_SIGN_IDENTITY=- CODE_SIGN_STYLE=Manual \

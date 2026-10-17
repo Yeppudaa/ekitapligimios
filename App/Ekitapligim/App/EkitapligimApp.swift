@@ -22,6 +22,7 @@ struct EkitapligimApp: App {
                     if ProcessInfo.processInfo.arguments.contains("-gift-wheel-ui-fixture") { return }
                     if ProcessInfo.processInfo.arguments.contains("-reader-ui-fixture") { return }
                     if ProcessInfo.processInfo.arguments.contains("-chat-ui-fixture") { return }
+                    if isUnitTestHost { return }
                     #endif
                     appDelegate.pushManager = container.pushManager
                     await container.bootstrap()
@@ -37,6 +38,14 @@ struct EkitapligimApp: App {
         return .light
     }
 
+    #if DEBUG
+    private var isUnitTestHost: Bool {
+        // Hosted XCTest bundles run their own injected services. Rendering RootView would start
+        // unrelated Home polling and bootstrap while those tests are exercising AVFoundation.
+        ProcessInfo.processInfo.environment["MODERN_PARITY_UNIT_HOST"] == "1"
+    }
+    #endif
+
     @ViewBuilder private var appContent: some View {
         #if DEBUG
         if ProcessInfo.processInfo.arguments.contains("-modern-parity-ui-fixture") { ModernParityUITestHost() }
@@ -44,6 +53,7 @@ struct EkitapligimApp: App {
         else if ProcessInfo.processInfo.arguments.contains("-gift-wheel-ui-fixture") { GiftWheelUITestHost() }
         else if ProcessInfo.processInfo.arguments.contains("-reader-ui-fixture") { ReaderUITestHost() }
         else if ProcessInfo.processInfo.arguments.contains("-chat-ui-fixture") { ChatUITestHost() }
+        else if isUnitTestHost { Color.clear.accessibilityHidden(true) }
         else { RootView() }
         #else
         RootView()

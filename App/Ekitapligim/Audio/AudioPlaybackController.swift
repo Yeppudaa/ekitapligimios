@@ -54,6 +54,13 @@ final class AudioPlaybackController: ObservableObject {
     private var artworkTask: Task<Void, Never>?
     private var nowPlayingArtwork: MPMediaItemArtwork?
     private var acknowledgedActivities: Set<String> = []
+    #if DEBUG
+    private var debugAudioSessionPhase = "not-requested"
+    /// Content-free state used only by native tests; it never exposes media or account data.
+    var debugPlaybackState: String {
+        "loading=\(loading),playing=\(playing),position=\(position),duration=\(duration),itemStatus=\(player?.currentItem?.status.rawValue ?? -1),timeControl=\(player?.timeControlStatus.rawValue ?? -1),waiting=\(player?.reasonForWaitingToPlay?.rawValue ?? "none"),audioSession=\(debugAudioSessionPhase),loader={\(loader?.debugSnapshot ?? "none")}"
+    }
+    #endif
 
     init(repository: AudioRepository) {
         self.repository = repository
@@ -298,8 +305,17 @@ final class AudioPlaybackController: ObservableObject {
         }
     }
     private func activateAudioSession() throws {
+        #if DEBUG
+        debugAudioSessionPhase = "setting-category"
+        #endif
         try AVAudioSession.sharedInstance().setCategory(.playback, mode: .spokenAudio, options: [])
+        #if DEBUG
+        debugAudioSessionPhase = "activating"
+        #endif
         try AVAudioSession.sharedInstance().setActive(true)
+        #if DEBUG
+        debugAudioSessionPhase = "active"
+        #endif
     }
     private func configureRemoteControls() {
         let center = MPRemoteCommandCenter.shared()

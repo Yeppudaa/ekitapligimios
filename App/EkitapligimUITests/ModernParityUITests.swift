@@ -7,6 +7,7 @@ import XCTest
 final class ModernParityUITests: XCTestCase {
     override func setUpWithError() throws {
         continueAfterFailure = false
+        executionTimeAllowance = 900
         XCUIDevice.shared.orientation = .portrait
     }
 
