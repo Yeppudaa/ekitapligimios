@@ -85,11 +85,20 @@ struct AudioShelfView: View {
                     }
                 }.clipShape(RoundedRectangle(cornerRadius: 21))
             ScrollView(.horizontal, showsIndicators: false) {
-                LazyHStack(alignment: .top, spacing: 12) {
-                    ForEach(books) { book in AudioCardView(book: book) { onBook(book.id) }.frame(width: 162) }
+                Group {
+                    // Small shelves have a known natural height before the vertical page scrolls.
+                    // Keep large author collections lazy and retain every received book.
+                    if books.count <= 8 {
+                        HStack(alignment: .top, spacing: 12) { shelfCards }
+                    } else {
+                        LazyHStack(alignment: .top, spacing: 12) { shelfCards }
+                    }
                 }.padding(.bottom, 5)
             }
         }
+    }
+    private var shelfCards: some View {
+        ForEach(books) { book in AudioCardView(book: book) { onBook(book.id) }.frame(width: 162) }
     }
 }
 @MainActor

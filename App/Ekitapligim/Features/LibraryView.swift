@@ -123,6 +123,7 @@ struct LibraryView: View {
             "\(selectedTab.title) · \(L10n.libraryTabBookCount(filteredItems.count))"
         ].joined(separator: ". "))
         .accessibilityIdentifier("library.scenicHero")
+        .contentShape(.accessibility, RoundedRectangle(cornerRadius: 24))
     }
 
     private var guestPrompt: some View {

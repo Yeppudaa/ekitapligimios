@@ -171,6 +171,7 @@ struct ChatView: View {
         .accessibilityLabel(pinnedChatHeaderAccessibilityText(compact: compact))
         .accessibilityAddTraits(.isHeader)
         .accessibilityIdentifier("chat-pinned-header")
+        .contentShape(.accessibility, Rectangle())
     }
 
     private func pinnedChatHeaderAccessibilityText(compact: Bool) -> String {
