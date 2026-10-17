@@ -61,6 +61,24 @@ workflows:
       - build/audio-detail-scroll-archives/packaging-status.json
       - build/audio-detail-scroll-packaging.log
 
+  ios-focused-visual-regression:
+    name: Ekitapligim iOS Focused Visual Regression
+    max_build_duration: 40
+    instance_type: mac_mini_m2
+    environment:
+      xcode: 26.3
+    cache:
+      cache_paths:
+        - .build/xcode-packages
+    scripts:
+      - name: Seven selected UI regressions on three device sizes
+        script: bash Scripts/focused-visual-macos-regression.sh
+    artifacts:
+      - build/focused-visual-regression-archives/modern-parity-evidence.zip
+      - build/focused-visual-regression-archives/forensics/*.xcresult.zip
+      - build/focused-visual-regression-archives/packaging-status.json
+      - build/focused-visual-regression-packaging.log
+
   ios-production:
     name: Ekitapligim iOS Production
     max_build_duration: 120
