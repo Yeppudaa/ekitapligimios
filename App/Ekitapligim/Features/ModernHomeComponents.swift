@@ -366,6 +366,7 @@ struct ModernHomeLibraryBanner: View {
             .accessibilityHidden(true)
         }
         .clipShape(RoundedRectangle(cornerRadius: 19))
+        .accessibilityElement(children: .contain)
         .accessibilityIdentifier("home.scenicLibrary")
     }
 

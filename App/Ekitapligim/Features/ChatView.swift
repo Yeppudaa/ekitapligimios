@@ -167,6 +167,7 @@ struct ChatView: View {
         }
         .padding(.horizontal, 14).padding(.top, 8).padding(.bottom, 8)
         .frame(width: width)
+        .accessibilityElement(children: .contain)
         .accessibilityIdentifier("chat-pinned-header")
     }
 

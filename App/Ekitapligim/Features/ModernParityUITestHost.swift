@@ -327,7 +327,7 @@ private enum ModernParityPayload {
             let pagination: [String: Any] = ["page": 1, "pages": 1, "total": 8]
             return ["books": books, "pagination": pagination]
         }
-        if path.contains("/books/") { return ["book": book(2)] }
+        if path.contains("/books/") || path.contains("/book-detail/") { return ["book": book(2)] }
         if path.contains("/members/") { return ["member": ["id": "900002", "username": "Ada", "can_view_profile": true], "items": []] }
         if path.contains("bootstrap") { return ["enabled": false] }
         return ["items": [], "members": [], "posts": [], "success": true]

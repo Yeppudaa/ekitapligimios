@@ -1064,6 +1064,7 @@ struct BookDetailView: View {
             }
             .buttonStyle(.plain)
             .accessibilityLabel(L10n.commonBack)
+            .accessibilityIdentifier("book.detail.back")
 
             Text(topBarTitle)
                 .font(.system(.headline, design: .serif).weight(.heavy))

@@ -66,6 +66,7 @@ struct ModernHeroView: View {
                     }
                     .accessibilityHidden(true)
             }
+            .accessibilityHidden(true)
         }
         .clipShape(RoundedRectangle(cornerRadius: 24, style: .continuous))
         .overlay { RoundedRectangle(cornerRadius: 24).stroke(Color(hex: 0xDCE5DF)) }

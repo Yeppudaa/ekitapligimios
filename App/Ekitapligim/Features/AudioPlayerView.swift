@@ -32,6 +32,7 @@ struct AudioMiniPlayerView: View {
                 }.padding(.horizontal, 12).padding(.vertical, 9)
             }.foregroundStyle(AudioStyle.ink).background(.ultraThinMaterial)
                 .overlay(alignment: .top) { Rectangle().fill(AudioStyle.line).frame(height: 1) }
+                .accessibilityElement(children: .contain)
                 .accessibilityIdentifier("audio.mini")
         }
     }

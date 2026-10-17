@@ -396,7 +396,8 @@ final class ModernParityUITests: XCTestCase {
         reveal(book, in: app)
         XCTAssertTrue(book.isHittable)
         book.tap()
-        let back = app.navigationBars.buttons.firstMatch
+        XCTAssertTrue(app.staticTexts["Beyaz Zambaklar Ülkesinde"].firstMatch.waitForExistence(timeout: 8), "The real book-detail route must load its fixture before returning")
+        let back = app.buttons["book.detail.back"]
         XCTAssertTrue(back.waitForExistence(timeout: 8))
         back.tap()
         XCTAssertTrue(selectedShelf.waitForExistence(timeout: 5))

@@ -86,8 +86,7 @@ struct AudioBookDetailView: View {
         VStack(alignment: .leading, spacing: 14) {
             VStack(alignment: .leading, spacing: 0) {
             ZStack(alignment: .bottom) {
-                AudioArtwork(name: book.title.localizedCaseInsensitiveContains("Küçük Prens") ? "audio_detail_prince_landscape" : "audio_story_landscape")
-                    .frame(height: 315).clipped()
+                Color.clear.frame(height: 315)
                 LinearGradient(colors: [AudioStyle.ink.opacity(0.05), AudioStyle.ink], startPoint: .top, endPoint: .bottom)
                 VStack(spacing: 20) {
                     Label(AudioL10n.text(book.isDemo ? "demo" : "storyVoice"), systemImage: "headphones")
@@ -95,6 +94,11 @@ struct AudioBookDetailView: View {
                         .background(AudioStyle.ink.opacity(0.8)).clipShape(Capsule())
                     AudioCoverView(book: book, width: 154).rotationEffect(.degrees(-3)).rotation3DEffect(.degrees(-5), axis: (x: 0, y: 1, z: 0))
                 }.padding(.bottom, 22).padding(.top, 18)
+            }.background {
+                GeometryReader { geometry in
+                    AudioArtwork(name: book.title.localizedCaseInsensitiveContains("Küçük Prens") ? "audio_detail_prince_landscape" : "audio_story_landscape")
+                        .frame(width: geometry.size.width, height: geometry.size.height).clipped()
+                }.accessibilityHidden(true)
             }
             VStack(alignment: .leading, spacing: 16) {
                 Text(book.title).font(.system(.largeTitle, design: .serif, weight: .bold)).foregroundStyle(.white).fixedSize(horizontal: false, vertical: true)
