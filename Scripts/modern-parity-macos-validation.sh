@@ -6,8 +6,33 @@ EVIDENCE="$PWD/build/modern-parity"
 mkdir -p "$EVIDENCE"
 result=0
 core_status=0
+
+# Package whatever was actually produced, including failures before the test loop finishes.
+# Keep full result bundles separate from the compact screenshots/text archive. Nothing is sent.
+finish_evidence() {
+  local command_status="$1" final_status="$1" packaging_status=0
+  trap - EXIT
+  set +e
+  if [ "$result" -ne 0 ] && [ "$final_status" -eq 0 ]; then final_status=1; fi
+  printf '%s\n' "$final_status" > "$EVIDENCE/result-code.txt"
+  python3 "$PWD/Scripts/package-modern-parity-evidence.py" \
+    --evidence-root "$EVIDENCE" --output-root "$PWD/build/modern-parity-archives" \
+    > "$PWD/build/modern-parity-packaging.log" 2>&1 || packaging_status=$?
+  cat "$PWD/build/modern-parity-packaging.log"
+  if [ "$packaging_status" -ne 0 ] && [ "$final_status" -eq 0 ]; then final_status=1; fi
+  printf '%s\n' "$final_status" > "$EVIDENCE/result-code.txt"
+  mkdir -p "$PWD/build/modern-parity-archives"
+  printf '{"commandExit":%s,"validationResult":%s,"packagingExit":%s,"finalExit":%s}\n' \
+    "$command_status" "$result" "$packaging_status" "$final_status" \
+    > "$PWD/build/modern-parity-archives/packaging-status.json"
+  printf '\nEVIDENCE PACKAGING exit: %s; final validation exit: %s\n' "$packaging_status" "$final_status"
+  exit "$final_status"
+}
+trap 'finish_evidence "$?"' EXIT
+
 git rev-parse HEAD > "$EVIDENCE/revision.txt"
 xcodebuild -version | tee "$EVIDENCE/xcode-version.txt"
+xcrun xcresulttool version > "$EVIDENCE/xcresulttool-version.txt"
 if ! command -v xcodegen >/dev/null 2>&1; then brew install xcodegen; fi
 xcodegen generate
 swift test 2>&1 | tee "$EVIDENCE/core-tests.log" || core_status=$?
@@ -60,11 +85,23 @@ while IFS=$'\t' read -r label device; do
     2>&1 | tee "$EVIDENCE/$label-tests.log" || test_status=$?
   printf '%s\n' "$test_status" > "$EVIDENCE/$label-status.txt"
   if [ "$test_status" -ne 0 ]; then result=1; fi
+  evidence_status=0
   if [ -d "$EVIDENCE/$label.xcresult" ]; then
+    xcrun xcresulttool get test-results summary --path "$EVIDENCE/$label.xcresult" \
+      > "$EVIDENCE/$label-summary.json" 2> "$EVIDENCE/$label-summary-export.log" || evidence_status=$?
+    xcrun xcresulttool get test-results tests --path "$EVIDENCE/$label.xcresult" \
+      > "$EVIDENCE/$label-tests.json" 2> "$EVIDENCE/$label-tests-export.log" || evidence_status=$?
     mkdir -p "$EVIDENCE/$label-screenshots"
     xcrun xcresulttool export attachments --path "$EVIDENCE/$label.xcresult" \
-      --output-path "$EVIDENCE/$label-screenshots" || result=1
+      --output-path "$EVIDENCE/$label-screenshots" \
+      2>&1 | tee "$EVIDENCE/$label-attachments-export.log" || evidence_status=$?
+  else
+    printf 'Missing result bundle for %s (test exit %s)\n' "$label" "$test_status" \
+      | tee "$EVIDENCE/$label-attachments-export.log"
+    evidence_status=1
   fi
+  printf '%s\n' "$evidence_status" > "$EVIDENCE/$label-evidence-status.txt"
+  if [ "$evidence_status" -ne 0 ]; then result=1; fi
 done < "$EVIDENCE/simulators.tsv"
 
 production_status=0

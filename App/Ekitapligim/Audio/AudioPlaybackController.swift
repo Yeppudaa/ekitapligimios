@@ -62,6 +62,10 @@ final class AudioPlaybackController: ObservableObject {
     var debugPlaybackState: String {
         "loading=\(loading),playing=\(playing),position=\(position),duration=\(duration),itemStatus=\(player?.currentItem?.status.rawValue ?? -1),timeControl=\(player?.timeControlStatus.rawValue ?? -1),waiting=\(player?.reasonForWaitingToPlay?.rawValue ?? "none"),audioSession=\(debugAudioSessionPhase),initialSeek=\(debugInitialSeekPhase.rawValue),loader={\(loader?.debugSnapshot ?? "none")}"
     }
+    private func debugTrace(_ phase: StaticString) {
+        guard ProcessInfo.processInfo.environment["MODERN_PARITY_AUDIO_TRACE"] == "1" else { return }
+        NSLog("MODERN_AUDIO_PHASE %@", String(describing: phase))
+    }
     #endif
 
     init(repository: AudioRepository) {
@@ -134,15 +138,39 @@ final class AudioPlaybackController: ObservableObject {
         }
     }
     func pause() {
-        playWhenReady = false; player?.pause(); playing = false; updatePosition(); flush(); updateNowPlaying()
+        #if DEBUG
+        debugTrace("pause.enter")
+        #endif
+        playWhenReady = false; player?.pause(); playing = false
+        #if DEBUG
+        debugTrace("pause.player-returned")
+        #endif
+        updatePosition()
+        #if DEBUG
+        debugTrace("pause.position-returned")
+        #endif
+        flush(); updateNowPlaying()
+        #if DEBUG
+        debugTrace("pause.now-playing-returned")
+        #endif
     }
     /// No mini-player survives this operation; releasing the asset also cancels outstanding HTTP ranges.
     func close() {
+        #if DEBUG
+        debugTrace("close.enter")
+        #endif
         pause(); loadTask?.cancel(); generation = UUID(); releasePlayer(); manifest = nil; requestedBookID = nil
         loading = false; playing = false; error = nil; accessError = nil; bookmarks = []; position = 0; duration = 0; noteRequested = false; savingBookmark = false; expanded = false; annotationError = nil
         sleepDeadline = nil; sleepMinutes = 0; sleepAtChapterEnd = false; artworkTask?.cancel(); nowPlayingArtwork = nil
         MPNowPlayingInfoCenter.default().nowPlayingInfo = nil
+        #if DEBUG
+        debugTrace("close.now-playing-cleared")
+        debugTrace("close.session-deactivate-before")
+        #endif
         try? AVAudioSession.sharedInstance().setActive(false, options: .notifyOthersOnDeactivation)
+        #if DEBUG
+        debugTrace("close.session-deactivate-returned")
+        #endif
     }
     func seek(to value: Double) {
         guard let player, !loading else { return }
@@ -309,9 +337,33 @@ final class AudioPlaybackController: ObservableObject {
         loader?.stop(); updateNowPlaying()
     }
     private func releasePlayer() {
+        #if DEBUG
+        debugTrace("release.enter")
+        #endif
         statusObservation?.invalidate(); statusObservation = nil
+        #if DEBUG
+        debugTrace("release.kvo-invalidated")
+        #endif
         if let periodicObserver, let player { player.removeTimeObserver(periodicObserver) }; periodicObserver = nil
-        player?.pause(); player?.replaceCurrentItem(with: nil); player = nil; loader?.stop(); loader = nil
+        #if DEBUG
+        debugTrace("release.periodic-observer-removed")
+        #endif
+        player?.pause()
+        #if DEBUG
+        debugTrace("release.pause-returned")
+        #endif
+        player?.replaceCurrentItem(with: nil)
+        #if DEBUG
+        debugTrace("release.item-detached")
+        #endif
+        player = nil
+        #if DEBUG
+        debugTrace("release.player-released")
+        #endif
+        loader?.stop(); loader = nil
+        #if DEBUG
+        debugTrace("release.loader-stopped")
+        #endif
         // The first three observers are the controller's lifetime interruption/route/termination listeners.
         if notifications.count > 3 {
             notifications.dropFirst(3).forEach { NotificationCenter.default.removeObserver($0) }; notifications = Array(notifications.prefix(3))

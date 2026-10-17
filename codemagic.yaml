@@ -20,7 +20,10 @@ workflows:
       - name: Native iPhone and iPad tests, screenshots and unsigned Production build
         script: bash Scripts/modern-parity-macos-validation.sh
     artifacts:
-      - build/modern-parity/**
+      - build/modern-parity-archives/modern-parity-evidence.zip
+      - build/modern-parity-archives/forensics/*.xcresult.zip
+      - build/modern-parity-archives/packaging-status.json
+      - build/modern-parity-packaging.log
 
   ios-production:
     name: Ekitapligim iOS Production

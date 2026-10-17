@@ -2,6 +2,7 @@ import XCTest
 import AVFoundation
 import MediaPlayer
 import UIKit
+import Darwin
 import EkitapligimCore
 @testable import Ekitapligim
 
@@ -9,7 +10,87 @@ import EkitapligimCore
 /// These exercise AVPlayer -> AVAssetResourceLoader -> authenticated HEAD/206 transport, not a mock player.
 @MainActor
 final class AudioPlaybackRuntimeTests: XCTestCase {
-    override func setUpWithError() throws { executionTimeAllowance = 90 }
+    nonisolated(unsafe) private var previousTraceEnvironment: String?
+    override func setUpWithError() throws {
+        executionTimeAllowance = 90
+        previousTraceEnvironment = ProcessInfo.processInfo.environment["MODERN_PARITY_AUDIO_TRACE"]
+        setenv("MODERN_PARITY_AUDIO_TRACE", "1", 1)
+    }
+    override func tearDownWithError() throws {
+        if let previousTraceEnvironment { setenv("MODERN_PARITY_AUDIO_TRACE", previousTraceEnvironment, 1) }
+        else { unsetenv("MODERN_PARITY_AUDIO_TRACE") }
+    }
+
+    /// A framework control uses identical generated PCM bytes without the repository, resource loader,
+    /// controller, KVO or Now Playing. Its failure identifies a native audio environment problem separately.
+    func testA00GeneratedLocalWaveParsesReachesPlayerReadinessAndAdvances() async throws {
+        let directory = FileManager.default.temporaryDirectory.appendingPathComponent(UUID().uuidString, isDirectory: true)
+        try FileManager.default.createDirectory(at: directory, withIntermediateDirectories: true)
+        defer { try? FileManager.default.removeItem(at: directory) }
+        let url = directory.appendingPathComponent("generated-control.wav")
+        try AudioRuntimeOrigin.silentWave(seconds: 20).write(to: url, options: .atomic)
+        let asset = AVURLAsset(url: url)
+        var parsed = false
+        var parseError: Error?
+        let parseTask = Task { @MainActor in
+            do {
+                let duration = try await asset.load(.duration)
+                let playable = try await asset.load(.isPlayable)
+                let tracks = try await asset.loadTracks(withMediaType: .audio)
+                XCTAssertEqual(duration.seconds, 20, accuracy: 0.15)
+                XCTAssertTrue(playable)
+                XCTAssertEqual(tracks.count, 1)
+                parsed = true
+                NSLog("MODERN_AUDIO_CONTROL local-asset-parsed")
+            } catch { parseError = error }
+        }
+        defer { parseTask.cancel(); asset.cancelLoading() }
+        try await waitForControl("Local generated WAV parses", diagnostics: { "parsed=\(parsed)" }) {
+            parsed || parseError != nil
+        }
+        if let parseError { throw parseError }
+        let item = AVPlayerItem(asset: asset)
+        let player = AVPlayer(playerItem: item)
+        player.volume = 0
+        defer {
+            NSLog("MODERN_AUDIO_CONTROL cleanup.pause-before")
+            player.pause()
+            NSLog("MODERN_AUDIO_CONTROL cleanup.pause-returned")
+            player.replaceCurrentItem(with: nil)
+            NSLog("MODERN_AUDIO_CONTROL cleanup.item-detached")
+            try? AVAudioSession.sharedInstance().setActive(false, options: .notifyOthersOnDeactivation)
+            NSLog("MODERN_AUDIO_CONTROL cleanup.session-deactivated")
+        }
+        try await waitForControl("Local generated WAV reaches AVPlayer readiness", diagnostics: {
+            "itemStatus=\(item.status.rawValue),timeControl=\(player.timeControlStatus.rawValue)"
+        }) { item.status != .unknown }
+        if let error = item.error { throw error }
+        XCTAssertEqual(item.status, .readyToPlay)
+        NSLog("MODERN_AUDIO_CONTROL local-player-ready")
+        try AVAudioSession.sharedInstance().setCategory(.playback, mode: .spokenAudio, options: [])
+        NSLog("MODERN_AUDIO_CONTROL local-session-category-set")
+        try AVAudioSession.sharedInstance().setActive(true)
+        NSLog("MODERN_AUDIO_CONTROL local-session-active")
+        player.playImmediately(atRate: 1)
+        try await waitForControl("Local generated WAV advances", diagnostics: {
+            "itemStatus=\(item.status.rawValue),timeControl=\(player.timeControlStatus.rawValue),position=\(player.currentTime().seconds)"
+        }) { player.currentTime().seconds > 0.25 }
+        NSLog("MODERN_AUDIO_CONTROL local-player-advanced")
+    }
+
+    private func waitForControl(_ description: String, diagnostics: () -> String,
+                                file: StaticString = #filePath, line: UInt = #line,
+                                predicate: () -> Bool) async throws {
+        let deadline = ContinuousClock().now.advanced(by: .seconds(15))
+        while !predicate() {
+            try Task.checkCancellation()
+            if ContinuousClock().now >= deadline {
+                XCTFail("\(description): \(diagnostics())", file: file, line: line)
+                throw AudioRuntimeFailure.timedOut
+            }
+            try await Task.sleep(for: .milliseconds(50))
+        }
+    }
 
     func testAssetDurationLoadsThroughAuthenticatedRangesWithoutStartingAudioOutput() async throws {
         let fixture = try AudioRuntimeFixture()
@@ -359,7 +440,7 @@ private final class AudioRuntimeOrigin: @unchecked Sendable {
         return (500, ["Content-Type": "application/json"], Data("{}".utf8))
     }
     /// RIFF/WAVE, PCM format 1, mono, 22,050 Hz, signed 16-bit silence. No media assets or copyrights.
-    private static func silentWave(seconds: Int) -> Data {
+    static func silentWave(seconds: Int) -> Data {
         let rate: UInt32 = 22_050
         let byteCount = rate * UInt32(seconds) * 2
         var result = Data("RIFF".utf8)
