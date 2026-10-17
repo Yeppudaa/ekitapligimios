@@ -25,6 +25,24 @@ workflows:
       - build/modern-parity-archives/packaging-status.json
       - build/modern-parity-packaging.log
 
+  ios-native-audio-diagnostic:
+    name: Ekitapligim iOS Native Audio Diagnostic
+    max_build_duration: 40
+    instance_type: mac_mini_m2
+    environment:
+      xcode: 26.3
+    cache:
+      cache_paths:
+        - .build/xcode-packages
+    scripts:
+      - name: Native audio control and teardown diagnostics
+        script: bash Scripts/native-audio-macos-diagnostic.sh
+    artifacts:
+      - build/native-audio-archives/modern-parity-evidence.zip
+      - build/native-audio-archives/forensics/*.xcresult.zip
+      - build/native-audio-archives/packaging-status.json
+      - build/native-audio-packaging.log
+
   ios-production:
     name: Ekitapligim iOS Production
     max_build_duration: 120

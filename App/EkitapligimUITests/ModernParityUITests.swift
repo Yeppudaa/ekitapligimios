@@ -18,7 +18,7 @@ final class ModernParityUITests: XCTestCase {
         XCUIDevice.shared.orientation = .portrait
     }
 
-    private func launch(_ screen: String, largeText: Bool = false, dark: Bool = false, guest: Bool = false, standardMember: Bool = false, playAudio: Bool = false, catalogFailure: Bool = false) -> XCUIApplication {
+    private func launch(_ screen: String, largeText: Bool = false, dark: Bool = false, guest: Bool = false, standardMember: Bool = false, playAudio: Bool = false, catalogFailure: Bool = false, longAgenda: Bool = false) -> XCUIApplication {
         let app = XCUIApplication()
         app.launchArguments = ["-modern-parity-ui-fixture", "-AppleLanguages", "(tr)", "-AppleLocale", "tr_TR"]
         app.launchEnvironment["MODERN_PARITY_SCREEN"] = screen
@@ -28,6 +28,7 @@ final class ModernParityUITests: XCTestCase {
         app.launchEnvironment["MODERN_PARITY_STANDARD_MEMBER"] = standardMember ? "1" : "0"
         app.launchEnvironment["MODERN_PARITY_PLAY_AUDIO"] = playAudio ? "1" : "0"
         app.launchEnvironment["MODERN_PARITY_CATALOG_FAILURE"] = catalogFailure ? "1" : "0"
+        app.launchEnvironment["MODERN_PARITY_LONG_AGENDA"] = longAgenda ? "1" : "0"
         app.launch()
         XCTAssertTrue(app.otherElements["modern-parity-ready"].waitForExistence(timeout: 10), "The offline screen did not become ready: \(screen)")
         XCTAssertFalse(app.staticTexts["modern-parity-error"].exists)
@@ -86,7 +87,8 @@ final class ModernParityUITests: XCTestCase {
     }
 
     func testEveryRefreshedNativeScreenRendersWithNormalText() {
-        for screen in ["home", "catalog", "library", "profile", "requests", "forum", "threads", "authors", "publishers", "agenda", "live", "chat", "audio", "audio-detail", "audio-library", "audio-player", "notifications"] {
+        // Keep playback last so a real AVPlayer failure cannot suppress other page evidence.
+        for screen in ["home", "catalog", "library", "profile", "requests", "forum", "threads", "authors", "publishers", "agenda", "live", "chat", "audio", "audio-detail", "audio-library", "notifications", "audio-player"] {
             let app = launch(screen)
             if screen == "audio-player" { XCTAssertTrue(app.buttons["Duraklat"].firstMatch.waitForExistence(timeout: 15), "The local native audio fixture did not become ready") }
             XCTAssertTrue(app.scrollViews.firstMatch.waitForExistence(timeout: 10), "Expected native scroll content on \(screen)")
@@ -133,8 +135,9 @@ final class ModernParityUITests: XCTestCase {
         XCTAssertFalse(catalogHero.exists)
     }
 
-    func testCommunityAndLibraryStayUsableAtAccessibilityTextSizeInLandscape() throws {
-        for screen in ["home", "catalog", "library", "profile", "requests", "forum", "threads", "authors", "publishers", "agenda", "live", "chat", "audio", "audio-detail", "audio-library", "audio-player", "notifications"] {
+    func testRefreshedScreensCaptureSmokeEvidenceAtAccessibilityTextSizeInLandscape() throws {
+        // This collects visual evidence; per-feature tests assert actual control reachability.
+        for screen in ["home", "catalog", "library", "profile", "requests", "forum", "threads", "authors", "publishers", "agenda", "live", "chat", "audio", "audio-detail", "audio-library", "notifications", "audio-player"] {
             let app = launch(screen, largeText: true, dark: true)
             if screen == "audio-player" { XCTAssertTrue(app.buttons["Duraklat"].firstMatch.waitForExistence(timeout: 15)) }
             XCUIDevice.shared.orientation = .landscapeLeft
@@ -143,6 +146,43 @@ final class ModernParityUITests: XCTestCase {
             app.swipeUp()
             capture(app, "modern-\(screen)-landscape-accessibility3-scrolled")
             XCTAssertFalse(app.alerts.firstMatch.exists)
+            app.terminate()
+            XCUIDevice.shared.orientation = .portrait
+        }
+    }
+
+    func testHomeAgendaUsesIntrinsicCardsForLongAccessibilityTextInBothOrientations() {
+        for landscape in [false, true] {
+            let app = launch("home", largeText: true, longAgenda: true)
+            XCUIDevice.shared.orientation = landscape ? .landscapeLeft : .portrait
+            let card = app.descendants(matching: .any)["home.agenda.940001"].firstMatch
+            let open = app.buttons["agenda.open.940001"]
+            reveal(open, in: app)
+            XCTAssertTrue(open.isHittable, "The actual post action must remain reachable")
+            XCTAssertTrue(card.exists)
+            XCTAssertGreaterThan(card.frame.height, 360, "Accessibility content must grow beyond the normal rail height")
+            let nextCard = app.descendants(matching: .any)["home.agenda.940002"].firstMatch
+            XCTAssertTrue(nextCard.exists)
+            XCTAssertGreaterThanOrEqual(nextCard.frame.minY, card.frame.maxY,
+                "Large-text agenda cards must stack without overlapping each other's content")
+            assertContained(nextCard, in: app)
+            assertContained(open, in: app)
+            XCTAssertGreaterThan(open.frame.height, 0)
+            XCTAssertGreaterThan(open.frame.intersection(app.scrollViews["home.scroll"].frame).height, 0)
+            XCTAssertGreaterThanOrEqual(open.frame.minY, card.frame.minY - 1)
+            XCTAssertLessThanOrEqual(open.frame.maxY, card.frame.maxY + 1,
+                "The post action must remain within its intrinsically sized card")
+            // A body Button is one semantic element. Its full label verifies accessible content;
+            // it does not establish the geometry or clipping of individual rendered text lines.
+            for expectedText in [
+                "Her yeni kitap başka bir dünyanın kapısını açıyor. Bu uzun değerlendirme, büyük yazılarda da satırları kesilmeden okunabilmeli.",
+                "Birlikte Keşfettiğimiz Hikâyelerin İzinde Uzun Bir Okuma Yolculuğu",
+                "Birbirinden Güzel Hikâyeler Anlatan Örnek Yazar"
+            ] {
+                XCTAssertTrue(open.label.contains(expectedText), "The actual post action must expose its full review and book context")
+            }
+            // AX geometry establishes action/card containment, not glyph rendering. Retain pixels.
+            capture(app, "modern-home-long-agenda-accessibility3-\(landscape ? "landscape" : "portrait")")
             app.terminate()
             XCUIDevice.shared.orientation = .portrait
         }

@@ -373,6 +373,14 @@ private enum ModernParityPayload {
         item["book"] = referencedBook
         item["viewer"] = viewer
         item["reaction_score"] = 12
+        // Opt-in stress content remains inside this DEBUG-only, intercepted transport.
+        if value == 1, ProcessInfo.processInfo.environment["MODERN_PARITY_LONG_AGENDA"] == "1" {
+            item["type"] = "review"
+            item["review_title"] = "Birlikte keşfettiğimiz hikâyeler ve okuma yolculuğumuz"
+            item["message"] = "Her yeni kitap başka bir dünyanın kapısını açıyor. Bu uzun değerlendirme, büyük yazılarda da satırları kesilmeden okunabilmeli."
+            item["actor"] = ["id": "900002", "username": "Kitaplarla yeni dünyalar keşfeden bir okur", "avatar_url": "", "is_premium": false]
+            item["book"] = ["id": "900042", "title": "Birlikte Keşfettiğimiz Hikâyelerin İzinde Uzun Bir Okuma Yolculuğu", "author": "Birbirinden Güzel Hikâyeler Anlatan Örnek Yazar", "cover_url": ""]
+        }
         return item
     }
 

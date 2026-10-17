@@ -4,6 +4,7 @@ import EkitapligimCore
 @MainActor
 struct HomeView: View {
     @EnvironmentObject private var container: AppContainer
+    @Environment(\.dynamicTypeSize) private var dynamicTypeSize
 
     @State private var stats: SiteStatsDTO?
     @State private var popularBooks: [BookDTO] = []
@@ -453,18 +454,23 @@ struct HomeView: View {
                 .padding(20)
                 .background(HomeAgendaStyle.paper, in: RoundedRectangle(cornerRadius: 24))
                 .padding(.horizontal, 16)
+            } else if dynamicTypeSize.isAccessibilitySize {
+                // Large text needs the full intrinsic height of names, quotations and book context.
+                // Keep these cards in the page's vertical scroll instead of the fixed-height rail.
+                VStack(alignment: .leading, spacing: 14) {
+                    ForEach(agendaPosts.prefix(4)) { post in
+                        homeAgendaCard(post, layout: .adaptive)
+                    }
+                }
+                .padding(.horizontal, 16)
             } else {
                 ScrollView(.horizontal, showsIndicators: false) {
                     HStack(alignment: .center, spacing: 14) {
                         ForEach(agendaPosts.prefix(4)) { post in
-                            HomeAgendaCard(post: post, layout: .rail) {
-                                guard let postID = Int(post.id), postID > 0 else { return }
-                                container.open(route: .bookAgendaPost(postID))
-                            }
+                            homeAgendaCard(post, layout: .rail)
                             .containerRelativeFrame(.horizontal) { length, _ in
                                 min(340, max(1, length - 52))
                             }
-                            .accessibilityIdentifier("home.agenda.\(post.id)")
                         }
                     }
                     .fixedSize(horizontal: false, vertical: true)
@@ -473,6 +479,14 @@ struct HomeView: View {
                 }
             }
         }
+    }
+
+    private func homeAgendaCard(_ post: BookAgendaPostDTO, layout: HomeAgendaCardLayout) -> some View {
+        HomeAgendaCard(post: post, layout: layout) {
+            guard let postID = Int(post.id), postID > 0 else { return }
+            container.open(route: .bookAgendaPost(postID))
+        }
+        .accessibilityIdentifier("home.agenda.\(post.id)")
     }
 
     // MARK: - Kitap rayları
@@ -826,7 +840,9 @@ struct HomeAgendaCard: View {
                 cardButtonContent
             }
             .buttonStyle(.plain)
+            .accessibilityElement(children: .combine)
             .accessibilityHint(L10n.homeAgendaOpenPost)
+            .accessibilityIdentifier("agenda.open.\(post.id)")
             .frame(maxHeight: isRailLayout ? .infinity : nil, alignment: .topLeading)
         }
         .foregroundStyle(style.ink)
