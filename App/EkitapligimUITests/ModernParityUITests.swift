@@ -42,10 +42,10 @@ final class ModernParityUITests: XCTestCase {
         add(attachment)
     }
 
-    private func reveal(_ element: XCUIElement, in app: XCUIApplication) {
+    private func reveal(_ element: XCUIElement, in app: XCUIApplication, towardStart: Bool = false) {
         // Bind vertical gestures to the page, rather than a nested horizontal carousel. LazyVStack
         // can report an existing, not-yet-laid-out child with a zero frame; that is not "above us".
-        let viewport = ["home.scroll", "notifications.list", "audio.catalog"]
+        let viewport = ["home.scroll", "catalog.scroll", "notifications.list", "audio.catalog"]
             .map { app.scrollViews[$0] }.first(where: { $0.exists }) ?? app.scrollViews.firstMatch
         guard viewport.waitForExistence(timeout: 5) else {
             attachFailureDiagnostics(app, name: "reveal-missing-viewport")
@@ -60,7 +60,9 @@ final class ModernParityUITests: XCTestCase {
             let identifier = exists ? element.identifier : "not-instantiated"
             print("UI_REVEAL step=\(step),identifier=\(identifier),exists=\(exists),frame=\(frame),viewport=\(bounds),hittable=\(element.isHittable)")
             guard bounds.width > 0, bounds.height > 0 else { break }
-            let needsDown = hasFrame && frame.maxY <= bounds.minY
+            // A lazy child above the current page can disappear from AX entirely. A caller that
+            // knows the target precedes the current content can still choose the correct direction.
+            let needsDown = hasFrame ? frame.maxY <= bounds.minY : towardStart
             let origin = app.coordinate(withNormalizedOffset: .zero)
             let x = bounds.minX - app.frame.minX + bounds.width * 0.88
             let top = origin.withOffset(CGVector(dx: x, dy: bounds.minY - app.frame.minY + bounds.height * 0.18))
@@ -255,24 +257,28 @@ final class ModernParityUITests: XCTestCase {
         let oldBook = app.buttons["catalog.book.900041"]
         reveal(oldBook, in: app)
         XCTAssertTrue(oldBook.waitForExistence(timeout: 8))
-        let categories = app.scrollViews["catalog.categories"]
-        reveal(categories, in: app)
-        XCTAssertTrue(categories.isHittable)
+        XCTAssertTrue(oldBook.isHittable)
+        assertContained(oldBook, in: app)
+        // This real chip is above the verified book results. Do not require a particular XCUI
+        // element type for its horizontal container or scroll farther down when AX evicts it.
         let category = app.buttons["catalog.category.35"]
-        for _ in 0..<12 {
-            if category.isHittable { break }
-            categories.swipeLeft()
-        }
+        reveal(category, in: app, towardStart: true)
         XCTAssertTrue(category.isHittable)
+        assertContained(category, in: app)
         category.tap()
         let retry = app.buttons["catalog.retry"]
         reveal(retry, in: app)
         XCTAssertTrue(retry.waitForExistence(timeout: 8), "A failed category reset must show an error instead of the old results")
+        XCTAssertTrue(retry.isHittable)
+        assertContained(retry, in: app)
+        XCTAssertFalse(oldBook.exists, "A failed category change must remove the old category results before retry")
         capture(app, "modern-catalog-category-failure-without-stale-results")
         retry.tap()
         let newBook = app.buttons["catalog.book.900140"]
         reveal(newBook, in: app)
         XCTAssertTrue(newBook.waitForExistence(timeout: 8))
+        XCTAssertTrue(newBook.isHittable)
+        assertContained(newBook, in: app)
         XCTAssertFalse(oldBook.exists, "Old category results must never be mixed with the retried category")
         capture(app, "modern-catalog-category-retry-recovered")
     }

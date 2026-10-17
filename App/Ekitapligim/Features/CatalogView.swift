@@ -75,6 +75,7 @@ struct CatalogView: View {
 
                 }
                 .refreshable { await load(reset: true) }
+                .accessibilityIdentifier("catalog.scroll")
             }
             .navigationTitle(L10n.catalogTitle)
             .navigationBarTitleDisplayMode(.inline)
