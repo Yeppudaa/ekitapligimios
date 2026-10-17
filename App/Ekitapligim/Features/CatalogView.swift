@@ -246,6 +246,7 @@ struct CatalogView: View {
                         isSelected: filters.categoryID == forum.id
                     ) {
                         filters.categoryID = forum.id
+                        traceCatalog("category-selected")
                         Task { await load(reset: true) }
                     }
                     .accessibilityIdentifier("catalog.category.\(forum.id)")
@@ -330,6 +331,7 @@ struct CatalogView: View {
 
     private func load(reset: Bool) async {
         guard reset || (!isLoadingMore && !isLoading && !isRefreshing) else { return }
+        traceCatalog("load-start")
         // Pagination belongs to the last successful query, not text still being edited.
         let request: CatalogRequestIdentity
         if reset {
@@ -383,11 +385,23 @@ struct CatalogView: View {
             lastPage = result.lastPage
             totalBooks = result.totalBooks
             loadedRequest = request
+            traceCatalog("load-succeeded")
         } catch {
             guard loadGeneration == generation, !Task.isCancelled else { return }
             retryResetsResults = reset
             errorMessage = L10n.catalogLoadFailed
+            traceCatalog("load-failed")
         }
+    }
+
+    private func traceCatalog(_ phase: StaticString) {
+        #if DEBUG
+        let process = ProcessInfo.processInfo
+        guard process.arguments.contains("-modern-parity-ui-fixture"),
+              process.environment["MODERN_PARITY_CATALOG_FAILURE"] == "1" else { return }
+        NSLog("MODERN_CATALOG_PHASE %@ filtered=%d books=%d error=%d",
+              String(describing: phase), filters.categoryID.isEmpty ? 0 : 1, books.count, errorMessage == nil ? 0 : 1)
+        #endif
     }
 
     private func retryFailedLoad() {
@@ -492,7 +506,9 @@ private struct CatalogCategoryChip: View {
             .foregroundStyle(isSelected ? Color.white : EKitapligimPalette.ink)
             .padding(.horizontal, 13)
             .padding(.vertical, 8)
+            .frame(minHeight: 44)
             .background(isSelected ? EKitapligimPalette.teal : Color.white, in: Capsule())
+            .contentShape(Capsule())
             .overlay {
                 Capsule().stroke(isSelected ? EKitapligimPalette.teal : EKitapligimPalette.border)
             }

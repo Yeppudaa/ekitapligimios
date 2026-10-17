@@ -167,8 +167,25 @@ struct ChatView: View {
         }
         .padding(.horizontal, 14).padding(.top, 8).padding(.bottom, 8)
         .frame(width: width)
-        .accessibilityElement(children: .contain)
+        .accessibilityElement(children: .ignore)
+        .accessibilityLabel(pinnedChatHeaderAccessibilityText(compact: compact))
+        .accessibilityAddTraits(.isHeader)
         .accessibilityIdentifier("chat-pinned-header")
+    }
+
+    private func pinnedChatHeaderAccessibilityText(compact: Bool) -> String {
+        var parts: [String] = []
+        if !compact {
+            parts.append(CommunityRefreshL10n.text("chat.eyebrow"))
+            parts.append(CommunityRefreshL10n.text("chat.title"))
+            parts.append(CommunityRefreshL10n.text("chat.body"))
+        }
+        parts.append(selectedRoom?.name ?? L10n.chatTitle)
+        parts.append(chatHeroStatusText)
+        if let room = selectedRoom {
+            parts.append(room.userCount > 0 ? L10n.chatOnlineCount(room.userCount) : L10n.chatRoomOpen)
+        }
+        return parts.filter { !$0.isEmpty }.joined(separator: ". ")
     }
 
     private func onlinePill(for room: ChatRoomDTO, selected: Bool) -> some View {

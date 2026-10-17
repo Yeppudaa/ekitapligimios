@@ -61,7 +61,9 @@ struct AudioBookDetailView: View {
                 }
             }.padding(6)
         }.background(.white).clipShape(RoundedRectangle(cornerRadius: 20)).overlay(RoundedRectangle(cornerRadius: 20).stroke(AudioStyle.line, lineWidth: 1))
-            .padding(.vertical, 4).background(AudioStyle.paper).accessibilityIdentifier("audio.detail.anchors")
+            .padding(.vertical, 4).background(AudioStyle.paper)
+            .accessibilityElement(children: .contain)
+            .accessibilityIdentifier("audio.detail.anchors")
             .onAppear { traceDetail("anchors.appear") }
             .onDisappear { traceDetail("anchors.disappear") }
     }

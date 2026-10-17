@@ -157,6 +157,10 @@ private final class ModernParityProtocol: URLProtocol, @unchecked Sendable {
             return
         }
         let readOnly = request.httpMethod == nil || request.httpMethod == "GET" || request.httpMethod == "HEAD"
+        if readOnly, ProcessInfo.processInfo.environment["MODERN_PARITY_CATALOG_FAILURE"] == "1", url.path.hasSuffix("/books") {
+            let filtered = URLComponents(url: url, resolvingAgainstBaseURL: false)?.queryItems?.contains(where: { $0.name == "category" && !($0.value ?? "").isEmpty }) == true
+            NSLog("MODERN_CATALOG_FIXTURE books-request filtered=%d failurePath=%d", filtered ? 1 : 0, url.path.hasSuffix("/ios-api/v1/books") ? 1 : 0)
+        }
         if readOnly, ProcessInfo.processInfo.environment["MODERN_PARITY_CATALOG_FAILURE"] == "1",
            url.path.hasSuffix("/ios-api/v1/books"),
            URLComponents(url: url, resolvingAgainstBaseURL: false)?.queryItems?.contains(where: { $0.name == "category" && !($0.value ?? "").isEmpty }) == true {
@@ -164,6 +168,7 @@ private final class ModernParityProtocol: URLProtocol, @unchecked Sendable {
             let fail = !Self.didFailFilteredCatalog
             Self.didFailFilteredCatalog = true
             Self.catalogFailureLock.unlock()
+            NSLog("MODERN_CATALOG_FIXTURE response-status=%d", fail ? 503 : 200)
             let payload: [String: Any] = fail ? ["errors": ["Deliberate offline category failure"]]
                 : ["books": [ModernParityPayload.book(100)], "pagination": ["page": 1, "pages": 1, "total": 1]]
             guard let data = try? JSONSerialization.data(withJSONObject: payload) else {

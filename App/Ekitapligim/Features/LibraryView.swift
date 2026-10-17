@@ -114,7 +114,14 @@ struct LibraryView: View {
         }
         .clipShape(RoundedRectangle(cornerRadius: 24))
         .overlay { RoundedRectangle(cornerRadius: 24).stroke(Color(hex: 0xE7DECD)) }
-        .accessibilityElement(children: .contain)
+        .accessibilityElement(children: .ignore)
+        .accessibilityLabel([
+            HomeRefreshL10n.text("library.eyebrow"),
+            HomeRefreshL10n.text("library.title"),
+            HomeRefreshL10n.text("library.subtitle"),
+            HomeRefreshL10n.booksWithYou(items.count),
+            "\(selectedTab.title) · \(L10n.libraryTabBookCount(filteredItems.count))"
+        ].joined(separator: ". "))
         .accessibilityIdentifier("library.scenicHero")
     }
 

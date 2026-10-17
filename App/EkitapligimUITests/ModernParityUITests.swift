@@ -290,8 +290,10 @@ final class ModernParityUITests: XCTestCase {
 
     func testChatTranscriptScrollDoesNotMoveItsHeaderOrExposeRemovedRoomTabs() {
         let app = launch("chat")
-        let header = app.otherElements["chat-pinned-header"]
+        let header = app.descendants(matching: .any)["chat-pinned-header"].firstMatch
         XCTAssertTrue(header.waitForExistence(timeout: 8))
+        XCTAssertTrue(header.label.contains("Okur Sohbeti"), "The compact accessible header must retain the room title")
+        XCTAssertTrue(header.label.contains("28"), "The room presence must remain available to accessibility")
         let origin = header.frame.minY
         let message = app.staticTexts["chat-message-920024"]
         XCTAssertTrue(message.waitForExistence(timeout: 8))
@@ -377,8 +379,10 @@ final class ModernParityUITests: XCTestCase {
 
     func testLibraryArtworkAndActualShelfNavigationRemainReachable() {
         let app = launch("library", largeText: true)
-        let hero = app.otherElements["library.scenicHero"]
+        let hero = app.descendants(matching: .any)["library.scenicHero"].firstMatch
         XCTAssertTrue(hero.waitForExistence(timeout: 5))
+        XCTAssertTrue(hero.label.contains("Kişisel Kitaplığım"), "The accessible library summary must retain its title")
+        XCTAssertTrue(hero.label.contains("2 kitap"), "The accessible library summary must retain the actual book count")
         assertContained(hero, in: app)
         let nextShelf = app.buttons.matching(NSPredicate(format: "label CONTAINS %@", "Daha sonra oku")).firstMatch
         reveal(nextShelf, in: app)
