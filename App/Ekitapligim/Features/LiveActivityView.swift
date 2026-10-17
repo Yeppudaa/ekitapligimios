@@ -5,6 +5,7 @@ import EkitapligimCore
 @MainActor
 struct LiveActivityView: View {
     @EnvironmentObject private var container: AppContainer
+    @Environment(\.scenePhase) private var scenePhase
     var userID: String?
 
     @State private var items: [LiveActivityItemDTO] = []
@@ -13,58 +14,55 @@ struct LiveActivityView: View {
     @State private var isLoading = false
     @State private var isLoadingMore = false
     @State private var errorMessage: String?
+    @State private var loadRevision = UUID()
 
     var body: some View {
         ZStack {
             EKitapligimPageBackground()
+            ScrollViewReader { proxy in
             ScrollView {
-                LazyVStack(alignment: .leading, spacing: 12) {
-                    hero
+                LazyVStack(alignment: .leading, spacing: 14) {
+                    CommunityLiteraryHero(
+                        artwork: "community_reader_salon",
+                        artworkBehindCopy: true,
+                        eyebrow: CommunityRefreshL10n.text("activity.eyebrow"),
+                        title: CommunityRefreshL10n.text("activity.title"),
+                        emphasis: CommunityRefreshL10n.text("activity.emphasis"),
+                        subtitle: CommunityRefreshL10n.text("activity.body"),
+                        actionTitle: CommunityRefreshL10n.text("activity.discover")
+                    ) { withAnimation { proxy.scrollTo("activity-feed", anchor: .top) } }
+                    ModernSectionHeading(title: CommunityRefreshL10n.text("activity.collection"))
+                        .id("activity-feed")
                     content
                 }
                 .padding(.horizontal, 18)
                 .padding(.vertical, 12)
             }
             .refreshable { await load(reset: true) }
+            }
         }
         .navigationTitle(L10n.liveActivityTitle)
         .navigationBarTitleDisplayMode(.inline)
-        .task { await load(reset: true) }
-    }
-
-    private var hero: some View {
-        HStack(alignment: .center, spacing: 14) {
-            ZStack {
-                Circle()
-                    .fill(Color.white.opacity(0.16))
-                    .frame(width: 52, height: 52)
-                Image(systemName: "bolt.horizontal.circle.fill")
-                    .font(.title2)
-                    .foregroundStyle(.white)
+        .toolbar {
+            ToolbarItem(placement: .topBarTrailing) {
+                Button { Task { await load(reset: true) } } label: {
+                    Image(systemName: "arrow.clockwise").frame(minWidth: 44, minHeight: 44)
+                }.disabled(isLoading).accessibilityLabel(L10n.commonRefresh)
             }
-            VStack(alignment: .leading, spacing: 5) {
-                EKLiveBadge(showsPulse: true)
-                Text(L10n.liveActivitySubtitle)
-                    .font(.title3.weight(.heavy))
-                    .foregroundStyle(.white)
-                Text(L10n.liveActivityHeroBody)
-                    .font(.caption)
-                    .foregroundStyle(.white.opacity(0.85))
-                    .fixedSize(horizontal: false, vertical: true)
-            }
-            Spacer(minLength: 0)
         }
-        .padding(18)
-        .frame(maxWidth: .infinity, alignment: .leading)
-        .background(
-            LinearGradient(
-                colors: [EKitapligimPalette.liveRed, EKitapligimPalette.liveOrange, Color(hex: 0xFF8A4C)],
-                startPoint: .topLeading,
-                endPoint: .bottomTrailing
-            )
-        )
-        .clipShape(RoundedRectangle(cornerRadius: 20, style: .continuous))
-        .shadow(color: EKitapligimPalette.liveRed.opacity(0.22), radius: 14, y: 8)
+        .task(id: scenePhase) {
+            guard scenePhase == .active else { return }
+            await load(reset: true)
+            while !Task.isCancelled {
+                do { try await Task.sleep(for: .seconds(20)) } catch { return }
+                guard !Task.isCancelled else { return }
+                await refreshLatest()
+            }
+        }
+        .onReceive(NotificationCenter.default.publisher(for: .audioActivityChanged)) { _ in
+            guard scenePhase == .active else { return }
+            Task { await refreshLatest() }
+        }
     }
 
     @ViewBuilder private var content: some View {
@@ -88,6 +86,9 @@ struct LiveActivityView: View {
                     LiveActivityRow(item: item, style: .timeline, showsConnector: index < items.count - 1)
                 }
             }
+            if let errorMessage {
+                EKInlineError(message: errorMessage)
+            }
             if hasMore {
                 EKLoadMoreButton(isLoading: isLoadingMore, tint: EKitapligimPalette.liveRed) {
                     Task { await load(reset: false) }
@@ -99,14 +100,18 @@ struct LiveActivityView: View {
     private func load(reset: Bool) async {
         if reset {
             guard !isLoading else { return }
+            loadRevision = UUID()
             isLoading = true
         } else {
-            guard !isLoadingMore, hasMore, nextBefore != nil else { return }
+            guard !isLoading, !isLoadingMore, hasMore, nextBefore != nil else { return }
             isLoadingMore = true
         }
+        let revision = loadRevision
         defer {
-            isLoading = false
-            isLoadingMore = false
+            if loadRevision == revision {
+                isLoading = false
+                isLoadingMore = false
+            }
         }
 
         errorMessage = nil
@@ -116,6 +121,7 @@ struct LiveActivityView: View {
                 before: reset ? nil : nextBefore,
                 userID: userID
             )
+            guard loadRevision == revision, !Task.isCancelled else { return }
             if reset {
                 items = page.items
             } else {
@@ -124,9 +130,33 @@ struct LiveActivityView: View {
             }
             nextBefore = page.nextBefore
             hasMore = page.hasMore && page.nextBefore != nil
+        } catch is CancellationError {
+            return
         } catch {
+            guard loadRevision == revision, !Task.isCancelled else { return }
             errorMessage = L10n.liveActivityLoadFailed
-            if reset { items = [] }
+        }
+    }
+
+    /// A visible feed keeps older paged rows while reconciling the newest server activity.
+    private func refreshLatest() async {
+        guard !isLoading, !isLoadingMore else { return }
+        let revision = loadRevision
+        do {
+            let latest = try await container.liveActivity.activity(limit: 20, before: nil, userID: userID)
+            guard loadRevision == revision, !Task.isCancelled else { return }
+            let incomingIDs = Set(latest.items.map(\.id))
+            let wasEmpty = items.isEmpty
+            items = latest.items + items.filter { !incomingIDs.contains($0.id) }
+            if wasEmpty {
+                nextBefore = latest.nextBefore
+                hasMore = latest.hasMore && latest.nextBefore != nil
+            }
+            errorMessage = nil
+        } catch is CancellationError {
+            return
+        } catch {
+            // A transient refresh error keeps the already visible timeline usable.
         }
     }
 }
@@ -290,12 +320,7 @@ struct LiveActivityRow: View {
     }
 
     private var resolvedRoute: AppRoute? {
-        DeepLinkParser().parseNotification(
-            appRoute: item.appRoute,
-            targetURL: item.targetUrl,
-            contentID: Int(item.id),
-            type: item.type
-        )
+        item.nativeDestination
     }
 
     private func openActivity() {
@@ -315,6 +340,12 @@ struct LiveActivityRow: View {
 /// Android renders one colour and label per activity type; unknown types fall back to a neutral style.
 enum LiveActivityKind {
     case reading
+    case listening
+    case audioFavorite
+    case audioSaved
+    case audioLater
+    case audioCompleted
+    case premium
     case finished
     case review
     case comment
@@ -326,6 +357,12 @@ enum LiveActivityKind {
 
     init(rawValue: String) {
         switch rawValue.lowercased() {
+        case "audio_listening_started", "audiobook_listening_started", "audio_started", "listening", "audio_progress", "audiobook_progress", "audio_shelf_changed": self = .listening
+        case "audio_favorite", "audio_favorite_added", "audiobook_favorite", "audiobook_favorite_added": self = .audioFavorite
+        case "audio_saved": self = .audioSaved
+        case "audio_later": self = .audioLater
+        case "audio_completed", "audiobook_completed": self = .audioCompleted
+        case "premium", "premium_upgrade", "user_upgrade": self = .premium
         case "reading", "reading_progress", "progress": self = .reading
         case "finished", "book_finished", "completed": self = .finished
         case "review", "book_review", "rating": self = .review
@@ -340,6 +377,12 @@ enum LiveActivityKind {
 
     var title: String {
         switch self {
+        case .listening: CommunityRefreshL10n.text("activity.listening")
+        case .audioFavorite: CommunityRefreshL10n.text("activity.audioFavorite")
+        case .audioSaved: CommunityRefreshL10n.text("activity.audioSaved")
+        case .audioLater: CommunityRefreshL10n.text("activity.audioLater")
+        case .audioCompleted: CommunityRefreshL10n.text("activity.audioCompleted")
+        case .premium: CommunityRefreshL10n.text("activity.premium")
         case .reading: L10n.liveActivityTypeReading
         case .finished: L10n.liveActivityTypeRead
         case .review: L10n.liveActivityTypeReview
@@ -354,6 +397,12 @@ enum LiveActivityKind {
 
     var systemImage: String {
         switch self {
+        case .listening: "headphones"
+        case .audioFavorite: "heart.fill"
+        case .audioSaved: "bookmark.fill"
+        case .audioLater: "headphones"
+        case .audioCompleted: "checkmark.circle.fill"
+        case .premium: "crown.fill"
         case .reading: "book.pages.fill"
         case .finished: "checkmark.seal.fill"
         case .review: "star.fill"
@@ -368,6 +417,11 @@ enum LiveActivityKind {
 
     var tint: Color {
         switch self {
+        case .listening: EKitapligimPalette.teal
+        case .audioFavorite: EKitapligimPalette.liveRed
+        case .audioSaved, .audioLater: EKitapligimPalette.teal
+        case .audioCompleted: EKitapligimPalette.success
+        case .premium: EKitapligimPalette.gold
         case .reading: EKitapligimPalette.teal
         case .finished: EKitapligimPalette.success
         case .review: EKitapligimPalette.gold

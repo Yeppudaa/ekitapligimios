@@ -83,40 +83,34 @@ struct LibraryView: View {
     }
 
     private var headerCard: some View {
-        VStack(spacing: 14) {
-            HStack(spacing: 12) {
-                Image(systemName: "books.vertical.fill")
-                    .font(.title2)
-                    .foregroundStyle(.white)
-                    .frame(width: 48, height: 48)
-                    .background(.white.opacity(0.14), in: RoundedRectangle(cornerRadius: 14, style: .continuous))
-                    .overlay {
-                        RoundedRectangle(cornerRadius: 14, style: .continuous)
-                            .stroke(.white.opacity(0.12))
-                    }
-
-                VStack(alignment: .leading, spacing: 3) {
-                    Text(L10n.libraryHeaderTitle)
-                        .font(.title3.weight(.heavy))
-                        .foregroundStyle(.white)
-                    Text(L10n.libraryHeaderSubtitle)
-                        .font(.caption)
-                        .foregroundStyle(.white.opacity(0.72))
-                }
-                Spacer()
-
-                LibraryHeroMetric(
-                    value: items.count.formatted(.number),
-                    label: L10n.libraryBookCountLabel
-                )
-            }
-
+        VStack(alignment: .leading, spacing: 14) {
+            Text(HomeRefreshL10n.text("library.eyebrow"))
+                .font(.caption2.weight(.bold)).tracking(1.5)
+                .foregroundStyle(EKitapligimPalette.tealDark)
+                .fixedSize(horizontal: false, vertical: true)
+            Text(HomeRefreshL10n.text("library.title"))
+                .font(.system(.largeTitle, design: .serif, weight: .bold))
+                .foregroundStyle(EKitapligimPalette.ink)
+                .fixedSize(horizontal: false, vertical: true)
+            Text(HomeRefreshL10n.text("library.subtitle"))
+                .font(.subheadline).foregroundStyle(EKitapligimPalette.muted)
+                .fixedSize(horizontal: false, vertical: true)
             selectedShelfSummary
         }
-        .padding(18)
-        .background(EKitapligimPalette.profileBannerGradient)
-        .clipShape(RoundedRectangle(cornerRadius: 18, style: .continuous))
-        .shadow(color: Color(hex: 0x0B343B).opacity(0.22), radius: 16, y: 8)
+        .padding(22)
+        .frame(maxWidth: .infinity, alignment: .leading)
+        .background {
+            GeometryReader { geometry in
+                Image("home_section_daily_selection").resizable().scaledToFill()
+                    .frame(width: geometry.size.width, height: geometry.size.height).clipped()
+                    .overlay {
+                        LinearGradient(colors: [Color(hex: 0xFCF6EA), Color(hex: 0xFCF6EA).opacity(0.93), Color(hex: 0xFCF6EA).opacity(0.46)], startPoint: .leading, endPoint: .trailing)
+                    }
+            }
+        }
+        .clipShape(RoundedRectangle(cornerRadius: 24))
+        .overlay { RoundedRectangle(cornerRadius: 24).stroke(Color(hex: 0xE7DECD)) }
+        .accessibilityIdentifier("library.scenicHero")
     }
 
     private var guestPrompt: some View {
@@ -150,30 +144,18 @@ struct LibraryView: View {
     }
 
     private var selectedShelfSummary: some View {
-        HStack(spacing: 8) {
-            EKPill(
-                title: selectedTab.title,
-                systemImage: selectedTab.icon,
-                foreground: .white,
-                background: .white.opacity(0.18)
-            )
-            Spacer(minLength: 0)
-            Text(L10n.librarySelectedShelfBooks(filteredItems.count))
-                .font(.caption.weight(.semibold))
-                .foregroundStyle(.white.opacity(0.78))
-            EKPill(
-                title: EKitapligimFormat.count(filteredItems.count),
-                foreground: EKitapligimPalette.profileTealDeep,
-                background: .white
-            )
+        VStack(alignment: .leading, spacing: 8) {
+            Label(HomeRefreshL10n.booksWithYou(items.count), systemImage: "book.pages.fill")
+                .font(.subheadline.weight(.bold)).foregroundStyle(EKitapligimPalette.ink)
+                .fixedSize(horizontal: false, vertical: true)
+            Text("\(selectedTab.title) · \(L10n.libraryTabBookCount(filteredItems.count))")
+                .font(.caption).foregroundStyle(EKitapligimPalette.muted)
+                .fixedSize(horizontal: false, vertical: true)
         }
-        .padding(.horizontal, 13)
-        .padding(.vertical, 10)
-        .background(.white.opacity(0.1), in: RoundedRectangle(cornerRadius: 12, style: .continuous))
-        .overlay {
-            RoundedRectangle(cornerRadius: 12, style: .continuous)
-                .stroke(.white.opacity(0.1))
-        }
+        .padding(16)
+        .frame(maxWidth: .infinity, alignment: .leading)
+        .background(.white.opacity(0.9), in: RoundedRectangle(cornerRadius: 16))
+        .overlay { RoundedRectangle(cornerRadius: 16).stroke(Color(hex: 0xE7DECD)) }
     }
 
     private var tabPicker: some View {
@@ -200,15 +182,17 @@ struct LibraryView: View {
                             VStack(alignment: .leading, spacing: 1) {
                                 Text(tab.title)
                                     .font(.caption.weight(.bold))
-                                    .foregroundStyle(EKitapligimPalette.profileInk)
+                                    .foregroundStyle(selected ? .white : EKitapligimPalette.profileInk)
+                                    .fixedSize(horizontal: false, vertical: true)
                                 Text(L10n.libraryTabBookCount(tabCount(tab)))
                                     .font(.caption2)
-                                    .foregroundStyle(selected ? EKitapligimPalette.profileTealDeep : EKitapligimPalette.profileMuted)
+                                    .foregroundStyle(selected ? .white.opacity(0.8) : EKitapligimPalette.profileMuted)
                             }
                         }
                         .padding(.horizontal, 12)
-                        .frame(height: 52)
-                        .background(selected ? EKitapligimPalette.profileTealSoft : EKitapligimPalette.paper)
+                        .padding(.vertical, 10)
+                        .frame(minHeight: 60)
+                        .background(selected ? EKitapligimPalette.profileTealDeep : EKitapligimPalette.paper)
                         .clipShape(RoundedRectangle(cornerRadius: 14, style: .continuous))
                         .overlay {
                             RoundedRectangle(cornerRadius: 14, style: .continuous)
@@ -396,6 +380,7 @@ private struct LibraryReadingProgressBar: View {
 }
 
 private struct LibraryBookCard: View {
+    @Environment(\.dynamicTypeSize) private var dynamicTypeSize
     let item: LibraryItemDTO
     let metaText: String
     var onRemoveDownload: (() -> Void)?
@@ -410,7 +395,10 @@ private struct LibraryBookCard: View {
     }
 
     var body: some View {
-        HStack(spacing: 14) {
+        let layout = dynamicTypeSize.isAccessibilitySize
+            ? AnyLayout(VStackLayout(alignment: .leading, spacing: 14))
+            : AnyLayout(HStackLayout(alignment: .center, spacing: 14))
+        layout {
             EKitapligimRemoteCover(urlString: item.coverUrl, title: item.title, author: item.author, accessibilityTitle: item.title)
                 .frame(width: 76, height: 112)
                 .background(EKitapligimPalette.profileTealSoft)
@@ -421,11 +409,13 @@ private struct LibraryBookCard: View {
                 Text(item.title.isEmpty ? L10n.commonBookNumber(item.bookId) : item.title)
                     .font(.headline.weight(.semibold))
                     .foregroundStyle(EKitapligimPalette.profileInk)
-                    .lineLimit(2)
+                    .lineLimit(dynamicTypeSize.isAccessibilitySize ? nil : 2)
+                    .fixedSize(horizontal: false, vertical: true)
                 Text(item.author.isEmpty ? L10n.libraryAuthorMissing : item.author)
                     .font(.subheadline)
                     .foregroundStyle(EKitapligimPalette.profileMuted)
-                    .lineLimit(1)
+                    .lineLimit(dynamicTypeSize.isAccessibilitySize ? nil : 1)
+                    .fixedSize(horizontal: false, vertical: true)
 
                 if !metaText.isEmpty {
                     EKPill(

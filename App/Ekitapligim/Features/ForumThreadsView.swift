@@ -18,7 +18,6 @@ struct ForumThreadsView: View {
     @State private var showCreateSheet = false
     @State private var showLoginAlert = false
     @State private var showingTerms = false
-    @State private var heroCollapseProgress: CGFloat = 0
 
     private let contentSafety = ContentSafety()
 
@@ -80,7 +79,6 @@ struct ForumThreadsView: View {
                 } else {
                     ScrollView {
                         LazyVStack(spacing: 12) {
-                            EKScrollOffsetTracker()
                             heroCard
 
                             if let statusMessage {
@@ -128,7 +126,6 @@ struct ForumThreadsView: View {
                         .padding(.vertical, 12)
                     }
                     .refreshable { await load(reset: true) }
-                    .ekCollapsibleScrollTracking { heroCollapseProgress = $0 }
                 }
             }
             .frame(maxWidth: .infinity, maxHeight: .infinity)
@@ -174,106 +171,15 @@ struct ForumThreadsView: View {
     }
 
     private var heroCard: some View {
-        EKCollapsibleHero(progress: heroCollapseProgress) {
-            HStack(alignment: .center, spacing: 12) {
-                Image(systemName: "text.bubble.fill")
-                    .font(.title3)
-                    .foregroundStyle(.white)
-                    .frame(width: 52, height: 52)
-                    .background(
-                        LinearGradient(
-                            colors: [EKitapligimPalette.forumTeal, EKitapligimPalette.forumTealDeep],
-                            startPoint: .topLeading,
-                            endPoint: .bottomTrailing
-                        ),
-                        in: RoundedRectangle(cornerRadius: 13, style: .continuous)
-                    )
-                    .shadow(color: EKitapligimPalette.forumTeal.opacity(0.22), radius: 6, y: 3)
-
-                VStack(alignment: .leading, spacing: 6) {
-                    Text(forum.title)
-                        .font(.system(.title3, design: .serif).weight(.heavy))
-                        .foregroundStyle(EKitapligimPalette.ink)
-                        .lineLimit(2)
-                    Text(L10n.forumThreadsCommunitySubtitle)
-                        .font(.caption)
-                        .foregroundStyle(EKitapligimPalette.muted)
-                    HStack(spacing: 6) {
-                        Text("\(threads.count)")
-                            .font(.title3.weight(.heavy))
-                            .foregroundStyle(EKitapligimPalette.teal)
-                        Text(L10n.forumThreadsHeroMetricLabel)
-                            .font(.subheadline)
-                            .foregroundStyle(EKitapligimPalette.muted)
-                    }
-                }
-                .frame(maxWidth: .infinity, alignment: .leading)
-
-                Button {
-                    showCreateSheet = true
-                } label: {
-                    HStack(spacing: 6) {
-                        Image(systemName: "plus")
-                            .font(.subheadline.weight(.bold))
-                        Text(L10n.forumThreadsCreate)
-                            .font(.subheadline.weight(.bold))
-                    }
-                    .foregroundStyle(.white)
-                    .padding(.horizontal, 12)
-                    .padding(.vertical, 8)
-                    .background(
-                        LinearGradient(
-                            colors: [EKitapligimPalette.forumTeal, EKitapligimPalette.forumTealDeep],
-                            startPoint: .leading,
-                            endPoint: .trailing
-                        ),
-                        in: RoundedRectangle(cornerRadius: 12, style: .continuous)
-                    )
-                }
-                .buttonStyle(.plain)
-                .accessibilityLabel(L10n.forumThreadsCreate)
-            }
-            .padding(14)
-            .forumHeroSurface(radius: 16)
-        } collapsed: {
-            HStack(spacing: 10) {
-                Image(systemName: "text.bubble.fill")
-                    .foregroundStyle(EKitapligimPalette.teal)
-                    .frame(width: 42, height: 42)
-                    .background(Color(hex: 0xF2F8F6), in: RoundedRectangle(cornerRadius: 14, style: .continuous))
-                    .overlay {
-                        RoundedRectangle(cornerRadius: 14, style: .continuous)
-                            .stroke(Color(hex: 0xE2C48E), lineWidth: 1)
-                    }
-                VStack(alignment: .leading, spacing: 2) {
-                    Text(forum.title)
-                        .font(.headline.weight(.bold))
-                        .foregroundStyle(EKitapligimPalette.ink)
-                        .lineLimit(1)
-                    Text(L10n.forumThreadsCollapsedCount(threads.count))
-                        .font(.caption2)
-                        .foregroundStyle(EKitapligimPalette.muted)
-                }
-                Spacer(minLength: 0)
-                Button {
-                    showCreateSheet = true
-                } label: {
-                    Image(systemName: "plus")
-                        .font(.body.weight(.bold))
-                        .foregroundStyle(EKitapligimPalette.teal)
-                        .frame(width: 42, height: 42)
-                        .background(Color.white.opacity(0.96), in: Circle())
-                        .overlay(Circle().stroke(Color(hex: 0xE2B866), lineWidth: 1))
-                }
-                .buttonStyle(.plain)
-                .accessibilityLabel(L10n.forumThreadsCreateAccessibility)
-            }
-            .padding(.horizontal, 12)
-            .padding(.vertical, 10)
-            .forumHeroSurface(radius: 14)
-        }
+        ModernHeroView(
+            artwork: "forum_web_book_club",
+            eyebrow: CommunityRefreshL10n.text("forum.collection"),
+            title: forum.title,
+            subtitle: forum.description.isEmpty ? L10n.forumThreadsCommunitySubtitle : EKitapligimFormat.plainText(forum.description),
+            minHeight: 220,
+            actionTitle: L10n.forumThreadsCreate
+        ) { showCreateSheet = true }
     }
-
     private func load(reset: Bool = true) async {
         guard let forumID = Int(forum.id) else {
             errorMessage = L10n.forumThreadsInvalidForum
@@ -369,7 +275,7 @@ private struct ForumThreadCreateView: View {
                 Image(systemName: "square.and.pencil")
                     .font(.title3.weight(.semibold))
                     .foregroundStyle(EKitapligimPalette.forumTeal)
-                    .frame(width: 42, height: 42)
+                    .frame(width: 48, height: 48)
                     .background(EKitapligimPalette.forumTealSoft, in: RoundedRectangle(cornerRadius: 12, style: .continuous))
                 Text(L10n.forumThreadsCreateDialogTitle)
                     .font(.title3.weight(.bold))
@@ -382,6 +288,8 @@ private struct ForumThreadCreateView: View {
                     .font(.caption.weight(.semibold))
                     .foregroundStyle(EKitapligimPalette.forumMuted)
                 TextField(L10n.forumThreadsCreateTitlePlaceholder, text: $title)
+                    .foregroundStyle(EKitapligimPalette.forumInk)
+                    .tint(EKitapligimPalette.forumTeal)
                     .padding(12)
                     .background(.white, in: RoundedRectangle(cornerRadius: 12, style: .continuous))
                     .overlay {
@@ -397,6 +305,9 @@ private struct ForumThreadCreateView: View {
                     .foregroundStyle(EKitapligimPalette.forumMuted)
                 TextEditor(text: $message)
                     .accessibilityLabel(L10n.forumThreadsCreateMessageSection)
+                    .foregroundStyle(EKitapligimPalette.forumInk)
+                    .tint(EKitapligimPalette.forumTeal)
+                    .scrollContentBackground(.hidden)
                     .frame(minHeight: 120)
                     .padding(8)
                     .background(.white, in: RoundedRectangle(cornerRadius: 12, style: .continuous))

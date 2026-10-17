@@ -1,5 +1,9 @@
 # Android To iOS Feature Parity
 
+## Modern native design and audiobooks (2026-10-17)
+
+Current scope, protected purchase/authentication areas, native audiobook contracts and executed/pending validation are tracked in [MODERN_ANDROID_IOS_PARITY.md](MODERN_ANDROID_IOS_PARITY.md). Historical pass counts below do not validate this update. The new test-only Codemagic workflow captures real iPhone/iPad SwiftUI evidence without publishing.
+
 ## Session, chat and cover corrections (2026-10-12)
 
 Compared with the user's Android checkout at `C:\Users\Monster\Downloads\startdesign (1)` and the rendered local `sosyolojik-dusunmek.4326` page. Native iOS now uses the site's cream/teal title-and-author artwork for missing or failed cover images across catalog, home, book details, library, profiles and other book cards. Real cover images retain their existing rendering.

@@ -5,6 +5,10 @@ import EkitapligimCore
 struct CatalogView: View {
     @EnvironmentObject private var container: AppContainer
     let onOpenMenu: (() -> Void)?
+    @Environment(\.dynamicTypeSize) private var dynamicTypeSize
+    @State private var editorialSpotlight: BookDTO?
+    @State private var heroExpanded = true
+    @State private var showingReadingHelp = false
     @State private var books: [BookDTO] = []
     @State private var categories: [ForumDTO] = CatalogBookCategories.sortedFallbacks
     @State private var query = ""
@@ -18,11 +22,11 @@ struct CatalogView: View {
     @State private var loadGeneration = UUID()
     @State private var showingFilters = false
     @State private var errorMessage: String?
-    @State private var heroCollapseProgress: CGFloat = 0
     @AppStorage("catalog.displayMode") private var displayModeRawValue = CatalogDisplayMode.grid.rawValue
 
-    init(onOpenMenu: (() -> Void)? = nil) {
+    init(initialCategoryID: String = "", onOpenMenu: (() -> Void)? = nil) {
         self.onOpenMenu = onOpenMenu
+        _filters = State(initialValue: CatalogFilters(categoryID: initialCategoryID))
     }
 
     private var displayMode: CatalogDisplayMode {
@@ -57,9 +61,9 @@ struct CatalogView: View {
                     }
                     .padding(.horizontal, 16)
                     .padding(.bottom, 28)
-                    .background(alignment: .top) { EKScrollOffsetTracker() }
+
                 }
-                .ekCollapsibleScrollTracking { heroCollapseProgress = $0 }
+                .refreshable { await load(reset: true) }
             }
             .navigationTitle(L10n.catalogTitle)
             .navigationBarTitleDisplayMode(.inline)
@@ -93,9 +97,14 @@ struct CatalogView: View {
                 BookDetailDestination(bookIDString: id)
             }
             .task {
+                async let editorRequest: Void = loadEditorSelection()
                 await loadCategories()
                 await load(reset: true)
+                await editorRequest
             }
+            .alert(HomeRefreshL10n.text("catalog.help"), isPresented: $showingReadingHelp) {
+                Button(L10n.commonClose, role: .cancel) { }
+            } message: { Text(HomeRefreshL10n.text("catalog.helpBody")) }
             .onSubmit(of: .search) { Task { await load(reset: true) } }
             .sheet(isPresented: $showingFilters) {
                 CatalogFiltersView(filters: filters, categories: categories) { updated in
@@ -108,105 +117,102 @@ struct CatalogView: View {
     }
 
     private var catalogHero: some View {
-        EKCollapsibleHero(progress: heroCollapseProgress, expandedHeight: 298, collapsedHeight: 64) {
-            VStack(alignment: .leading, spacing: 18) {
-                HStack(alignment: .top, spacing: 12) {
-                    VStack(alignment: .leading, spacing: 8) {
-                        Text(L10n.catalogEyebrow)
-                            .font(.caption.weight(.heavy))
-                            .tracking(1.6)
-                            .foregroundStyle(.white.opacity(0.72))
-                        Text(L10n.catalogHeroTitle)
-                            .font(.system(size: 26, weight: .bold, design: .serif))
-                            .foregroundStyle(.white)
-                            .fixedSize(horizontal: false, vertical: true)
-                        Text(L10n.catalogHeroSubtitle(category: selectedCategoryTitle, page: currentPage, lastPage: lastPage))
-                            .font(.caption.weight(.medium))
-                            .foregroundStyle(.white.opacity(0.7))
-                            .fixedSize(horizontal: false, vertical: true)
+        VStack(alignment: .leading, spacing: 14) {
+            if heroExpanded && !dynamicTypeSize.isAccessibilitySize && query.isEmpty {
+                ViewThatFits(in: .horizontal) {
+                    HStack(alignment: .center, spacing: 18) {
+                        catalogHeroCopy.frame(minWidth: 170)
+                        catalogSpotlight
                     }
-                    Spacer(minLength: 8)
-                    catalogCoverStack
+                    VStack(alignment: .leading, spacing: 18) { catalogHeroCopy; catalogSpotlight }
                 }
+            } else {
+                HStack(alignment: .top, spacing: 10) {
+                    VStack(alignment: .leading, spacing: 5) {
+                        Text(filters.categoryID.isEmpty ? HomeRefreshL10n.text("catalog.title") : selectedCategoryTitle)
+                            .font(.system(.title3, design: .serif, weight: .bold))
+                            .foregroundStyle(EKitapligimPalette.ink)
+                            .fixedSize(horizontal: false, vertical: true)
+                        Text(L10n.catalogHeroBookCount(formattedTotalBooks))
+                            .font(.caption).foregroundStyle(EKitapligimPalette.tealDark)
+                    }
+                    Spacer(minLength: 0)
+                    if !dynamicTypeSize.isAccessibilitySize {
+                        Button { heroExpanded = true } label: {
+                            Image(systemName: "arrow.up.and.down")
+                                .frame(width: 48, height: 48)
+                        }.accessibilityLabel(HomeRefreshL10n.text("catalog.expand"))
+                    }
+                }
+            }
+        }
+        .padding(20)
+        .frame(maxWidth: .infinity, alignment: .leading)
+        .background {
+            GeometryReader { geometry in
+                Image(ModernCatalogArtwork.asset(categoryID: filters.categoryID))
+                    .resizable().scaledToFill()
+                    .frame(width: geometry.size.width, height: geometry.size.height).clipped()
+                    .overlay { LinearGradient(colors: [Color(hex: 0xFFFAF2).opacity(0.97), Color(hex: 0xFFFAF2).opacity(0.82), Color(hex: 0xFFFAF2).opacity(0.18)], startPoint: .leading, endPoint: .trailing) }
+            }
+        }
+        .clipShape(RoundedRectangle(cornerRadius: 23))
+        .overlay { RoundedRectangle(cornerRadius: 23).stroke(Color(hex: 0xE6DECD)) }
+        .accessibilityIdentifier("catalog.scenicHero")
+    }
 
-                VStack(alignment: .leading, spacing: 2) {
-                    Text(formattedTotalBooks)
-                        .font(.system(size: 40, weight: .black, design: .rounded))
-                        .foregroundStyle(.white)
-                        .minimumScaleFactor(0.7)
-                        .lineLimit(1)
-                        .accessibilityLabel(L10n.catalogHeroBookCount(formattedTotalBooks))
-                    Text(L10n.catalogHeroBooksCaption.uppercased(with: EKitapligimFormat.locale))
-                        .font(.caption.weight(.heavy))
-                        .tracking(1.4)
-                        .foregroundStyle(EKitapligimPalette.profileGold)
-                }
-
-                HStack(spacing: 8) {
-                    CatalogHeroMetric(title: L10n.catalogStatTotal, value: formattedTotalBooks)
-                    CatalogHeroMetric(title: L10n.catalogStatLoaded, value: EKitapligimFormat.count(books.count))
-                    CatalogHeroMetric(title: L10n.catalogStatCatalogPage, value: L10n.catalogPagePosition(currentPage, lastPage))
-                }
-            }
-            .padding(20)
-            .background(EKitapligimPalette.profileHeroGradient)
-            .clipShape(RoundedRectangle(cornerRadius: 26, style: .continuous))
-            .overlay {
-                RoundedRectangle(cornerRadius: 26, style: .continuous)
-                    .stroke(.white.opacity(0.12))
-            }
-            .shadow(color: Color(hex: 0x0B343B).opacity(0.28), radius: 22, y: 12)
-        } collapsed: {
-            HStack(spacing: 12) {
-                Image(systemName: "books.vertical.fill")
-                    .foregroundStyle(.white)
-                    .frame(width: 36, height: 36)
-                    .background(.white.opacity(0.14), in: RoundedRectangle(cornerRadius: 12, style: .continuous))
-                VStack(alignment: .leading, spacing: 2) {
-                    Text(L10n.catalogHeroTitle)
-                        .font(.headline.weight(.bold))
-                        .foregroundStyle(.white)
-                        .lineLimit(1)
-                    Text(L10n.catalogHeroBookCount(formattedTotalBooks))
-                        .font(.caption2.weight(.semibold))
-                        .foregroundStyle(.white.opacity(0.72))
-                        .lineLimit(1)
-                }
-                Spacer(minLength: 0)
-                Text(L10n.catalogPagePosition(currentPage, lastPage))
-                    .font(.caption.weight(.bold))
-                    .foregroundStyle(EKitapligimPalette.profileGold)
-                    .padding(.horizontal, 10)
-                    .padding(.vertical, 6)
-                    .background(.white.opacity(0.12), in: Capsule())
-            }
-            .padding(.horizontal, 14)
-            .padding(.vertical, 10)
-            .background(EKitapligimPalette.profileBannerGradient)
-            .clipShape(RoundedRectangle(cornerRadius: 16, style: .continuous))
+    private var catalogHeroCopy: some View {
+        VStack(alignment: .leading, spacing: 12) {
+            Text(HomeRefreshL10n.text("catalog.eyebrow"))
+                .font(.caption2.weight(.semibold)).tracking(1.1)
+                .foregroundStyle(EKitapligimPalette.tealDark)
+                .fixedSize(horizontal: false, vertical: true)
+            Text(filters.categoryID.isEmpty ? HomeRefreshL10n.text("catalog.title") : selectedCategoryTitle)
+                .font(.system(.largeTitle, design: .serif, weight: .bold))
+                .foregroundStyle(EKitapligimPalette.ink)
+                .fixedSize(horizontal: false, vertical: true)
+            Text(HomeRefreshL10n.text("catalog.subtitle"))
+                .font(.subheadline).foregroundStyle(EKitapligimPalette.muted)
+                .fixedSize(horizontal: false, vertical: true)
+            Button { heroExpanded = false } label: {
+                Label(HomeRefreshL10n.text("catalog.explore"), systemImage: "book.pages")
+                    .font(.caption.weight(.bold)).foregroundStyle(.white)
+                    .padding(.horizontal, 16).padding(.vertical, 12).frame(minHeight: 48)
+                    .background(EKitapligimPalette.tealDark, in: Capsule())
+            }.buttonStyle(.plain)
+            Button { showingReadingHelp = true } label: {
+                Label(HomeRefreshL10n.text("catalog.help"), systemImage: "questionmark.circle")
+                    .font(.caption.weight(.semibold)).foregroundStyle(EKitapligimPalette.tealDark)
+                    .padding(.horizontal, 14).padding(.vertical, 12).frame(minHeight: 44)
+                    .background(.white.opacity(0.9), in: Capsule())
+            }.buttonStyle(.plain)
         }
     }
 
-    private var catalogCoverStack: some View {
-        ZStack {
-            ForEach(Array(books.prefix(3).enumerated()), id: \.element.id) { index, book in
-                EKitapligimRemoteCover(urlString: book.coverUrl, title: book.title, author: book.author)
-                    .frame(width: index == 1 ? 58 : 50, height: index == 1 ? 88 : 76)
-                    .clipShape(RoundedRectangle(cornerRadius: 8, style: .continuous))
-                    .rotationEffect(.degrees(Double(index - 1) * 9))
-                    .offset(x: CGFloat(index - 1) * 16, y: index == 1 ? -6 : 8)
-                    .shadow(color: .black.opacity(0.28), radius: 8, y: 4)
+    @ViewBuilder private var catalogSpotlight: some View {
+        if let book = editorialSpotlight {
+            NavigationLink(value: book.id) {
+                VStack(spacing: 9) {
+                    EKitapligimRemoteCover(urlString: book.coverUrl, title: book.title, author: book.author)
+                        .frame(width: 108, height: 162)
+                        .clipShape(RoundedRectangle(cornerRadius: 7))
+                    Text(book.title).font(.caption2.weight(.semibold))
+                        .foregroundStyle(EKitapligimPalette.ink)
+                        .multilineTextAlignment(.center).fixedSize(horizontal: false, vertical: true)
+                }
+                .padding(9).frame(width: 126)
+                .background(.white.opacity(0.82), in: RoundedRectangle(cornerRadius: 13))
+                .shadow(color: EKitapligimPalette.ink.opacity(0.15), radius: 12, y: 7)
+                .rotationEffect(.degrees(-3))
             }
-            if books.isEmpty {
-                Image(systemName: "books.vertical.fill")
-                    .font(.title2)
-                    .foregroundStyle(.white.opacity(0.86))
-                    .frame(width: 58, height: 88)
-                    .background(.white.opacity(0.12), in: RoundedRectangle(cornerRadius: 10, style: .continuous))
-            }
+            .buttonStyle(.plain)
+            .accessibilityIdentifier("catalog.editorialSpotlight")
         }
-        .frame(width: 96, height: 102)
-        .accessibilityHidden(true)
+    }
+
+    private func loadEditorSelection() async {
+        guard let loaded = try? await HomeEditorialRepository(webBaseURL: container.config.webBaseURL).books(), !Task.isCancelled else { return }
+        editorialSpotlight = HomeEditorialSelection.select(from: loaded, retaining: editorialSpotlight?.id)
     }
 
     private var categoryChips: some View {
@@ -257,7 +263,7 @@ struct CatalogView: View {
 
     @ViewBuilder
     private var catalogGridOrList: some View {
-        switch displayMode {
+        switch dynamicTypeSize.isAccessibilitySize ? CatalogDisplayMode.list : displayMode {
         case .list:
             ForEach(books) { book in
                 NavigationLink(value: book.id) { BookRow(book: book) }
@@ -547,10 +553,14 @@ private struct CatalogHeroMetric: View {
 
 @MainActor
 private struct BookRow: View {
+    @Environment(\.dynamicTypeSize) private var dynamicTypeSize
     let book: BookDTO
 
     var body: some View {
-        HStack(spacing: 14) {
+        let layout = dynamicTypeSize.isAccessibilitySize
+            ? AnyLayout(VStackLayout(alignment: .leading, spacing: 14))
+            : AnyLayout(HStackLayout(alignment: .center, spacing: 14))
+        layout {
             CatalogBookCover(book: book)
                 .frame(width: 78, height: 116)
                 .clipShape(RoundedRectangle(cornerRadius: 10, style: .continuous))
@@ -559,12 +569,17 @@ private struct BookRow: View {
                 Text(book.title)
                     .font(.headline.weight(.semibold))
                     .foregroundStyle(EKitapligimPalette.ink)
-                    .lineLimit(2)
+                    .lineLimit(dynamicTypeSize.isAccessibilitySize ? nil : 2)
+                    .fixedSize(horizontal: false, vertical: true)
                 Text(book.author)
                     .font(.subheadline)
                     .foregroundStyle(EKitapligimPalette.muted)
-                    .lineLimit(1)
-                HStack(spacing: 8) {
+                    .lineLimit(dynamicTypeSize.isAccessibilitySize ? nil : 1)
+                    .fixedSize(horizontal: false, vertical: true)
+                let metadataLayout = dynamicTypeSize.isAccessibilitySize
+                    ? AnyLayout(VStackLayout(alignment: .leading, spacing: 8))
+                    : AnyLayout(HStackLayout(alignment: .center, spacing: 8))
+                metadataLayout {
                     if !book.category.isEmpty {
                         Text(book.category)
                             .font(.caption.weight(.semibold))
@@ -573,7 +588,7 @@ private struct BookRow: View {
                             .padding(.vertical, 4)
                             .background(EKitapligimPalette.tealSoft)
                             .clipShape(Capsule())
-                            .lineLimit(1)
+                            .lineLimit(dynamicTypeSize.isAccessibilitySize ? nil : 1)
                     }
                     if book.pageCount > 1 {
                         Text(L10n.catalogBookPageCount(book.pageCount))

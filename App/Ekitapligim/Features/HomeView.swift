@@ -8,8 +8,9 @@ struct HomeView: View {
     @State private var stats: SiteStatsDTO?
     @State private var popularBooks: [BookDTO] = []
     @State private var newestBooks: [BookDTO] = []
-    @State private var dailyPickBooks: [BookDTO] = []
     @State private var premiumBooks: [BookDTO] = []
+    @State private var editorialBooks: [BookDTO] = []
+    @State private var editorialSpotlight: BookDTO?
     @State private var agendaPosts: [BookAgendaPostDTO] = []
     @State private var liveItems: [LiveActivityItemDTO] = []
     @State private var chatRoom: ChatRoomDTO?
@@ -27,27 +28,24 @@ struct HomeView: View {
                     LazyVStack(spacing: 18) {
                         headerBlock
                         heroCard
+                        nextBookSection
                         searchBar
-                        statsCard
+                        genreSection
                         continueReadingCard
+                        if let repository = container.audioRepository, let controller = container.audioPlayback {
+                            AudioHomePreviewView(repository: repository, controller: controller, account: container.audioAccount,
+                                onBook: { container.open(route: .audiobook($0)) },
+                                onBrowse: { container.open(route: .audiobooks) },
+                                onLibrary: { container.open(route: .audioLibrary(tab: "saved")) })
+                                .padding(.horizontal, 16)
+                        }
                         discoverySection
                         chatPreviewCard
                         agendaRail
-                        bookRail(
-                            title: L10n.homeDailyPickTitle,
-                            subtitle: L10n.homeDailyPickSubtitle,
-                            books: dailyPickBooks
-                        )
-                        bookRail(
-                            title: L10n.homeNewestTitle,
-                            subtitle: L10n.homeNewestSubtitle,
-                            books: newestBooks
-                        )
-                        bookRail(
-                            title: L10n.homePopularTitle,
-                            subtitle: L10n.homePopularSubtitle,
-                            books: popularBooks
-                        )
+                        communityBanner
+                        dailySelectionSection
+                        newArrivalsSection
+                        statsCard
                         liveActivityCard
                         if !premiumBooks.isEmpty {
                             bookRail(
@@ -62,6 +60,7 @@ struct HomeView: View {
                 }
                 .refreshable {
                     await load()
+                    await loadEditorialBooks()
                     await refreshDynamicContent(force: true)
                 }
             }
@@ -70,12 +69,17 @@ struct HomeView: View {
                 BookDetailDestination(bookIDString: id)
             }
             .task {
+                async let editorRequest: Void = loadEditorialBooks()
                 await loadIfNeeded()
+                await editorRequest
                 await refreshDynamicContent()
                 startChatPolling()
             }
             .onAppear {
                 Task { await refreshDynamicContent() }
+            }
+            .onReceive(NotificationCenter.default.publisher(for: .audioActivityChanged)) { _ in
+                Task { await refreshDynamicContent(force: true) }
             }
             .onDisappear { chatPollTask?.cancel() }
         }
@@ -88,128 +92,109 @@ struct HomeView: View {
     // MARK: - Üst bölüm
 
     private var headerBlock: some View {
-        HStack(spacing: 12) {
-            EKitapligimBrandLogo()
-                .frame(maxWidth: 140, minHeight: 52, maxHeight: 56)
-            Spacer(minLength: 4)
-            Button { container.open(route: .premium) } label: {
-                Label(container.isPremium ? L10n.premiumShortTitle : L10n.premiumShortTitle, systemImage: "crown.fill")
-                    .font(.subheadline.weight(.bold))
-                    .foregroundStyle(.white)
-                    .padding(.horizontal, 14)
-                    .frame(height: 48)
-                    .background(EKitapligimPalette.teal)
-                    .clipShape(RoundedRectangle(cornerRadius: 15, style: .continuous))
-            }
-            .buttonStyle(.plain)
+        ViewThatFits(in: .horizontal) {
+            HStack(spacing: 12) { headerBrand; Spacer(minLength: 4); premiumShortcut }
+            VStack(alignment: .leading, spacing: 10) { headerBrand; premiumShortcut }
         }
         .padding(.horizontal, 16)
         .padding(.top, 12)
         .padding(.trailing, 58)
     }
 
+    private var headerBrand: some View {
+        EKitapligimBrandLogo().frame(width: 130, height: 52)
+    }
+
+    private var premiumShortcut: some View {
+        Button { container.open(route: .premium) } label: {
+            Label(L10n.premiumShortTitle, systemImage: "crown.fill")
+                .font(.subheadline.weight(.bold)).foregroundStyle(.white)
+                .padding(.horizontal, 14).padding(.vertical, 12).frame(minHeight: 48)
+                .background(EKitapligimPalette.teal, in: RoundedRectangle(cornerRadius: 15))
+        }.buttonStyle(.plain)
+    }
+
     private var heroCard: some View {
-        VStack(alignment: .leading, spacing: 14) {
-            EKPill(
-                title: L10n.homeHeroBadge,
-                foreground: EKitapligimPalette.tealDark,
-                background: EKitapligimPalette.tealSoft
-            )
+        ModernHeroView(
+            artwork: "home_hero_scene",
+            eyebrow: HomeRefreshL10n.text("hero.eyebrow"),
+            title: HomeRefreshL10n.text("hero.title"),
+            subtitle: HomeRefreshL10n.text("hero.subtitle"),
+            minHeight: 260,
+            actionTitle: HomeRefreshL10n.text("hero.explore")
+        ) { container.open(route: .catalog) }
+        .padding(.horizontal, 16)
+        .accessibilityIdentifier("home.scenicHero")
+    }
 
-            HStack(alignment: .top, spacing: 12) {
-                VStack(alignment: .leading, spacing: 8) {
-                    Text(L10n.homeHeroHeadline)
-                        .font(.system(size: 24, weight: .bold, design: .serif))
-                        .foregroundStyle(EKitapligimPalette.ink)
-                        .fixedSize(horizontal: false, vertical: true)
-                    Text(L10n.homeHeroSubtitle)
-                        .font(.caption)
-                        .foregroundStyle(EKitapligimPalette.muted)
-                        .fixedSize(horizontal: false, vertical: true)
-
-                    HStack(spacing: 8) {
-                        Button { container.open(route: .catalog) } label: {
-                            Label(L10n.homeHeroPrimaryAction, systemImage: "books.vertical.fill")
-                                .font(.caption.weight(.bold))
-                                .foregroundStyle(.white)
-                                .padding(.horizontal, 14)
-                                .padding(.vertical, 10)
-                                .background(EKitapligimPalette.teal)
-                                .clipShape(RoundedRectangle(cornerRadius: 12, style: .continuous))
-                        }
-                        .buttonStyle(.plain)
-
-                        Button { container.open(route: .premium) } label: {
-                            Label(L10n.premiumShortTitle, systemImage: "crown.fill")
-                                .font(.caption.weight(.bold))
-                                .foregroundStyle(EKitapligimPalette.tealDark)
-                                .padding(.horizontal, 14)
-                                .padding(.vertical, 10)
-                                .background(.white)
-                                .clipShape(RoundedRectangle(cornerRadius: 12, style: .continuous))
-                                .overlay { RoundedRectangle(cornerRadius: 12).stroke(EKitapligimPalette.teal.opacity(0.4)) }
-                        }
-                        .buttonStyle(.plain)
-                    }
-                    .padding(.top, 4)
+    @ViewBuilder private var nextBookSection: some View {
+        if let editorialSpotlight {
+            VStack(alignment: .leading, spacing: 12) {
+                ModernSectionHeading(title: HomeRefreshL10n.text("next.title"), subtitle: "", actionTitle: L10n.homeSeeAll) {
+                    container.open(route: .catalog)
                 }
-
-                heroCoverStack
+                ModernHomeSpotlight(book: editorialSpotlight)
             }
-
-            HStack(spacing: 0) {
-                signalPill(L10n.homeSignalFormats, systemImage: "doc.fill")
-                signalDivider
-                signalPill(L10n.homeSignalShelfSync, systemImage: "arrow.triangle.2.circlepath")
-                signalDivider
-                signalPill(L10n.homeSignalEverywhere, systemImage: "iphone")
-            }
+            .padding(.horizontal, 16)
         }
-        .padding(18)
-        .background(
-            LinearGradient(
-                colors: [Color(red: 252 / 255, green: 254 / 255, blue: 253 / 255),
-                         Color(red: 244 / 255, green: 250 / 255, blue: 248 / 255),
-                         Color(red: 255 / 255, green: 251 / 255, blue: 242 / 255)],
-                startPoint: .topLeading,
-                endPoint: .bottomTrailing
-            )
-        )
-        .clipShape(RoundedRectangle(cornerRadius: 18, style: .continuous))
-        .overlay { RoundedRectangle(cornerRadius: 18).stroke(Color(red: 214 / 255, green: 231 / 255, blue: 228 / 255)) }
+    }
+
+    private var genreSection: some View {
+        VStack(alignment: .leading, spacing: 12) {
+            ModernSectionHeading(title: HomeRefreshL10n.text("genre.title"), subtitle: "", actionTitle: L10n.homeSeeAll) {
+                container.open(route: .catalog)
+            }.padding(.horizontal, 16)
+            ModernHomeGenreStrip()
+        }
+    }
+
+    private var communityBanner: some View {
+        ModernHeroView(artwork: "home_community_scene", eyebrow: HomeRefreshL10n.text("chat.eyebrow"),
+            title: HomeRefreshL10n.text("community.title"), subtitle: HomeRefreshL10n.text("community.subtitle"),
+            minHeight: 220, actionTitle: HomeRefreshL10n.text("community.action")) {
+            container.open(route: .forum)
+        }
         .padding(.horizontal, 16)
     }
 
-    private var heroCoverStack: some View {
-        ZStack {
-            ForEach(Array(newestBooks.prefix(3).enumerated()), id: \.offset) { index, book in
-                EKitapligimRemoteCover(urlString: book.coverUrl, title: book.title, author: book.author)
-                    .frame(width: index == 1 ? 56 : 48, height: index == 1 ? 88 : 76)
-                    .clipShape(RoundedRectangle(cornerRadius: 8, style: .continuous))
-                    .rotationEffect(.degrees(Double(index - 1) * 8))
-                    .offset(x: CGFloat(index - 1) * 18, y: index == 1 ? -4 : 6)
-                    .shadow(color: .black.opacity(0.12), radius: 4, y: 2)
-            }
-            if newestBooks.isEmpty {
-                Image(systemName: "books.vertical.fill")
-                    .font(.title)
-                    .foregroundStyle(EKitapligimPalette.teal)
-                    .frame(width: 56, height: 88)
-            }
+    private var newArrivalsSection: some View {
+        VStack(spacing: 16) {
+            ModernHeroView(artwork: "home_section_new_arrivals", eyebrow: HomeRefreshL10n.text("new.eyebrow"),
+                title: HomeRefreshL10n.text("new.title"), subtitle: HomeRefreshL10n.text("new.subtitle"), minHeight: 180,
+                actionTitle: L10n.homeSeeAll) { container.open(route: .catalog) }
+                .padding(.horizontal, 16)
+            bookRail(title: L10n.homeNewestTitle, subtitle: L10n.homeNewestSubtitle, books: newestBooks)
         }
-        .frame(width: 90, height: 96)
     }
 
-    private func signalPill(_ title: String, systemImage: String) -> some View {
-        HStack(spacing: 4) {
-            Image(systemName: systemImage).font(.system(size: 10)).foregroundStyle(EKitapligimPalette.teal)
-            Text(title).font(.system(size: 9, weight: .semibold)).foregroundStyle(EKitapligimPalette.muted)
+    @ViewBuilder private var dailySelectionSection: some View {
+        if !editorialBooks.isEmpty || !popularBooks.isEmpty {
+            VStack(spacing: 16) {
+                ModernHeroView(artwork: "home_section_daily_selection", eyebrow: HomeRefreshL10n.text("daily.eyebrow"),
+                    title: HomeRefreshL10n.text("daily.title"), subtitle: HomeRefreshL10n.text("daily.subtitle"), minHeight: 180,
+                    actionTitle: L10n.homeSeeAll) { container.open(route: .catalog) }
+                ViewThatFits(in: .horizontal) {
+                    HStack(alignment: .top, spacing: 14) {
+                        editorialPanel.frame(minWidth: 300)
+                        popularPanel.frame(minWidth: 300)
+                    }
+                    VStack(spacing: 14) { editorialPanel; popularPanel }
+                }
+            }
+            .padding(.horizontal, 16)
         }
-        .frame(maxWidth: .infinity)
     }
 
-    private var signalDivider: some View {
-        Rectangle().fill(Color(red: 230 / 255, green: 215 / 255, blue: 189 / 255)).frame(width: 1, height: 20)
+    @ViewBuilder private var editorialPanel: some View {
+        if !editorialBooks.isEmpty {
+            ModernHomeEditorialPanel(title: HomeRefreshL10n.text("daily.editor"), icon: "star", books: editorialBooks, tint: EKitapligimPalette.teal)
+        }
+    }
+
+    @ViewBuilder private var popularPanel: some View {
+        if !popularBooks.isEmpty {
+            ModernHomeEditorialPanel(title: HomeRefreshL10n.text("daily.popular"), icon: "flame", books: popularBooks, tint: EKitapligimPalette.amber)
+        }
     }
 
     private var searchBar: some View {
@@ -244,8 +229,7 @@ struct HomeView: View {
                 HomeStat(value: stats.totalBooks, label: L10n.homeStatBooks, systemImage: "books.vertical.fill", tint: EKitapligimPalette.amber)
                 divider
                 HomeStat(value: stats.totalAuthors, label: L10n.homeStatAuthors, systemImage: "person.2.fill", tint: EKitapligimPalette.teal)
-                divider
-                HomeStat(value: stats.totalPublishers, label: L10n.homeStatPublishers, systemImage: "building.2.fill", tint: EKitapligimPalette.teal)
+
             } else if isLoading {
                 ProgressView(L10n.homeStatsLoading)
                     .tint(EKitapligimPalette.teal)
@@ -272,74 +256,16 @@ struct HomeView: View {
 
     @ViewBuilder private var continueReadingCard: some View {
         if container.isSignedIn {
-            VStack(alignment: .leading, spacing: 10) {
-                HStack {
-                    Text(L10n.homeContinueTitle)
-                        .font(.headline.weight(.heavy))
-                        .foregroundStyle(EKitapligimPalette.profileInk)
-                    Spacer()
-                    if container.continueReadingItem != nil {
-                        Image(systemName: "chevron.right")
-                            .foregroundStyle(EKitapligimPalette.teal)
-                    }
+            VStack(alignment: .leading, spacing: 12) {
+                Text(HomeRefreshL10n.text("continue.eyebrow"))
+                    .font(.caption2.weight(.bold)).tracking(1.5).foregroundStyle(EKitapligimPalette.muted)
+                ModernSectionHeading(title: HomeRefreshL10n.text("continue.title"), subtitle: "", actionTitle: L10n.libraryHeaderTitle) {
+                    container.open(route: .library(0))
                 }
-                .padding(.horizontal, 16)
-
-                if let item = container.continueReadingItem {
-                    NavigationLink(value: item.bookId) {
-                        HStack(spacing: 14) {
-                            EKitapligimRemoteCover(urlString: item.coverUrl, title: item.title, author: item.author)
-                                .frame(width: 72, height: 108)
-                                .clipShape(RoundedRectangle(cornerRadius: 10, style: .continuous))
-                            VStack(alignment: .leading, spacing: 6) {
-                                Text(item.title)
-                                    .font(.subheadline.weight(.bold))
-                                    .foregroundStyle(EKitapligimPalette.ink)
-                                    .lineLimit(2)
-                                    .fixedSize(horizontal: false, vertical: true)
-                                if !item.author.isEmpty {
-                                    Text(item.author).font(.caption).foregroundStyle(EKitapligimPalette.muted)
-                                        .fixedSize(horizontal: false, vertical: true)
-                                }
-                                ProgressView(value: Double(item.displayProgressPercent), total: 100)
-                                    .tint(EKitapligimPalette.amber)
-                                HStack {
-                                    Text(L10n.commonPercent(item.displayProgressPercent))
-                                        .font(.caption2.weight(.bold))
-                                        .foregroundStyle(EKitapligimPalette.muted)
-                                        .fixedSize()
-                                    Spacer()
-                                    Label(L10n.homeContinueAction, systemImage: "play.fill")
-                                        .font(.caption.weight(.bold))
-                                        .foregroundStyle(.white)
-                                        .fixedSize(horizontal: false, vertical: true)
-                                        .padding(.horizontal, 12)
-                                        .padding(.vertical, 7)
-                                        .background(EKitapligimPalette.teal)
-                                        .clipShape(RoundedRectangle(cornerRadius: 10, style: .continuous))
-                                }
-                            }
-                        }
-                        .padding(14)
-                        .ekitapligimCard(radius: 14)
-                    }
-                    .buttonStyle(.plain)
-                    .padding(.horizontal, 16)
-                } else {
-                    VStack(alignment: .leading, spacing: 4) {
-                        Text(L10n.continueReadingEmptyTitle)
-                            .font(.subheadline.weight(.bold))
-                            .foregroundStyle(EKitapligimPalette.ink)
-                        Text(L10n.continueReadingEmptySubtitle)
-                            .font(.caption)
-                            .foregroundStyle(EKitapligimPalette.muted)
-                    }
-                    .padding(14)
-                    .frame(maxWidth: .infinity, alignment: .leading)
-                    .ekitapligimCard(radius: 14)
-                    .padding(.horizontal, 16)
-                }
+                ModernHomeReadingPanel(item: container.continueReadingItem,
+                    otherBooks: Array(container.currentlyReading.filter { $0.bookId != container.continueReadingItem?.bookId }.prefix(2)))
             }
+            .padding(.horizontal, 16)
         }
     }
 
@@ -347,7 +273,7 @@ struct HomeView: View {
 
     private var discoverySection: some View {
         VStack(alignment: .leading, spacing: 12) {
-            EKitapligimSectionHeader(
+            ModernSectionHeading(
                 title: L10n.homeDiscoveryTitle,
                 subtitle: L10n.homeDiscoverySubtitle,
                 actionTitle: L10n.homeSeeAll
@@ -447,11 +373,11 @@ struct HomeView: View {
                 Text(title)
                     .font(.subheadline.weight(.heavy))
                     .foregroundStyle(EKitapligimPalette.ink)
-                    .lineLimit(1)
+                    .fixedSize(horizontal: false, vertical: true)
                 Text(subtitle)
                     .font(.caption2)
                     .foregroundStyle(EKitapligimPalette.muted)
-                    .lineLimit(2)
+                    .fixedSize(horizontal: false, vertical: true)
                     .multilineTextAlignment(.leading)
                 Spacer(minLength: 0)
                 HStack {
@@ -462,7 +388,8 @@ struct HomeView: View {
                 }
             }
             .padding(14)
-            .frame(width: 180, height: 130, alignment: .topLeading)
+            .frame(width: 220, alignment: .topLeading)
+            .frame(minHeight: 140)
             .background(
                 LinearGradient(
                     colors: [.white, tint.opacity(0.1)],
@@ -483,7 +410,10 @@ struct HomeView: View {
     // MARK: - Sohbet önizlemesi
 
     @ViewBuilder private var chatPreviewCard: some View {
-        EKChatHomePreviewCard(
+        VStack(spacing: 0) {
+            ModernHeroView(artwork: "community_reader_salon", eyebrow: HomeRefreshL10n.text("chat.eyebrow"),
+                title: HomeRefreshL10n.text("chat.title"), subtitle: HomeRefreshL10n.text("chat.subtitle"), minHeight: 180)
+            EKChatHomePreviewCard(
             roomName: chatRoom?.name ?? L10n.menuChat,
             roomDescription: {
                 let trimmed = chatRoom?.description.trimmingCharacters(in: .whitespacesAndNewlines) ?? ""
@@ -494,7 +424,8 @@ struct HomeView: View {
             emptyMessage: L10n.homeChatCardEmpty,
             actionTitle: L10n.homeChatCardAction
         ) {
-            container.open(route: .chat)
+                container.open(route: .chat)
+            }
         }
         .padding(.horizontal, 16)
     }
@@ -503,7 +434,7 @@ struct HomeView: View {
 
     private var agendaRail: some View {
         VStack(alignment: .leading, spacing: 12) {
-            EKitapligimSectionHeader(
+            ModernSectionHeading(
                 title: L10n.menuBookAgenda,
                 subtitle: L10n.homeAgendaRailSubtitle,
                 actionTitle: L10n.homeSeeAll
@@ -551,7 +482,7 @@ struct HomeView: View {
 
     private func bookRail(title: String, subtitle: String, books: [BookDTO]) -> some View {
         VStack(alignment: .leading, spacing: 12) {
-            EKitapligimSectionHeader(title: title, subtitle: subtitle, actionTitle: L10n.homeSeeAll) {
+            ModernSectionHeading(title: title, subtitle: subtitle, actionTitle: L10n.homeSeeAll) {
                 container.open(route: .catalog)
             }
             .padding(.horizontal, 16)
@@ -560,7 +491,7 @@ struct HomeView: View {
                 ProgressView().tint(EKitapligimPalette.teal).frame(maxWidth: .infinity, minHeight: 180)
             } else if !books.isEmpty {
                 ScrollView(.horizontal, showsIndicators: false) {
-                    LazyHStack(spacing: 12) {
+                    LazyHStack(alignment: .top, spacing: 12) {
                         ForEach(books.prefix(8)) { book in
                             NavigationLink(value: book.id) { HomeBookCard(book: book) }.buttonStyle(.plain)
                         }
@@ -595,13 +526,7 @@ struct HomeView: View {
                 .accessibilityElement(children: .combine)
                 .padding(16)
                 .frame(maxWidth: .infinity, alignment: .leading)
-                .background(
-                    LinearGradient(
-                        colors: [EKitapligimPalette.liveRed, EKitapligimPalette.liveOrange],
-                        startPoint: .topLeading,
-                        endPoint: .bottomTrailing
-                    )
-                )
+                .background(LinearGradient(colors: [EKitapligimPalette.tealDark, EKitapligimPalette.teal], startPoint: .topLeading, endPoint: .bottomTrailing))
             }
             .buttonStyle(.plain)
             .accessibilityLabel(L10n.liveActivityTitle)
@@ -666,6 +591,15 @@ struct HomeView: View {
 
     // MARK: - Veri
 
+    private func loadEditorialBooks() async {
+        do {
+            let loaded = try await HomeEditorialRepository(webBaseURL: container.config.webBaseURL).books()
+            guard !Task.isCancelled else { return }
+            editorialBooks = loaded
+            editorialSpotlight = HomeEditorialSelection.select(from: loaded, retaining: editorialSpotlight?.id)
+        } catch { /* Retain an existing valid selection during transient network failures. */ }
+    }
+
     private func loadIfNeeded() async {
         guard stats == nil && popularBooks.isEmpty else { return }
         await load()
@@ -725,32 +659,17 @@ struct HomeView: View {
             async let newestRequest = container.books.books(
                 page: 1, query: nil, category: nil, author: nil, publisher: nil, isbn: nil, order: "latest", premiumOnly: false
             )
-            async let dailyRequest = container.books.books(
-                page: dailyPickPage(), query: nil, category: "6", author: nil, publisher: nil, isbn: nil, order: "post_date", premiumOnly: false
-            )
-
-            let (loadedStats, popular, newest, daily) = try await (
-                statsRequest, popularRequest, newestRequest, dailyRequest
+            let (loadedStats, popular, newest) = try await (
+                statsRequest, popularRequest, newestRequest
             )
 
             stats = loadedStats
             popularBooks = shuffledPopular(popular.books + newest.books)
             newestBooks = newest.books
-            dailyPickBooks = dailySeededShuffle(daily.books)
             premiumBooks = newest.books.filter(\.isPremiumOnly).shuffled()
         } catch {
             errorMessage = L10n.homeStatsLoadFailed
         }
-    }
-
-    private func dailyPickPage() -> Int {
-        let day = Calendar.current.ordinality(of: .day, in: .year, for: Date()) ?? 1
-        return (day % 5) + 1
-    }
-
-    private func dailySeededShuffle(_ books: [BookDTO]) -> [BookDTO] {
-        let seed = Calendar.current.ordinality(of: .day, in: .year, for: Date()) ?? 0
-        return books.enumerated().sorted { ($0.offset ^ seed) % books.count < ($1.offset ^ seed) % books.count }.map(\.element)
     }
 
     private func shuffledPopular(_ books: [BookDTO]) -> [BookDTO] {
@@ -829,42 +748,33 @@ private struct HomeStat: View {
 }
 
 private struct HomeBookCard: View {
+    @ScaledMetric(relativeTo: .body) private var cardWidth = 148.0
+    @Environment(\.dynamicTypeSize) private var dynamicTypeSize
     let book: BookDTO
 
     var body: some View {
-        HStack(spacing: 0) {
+        VStack(alignment: .leading, spacing: 10) {
             EKitapligimRemoteCover(urlString: book.coverUrl, title: book.title, author: book.author)
-                .frame(width: 88, height: 112)
-                .clipShape(RoundedRectangle(cornerRadius: 0))
-                .clipShape(
-                    UnevenRoundedRectangle(
-                        topLeadingRadius: 14,
-                        bottomLeadingRadius: 14,
-                        bottomTrailingRadius: 0,
-                        topTrailingRadius: 0
-                    )
-                )
-            VStack(alignment: .leading, spacing: 5) {
-                Text(book.title)
-                    .font(.caption.weight(.bold))
-                    .foregroundStyle(EKitapligimPalette.ink)
-                    .lineLimit(2)
-                Text(book.author)
-                    .font(.caption2)
-                    .foregroundStyle(EKitapligimPalette.muted)
-                    .lineLimit(1)
-                Spacer(minLength: 0)
-                if let rating = book.rating, rating > 0 {
-                    Label(rating.formatted(.number.precision(.fractionLength(1))), systemImage: "star.fill")
-                        .font(.caption2.weight(.semibold))
-                        .foregroundStyle(EKitapligimPalette.amber)
-                }
+                .frame(width: cardWidth - 24, height: (cardWidth - 24) * 1.48)
+                .clipShape(RoundedRectangle(cornerRadius: 8))
+                .padding(12)
+                .background(EKitapligimPalette.tealSoft.opacity(0.55), in: RoundedRectangle(cornerRadius: 12))
+            if !book.category.isEmpty {
+                Label(book.category, systemImage: "book.closed")
+                    .font(.caption2.weight(.semibold)).foregroundStyle(EKitapligimPalette.teal)
             }
-            .padding(10)
-            .frame(width: 150, height: 112, alignment: .topLeading)
+            Text(book.title).font(.subheadline.weight(.semibold))
+                .foregroundStyle(EKitapligimPalette.ink)
+                .lineLimit(dynamicTypeSize.isAccessibilitySize ? nil : 3)
+                .fixedSize(horizontal: false, vertical: true)
+            if !book.author.isEmpty {
+                Text(book.author).font(.caption).foregroundStyle(EKitapligimPalette.muted)
+                    .fixedSize(horizontal: false, vertical: true)
+            }
         }
-        .frame(width: 238, height: 112)
-        .ekitapligimCard(radius: 14)
+        .padding(12)
+        .frame(width: cardWidth + 24, alignment: .topLeading)
+        .ekitapligimCard(radius: 18)
     }
 }
 

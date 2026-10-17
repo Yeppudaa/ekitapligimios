@@ -52,8 +52,14 @@ struct ChatView: View {
                 endPoint: .bottom
             )
             .ignoresSafeArea()
-            VStack(spacing: 0) {
-                transcript
+            GeometryReader { geometry in
+                let compactHeader = geometry.size.height < 540 || dynamicTypeSize.isAccessibilitySize || isComposerFocused
+                VStack(spacing: 0) {
+                    pinnedChatHeader(compact: compactHeader)
+                        .frame(maxWidth: 900)
+                        .frame(maxWidth: .infinity)
+                    transcript.frame(maxHeight: .infinity)
+                }
             }
         }
         .safeAreaInset(edge: .bottom, spacing: 0) {
@@ -63,11 +69,27 @@ struct ChatView: View {
         .modifier(ChatNavigationSubtitleModifier(subtitle: L10n.chatSubtitle))
         .navigationBarTitleDisplayMode(.inline)
         .toolbar {
+            if rooms.count > 1 && rooms.contains(where: { $0.isPrivate }) {
+                ToolbarItem(placement: .topBarTrailing) {
+                    Menu {
+                        ForEach(rooms.filter { $0.isPrivate || $0.id == rooms.first?.id || $0.id == selectedRoomID }) { room in
+                            Button {
+                                reactionTarget = nil
+                                Task { await model.selectRoom(room.id) }
+                            } label: {
+                                Label(room.name, systemImage: room.id == selectedRoomID ? "checkmark" : room.isPrivate ? "lock" : "bubble.left.and.bubble.right")
+                            }
+                        }
+                    } label: {
+                        Image(systemName: "bubble.left.and.bubble.right").frame(minWidth: 44, minHeight: 44)
+                    }.accessibilityLabel(CommunityRefreshL10n.text("chat.rooms"))
+                }
+            }
             ToolbarItem(placement: .topBarTrailing) {
                 Button {
                     Task { await model.loadMessages() }
                 } label: {
-                    Image(systemName: "arrow.clockwise")
+                    Image(systemName: "arrow.clockwise").frame(minWidth: 44, minHeight: 44)
                 }
                 .accessibilityLabel(L10n.chatRefresh)
             }
@@ -111,167 +133,40 @@ struct ChatView: View {
 
     // MARK: Hero + odalar
 
-    private var chatHero: some View {
-        VStack(alignment: .leading, spacing: 13) {
-            HStack(alignment: .center, spacing: 13) {
-                Image(systemName: "bubble.left.and.bubble.right.fill")
-                    .font(.title3)
-                    .foregroundStyle(.white)
-                    .frame(width: 52, height: 52)
-                    .background(
-                        LinearGradient(
-                            colors: [EKitapligimPalette.chatTeal, Color(hex: 0x046B70)],
-                            startPoint: .topLeading,
-                            endPoint: .bottomTrailing
-                        ),
-                        in: RoundedRectangle(cornerRadius: 17, style: .continuous)
-                    )
-
-                VStack(alignment: .leading, spacing: 3) {
-                    Text(L10n.chatHeroTitle)
-                        .font(.headline.weight(.heavy))
-                        .foregroundStyle(EKitapligimPalette.chatInk)
-                        .fixedSize(horizontal: false, vertical: true)
-                    Text(L10n.chatHeroSubtitle)
-                        .font(.caption)
-                        .foregroundStyle(EKitapligimPalette.chatMuted)
-                        .fixedSize(horizontal: false, vertical: true)
-                }
-
-                Spacer(minLength: 0)
-
-                HStack(spacing: 5) {
-                    Circle()
-                        .fill(Color(hex: 0x1CB879))
-                        .frame(width: 7, height: 7)
-                    Text(L10n.chatLiveBadge)
-                        .font(.system(size: 10, weight: .heavy))
-                        .foregroundStyle(Color(hex: 0x08734E))
-                }
-                .padding(.horizontal, 10)
-                .padding(.vertical, 7)
-                .background(Color(hex: 0xE5FAF1), in: Capsule())
+    /// The artwork and current-room status stay still; only the transcript scrolls.
+    private func pinnedChatHeader(compact: Bool) -> some View {
+        VStack(spacing: 8) {
+            if !compact {
+                ModernHeroView(
+                    artwork: "community_reader_salon",
+                    eyebrow: CommunityRefreshL10n.text("chat.eyebrow"),
+                    title: CommunityRefreshL10n.text("chat.title"),
+                    subtitle: CommunityRefreshL10n.text("chat.body"),
+                    minHeight: 190
+                )
+                .accessibilityIdentifier("chat-pinned-artwork")
             }
-
-            HStack(spacing: 8) {
-                HStack(spacing: 6) {
-                    Image(systemName: sessionReady ? "checkmark.shield.fill" : "eye.fill")
-                        .font(.caption2)
-                        .foregroundStyle(EKitapligimPalette.chatTeal)
-                        .accessibilityHidden(true)
-                    Text(chatHeroStatusText)
-                        .font(.system(size: 10, weight: .semibold))
-                        .foregroundStyle(EKitapligimPalette.chatInk)
-                }
-                .padding(.horizontal, 10)
-                .padding(.vertical, 7)
-                .background(.white.opacity(0.72), in: Capsule())
-                .overlay(Capsule().stroke(Color(hex: 0xD5E8E7)))
-
-                Text(L10n.chatHeroLiveUpdate)
-                    .font(.system(size: 10))
-                    .foregroundStyle(EKitapligimPalette.chatMuted)
-                    .fixedSize(horizontal: false, vertical: true)
-            }
-        }
-        .padding(17)
-        .background(
-            LinearGradient(
-                colors: [.white, Color(hex: 0xEAF8F7), Color(hex: 0xFFF6E5)],
-                startPoint: .topLeading,
-                endPoint: .bottomTrailing
-            )
-        )
-        .clipShape(RoundedRectangle(cornerRadius: 22, style: .continuous))
-        .overlay {
-            RoundedRectangle(cornerRadius: 22, style: .continuous)
-                .stroke(Color(hex: 0xCFE8E8))
-        }
-    }
-
-    private var roomTabs: some View {
-        Group {
-            if rooms.count == 1, let room = rooms.first {
-                chatRoomTab(room, expanded: true)
-            } else {
-                ScrollView(.horizontal, showsIndicators: false) {
-                    HStack(spacing: 8) {
-                        ForEach(rooms) { room in
-                            chatRoomTab(room, expanded: false)
-                        }
-                    }
-                    .padding(.horizontal, 9)
-                    .padding(.vertical, 9)
-                }
-                .background(.white.opacity(0.94), in: RoundedRectangle(cornerRadius: 18, style: .continuous))
-                .overlay {
-                    RoundedRectangle(cornerRadius: 18, style: .continuous)
-                        .stroke(EKitapligimPalette.chatBorder)
-                }
-            }
-        }
-    }
-
-    private func chatRoomTab(_ room: ChatRoomDTO, expanded: Bool) -> some View {
-        let selected = selectedRoomID == room.id
-        return Button {
-            guard selectedRoomID != room.id else { return }
-            reactionTarget = nil
-            Task { await model.selectRoom(room.id) }
-        } label: {
-            HStack(spacing: expanded ? 10 : 6) {
-                Image(systemName: room.isPrivate ? "lock.fill" : "person.3.fill")
-                    .font(expanded ? .body : .caption)
+            HStack(spacing: 10) {
+                Image(systemName: sessionReady ? "bubble.left.and.bubble.right.fill" : "eye")
+                    .foregroundStyle(EKitapligimPalette.chatTeal)
+                    .frame(width: 38, height: 38)
+                    .background(EKitapligimPalette.chatTealSoft, in: RoundedRectangle(cornerRadius: 12))
                     .accessibilityHidden(true)
-                    .foregroundStyle(!expanded && selected ? .white : EKitapligimPalette.chatTeal)
-                    .frame(width: expanded ? 39 : 24, height: expanded ? 39 : 24)
-                    .background(
-                        (!expanded && selected ? Color.white.opacity(0.16) : EKitapligimPalette.chatTealSoft),
-                        in: RoundedRectangle(cornerRadius: expanded ? 12 : 8, style: .continuous)
-                    )
-
-                VStack(alignment: .leading, spacing: 2) {
-                    Text(room.name)
-                        .font(expanded ? .subheadline.weight(.bold) : .caption.weight(.bold))
-                        .foregroundStyle(!expanded && selected ? .white : EKitapligimPalette.chatInk)
+                VStack(alignment: .leading, spacing: 3) {
+                    Text(selectedRoom?.name ?? L10n.chatTitle)
+                        .font(.subheadline.weight(.semibold)).foregroundStyle(EKitapligimPalette.chatInk)
                         .lineLimit(1)
-                    if expanded {
-                        Text(roomDescription(room))
-                            .font(.caption2)
-                            .foregroundStyle(EKitapligimPalette.chatMuted)
-                            .fixedSize(horizontal: false, vertical: true)
-                    }
-                }
-                .frame(maxWidth: expanded ? .infinity : nil, alignment: .leading)
-
-                onlinePill(for: room, selected: !expanded && selected)
+                    Text(chatHeroStatusText).font(.caption2).foregroundStyle(EKitapligimPalette.chatMuted)
+                        .fixedSize(horizontal: false, vertical: true)
+                }.frame(maxWidth: .infinity, alignment: .leading)
+                if let room = selectedRoom { onlinePill(for: room, selected: false) }
             }
-            .padding(.horizontal, expanded ? 14 : 12)
-            .padding(.vertical, expanded ? 12 : 9)
-            .frame(maxWidth: expanded ? .infinity : nil, alignment: .leading)
-            .background {
-                if expanded {
-                    LinearGradient(
-                        colors: [.white, Color(hex: 0xF0FAF9), Color(hex: 0xFFFAEF)],
-                        startPoint: .leading,
-                        endPoint: .trailing
-                    )
-                } else if selected {
-                    EKitapligimPalette.chatTeal
-                } else {
-                    Color(hex: 0xF3F7F7)
-                }
-            }
-            .clipShape(RoundedRectangle(cornerRadius: expanded ? 18 : 13, style: .continuous))
-            .overlay {
-                if expanded || !selected {
-                    RoundedRectangle(cornerRadius: expanded ? 18 : 13, style: .continuous)
-                        .stroke(EKitapligimPalette.chatBorder)
-                }
-            }
+            .padding(.horizontal, 13).padding(.vertical, 10)
+            .background(.regularMaterial, in: RoundedRectangle(cornerRadius: 16))
+            .overlay(RoundedRectangle(cornerRadius: 16).stroke(EKitapligimPalette.chatBorder))
         }
-        .accessibilityLabel(room.name)
-        .buttonStyle(.plain)
+        .padding(.horizontal, 14).padding(.top, 8).padding(.bottom, 8)
+        .accessibilityIdentifier("chat-pinned-header")
     }
 
     private func onlinePill(for room: ChatRoomDTO, selected: Bool) -> some View {
@@ -289,11 +184,6 @@ struct ChatView: View {
             selected ? Color.white.opacity(0.16) : Color(hex: 0xE5FAF1),
             in: Capsule()
         )
-    }
-
-    private func roomDescription(_ room: ChatRoomDTO) -> String {
-        let trimmed = room.description.trimmingCharacters(in: .whitespacesAndNewlines)
-        return trimmed.isEmpty ? L10n.chatRoomFallbackDescription : trimmed
     }
 
     private var chatHeroStatusText: String {
@@ -319,12 +209,6 @@ struct ChatView: View {
                             chatEmptyCard(message: L10n.chatRoomsEmpty)
                         }
                     } else {
-                        chatHero
-
-                        roomTabs
-
-                        welcomeCard
-
                         if hasOlder {
                             Button {
                                 Task { await model.loadOlder() }
@@ -405,47 +289,6 @@ struct ChatView: View {
                 withAnimation(.easeOut(duration: 0.2)) { proxy.scrollTo("chat-latest", anchor: .bottom) }
             }
         }
-    }
-
-    private var welcomeCard: some View {
-        HStack(alignment: .center, spacing: 10) {
-            Image(systemName: sessionReady ? "checkmark.shield.fill" : "eye.fill")
-                .font(.body)
-                .foregroundStyle(sessionReady ? EKitapligimPalette.chatTeal : EKitapligimPalette.chatAmber)
-                .accessibilityHidden(true)
-            VStack(alignment: .leading, spacing: 3) {
-                Text(welcomeTitle)
-                    .font(.caption.weight(.bold))
-                    .foregroundStyle(EKitapligimPalette.chatInk)
-                Text(welcomeBody)
-                    .font(.caption2)
-                    .foregroundStyle(EKitapligimPalette.chatMuted)
-                    .fixedSize(horizontal: false, vertical: true)
-            }
-        }
-        .frame(maxWidth: .infinity, alignment: .leading)
-        .padding(.horizontal, 13)
-        .padding(.vertical, 11)
-        .background(sessionReady ? Color(hex: 0xEAF8F7) : Color(hex: 0xFFF8EA))
-        .clipShape(RoundedRectangle(cornerRadius: 15, style: .continuous))
-        .overlay {
-            RoundedRectangle(cornerRadius: 15, style: .continuous)
-                .stroke(sessionReady ? Color(hex: 0xC8E7E4) : Color(hex: 0xF0DFC0))
-        }
-    }
-
-    private var welcomeTitle: String {
-        if sessionReady { return L10n.chatWelcomeReady }
-        if signedIn { return L10n.chatWelcomeSecure }
-        return L10n.chatWelcomeGuest
-    }
-
-    private var welcomeBody: String {
-        if let room = selectedRoom {
-            let trimmed = room.description.trimmingCharacters(in: .whitespacesAndNewlines)
-            if !trimmed.isEmpty { return trimmed }
-        }
-        return L10n.chatWelcomeRules
     }
 
     // MARK: Mesaj yazma

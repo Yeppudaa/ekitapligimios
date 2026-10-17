@@ -124,6 +124,30 @@ final class AppContainer: ObservableObject {
         for (id, record) in readerProgressSync.records where record.pending { applyReaderRecord(bookID: id, record: record) }
     }
     let config: AppConfig
+    // Isolated, additive audio services. Existing authentication and purchasing services remain unchanged.
+    private let audioURLSession: URLSession?
+    lazy var profileVisitRecorder: ProfileVisitRecorder? = {
+        try? ProfileVisitRecorder(webBaseURL: config.webBaseURL, tokens: tokenStore, session: audioURLSession)
+    }()
+    lazy var audioRepository: AudioRepository? = {
+        let client = apiClient
+        return try? AudioRepository(webBaseURL: config.webBaseURL, tokens: tokenStore,
+            refresh: { rejectedToken in try await client.refreshAccessToken(afterUnauthorized: rejectedToken) },
+            session: audioURLSession)
+    }()
+    lazy var audioPlayback: AudioPlaybackController? = {
+        audioRepository.map {
+            let controller = AudioPlaybackController(repository: $0)
+            controller.onActivityChanged = {
+                NotificationCenter.default.post(name: .audioActivityChanged, object: nil)
+            }
+            return controller
+        }
+    }()
+    var audioAccount: String? {
+        if case .signedIn(let session) = authState { return session.username }
+        return nil
+    }
     let tokenStore: TokenStore
     let apiClient: APIClient
     let assistant: AIAssistantRepository
@@ -187,6 +211,7 @@ final class AppContainer: ObservableObject {
             refreshAccessToken: { token in try await apiClient.refreshAccessToken(afterUnauthorized: token) })
 
         self.config = config
+        self.audioURLSession = apiSession
         self.tokenStore = tokenStore
         self.apiClient = apiClient
         self.assistant = AIAssistantRepository(client: apiClient, guestKeys: AIGuestKeyStore())

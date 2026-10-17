@@ -17,6 +17,7 @@ struct EkitapligimApp: App {
                 }
                 .task {
                     #if DEBUG
+                    if ProcessInfo.processInfo.arguments.contains("-modern-parity-ui-fixture") { return }
                     if ProcessInfo.processInfo.arguments.contains("-ai-ui-fixture") { return }
                     if ProcessInfo.processInfo.arguments.contains("-gift-wheel-ui-fixture") { return }
                     if ProcessInfo.processInfo.arguments.contains("-reader-ui-fixture") { return }
@@ -30,7 +31,8 @@ struct EkitapligimApp: App {
 
     @ViewBuilder private var appContent: some View {
         #if DEBUG
-        if ProcessInfo.processInfo.arguments.contains("-ai-ui-fixture") { AIUITestHost() }
+        if ProcessInfo.processInfo.arguments.contains("-modern-parity-ui-fixture") { ModernParityUITestHost() }
+        else if ProcessInfo.processInfo.arguments.contains("-ai-ui-fixture") { AIUITestHost() }
         else if ProcessInfo.processInfo.arguments.contains("-gift-wheel-ui-fixture") { GiftWheelUITestHost() }
         else if ProcessInfo.processInfo.arguments.contains("-reader-ui-fixture") { ReaderUITestHost() }
         else if ProcessInfo.processInfo.arguments.contains("-chat-ui-fixture") { ChatUITestHost() }

@@ -1,5 +1,11 @@
 # iOS API Documentation
 
+## Native audiobook addition (2026-10-17)
+
+`AudioRepository` uses the same first-party origin under `/mobile-api/v1/` independently of the unchanged `/ios-api/v1/` client. GET: `audio-books` (search/order/duration/language/category/author/page), `audio-books/{id}`, `audio-library?tab=...`; POST: `audio-books/{id}/manifest`, `/progress`, `/shelf`, `/bookmark`; authenticated HEAD/GET Range: `/stream?chapter_id=...`. See `AudioRepository.swift` and `AudioFilters.queryItems` for exact parameter encoding. The existing Keychain mobile session is accepted by the shared server session table; 401 coordinates with existing refresh and does not introduce a second login implementation.
+
+Premium permission is required at manifest and stream on the server. Same-origin HTTPS, no redirects, account checks, ordered progress leases and a 512 KiB bounded media transport are required. `ProfileVisitRecorder` uses POST `/mobile-api/v1/members/{id}/visit` with no user impersonation fields, sharing MobileApi 1.0.155's web/app policy. Existing payment, membership and Google endpoints are unchanged. Backend dependencies and validation limits: [MODERN_ANDROID_IOS_PARITY.md](MODERN_ANDROID_IOS_PARITY.md).
+
 ## Renewable catalog — IosApi 1.0.36 (2026-10-13)
 
 New purchases offer `com.ekitapligim.app.premium.monthly` (1 month), `.quarterly` (3 months), `.semiannual` (6 months), and `.yearly` (1 year), all auto-renewable subscriptions. `.lifetime` remains non-consumable. Apple supplies the signed expiration for every renewable interval; the server must never add calendar months to a renewal. The four subscriptions must be configured in the same App Store subscription group at the same service level.

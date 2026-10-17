@@ -1,4 +1,16 @@
 workflows:
+  ios-modern-parity-validation:
+    name: Ekitapligim iOS Modern Parity Validation
+    max_build_duration: 120
+    instance_type: mac_mini_m2
+    environment:
+      xcode: 26.3
+    scripts:
+      - name: Native iPhone and iPad tests, screenshots and unsigned Production build
+        script: bash Scripts/modern-parity-macos-validation.sh
+    artifacts:
+      - build/modern-parity/**
+
   ios-production:
     name: Ekitapligim iOS Production
     max_build_duration: 120

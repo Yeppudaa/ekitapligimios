@@ -167,7 +167,9 @@ struct ProfileView: View {
             )
             ReadingAchievementCard(stats: effectiveStats) { route = .stats }
             DailyLimitSection(subscription: subscription, isAdmin: container.isAdmin)
-            ContinueReadingCard(item: container.continueReadingItem)
+            ModernProfileBooksSection(onLibrary: { route = .library($0) },
+                onDownloads: { route = .downloads }, onComments: { route = .comments }, onJourney: { route = .stats })
+            audioProfileSection
             actionGrid
             PremiumMembershipCard(subscription: subscription, isPremium: container.isPremium) { route = .premium }
             ProfileMetricsRow(profile: profile)
@@ -178,14 +180,7 @@ struct ProfileView: View {
 
     private var actionGrid: some View {
         LazyVGrid(columns: [GridItem(.flexible(), spacing: 10), GridItem(.flexible(), spacing: 10)], spacing: 10) {
-            EKActionTile(title: L10n.profileActionLibrary, systemImage: "books.vertical.fill") { route = .library(.reading) }
-            EKActionTile(title: L10n.profileActionFavorites, systemImage: "heart.fill") { route = .library(.favorites) }
-            EKActionTile(title: L10n.profileActionReadLater, systemImage: "clock.fill") { route = .library(.wantToRead) }
-            EKActionTile(title: L10n.profileActionReadingNow, systemImage: "book.pages.fill") { route = .library(.reading) }
-            EKActionTile(title: L10n.profileActionFinished, systemImage: "checkmark.seal.fill") { route = .library(.finished) }
-            EKActionTile(title: L10n.profileActionDownloads, systemImage: "arrow.down.circle.fill") { route = .downloads }
             EKActionTile(title: L10n.profileActionBookRequests, systemImage: "sparkles") { route = .requests }
-            EKActionTile(title: L10n.profileActionMyComments, systemImage: "text.bubble.fill") { route = .comments }
             EKActionTile(
                 title: L10n.profileActionNotifications,
                 systemImage: "bell.fill",
@@ -197,6 +192,16 @@ struct ProfileView: View {
                 badgeCount: container.unreadMessages
             ) { route = .messages }
             EKActionTile(title: L10n.profileActionStats, systemImage: "chart.bar.fill") { route = .stats }
+        }
+    }
+
+    @ViewBuilder private var audioProfileSection: some View {
+        if let repository = container.audioRepository, let controller = container.audioPlayback {
+            AudioProfileSectionView(repository: repository, controller: controller, account: container.audioAccount,
+                onBook: { container.open(route: .audiobook($0)) },
+                onBrowse: { container.open(route: .audiobooks) },
+                onLibrary: { container.open(route: .audioLibrary(tab: "saved")) },
+                onTab: { container.open(route: .audioLibrary(tab: $0.rawValue)) })
         }
     }
 
@@ -500,6 +505,7 @@ private struct ProfileHero: View {
     private var banner: some View {
         ZStack {
             EKitapligimPalette.profileBannerGradient
+            Image("home_library_scene").resizable().scaledToFill().opacity(0.5)
             if let bannerUrl = profile?.bannerUrl,
                !bannerUrl.isEmpty,
                let url = URL(string: bannerUrl),

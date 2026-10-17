@@ -8,6 +8,10 @@ public enum AppRoute: Hashable, Identifiable, Sendable {
     case login
     case register
     case catalog
+    case audiobooks
+    case audiobook(Int)
+    case audioLibrary(tab: String)
+    case audioPlayer
     case bookDetail(Int)
     case reader(Int)
     case forum
@@ -45,6 +49,10 @@ public enum AppRoute: Hashable, Identifiable, Sendable {
         case .login: "login"
         case .register: "register"
         case .catalog: "catalog"
+        case .audiobooks: "audiobooks"
+        case .audiobook(let id): "audiobook/\(id)"
+        case .audioLibrary(let tab): "audiobooks/library/\(tab)"
+        case .audioPlayer: "audio-player"
         case .bookDetail(let id): "detail/\(id)"
         case .reader(let id): "reader/\(id)"
         case .forum: "forum"
@@ -76,7 +84,7 @@ public enum AppRoute: Hashable, Identifiable, Sendable {
     /// Routes that require a signed-in session before they can show anything useful.
     public var requiresAuthentication: Bool {
         switch self {
-        case .profile, .profileEdit, .library, .stats, .myComments, .notifications, .messages, .conversation:
+        case .profile, .profileEdit, .library, .stats, .myComments, .notifications, .messages, .conversation, .audioLibrary, .audioPlayer:
             true
         default:
             false
@@ -96,6 +104,18 @@ public struct DeepLinkParser: Sendable {
         let id = segments.last.flatMap(Self.trailingID)
 
         switch first {
+        case "sesli-kitaplar":
+            guard url.scheme?.lowercased() == "https", url.user == nil, url.password == nil,
+                  url.port == nil || url.port == 443 else { return nil }
+            if segments.count == 1 { return .audiobooks }
+            if segments[1].lowercased() == "library", segments.count == 2 {
+                let tabs = URLComponents(url: url, resolvingAgainstBaseURL: false)?.queryItems?.filter { $0.name == "tab" } ?? []
+                guard tabs.count <= 1 else { return nil }
+                let tab = tabs.first?.value ?? "saved"
+                return Self.audioLibraryTabs.contains(tab) ? .audioLibrary(tab: tab) : nil
+            }
+            guard segments.count == 2, let bookID = Int(segments[1]), bookID > 0, bookID <= Int32.max else { return nil }
+            return .audiobook(bookID)
         case "hediye-carki":
             return segments.count == 1 ? .giftWheel : nil
         case "asistan":
@@ -147,6 +167,16 @@ public struct DeepLinkParser: Sendable {
         if normalized == "live-activity" { return .liveActivity }
 
         switch first {
+        case "audiobooks":
+            if segments.count == 1 { return .audiobooks }
+            guard segments[1] == "library" else { return nil }
+            if segments.count == 2 { return .audioLibrary(tab: "saved") }
+            guard segments.count == 3, Self.audioLibraryTabs.contains(segments[2]) else { return nil }
+            return .audioLibrary(tab: segments[2])
+        case "audiobook":
+            return id.flatMap { $0 > 0 && $0 <= Int32.max ? .audiobook($0) : nil }
+        case "audio-player":
+            return segments.count == 1 ? .audioPlayer : nil
         case "gift-wheel", "hediye-carki":
             return segments.count == 1 ? .giftWheel : nil
         case "ai-assistant":
@@ -283,6 +313,8 @@ public struct DeepLinkParser: Sendable {
         if ["user", "member"].contains(type), let contentID, contentID > 0 { return .member(contentID) }
         return nil
     }
+
+    private static let audioLibraryTabs: Set<String> = ["saved", "listening", "completed", "later", "favorite", "history"]
 
     private static func trailingID(_ value: String) -> Int? {
         let digits = value.reversed().prefix(while: { $0.isNumber }).reversed()

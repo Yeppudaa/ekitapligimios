@@ -727,13 +727,14 @@ struct MemberProfileView: View {
 
     private func load() async {
         guard !isOwnProfile else { return }
+        let visitingAccount = container.audioAccount
         isLoading = true
         errorMessage = nil
         defer { isLoading = false }
         do {
             profile = try await container.members.memberProfile(id: memberID)
-            if isSignedIn {
-                try? await container.members.recordVisit(id: memberID)
+            if isSignedIn, container.audioAccount == visitingAccount, let id = Int(memberID) {
+                _ = await container.profileVisitRecorder?.record(memberID: id, account: visitingAccount)
             }
         } catch {
             errorMessage = L10n.membersProfileLoadFailed

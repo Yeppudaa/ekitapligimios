@@ -12,7 +12,7 @@ function Fail($Message) {
 }
 
 Write-Step "Checking Swift files for force unwraps and release markers"
-$forceFindings = Find-TextMatches -Pattern "try!|as!|fatalError|preconditionFailure|TODO|FIXME" -Paths App, Sources, Tests
+$forceFindings = Find-TextMatches -Pattern "try!|as!|fatalError|preconditionFailure|TODO|FIXME" -Paths App, Sources, Tests -Include "*.swift"
 if ($forceFindings) {
     Fail "Swift release marker or unsafe force operation found:`n$forceFindings"
 }

@@ -98,6 +98,13 @@ struct BookAgendaView: View {
         }
         .navigationTitle(L10n.agendaTitle)
         .navigationBarTitleDisplayMode(.inline)
+        .toolbar {
+            ToolbarItem(placement: .topBarTrailing) {
+                Button { Task { await load(reset: true) } } label: {
+                    Image(systemName: "arrow.clockwise").frame(minWidth: 44, minHeight: 44)
+                }.disabled(isLoading).accessibilityLabel(L10n.agendaRefresh)
+            }
+        }
         .task {
             if container.isSignedIn, tab == .agenda {
                 tab = .personal
@@ -147,57 +154,32 @@ struct BookAgendaView: View {
     // MARK: Başlık alanı
 
     private var hero: some View {
-        HStack(alignment: .center, spacing: 14) {
-            Image(systemName: "books.vertical.fill")
-                .font(.title2)
-                .foregroundStyle(.white)
-                .frame(width: 56, height: 56)
-                .background(
-                    LinearGradient(
-                        colors: [Color(hex: 0x8B6BFF), EKitapligimPalette.agendaPurple],
-                        startPoint: .topLeading,
-                        endPoint: .bottomTrailing
-                    ),
-                    in: RoundedRectangle(cornerRadius: 18, style: .continuous)
-                )
-
-            VStack(alignment: .leading, spacing: 5) {
-                Text(L10n.agendaHeroEyebrow)
-                    .font(.system(size: 11, weight: .heavy))
-                    .tracking(0.8)
-                    .foregroundStyle(EKitapligimPalette.agendaPurple)
-                Text(L10n.agendaHeroBody)
-                    .font(.subheadline.weight(.semibold))
-                    .foregroundStyle(EKitapligimPalette.agendaInk)
-                    .fixedSize(horizontal: false, vertical: true)
+        VStack(alignment: .leading, spacing: 12) {
+            ModernHeroView(
+                artwork: "agenda_reader_community",
+                eyebrow: CommunityRefreshL10n.text("agenda.eyebrow"),
+                title: CommunityRefreshL10n.text("agenda.title"),
+                subtitle: CommunityRefreshL10n.text("agenda.body"),
+                accent: Color(hex: 0x21636A),
+                minHeight: 285,
+                actionTitle: CommunityRefreshL10n.text(container.isSignedIn ? "agenda.join" : "agenda.guestJoin")
+            ) {
+                if !container.isSignedIn { showingLogin = true }
+                else if canCreate { showingComposer = true }
+                else { actionMessage = L10n.forumThreadReplyPermissionHint }
             }
-
-            Spacer(minLength: 0)
-
             Button {
+                filter = .quotation
                 Task { await load(reset: true) }
             } label: {
-                Image(systemName: "arrow.clockwise")
-                    .font(.body.weight(.semibold))
-                    .foregroundStyle(EKitapligimPalette.agendaTeal)
-                    .frame(width: 40, height: 40)
-            }
-            .buttonStyle(.plain)
-            .disabled(isLoading)
-            .accessibilityLabel(L10n.agendaRefresh)
-        }
-        .padding(18)
-        .background(
-            LinearGradient(
-                colors: [.white, Color(hex: 0xF3EFFF), Color(hex: 0xEAFBFA)],
-                startPoint: .leading,
-                endPoint: .trailing
-            )
-        )
-        .clipShape(RoundedRectangle(cornerRadius: 22, style: .continuous))
-        .overlay {
-            RoundedRectangle(cornerRadius: 22, style: .continuous)
-                .stroke(Color(hex: 0xDCD5FF))
+                Label(CommunityRefreshL10n.text("agenda.quotations"), systemImage: "quote.opening")
+                    .font(.subheadline.weight(.semibold))
+                    .foregroundStyle(Color(hex: 0x2B6268))
+                    .padding(.horizontal, 16).padding(.vertical, 12)
+                    .frame(maxWidth: .infinity, minHeight: 48)
+                    .background(Color(hex: 0xFFFCF5), in: Capsule())
+                    .overlay(Capsule().stroke(Color(hex: 0xDDE4D6)))
+            }.buttonStyle(.plain)
         }
     }
 

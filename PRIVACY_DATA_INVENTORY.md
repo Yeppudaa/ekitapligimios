@@ -1,5 +1,11 @@
 # Privacy Data Inventory
 
+## Native audio and profile visit addition (2026-10-17)
+
+First-party audio requests use the existing Keychain bearer session. Account-linked audio shelf, chapter position, listening progress/credit, speed, bookmark labels and optional note/quote text are sent to the same site for app functionality. Public live activity may expose the server-permitted audio event and book/member identity. Profile visits use the same server privacy/preference policy as Android/web. These use the existing UserID, ProductInteraction and OtherUserContent declarations; no advertising/tracking SDK or new third-party recipient is introduced.
+
+Audio manifest, range buffers (at most 512 KiB per read) and player state are memory-only, cleared on close/account change, with cookies/credential storage/disk cache disabled. Native background audio adds `audio` to UIBackgroundModes; microphone access is neither requested nor used. Notification permission is requested only after explicit user action; existing APNs registration is unchanged. Server retention/deletion for audio progress, annotations and public activities remains the operator's first-party policy and must be included in account deletion validation. Existing purchase/authentication data handling, privacy manifest and entitlements are unchanged.
+
 2026-10-13 renewal catalog review: quarterly/semiannual use the existing Apple purchase-history, account UUID and entitlement processing. No new data category, tracking, SDK, permission, endpoint or raw payment storage is introduced. The existing purchase-history declaration in `PrivacyInfo.xcprivacy` and app entitlements remain applicable.
 
 ## Purchase safety follow-up (2026-10-12)

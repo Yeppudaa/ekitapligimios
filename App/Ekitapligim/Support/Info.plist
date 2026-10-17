@@ -62,6 +62,7 @@
 	<key>UIBackgroundModes</key>
 	<array>
 		<string>remote-notification</string>
+		<string>audio</string>
 	</array>
 	<key>UISupportedInterfaceOrientations</key>
 	<array>

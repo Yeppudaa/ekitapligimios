@@ -19,7 +19,6 @@ struct DirectoryView: View {
     @State private var isLoading = true
     @State private var loadGeneration = UUID()
     @State private var errorMessage: String?
-    @State private var heroCollapseProgress: CGFloat = 0
 
     private var filteredItems: [DirectoryItemDTO] {
         var result = items
@@ -50,11 +49,12 @@ struct DirectoryView: View {
                 } else {
                     ScrollView {
                         LazyVStack(alignment: .leading, spacing: 14) {
-                            EKScrollOffsetTracker()
                             heroCard
                             statsRow
                             alphabetChips
                             sortChip
+                            Text(CommunityRefreshL10n.count("directory.results", filteredItems.count))
+                                .font(.caption).foregroundStyle(EKitapligimPalette.muted)
                             if filteredItems.isEmpty {
                                 EKStateCard(title: L10n.directoryEmptyTitle, message: L10n.directoryEmptyDescription)
                             } else {
@@ -76,7 +76,6 @@ struct DirectoryView: View {
                         .padding(.horizontal, 18)
                         .padding(.vertical, 12)
                     }
-                    .ekCollapsibleScrollTracking { heroCollapseProgress = $0 }
                 }
             }
         }
@@ -85,70 +84,21 @@ struct DirectoryView: View {
         .searchable(text: $query, prompt: L10n.directorySearchPrompt)
         .task { await load(reset: true) }
         .onSubmit(of: .search) { Task { await load(reset: true) } }
+        .refreshable { await load(reset: true) }
     }
 
     private var heroCard: some View {
-        EKCollapsibleHero(progress: heroCollapseProgress) {
-            HStack(spacing: 12) {
-                ZStack {
-                    Circle()
-                        .fill(kind == .author ? EKitapligimPalette.tealSoft : EKitapligimPalette.amberSoft)
-                    Image(systemName: kind == .author ? "person.fill" : "building.2.fill")
-                        .font(.title2)
-                        .foregroundStyle(kind == .author ? EKitapligimPalette.teal : EKitapligimPalette.amber)
-                }
-                .frame(width: 52, height: 52)
-                VStack(alignment: .leading, spacing: 4) {
-                    Text(kind == .author ? L10n.directoryAuthorsTitle : L10n.directoryPublishersTitle)
-                        .font(.title3.weight(.heavy))
-                        .foregroundStyle(EKitapligimPalette.ink)
-                    Text(L10n.directoryHeroSubtitle(totalEntries, totalBooks))
-                        .font(.caption)
-                        .foregroundStyle(EKitapligimPalette.muted)
-                }
-                Spacer(minLength: 0)
-            }
-            .padding(18)
-            .background(
-                LinearGradient(
-                    colors: kind == .author
-                        ? [Color(hex: 0xE8F7F7), Color(hex: 0xF7FAFA)]
-                        : [Color(hex: 0xFFF8E8), Color(hex: 0xFFFCF4)],
-                    startPoint: .topLeading,
-                    endPoint: .bottomTrailing
-                )
-            )
-            .clipShape(RoundedRectangle(cornerRadius: 18, style: .continuous))
-            .overlay { RoundedRectangle(cornerRadius: 18).stroke(EKitapligimPalette.border) }
-        } collapsed: {
-            HStack(spacing: 10) {
-                Image(systemName: kind == .author ? "person.fill" : "building.2.fill")
-                    .foregroundStyle(kind == .author ? EKitapligimPalette.teal : EKitapligimPalette.amber)
-                    .frame(width: 36, height: 36)
-                    .background(
-                        kind == .author ? EKitapligimPalette.tealSoft : EKitapligimPalette.amberSoft,
-                        in: RoundedRectangle(cornerRadius: 12)
-                    )
-                VStack(alignment: .leading, spacing: 2) {
-                    Text(kind == .author ? L10n.directoryAuthorsTitle : L10n.directoryPublishersTitle)
-                        .font(.headline.weight(.bold))
-                        .foregroundStyle(EKitapligimPalette.ink)
-                        .lineLimit(1)
-                    Text(L10n.directoryHeroSubtitle(totalEntries, totalBooks))
-                        .font(.caption2)
-                        .foregroundStyle(EKitapligimPalette.muted)
-                        .lineLimit(1)
-                }
-                Spacer(minLength: 0)
-            }
-            .padding(.horizontal, 14)
-            .padding(.vertical, 10)
-            .ekitapligimCard(radius: 14)
-        }
+        ModernHeroView(
+            artwork: kind == .author ? "directory_authors_hero" : "directory_publishers_hero",
+            eyebrow: CommunityRefreshL10n.text(kind == .author ? "directory.authorsEyebrow" : "directory.publishersEyebrow"),
+            title: CommunityRefreshL10n.text(kind == .author ? "directory.authorsTitle" : "directory.publishersTitle"),
+            subtitle: CommunityRefreshL10n.text(kind == .author ? "directory.authorsBody" : "directory.publishersBody"),
+            accent: kind == .author ? EKitapligimPalette.teal : EKitapligimPalette.amber,
+            minHeight: 250
+        )
     }
-
     private var statsRow: some View {
-        HStack(spacing: 10) {
+        LazyVGrid(columns: [GridItem(.adaptive(minimum: 130), spacing: 10)], spacing: 10) {
             DirectoryStatTile(title: entryStatTitle, value: EKitapligimFormat.count(totalEntries), systemImage: entryStatImage)
             DirectoryStatTile(title: L10n.directoryStatBooks, value: EKitapligimFormat.count(totalBooks), systemImage: "books.vertical.fill")
         }
@@ -182,6 +132,7 @@ struct DirectoryView: View {
             .foregroundStyle(EKitapligimPalette.tealDark)
             .padding(.horizontal, 12)
             .padding(.vertical, 8)
+            .frame(minHeight: 44)
             .background(EKitapligimPalette.tealSoft, in: Capsule())
         }
         .buttonStyle(.plain)
@@ -408,33 +359,14 @@ struct DirectoryBooksView: View {
     }
 
     private var heroCard: some View {
-        VStack(alignment: .leading, spacing: 8) {
-            Text(kind == .author ? L10n.directoryAuthorArchive : L10n.directoryPublisherArchive)
-                .font(.caption.weight(.heavy))
-                .foregroundStyle(kind == .author ? EKitapligimPalette.teal : EKitapligimPalette.amber)
-                .padding(.horizontal, 10)
-                .padding(.vertical, 5)
-                .background((kind == .author ? EKitapligimPalette.tealSoft : EKitapligimPalette.amberSoft), in: Capsule())
-            Text(item.name)
-                .font(.title2.weight(.heavy))
-                .foregroundStyle(.white)
-            Text(L10n.directoryBookCount(max(item.bookCount, totalBooks, books.count)))
-                .font(.caption)
-                .foregroundStyle(.white.opacity(0.85))
-        }
-        .padding(18)
-        .frame(maxWidth: .infinity, alignment: .leading)
-        .background(
-            LinearGradient(
-                colors: kind == .author
-                    ? [Color(hex: 0x0B343B), Color(hex: 0x0E5960)]
-                    : [Color(hex: 0x6B4E00), Color(hex: 0xC8942E)],
-                startPoint: .topLeading,
-                endPoint: .bottomTrailing
-            )
+        ModernHeroView(
+            artwork: kind == .author ? "directory_authors_hero" : "directory_publishers_hero",
+            eyebrow: kind == .author ? L10n.directoryAuthorArchive : L10n.directoryPublisherArchive,
+            title: item.name,
+            subtitle: L10n.directoryBookCount(max(item.bookCount, totalBooks, books.count)),
+            accent: kind == .author ? EKitapligimPalette.teal : EKitapligimPalette.amber,
+            minHeight: 200
         )
-        .clipShape(RoundedRectangle(cornerRadius: 18, style: .continuous))
-        .shadow(color: (kind == .author ? EKitapligimPalette.teal : EKitapligimPalette.amber).opacity(0.22), radius: 14, y: 8)
     }
 
     private func load(reset: Bool) async {

@@ -4,6 +4,7 @@ import EkitapligimCore
 @MainActor
 struct BookRequestsView: View {
     @EnvironmentObject private var container: AppContainer
+    @Environment(\.dynamicTypeSize) private var dynamicTypeSize
 
     @State private var items: [BookRequestDTO] = []
     @State private var isLoading = true
@@ -18,6 +19,23 @@ struct BookRequestsView: View {
     @State private var draftTitle = ""
     @State private var draftAuthor = ""
     @State private var draftISBN = ""
+    @State private var query = ""
+    @State private var selectedStatus = ""
+
+    private var visibleItems: [BookRequestDTO] {
+        let search = query.trimmingCharacters(in: .whitespacesAndNewlines)
+        return items.filter { item in
+            (item.userId.map { !container.blockedUserIDs.contains($0) } ?? true)
+            && (selectedStatus.isEmpty || item.status.uppercased() == selectedStatus)
+            && (search.isEmpty || item.title.localizedStandardContains(search) || item.author.localizedStandardContains(search))
+        }
+    }
+
+    private var featuredRequest: BookRequestDTO? {
+        items.filter { item in
+            item.allowsVote && (item.userId.map { !container.blockedUserIDs.contains($0) } ?? true)
+        }.max { $0.voteCount < $1.voteCount }
+    }
 
     var body: some View {
         EKitapligimScreen {
@@ -72,6 +90,7 @@ struct BookRequestsView: View {
         }
         .sheet(isPresented: $showingLogin) { LoginView() }
         .sheet(isPresented: $showCreateSheet) {
+            ScrollView {
             VStack(alignment: .leading, spacing: 12) {
                 Text(L10n.bookRequestsCreateDialogTitle)
                     .font(.title3.weight(.bold))
@@ -98,165 +117,162 @@ struct BookRequestsView: View {
                 }
             }
             .padding(20)
-            .presentationDetents([.medium])
-            .presentationDragIndicator(.hidden)
+            }
+            .presentationDetents([.medium, .large])
+            .presentationDragIndicator(.visible)
         }
     }
 
     private var requestList: some View {
-        ScrollView {
-            VStack(alignment: .leading, spacing: 16) {
-                heroCard
-
-                HStack(alignment: .center, spacing: 12) {
-                    RoundedRectangle(cornerRadius: 999, style: .continuous)
-                        .fill(
-                            LinearGradient(
-                                colors: [Color(hex: 0x1B56E8), Color(hex: 0x63A5FF)],
-                                startPoint: .top,
-                                endPoint: .bottom
-                            )
-                        )
-                        .frame(width: 5, height: 28)
-                    Text(L10n.bookRequestsListSection)
-                        .font(.title3.weight(.heavy))
-                        .foregroundStyle(Color(hex: 0x07152E))
-                        .lineLimit(1)
-                    Spacer(minLength: 8)
-                    Button(action: presentCreate) {
-                        HStack(spacing: 10) {
-                            Image(systemName: "plus")
-                                .font(.system(size: 18, weight: .bold))
-                            Text(L10n.bookRequestsRequestAction)
-                                .font(.subheadline.weight(.bold))
-                        }
-                        .foregroundStyle(.white)
-                        .padding(.horizontal, 18)
-                        .frame(height: 48)
-                        .background(
-                            LinearGradient(
-                                colors: isSubmitting
-                                    ? [Color(hex: 0xE0B16D), Color(hex: 0xD59A54)]
-                                    : [Color(hex: 0xFFA122), Color(hex: 0xE07700)],
-                                startPoint: .leading,
-                                endPoint: .trailing
-                            ),
-                            in: RoundedRectangle(cornerRadius: 10, style: .continuous)
-                        )
-                    }
-                    .buttonStyle(.plain)
-                    .disabled(isSubmitting)
-                }
-
-                if items.isEmpty {
-                    Text(L10n.bookRequestsEmptyTitle)
-                        .font(.body)
-                        .foregroundStyle(Color(hex: 0x697386))
-                        .frame(maxWidth: .infinity, alignment: .leading)
-                        .padding(28)
-                        .ekitapligimCard()
-                } else {
-                    ForEach(items.filter { item in
-                        guard let userID = item.userId else { return true }
-                        return !container.blockedUserIDs.contains(userID)
-                    }) { item in
-                        BookRequestRow(item: item, isVoting: votingID == item.id) {
-                            Task { await vote(on: item) }
-                        } onBlocked: {
-                            if let userID = item.userId {
-                                items.removeAll { $0.userId == userID }
+        ScrollViewReader { proxy in
+            ScrollView {
+                LazyVStack(alignment: .leading, spacing: 18) {
+                    CommunityLiteraryHero(
+                        artwork: "requests_wishlist_mobile",
+                        wideArtwork: "requests_wishlist_wide",
+                        eyebrow: CommunityRefreshL10n.text("requests.eyebrow"),
+                        title: CommunityRefreshL10n.text("requests.title"),
+                        emphasis: CommunityRefreshL10n.text("requests.emphasis"),
+                        subtitle: CommunityRefreshL10n.text("requests.subtitle"),
+                        actionTitle: L10n.bookRequestsCreate,
+                        action: presentCreate
+                    )
+                    Button {
+                        withAnimation { proxy.scrollTo("request-collection", anchor: .top) }
+                    } label: {
+                        Label(CommunityRefreshL10n.text("requests.discover"), systemImage: "arrow.down")
+                            .font(.subheadline.weight(.semibold)).frame(maxWidth: .infinity, minHeight: 48)
+                    }.buttonStyle(.plain).foregroundStyle(EKitapligimPalette.teal)
+                    requestStats
+                    requestSteps
+                    if let featuredRequest {
+                        VStack(alignment: .leading, spacing: 12) {
+                            Label(CommunityRefreshL10n.text("requests.featured"), systemImage: "star")
+                                .font(.caption2.weight(.semibold)).foregroundStyle(Color(hex: 0x867142))
+                            BookRequestRow(item: featuredRequest, isVoting: votingID == featuredRequest.id) {
+                                Task { await vote(on: featuredRequest) }
+                            } onBlocked: {
+                                if let userID = featuredRequest.userId { items.removeAll { $0.userId == userID } }
                             }
                         }
+                        .padding(14).background(Color(hex: 0xF4F3E3), in: RoundedRectangle(cornerRadius: 20))
                     }
+                    collectionHeader.id("request-collection")
+                    requestFilters
+                    if let errorMessage { EKInlineError(message: errorMessage) }
+                    if visibleItems.isEmpty {
+                        EKStateCard(title: L10n.bookRequestsEmptyTitle, message: CommunityRefreshL10n.count("requests.count", 0))
+                    } else {
+                        LazyVGrid(columns: dynamicTypeSize.isAccessibilitySize ? [GridItem(.flexible())] : [GridItem(.adaptive(minimum: 230), spacing: 14)], spacing: 14) {
+                        ForEach(visibleItems) { item in
+                            BookRequestRow(item: item, isVoting: votingID == item.id) {
+                                Task { await vote(on: item) }
+                            } onBlocked: {
+                                if let userID = item.userId { items.removeAll { $0.userId == userID } }
+                            }
+                        }
+                        }
+                    }
+                    CommunityInvitationCard(
+                        eyebrow: CommunityRefreshL10n.text("requests.outroEyebrow"),
+                        title: CommunityRefreshL10n.text("requests.outroTitle"),
+                        subtitle: "",
+                        actionTitle: L10n.bookRequestsCreate,
+                        action: presentCreate
+                    )
                 }
+                .padding(.horizontal, 16).padding(.vertical, 12)
             }
-            .padding(.horizontal, 16)
-            .padding(.vertical, 12)
         }
-        .background(
-            LinearGradient(
-                colors: [Color(hex: 0xF7FAFC), Color.white, Color(hex: 0xF8FBFC)],
-                startPoint: .top,
-                endPoint: .bottom
-            )
-        )
     }
 
-    private var heroCard: some View {
-        HStack(alignment: .center, spacing: 12) {
-            VStack(alignment: .leading, spacing: 12) {
-                Text(L10n.bookRequestsHeroTitle)
-                    .font(.system(.largeTitle, design: .serif).weight(.heavy))
-                    .foregroundStyle(.white)
-                    .lineLimit(1)
-                Text(L10n.bookRequestsHeroSubtitle)
-                    .font(.title3)
-                    .foregroundStyle(.white.opacity(0.92))
+    private var requestStats: some View {
+        let metrics: [(String, Int, String)] = [
+            ("requests.pending", items.filter { $0.allowsVote }.count, "hourglass"),
+            ("requests.acquired", items.filter { $0.isAcquired }.count, "checkmark"),
+            ("requests.rejected", items.filter { $0.status.uppercased() == "REJECTED" }.count, "shield"),
+            ("requests.support", items.reduce(0) { $0 + $1.voteCount }, "heart")
+        ]
+        return LazyVGrid(columns: [GridItem(.adaptive(minimum: 130), spacing: 10)], spacing: 10) {
+            ForEach(metrics.indices, id: \.self) { index in
+                let metric = metrics[index]
+                VStack(alignment: .leading, spacing: 10) {
+                    HStack(alignment: .top) {
+                        Text(EKitapligimFormat.count(metric.1)).font(.system(.title, design: .serif))
+                        Spacer(minLength: 6)
+                        Image(systemName: metric.2).font(.title3)
+                    }
+                    Text(CommunityRefreshL10n.text(metric.0)).font(.caption)
+                        .fixedSize(horizontal: false, vertical: true)
+                }
+                .foregroundStyle(index == 0 ? Color(hex: 0xFFF7E4) : EKitapligimPalette.ink)
+                .padding(16).frame(maxWidth: .infinity, alignment: .leading)
+                .background(index == 0 ? Color(hex: 0x1C5653) : Color(hex: 0xFFFDF8), in: RoundedRectangle(cornerRadius: 16))
+                .overlay(RoundedRectangle(cornerRadius: 16).stroke(EKitapligimPalette.border))
             }
-            Spacer(minLength: 8)
-            VStack(spacing: 4) {
-                Image(systemName: "person.3.fill")
-                    .font(.system(size: 58, weight: .semibold))
-                Image(systemName: "book.closed.fill")
-                    .font(.system(size: 78, weight: .semibold))
-            }
-            .foregroundStyle(Color(hex: 0xF7E9D0))
         }
-        .padding(.leading, 34)
-        .padding(.trailing, 32)
-        .frame(maxWidth: .infinity, minHeight: 178, maxHeight: 178, alignment: .leading)
-        .background {
-            ZStack {
-                LinearGradient(
-                    colors: [
-                        Color(hex: 0x111169),
-                        Color(hex: 0x073580),
-                        Color(hex: 0x0086A9),
-                        Color(hex: 0x17D0C4)
-                    ],
-                    startPoint: .topLeading,
-                    endPoint: .bottomTrailing
-                )
-                Canvas { context, size in
-                    let glow = Color(hex: 0xFFD98B).opacity(0.40)
-                    context.fill(
-                        Path(ellipseIn: CGRect(
-                            x: size.width * 0.52,
-                            y: -size.height * 0.33,
-                            width: size.width * 0.90,
-                            height: size.height * 0.90
-                        )),
-                        with: .color(.white.opacity(0.07))
-                    )
-                    var spline = Path()
-                    spline.move(to: CGPoint(x: size.width * 0.64, y: size.height * 0.72))
-                    spline.addLine(to: CGPoint(x: size.width * 0.98, y: size.height * 0.52))
-                    context.stroke(spline, with: .color(.white.opacity(0.42)), lineWidth: 2)
-                    var gold = Path()
-                    gold.move(to: CGPoint(x: size.width * 0.68, y: size.height * 0.84))
-                    gold.addLine(to: CGPoint(x: size.width, y: size.height * 0.62))
-                    context.stroke(gold, with: .color(Color(hex: 0xFFE2A7).opacity(0.75)), lineWidth: 1.2)
-                    var teal = Path()
-                    teal.move(to: CGPoint(x: size.width * 0.56, y: size.height * 0.92))
-                    teal.addLine(to: CGPoint(x: size.width, y: size.height * 0.74))
-                    context.stroke(teal, with: .color(Color(hex: 0x3AF0E2).opacity(0.46)), lineWidth: 1.1)
-                    for (index, point) in [
-                        CGPoint(x: size.width * 0.64, y: size.height * 0.34),
-                        CGPoint(x: size.width * 0.72, y: size.height * 0.24),
-                        CGPoint(x: size.width * 0.88, y: size.height * 0.21),
-                        CGPoint(x: size.width * 0.96, y: size.height * 0.18)
-                    ].enumerated() {
-                        let radius: CGFloat = index.isMultiple(of: 2) ? 2 : 3
-                        context.fill(
-                            Path(ellipseIn: CGRect(x: point.x - radius, y: point.y - radius, width: radius * 2, height: radius * 2)),
-                            with: .color(glow)
-                        )
+    }
+
+    private var requestSteps: some View {
+        VStack(alignment: .leading, spacing: 0) {
+            ForEach(1...3, id: \.self) { number in
+                HStack(alignment: .top, spacing: 14) {
+                    Text(String(format: "%02d", number)).font(.system(.title2, design: .serif))
+                        .foregroundStyle(Color(hex: 0xB19B68))
+                    VStack(alignment: .leading, spacing: 5) {
+                        Text(CommunityRefreshL10n.text("requests.step\(number)")).font(.subheadline.weight(.semibold))
+                            .foregroundStyle(EKitapligimPalette.ink)
+                        Text(CommunityRefreshL10n.text("requests.step\(number)Body")).font(.caption)
+                            .foregroundStyle(EKitapligimPalette.muted)
+                    }
+                    Spacer(minLength: 0)
+                }.padding(.vertical, 13)
+                if number < 3 { Divider() }
+            }
+        }.padding(.horizontal, 4)
+    }
+
+    private var collectionHeader: some View {
+        VStack(alignment: .leading, spacing: 10) {
+            Text(CommunityRefreshL10n.text("requests.collectionEyebrow"))
+                .font(.caption2.weight(.semibold)).tracking(1).foregroundStyle(EKitapligimPalette.teal)
+            Text(CommunityRefreshL10n.text("requests.collection"))
+                .font(.system(.title, design: .serif)).foregroundStyle(EKitapligimPalette.ink)
+                .accessibilityAddTraits(.isHeader)
+            Text(CommunityRefreshL10n.count("requests.count", visibleItems.count))
+                .font(.caption).foregroundStyle(EKitapligimPalette.muted)
+            Button(action: presentCreate) {
+                Label(L10n.bookRequestsRequestAction, systemImage: "plus")
+                    .font(.subheadline.weight(.semibold)).frame(maxWidth: .infinity, minHeight: 48)
+                    .foregroundStyle(.white).background(Color(hex: 0x2B7569), in: RoundedRectangle(cornerRadius: 12))
+            }.buttonStyle(.plain).disabled(isSubmitting)
+        }
+    }
+
+    private var requestFilters: some View {
+        VStack(spacing: 12) {
+            HStack(spacing: 10) {
+                Image(systemName: "magnifyingglass").accessibilityHidden(true)
+                TextField(CommunityRefreshL10n.text("requests.search"), text: $query)
+                    .textInputAutocapitalization(.never).autocorrectionDisabled()
+                if !query.isEmpty {
+                    Button { query = "" } label: {
+                        Image(systemName: "xmark.circle.fill").frame(width: 44, height: 44)
+                    }.accessibilityLabel(L10n.commonClose)
+                }
+            }
+            .foregroundStyle(EKitapligimPalette.ink).padding(.horizontal, 14).frame(minHeight: 52)
+            .background(Color.white, in: RoundedRectangle(cornerRadius: 13))
+            .overlay(RoundedRectangle(cornerRadius: 13).stroke(EKitapligimPalette.border))
+            ScrollView(.horizontal, showsIndicators: false) {
+                HStack(spacing: 8) {
+                    EKChip(title: L10n.commonAll, isSelected: selectedStatus.isEmpty) { selectedStatus = "" }
+                    ForEach(["PENDING", "ACQUIRED", "REJECTED"], id: \.self) { status in
+                        EKChip(title: CommunityRefreshL10n.text(status == "PENDING" ? "requests.pending" : status == "ACQUIRED" ? "requests.acquired" : "requests.rejected"), isSelected: selectedStatus == status) { selectedStatus = status }
                     }
                 }
-                .allowsHitTesting(false)
             }
         }
-        .clipShape(RoundedRectangle(cornerRadius: 12, style: .continuous))
     }
 
     private func presentCreate() {
@@ -323,21 +339,20 @@ private struct BookRequestRow: View {
     var onBlocked: (() -> Void)? = nil
 
     var body: some View {
-        HStack(alignment: .center, spacing: 12) {
+        VStack(alignment: .leading, spacing: 14) {
             bookContent
-            if let contentID = Int(item.id) {
-                UGCSafetyMenu(
-                    type: .bookRequest,
-                    contentID: contentID,
-                    userID: item.userId,
-                    onBlocked: onBlocked
-                )
+            Divider()
+            HStack(spacing: 12) {
+                voteColumn
+                Spacer(minLength: 0)
+                if let contentID = Int(item.id) {
+                    UGCSafetyMenu(type: .bookRequest, contentID: contentID, userID: item.userId, onBlocked: onBlocked)
+                }
             }
-            voteColumn
         }
-        .padding(.horizontal, 18)
-        .padding(.vertical, 16)
-        .ekitapligimCard()
+        .padding(16)
+        .background(Color(hex: 0xFFFDF8), in: RoundedRectangle(cornerRadius: 18))
+        .overlay(RoundedRectangle(cornerRadius: 18).stroke(Color(hex: 0xD8E3DE)))
     }
 
     @ViewBuilder
@@ -354,12 +369,12 @@ private struct BookRequestRow: View {
     }
 
     private var bookInfo: some View {
-        HStack(alignment: .center, spacing: 18) {
+        HStack(alignment: .top, spacing: 14) {
             EKBookRequestCover(title: item.title, author: item.author, seed: item.id + item.title)
             VStack(alignment: .leading, spacing: 6) {
                 Text(item.title)
-                    .font(.title3.weight(.heavy))
-                    .foregroundStyle(Color(hex: 0x07152E))
+                    .font(.system(.title3, design: .serif).weight(.semibold))
+                    .foregroundStyle(EKitapligimPalette.ink)
                     .lineLimit(2)
                     .frame(maxWidth: .infinity, alignment: .leading)
                 Text(L10n.bookRequestsAuthorLine(item.author))
@@ -380,16 +395,16 @@ private struct BookRequestRow: View {
     }
 
     private var voteColumn: some View {
-        VStack(spacing: 8) {
+        HStack(spacing: 10) {
             Button(action: onVote) {
                 Image(systemName: "hand.thumbsup.fill")
-                    .font(.system(size: 32, weight: .semibold))
-                    .foregroundStyle(Color(hex: 0x1954C8).opacity(item.allowsVote && !isVoting ? 1 : 0.35))
-                    .frame(width: 62, height: 62)
-                    .background(Color(hex: 0xF1F5FF))
+                    .font(.system(size: 19, weight: .semibold))
+                    .foregroundStyle(Color(hex: 0x2B7569).opacity(item.allowsVote && !isVoting ? 1 : 0.35))
+                    .frame(width: 48, height: 48)
+                    .background(Color(hex: 0xEDF4EA))
                     .clipShape(Circle())
                     .overlay {
-                        Circle().stroke(Color(hex: 0xE4EAF8), lineWidth: 1)
+                        Circle().stroke(Color(hex: 0xD8E3DE), lineWidth: 1)
                     }
             }
             .buttonStyle(.plain)

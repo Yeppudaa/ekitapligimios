@@ -37,6 +37,10 @@ struct RootView: View {
         }
         .onAppear { GoogleSignInService.configureIfNeeded() }
         .task { container.activateAssistantAccount() }
+        .task { container.audioPlayback?.activate(account: container.audioAccount) }
+        .onChange(of: container.sessionRevision) { _, _ in
+            container.audioPlayback?.activate(account: container.audioAccount)
+        }
         .onPreferenceChange(AILauncherHiddenKey.self) { assistantHidden = $0 }
         .onReceive(NotificationCenter.default.publisher(for: UIResponder.keyboardWillShowNotification)) { _ in keyboardVisible = true }
         .onReceive(NotificationCenter.default.publisher(for: UIResponder.keyboardWillHideNotification)) { _ in keyboardVisible = false }
@@ -114,6 +118,9 @@ struct RootView: View {
                 }
             }
 
+            if container.presentedRoute == nil, let controller = container.audioPlayback {
+                AudioMiniPlayerView(controller: controller) { container.open(route: .audioPlayer) }
+            }
             PrimaryTabBar(
                 selection: $container.selectedTab,
                 profileBadgeCount: container.totalUnread
@@ -159,8 +166,8 @@ struct RootView: View {
                 .zIndex(1)
 
             HStack(spacing: 0) {
-                AppSideMenu(onSelect: navigate, onClose: closeMenu)
-                    .frame(maxWidth: 356)
+                ModernSideMenu(onSelect: navigate, onClose: closeMenu)
+                    .frame(maxWidth: 368)
                 Spacer(minLength: 0)
             }
             .transition(.move(edge: .leading))
@@ -178,197 +185,6 @@ struct RootView: View {
     }
 }
 
-// MARK: - Yan menü
-
-@MainActor
-private struct AppSideMenu: View {
-    @EnvironmentObject private var container: AppContainer
-    @State private var assistantAvailable = true
-    let onSelect: (AppRoute) -> Void
-    let onClose: () -> Void
-
-    private var primaryItems: [AppMenuItem] {
-        [
-            AppMenuItem(route: .home, title: L10n.menuHome, subtitle: L10n.menuHomeSubtitle, icon: "house.fill"),
-            AppMenuItem(route: .aiAssistant(bookID: nil), title: AIL10n.text("title"), subtitle: AIL10n.text("menuSubtitle"), icon: "sparkles"),
-            AppMenuItem(route: .catalog, title: L10n.menuBooks, subtitle: L10n.menuBooksSubtitle, icon: "books.vertical.fill"),
-            AppMenuItem(route: .bookAgenda, title: L10n.menuBookAgenda, subtitle: L10n.menuBookAgendaSubtitle, icon: "text.book.closed.fill"),
-            AppMenuItem(route: .chat, title: L10n.menuChat, subtitle: L10n.menuChatSubtitle, icon: "bubble.left.and.text.bubble.right.fill"),
-            AppMenuItem(route: .liveActivity, title: L10n.menuLiveActivity, subtitle: L10n.menuLiveActivitySubtitle, icon: "bolt.fill"),
-            AppMenuItem(route: .giftWheel, title: WheelL10n.text("title"), subtitle: WheelL10n.text("menuSubtitle"), icon: "gift.fill"),
-            AppMenuItem(route: .requests, title: L10n.menuRequests, subtitle: L10n.menuRequestsSubtitle, icon: "heart.fill"),
-            AppMenuItem(route: .authors, title: L10n.menuAuthors, subtitle: L10n.menuAuthorsSubtitle, icon: "person.2.fill"),
-            AppMenuItem(route: .publishers, title: L10n.menuPublishers, subtitle: L10n.menuPublishersSubtitle, icon: "building.2.fill"),
-            AppMenuItem(route: .forum, title: L10n.menuForum, subtitle: L10n.menuForumSubtitle, icon: "bubble.left.and.bubble.right.fill"),
-            AppMenuItem(route: .members, title: L10n.menuMembers, subtitle: L10n.menuMembersSubtitle, icon: "person.3.fill"),
-            AppMenuItem(
-                route: .messages,
-                title: L10n.menuMessages,
-                subtitle: L10n.menuMessagesSubtitle,
-                icon: "envelope.fill",
-                badgeCount: container.unreadMessages
-            )
-        ]
-    }
-
-    private var accountItems: [AppMenuItem] {
-        guard container.isSignedIn else {
-            return [
-                AppMenuItem(route: .login, title: L10n.commonLogin, subtitle: L10n.menuLoginSubtitle, icon: "arrow.right.square.fill"),
-                AppMenuItem(route: .register, title: L10n.menuRegister, subtitle: L10n.menuRegisterSubtitle, icon: "person.badge.plus.fill")
-            ]
-        }
-        return [
-            AppMenuItem(
-                route: .profile,
-                title: L10n.menuProfile,
-                subtitle: L10n.menuProfileSubtitle,
-                icon: "person.crop.circle.fill",
-                badgeCount: container.totalUnread
-            ),
-            AppMenuItem(
-                route: .notifications,
-                title: L10n.menuNotifications,
-                subtitle: L10n.menuNotificationsSubtitle,
-                icon: "bell.fill",
-                badgeCount: container.unreadNotifications
-            ),
-            AppMenuItem(route: .library(tab: 0), title: L10n.menuLibrary, subtitle: L10n.menuLibrarySubtitle, icon: "books.vertical.circle.fill")
-        ]
-    }
-
-    var body: some View {
-        VStack(spacing: 0) {
-            header
-            ScrollView {
-                LazyVStack(alignment: .leading, spacing: 4) {
-                    ForEach(primaryItems) { item in
-                        if item.route != .aiAssistant(bookID: nil) || assistantAvailable { menuRow(item) }
-                    }
-
-                    premiumCard
-                        .padding(.top, 10)
-
-                    Text(container.isSignedIn ? L10n.menuAccountSection : L10n.menuMembershipSection)
-                        .font(.caption.weight(.heavy))
-                        .foregroundStyle(EKitapligimPalette.muted)
-                        .padding(.horizontal, 10)
-                        .padding(.top, 16)
-                        .padding(.bottom, 4)
-
-                    ForEach(accountItems) { item in
-                        menuRow(item)
-                    }
-                }
-                .padding(.horizontal, 12)
-                .padding(.bottom, 28)
-            }
-        }
-        .frame(maxHeight: .infinity)
-        .background(EKitapligimPalette.pageGradient)
-        .ignoresSafeArea(edges: .bottom)
-        .onReceive(container.assistantModel.$bootstrap) { assistantAvailable = $0?.enabled ?? true }
-    }
-
-    private var header: some View {
-        HStack(spacing: 12) {
-            EKitapligimBrandLogo().frame(width: 112, height: 58)
-            VStack(alignment: .leading, spacing: 2) {
-                Text(L10n.menuBrandTitle)
-                    .font(.headline)
-                    .foregroundStyle(EKitapligimPalette.ink)
-                Text(L10n.menuSubtitle)
-                    .font(.caption2)
-                    .foregroundStyle(EKitapligimPalette.muted)
-            }
-            Spacer(minLength: 0)
-            Button(action: onClose) {
-                Image(systemName: "xmark")
-                    .foregroundStyle(EKitapligimPalette.muted)
-                    .frame(width: 40, height: 40)
-            }
-            .accessibilityLabel(L10n.menuClose)
-        }
-        .padding(.horizontal, 16)
-        .padding(.vertical, 14)
-    }
-
-    private func menuRow(_ item: AppMenuItem) -> some View {
-        Button { onSelect(item.route) } label: {
-            HStack(spacing: 12) {
-                Image(systemName: item.icon)
-                    .accessibilityHidden(true)
-                    .foregroundStyle(EKitapligimPalette.teal)
-                    .frame(width: 38, height: 38)
-                    .background(EKitapligimPalette.tealSoft)
-                    .clipShape(RoundedRectangle(cornerRadius: 11, style: .continuous))
-                VStack(alignment: .leading, spacing: 2) {
-                    Text(item.title)
-                        .font(.subheadline.weight(.bold))
-                        .foregroundStyle(EKitapligimPalette.ink)
-                    Text(item.subtitle)
-                        .font(.caption2)
-                        .foregroundStyle(EKitapligimPalette.muted)
-                        .lineLimit(1)
-                }
-                Spacer(minLength: 0)
-                EKUnreadBadge(count: item.badgeCount)
-                Image(systemName: "chevron.right")
-                    .font(.caption)
-                    .foregroundStyle(EKitapligimPalette.muted)
-            }
-            .padding(.horizontal, 10)
-            .padding(.vertical, 8)
-            .contentShape(Rectangle())
-        }
-        .buttonStyle(.plain)
-        .accessibilityLabel(
-            item.badgeCount > 0 ? "\(item.title), \(L10n.unreadCountAccessibility(item.badgeCount))" : item.title
-        )
-    }
-
-    private var premiumCard: some View {
-        Button { onSelect(.premium) } label: {
-            HStack(spacing: 12) {
-                Image(systemName: "crown.fill")
-                    .accessibilityHidden(true)
-                    .font(.headline)
-                    .foregroundStyle(.white)
-                    .frame(width: 38, height: 38)
-                    .background(.white.opacity(0.2))
-                    .clipShape(RoundedRectangle(cornerRadius: 11, style: .continuous))
-                VStack(alignment: .leading, spacing: 2) {
-                    Text(L10n.premiumTitle)
-                        .font(.subheadline.weight(.heavy))
-                        .foregroundStyle(.white)
-                    Text(L10n.menuPremiumSubtitle)
-                        .font(.caption2)
-                        .foregroundStyle(.white.opacity(0.85))
-                        .lineLimit(2)
-                        .multilineTextAlignment(.leading)
-                }
-                Spacer(minLength: 0)
-            }
-            .padding(14)
-            .frame(maxWidth: .infinity, alignment: .leading)
-            .background(EKitapligimPalette.quotaPremiumGradient)
-            .clipShape(RoundedRectangle(cornerRadius: 15, style: .continuous))
-        }
-        .buttonStyle(.plain)
-        .accessibilityLabel(L10n.premiumTitle)
-    }
-}
-
-private struct AppMenuItem: Identifiable {
-    let route: AppRoute
-    let title: String
-    let subtitle: String
-    let icon: String
-    var badgeCount: Int = 0
-
-    var id: String { "\(route.nativeRoute)-\(title)" }
-}
-
 // MARK: - Route sunumu
 
 @MainActor
@@ -380,9 +196,18 @@ private struct AppRouteSheet: View {
     var body: some View {
         NavigationStack {
             destination
+                .safeAreaInset(edge: .bottom, spacing: 0) {
+                    if showsMiniPlayer, let controller = container.audioPlayback {
+                        AudioMiniPlayerView(controller: controller) { container.open(route: .audioPlayer) }
+                    }
+                }
                 .toolbar {
                     ToolbarItem(placement: .topBarTrailing) {
-                        Button(L10n.commonClose) { dismiss() }
+                        if let controller = container.audioPlayback {
+                            AudioAwareRouteCloseButton(controller: controller) { dismiss() }
+                        } else {
+                            Button(L10n.commonClose) { dismiss() }
+                        }
                     }
                 }
         }
@@ -399,6 +224,8 @@ private struct AppRouteSheet: View {
 
     @ViewBuilder private var routeDestination: some View {
         switch route {
+        case .audiobooks, .audiobook, .audioLibrary, .audioPlayer:
+            AudioRouteDestination(route: route)
         case .giftWheel:
             GiftWheelDestination().presentationDetents([.large])
         case .aiAssistant(let bookID):
@@ -407,7 +234,7 @@ private struct AppRouteSheet: View {
             AICollectionsDestination(slug: slug)
         case .forum:
             CommunityView()
-        case .home, .requests, .profile, .catalog, .bookAgenda, .liveActivity:
+        case .home, .requests, .profile, .bookAgenda, .liveActivity:
             EKEmptyState(
                 title: L10n.commonClose,
                 message: L10n.menuTitle,
@@ -462,6 +289,24 @@ private struct AppRouteSheet: View {
         case .premium:
             PremiumView()
         }
+    }
+
+    private var showsMiniPlayer: Bool {
+        switch route {
+        case .audioPlayer, .reader, .login, .register, .premium: return false
+        default: return true
+        }
+    }
+}
+
+/// Observes the player itself so expanding a nested player removes the shell's duplicate close control.
+@MainActor
+private struct AudioAwareRouteCloseButton: View {
+    @ObservedObject var controller: AudioPlaybackController
+    var onClose: () -> Void
+
+    var body: some View {
+        if !controller.expanded { Button(L10n.commonClose, action: onClose) }
     }
 }
 

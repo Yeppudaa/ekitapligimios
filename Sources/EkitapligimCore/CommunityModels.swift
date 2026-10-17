@@ -781,17 +781,39 @@ public struct LiveActivityItemDTO: Decodable, Equatable, Identifiable, Sendable 
     public let book: LiveActivityBookDTO?
     public let appRoute: String?
     public let targetUrl: String?
+    public let audioBookId: String?
+    public let contentType: String?
 
     public init(from decoder: Decoder) throws {
         let container = try decoder.container(keyedBy: CodingKeys.self)
         self.id = try container.decodeFlexibleString(forKey: .id)
-        self.type = try container.decodeIfPresent(String.self, forKey: .type) ?? ""
-        self.message = try container.decodeIfPresent(String.self, forKey: .message) ?? ""
+        let type = try container.decodeIfPresent(String.self, forKey: .type) ?? ""
+        self.type = type
+        let rawMessage = try container.decodeIfPresent(String.self, forKey: .message) ?? ""
         self.eventDate = container.decodeFlexibleInt(forKey: .eventDate)
-        self.actor = try container.decodeIfPresent(LiveActivityActorDTO.self, forKey: .actor)
+        let actor = try container.decodeIfPresent(LiveActivityActorDTO.self, forKey: .actor)
+        self.actor = actor
+        self.message = ActivityPresentation.message(type: type, rawMessage: rawMessage, username: actor?.username ?? "")
         self.book = try container.decodeIfPresent(LiveActivityBookDTO.self, forKey: .book)
         self.appRoute = try container.decodeIfPresent(String.self, forKey: .appRoute)
         self.targetUrl = try container.decodeIfPresent(String.self, forKey: .targetUrl)
+        self.audioBookId = try container.decodeFlexibleStringIfPresent(forKey: .audioBookId)
+        self.contentType = try container.decodeIfPresent(String.self, forKey: .contentType)
+    }
+
+    public var nativeDestination: AppRoute? {
+        let parser = DeepLinkParser()
+        if ActivityPresentation.audioTypes.contains(type.lowercased()) {
+            if let value = audioBookId ?? book?.id, let audioID = Int(value), audioID > 0, audioID <= Int(Int32.max) {
+                return .audiobook(audioID)
+            }
+            if let route = parser.parseNativeRoute(appRoute), case .audiobook = route { return route }
+            if let targetUrl, let route = parser.parse(targetUrl), case .audiobook = route { return route }
+            return nil
+        }
+        if let route = parser.parseNotification(appRoute: appRoute, targetURL: targetUrl, contentID: Int(id), type: type) { return route }
+        if let value = book?.id, let bookID = Int(value), bookID > 0 { return .bookDetail(bookID) }
+        return nil
     }
 
     private enum CodingKeys: String, CodingKey {
@@ -803,6 +825,8 @@ public struct LiveActivityItemDTO: Decodable, Equatable, Identifiable, Sendable 
         case book
         case appRoute
         case targetUrl
+        case audioBookId
+        case contentType
     }
 }
 
