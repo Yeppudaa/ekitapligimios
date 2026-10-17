@@ -304,7 +304,11 @@ final class AudioPlaybackController: ObservableObject {
         updateNowPlaying()
     }
     private func updatePosition() {
-        if let value = player?.currentTime().seconds, value.isFinite { position = max(0, min(value, max(duration, value))) }
+        // Reading the native timeline while its item is still preparing can block teardown.
+        // Keep the last known position until AVFoundation has a usable playback timeline.
+        guard let player, player.currentItem?.status == .readyToPlay else { return }
+        let value = player.currentTime().seconds
+        if value.isFinite { position = max(0, min(value, max(duration, value))) }
     }
     private func flush() {
         guard let book, let chapter, let account,

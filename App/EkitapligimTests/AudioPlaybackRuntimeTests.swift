@@ -78,6 +78,85 @@ final class AudioPlaybackRuntimeTests: XCTestCase {
         NSLog("MODERN_AUDIO_CONTROL local-player-advanced")
     }
 
+    func testA01CloseWhileNativeMetadataIsPendingCancelsMediaAndCannotRevivePlayer() async throws {
+        let fixture = try AudioRuntimeFixture(holdMetadata: true, initialPosition: 7.25)
+        defer { fixture.cleanUp() }
+        fixture.controller.start(bookID: AudioRuntimeOrigin.bookID)
+        try await waitUntil("Native resource loader has a genuinely pending HEAD", controller: fixture.controller) {
+            fixture.origin.snapshot.pendingMetadataRequests > 0
+        }
+        XCTAssertTrue(fixture.controller.loading)
+        XCTAssertTrue(fixture.controller.visible)
+        XCTAssertNotNil(fixture.controller.manifest)
+        XCTAssertFalse(fixture.controller.playing)
+        XCTAssertEqual(fixture.origin.snapshot.rangeRequests, 0)
+        XCTAssertEqual(fixture.controller.position, 7.25)
+        let pauseStarted = ProcessInfo.processInfo.systemUptime
+        fixture.controller.pause()
+        XCTAssertLessThan(ProcessInfo.processInfo.systemUptime - pauseStarted, 2)
+        XCTAssertEqual(fixture.controller.position, 7.25,
+                       "An unready native timeline must preserve the manifest's cached resume position")
+
+        let closeStarted = ProcessInfo.processInfo.systemUptime
+        fixture.controller.close()
+        XCTAssertLessThan(ProcessInfo.processInfo.systemUptime - closeStarted, 2,
+                          "Closing an unready native item must not wait for its timeline")
+        try await waitUntil("Closing cancels the held native metadata request", controller: fixture.controller) {
+            fixture.origin.snapshot.cancelledMetadataRequests > 0 && fixture.origin.snapshot.pendingMetadataRequests == 0
+        }
+        let manifestsAfterClose = fixture.origin.snapshot.manifestRequests
+        await fixture.origin.releaseHeldMetadataResponses()
+        try await Task.sleep(for: .milliseconds(200))
+        XCTAssertGreaterThan(fixture.origin.snapshot.metadataDeliveryAttempts, 0)
+        XCTAssertEqual(fixture.origin.snapshot.rangeRequests, 0)
+        XCTAssertEqual(fixture.origin.snapshot.manifestRequests, manifestsAfterClose)
+        XCTAssertEqual(fixture.origin.snapshot.unexpectedRequests, [])
+        XCTAssertFalse(fixture.controller.visible)
+        XCTAssertFalse(fixture.controller.loading)
+        XCTAssertFalse(fixture.controller.playing)
+        XCTAssertNil(fixture.controller.manifest)
+        XCTAssertNil(fixture.controller.requestedBookID)
+        XCTAssertEqual(fixture.controller.position, 0)
+        XCTAssertNil(MPNowPlayingInfoCenter.default().nowPlayingInfo)
+    }
+
+    func testA02AccountSwitchWhileNativeMetadataIsPendingCancelsOldMediaAndCannotResume() async throws {
+        let fixture = try AudioRuntimeFixture(holdMetadata: true)
+        defer { fixture.cleanUp() }
+        fixture.controller.start(bookID: AudioRuntimeOrigin.bookID)
+        try await waitUntil("Native metadata is pending before an account switch", controller: fixture.controller) {
+            fixture.origin.snapshot.pendingMetadataRequests > 0
+        }
+        XCTAssertTrue(fixture.controller.loading)
+        XCTAssertTrue(fixture.controller.visible)
+        XCTAssertFalse(fixture.controller.playing)
+        await fixture.tokens.switchAccount()
+        let switchStarted = ProcessInfo.processInfo.systemUptime
+        fixture.controller.activate(account: "runtime-other")
+        XCTAssertLessThan(ProcessInfo.processInfo.systemUptime - switchStarted, 2,
+                          "Switching accounts must close an unready native item promptly")
+        try await waitUntil("Account switch cancels the old native metadata request", controller: fixture.controller) {
+            fixture.origin.snapshot.cancelledMetadataRequests > 0 && fixture.origin.snapshot.pendingMetadataRequests == 0
+        }
+        let manifestsAfterSwitch = fixture.origin.snapshot.manifestRequests
+        fixture.controller.resume()
+        await fixture.origin.releaseHeldMetadataResponses()
+        try await Task.sleep(for: .milliseconds(200))
+        XCTAssertGreaterThan(fixture.origin.snapshot.metadataDeliveryAttempts, 0)
+        XCTAssertEqual(fixture.origin.snapshot.rangeRequests, 0)
+        XCTAssertEqual(fixture.origin.snapshot.manifestRequests, manifestsAfterSwitch)
+        XCTAssertFalse(fixture.origin.snapshot.mediaBearers.contains("Bearer ms_at_runtime_other"))
+        XCTAssertEqual(fixture.origin.snapshot.unexpectedRequests, [])
+        XCTAssertEqual(fixture.controller.account, "runtime-other")
+        XCTAssertFalse(fixture.controller.visible)
+        XCTAssertFalse(fixture.controller.loading)
+        XCTAssertFalse(fixture.controller.playing)
+        XCTAssertNil(fixture.controller.manifest)
+        XCTAssertNil(fixture.controller.requestedBookID)
+        XCTAssertEqual(fixture.controller.position, 0)
+        XCTAssertNil(MPNowPlayingInfoCenter.default().nowPlayingInfo)
+    }
+
     private func waitForControl(_ description: String, diagnostics: () -> String,
                                 file: StaticString = #filePath, line: UInt = #line,
                                 predicate: () -> Bool) async throws {
@@ -302,8 +381,8 @@ private final class AudioRuntimeFixture {
     let session: URLSession
     let repository: AudioRepository
     let controller: AudioPlaybackController
-    init(manifestStatus: Int = 200) throws {
-        let origin = try AudioRuntimeOrigin(manifestStatus: manifestStatus)
+    init(manifestStatus: Int = 200, holdMetadata: Bool = false, initialPosition: Double = 0) throws {
+        let origin = try AudioRuntimeOrigin(manifestStatus: manifestStatus, holdMetadata: holdMetadata, initialPosition: initialPosition)
         self.origin = origin
         let tokens = AudioRuntimeTokens()
         self.tokens = tokens
@@ -350,7 +429,12 @@ private final class AudioRuntimeOrigin: @unchecked Sendable {
     let webBaseURL: URL
     private let wave: Data
     private let manifestStatus: Int
+    private let holdsMetadata: Bool
+    private let initialPosition: Double
     private let lock = NSLock()
+    private let metadataDeliveryQueue = DispatchQueue(label: "ekitapligim.native-audio-test.metadata")
+    private var heldMetadata: [UUID: @Sendable () -> Void] = [:]
+    private var cancelledMetadata: [@Sendable () -> Void] = []
     private var log = Snapshot()
     struct Snapshot {
         var manifestRequests = 0
@@ -361,14 +445,48 @@ private final class AudioRuntimeOrigin: @unchecked Sendable {
         var progressSequences: [Int] = []
         var shelfFavorites: [Bool] = []
         var unexpectedRequests: [String] = []
+        var pendingMetadataRequests = 0
+        var cancelledMetadataRequests = 0
+        var metadataDeliveryAttempts = 0
     }
     var snapshot: Snapshot { lock.lock(); defer { lock.unlock() }; return log }
-    init(manifestStatus: Int) throws {
+    init(manifestStatus: Int, holdMetadata: Bool, initialPosition: Double) throws {
         let identifier = "audio-runtime-" + UUID().uuidString.lowercased()
         self.identifier = identifier
         guard let url = URL(string: "https://ekitapligim.com/\(identifier)/") else { throw AudioRuntimeFailure.malformedFixture }
-        webBaseURL = url; self.manifestStatus = manifestStatus
+        webBaseURL = url; self.manifestStatus = manifestStatus; holdsMetadata = holdMetadata; self.initialPosition = initialPosition
         wave = Self.silentWave(seconds: 20)
+    }
+    /// A pending HEAD is retained as a callback, never as a sleeping/blocking URLProtocol thread.
+    func holdMetadataResponse(for request: URLRequest, delivery: @escaping @Sendable () -> Void) -> UUID? {
+        guard holdsMetadata, request.httpMethod == "HEAD", request.url?.path.hasSuffix("/stream") == true else { return nil }
+        lock.lock(); defer { lock.unlock() }
+        let identifier = UUID(); heldMetadata[identifier] = delivery; log.pendingMetadataRequests += 1
+        return identifier
+    }
+    func cancelHeldMetadataResponse(_ identifier: UUID) {
+        lock.lock(); defer { lock.unlock() }
+        guard let delivery = heldMetadata.removeValue(forKey: identifier) else { return }
+        // Keep the abandoned callback solely to replay its delivery attempt after cancellation.
+        // The protocol itself must suppress client callbacks once stopLoading has run.
+        cancelledMetadata.append(delivery)
+        log.pendingMetadataRequests -= 1; log.cancelledMetadataRequests += 1
+    }
+    func releaseHeldMetadataResponses() async {
+        let deliveries = takeHeldMetadataResponses()
+        await withCheckedContinuation { (continuation: CheckedContinuation<Void, Never>) in
+            metadataDeliveryQueue.async {
+                deliveries.forEach { $0() }
+                continuation.resume()
+            }
+        }
+    }
+    private func takeHeldMetadataResponses() -> [@Sendable () -> Void] {
+        lock.lock(); defer { lock.unlock() }
+        let deliveries = Array(heldMetadata.values) + cancelledMetadata
+        heldMetadata.removeAll(); cancelledMetadata.removeAll(); log.pendingMetadataRequests = 0
+        log.metadataDeliveryAttempts += deliveries.count
+        return deliveries
     }
     func response(for request: URLRequest) throws -> (Int, [String: String], Data) {
         lock.lock(); defer { lock.unlock() }
@@ -383,11 +501,11 @@ private final class AudioRuntimeOrigin: @unchecked Sendable {
             log.manifestRequests += 1
             guard manifestStatus == 200 else { return (manifestStatus, ["Content-Type": "application/json"], Data(#"{"error":{"code":"audio_premium_required","message":"Premium required"}}"#.utf8)) }
             let book: [String: Any] = ["thread_id": Self.bookID, "title": "Generated silent WAV", "author": "Offline runtime fixture",
-                "cover_url": "", "duration": 20, "can_listen": true, "chapter_count": 1, "user_state": ["chapter_id": Self.chapterID, "position": 0, "speed": 1]]
+                "cover_url": "", "duration": 20, "can_listen": true, "chapter_count": 1, "user_state": ["chapter_id": Self.chapterID, "position": initialPosition, "speed": 1]]
             let chapter: [String: Any] = ["chapter_id": Self.chapterID, "title": "Generated chapter", "duration": 20, "display_order": 0,
                 "url": webBaseURL.appendingPathComponent("mobile-api/v1/audio-books/\(Self.bookID)/stream").absoluteString + "?chapter_id=\(Self.chapterID)"]
             let manifest: [String: Any] = ["api_version": 1, "session": "runtime-playback-lease", "sequence": 0, "book": book, "chapters": [chapter],
-                "state": ["chapter_id": Self.chapterID, "position": 0, "speed": 1], "bookmarks": [], "recommendations": []]
+                "state": ["chapter_id": Self.chapterID, "position": initialPosition, "speed": 1], "bookmarks": [], "recommendations": []]
             return (200, ["Content-Type": "application/json"], try JSONSerialization.data(withJSONObject: manifest))
         }
         if suffix == "audio-books/\(Self.bookID)/progress", method == "POST" {
@@ -462,6 +580,7 @@ private final class AudioRuntimeURLProtocol: URLProtocol, @unchecked Sendable {
     private static var origins: [String: AudioRuntimeOrigin] = [:]
     private let stateLock = NSLock()
     private var stopped = false
+    private var pendingMetadata: (origin: AudioRuntimeOrigin, identifier: UUID)?
     static func register(_ origin: AudioRuntimeOrigin) { registryLock.lock(); defer { registryLock.unlock() }; origins[origin.identifier] = origin }
     static func unregister(_ origin: AudioRuntimeOrigin) { registryLock.lock(); defer { registryLock.unlock() }; origins.removeValue(forKey: origin.identifier) }
     override class func canInit(with request: URLRequest) -> Bool { true }
@@ -475,19 +594,37 @@ private final class AudioRuntimeURLProtocol: URLProtocol, @unchecked Sendable {
             guard let origin, let url = request.url, url.scheme == "https", url.host == "ekitapligim.com" else { throw AudioRuntimeFailure.malformedFixture }
             let (status, headers, data) = try origin.response(for: request)
             guard let response = HTTPURLResponse(url: url, statusCode: status, httpVersion: "HTTP/1.1", headerFields: headers) else { throw AudioRuntimeFailure.malformedFixture }
-            client?.urlProtocol(self, didReceive: response, cacheStoragePolicy: .notAllowed)
-            var offset = 0
-            while offset < data.count {
-                stateLock.lock(); let shouldStop = stopped; stateLock.unlock()
-                guard !shouldStop else { return }
-                let end = min(data.count, offset + 65_536)
-                client?.urlProtocol(self, didLoad: data.subdata(in: offset..<end)); offset = end
+            if let identifier = origin.holdMetadataResponse(for: request, delivery: { [weak self] in self?.deliver(response, data: data) }) {
+                stateLock.lock()
+                let alreadyStopped = stopped
+                if !alreadyStopped { pendingMetadata = (origin, identifier) }
+                stateLock.unlock()
+                if alreadyStopped { origin.cancelHeldMetadataResponse(identifier) }
+                return
             }
-            stateLock.lock(); let shouldStop = stopped; stateLock.unlock()
-            if !shouldStop { client?.urlProtocolDidFinishLoading(self) }
+            deliver(response, data: data)
         } catch { client?.urlProtocol(self, didFailWithError: error) }
     }
-    override func stopLoading() { stateLock.lock(); stopped = true; stateLock.unlock() }
+    private func deliver(_ response: HTTPURLResponse, data: Data) {
+        stateLock.lock(); let shouldStop = stopped; stateLock.unlock()
+        guard !shouldStop else { return }
+        client?.urlProtocol(self, didReceive: response, cacheStoragePolicy: .notAllowed)
+        var offset = 0
+        while offset < data.count {
+            stateLock.lock(); let shouldStop = stopped; stateLock.unlock()
+            guard !shouldStop else { return }
+            let end = min(data.count, offset + 65_536)
+            client?.urlProtocol(self, didLoad: data.subdata(in: offset..<end)); offset = end
+        }
+        stateLock.lock(); let finished = !stopped; stateLock.unlock()
+        if finished { client?.urlProtocolDidFinishLoading(self) }
+    }
+    override func stopLoading() {
+        stateLock.lock(); stopped = true
+        let pending = pendingMetadata; pendingMetadata = nil
+        stateLock.unlock()
+        if let pending { pending.origin.cancelHeldMetadataResponse(pending.identifier) }
+    }
 }
 
 private extension URLRequest {
