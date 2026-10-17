@@ -11,7 +11,7 @@ struct EkitapligimApp: App {
         WindowGroup {
             appContent
                 .environmentObject(container)
-                .preferredColorScheme(.light)
+                .preferredColorScheme(appColorScheme)
                 .onOpenURL { url in
                     _ = GoogleSignInService.handle(url)
                 }
@@ -27,6 +27,14 @@ struct EkitapligimApp: App {
                     await container.bootstrap()
                 }
         }
+    }
+
+    private var appColorScheme: ColorScheme {
+        #if DEBUG
+        if ProcessInfo.processInfo.arguments.contains("-modern-parity-ui-fixture"),
+           ProcessInfo.processInfo.environment["MODERN_PARITY_DARK"] == "1" { return .dark }
+        #endif
+        return .light
     }
 
     @ViewBuilder private var appContent: some View {

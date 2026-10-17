@@ -132,6 +132,36 @@ final class AudioPlaybackRuntimeTests: XCTestCase {
         XCTAssertNil(MPNowPlayingInfoCenter.default().nowPlayingInfo)
     }
 
+    func testAcknowledgedDetailFavoriteUpdatesPlayingBookWithoutRestartAndRejectsStaleAccountAck() async throws {
+        let fixture = try AudioRuntimeFixture()
+        defer { fixture.cleanUp() }
+        fixture.controller.start(bookID: AudioRuntimeOrigin.bookID)
+        try await waitUntil("Native player is ready before a detail favorite change", controller: fixture.controller) {
+            fixture.controller.playing && fixture.controller.position > 0.2
+        }
+        let originalLease = fixture.controller.manifest?.session
+        let originalPosition = fixture.controller.position
+        let originalRevision = fixture.controller.revision
+        XCTAssertFalse(fixture.controller.favorite)
+        try await fixture.repository.shelf(bookID: AudioRuntimeOrigin.bookID, field: .favorite, value: true, account: "runtime-reader")
+        await fixture.controller.acknowledgeShelfChange(bookID: AudioRuntimeOrigin.bookID, field: .favorite, value: true, account: "runtime-reader")
+        XCTAssertEqual(fixture.origin.snapshot.shelfFavorites, [true])
+        XCTAssertTrue(fixture.controller.favorite)
+        XCTAssertTrue(fixture.controller.playing)
+        XCTAssertEqual(fixture.controller.manifest?.session, originalLease)
+        XCTAssertEqual(fixture.origin.snapshot.manifestRequests, 1, "A shelf acknowledgement must not restart the media lease")
+        XCTAssertGreaterThanOrEqual(fixture.controller.position, originalPosition - 0.15)
+        XCTAssertNotEqual(fixture.controller.revision, originalRevision)
+
+        await fixture.tokens.switchAccount()
+        let beforeStaleAck = fixture.controller.revision
+        await fixture.controller.acknowledgeShelfChange(bookID: AudioRuntimeOrigin.bookID, field: .favorite, value: false, account: "runtime-reader")
+        XCTAssertTrue(fixture.controller.favorite, "An acknowledgement from the previous account must not change visible state")
+        XCTAssertEqual(fixture.controller.revision, beforeStaleAck)
+        fixture.controller.activate(account: "runtime-other")
+        XCTAssertFalse(fixture.controller.visible)
+    }
+
     private func waitUntil(_ description: String, controller: AudioPlaybackController,
                            allowPlaybackError: Bool = false, timeout: Duration = .seconds(15),
                            file: StaticString = #filePath, line: UInt = #line,
@@ -158,6 +188,7 @@ private final class AudioRuntimeFixture {
     let origin: AudioRuntimeOrigin
     let tokens: AudioRuntimeTokens
     let session: URLSession
+    let repository: AudioRepository
     let controller: AudioPlaybackController
     init(manifestStatus: Int = 200) throws {
         let origin = try AudioRuntimeOrigin(manifestStatus: manifestStatus)
@@ -174,6 +205,7 @@ private final class AudioRuntimeFixture {
         self.session = session
         let repository = try AudioRepository(webBaseURL: origin.webBaseURL, tokens: tokens,
             refresh: { _ in throw AudioRuntimeFailure.unexpectedRefresh }, session: session)
+        self.repository = repository
         controller = AudioPlaybackController(repository: repository)
         controller.activate(account: "runtime-reader")
         controller.setVolume(0)
@@ -215,6 +247,7 @@ private final class AudioRuntimeOrigin: @unchecked Sendable {
         var mediaBearers: [String] = []
         var progressPositions: [Double] = []
         var progressSequences: [Int] = []
+        var shelfFavorites: [Bool] = []
         var unexpectedRequests: [String] = []
     }
     var snapshot: Snapshot { lock.lock(); defer { lock.unlock() }; return log }
@@ -257,6 +290,15 @@ private final class AudioRuntimeOrigin: @unchecked Sendable {
             let result: [String: Any] = ["saved": true, "completed": false, "credited": Double(fields["listened"] ?? "") ?? 0,
                 "state": ["chapter_id": Self.chapterID, "position": position, "progress": position * 5, "speed": 1]]
             return (200, ["Content-Type": "application/json"], try JSONSerialization.data(withJSONObject: result))
+        }
+        if suffix == "audio-books/\(Self.bookID)/shelf", method == "POST" {
+            let fields = request.audioRuntimeFields
+            guard fields["field"] == "favorite", ["0", "1"].contains(fields["value"] ?? "") else {
+                log.unexpectedRequests.append("Invalid fixture shelf mutation")
+                return (400, ["Content-Type": "application/json"], Data("{}".utf8))
+            }
+            log.shelfFavorites.append(fields["value"] == "1")
+            return (200, ["Content-Type": "application/json"], Data(#"{"saved":true}"#.utf8))
         }
         if suffix == "audio-books/\(Self.bookID)/stream" {
             log.mediaBearers.append(bearer)

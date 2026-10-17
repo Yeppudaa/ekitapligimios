@@ -137,3 +137,11 @@
 "premiumHint" = "Premium ile dinlemenin keyfini keşfet";
 "discoverBookWorld" = "Kitabın dünyasını keşfet";
 "showChapters" = "Bölümleri gör";
+"featureAnywhere" = "Her an yanında";
+"featureWorlds" = "Yeni dünyalar";
+"featurePremium" = "Premium deneyim";
+"categoryHeading" = "Her ruh hâline bir hikâye";
+"categoryHint" = "Kategorilere göz at";
+"categoryBookCount" = "%d sesli kitap";
+"removePersonFilter" = "Yazar / seslendiren filtresini kaldır";
+"myAudioComments" = "Sesli kitap yorumlarım";

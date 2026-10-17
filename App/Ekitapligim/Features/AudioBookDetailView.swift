@@ -173,7 +173,13 @@ struct AudioBookDetailView: View {
         controller.start(bookID: book.id, chapterID: chapterID); onPlayer()
     }
     private func shelf(_ field: AudioShelfField) {
-        guard account != nil else { onLogin(); return }
-        Task { if await model.toggle(field, account: account) { controller.onActivityChanged?() } }
+        guard let owner = account else { onLogin(); return }
+        let bookID = model.bookID
+        Task {
+            guard await model.toggle(field, account: owner) else { return }
+            let acknowledged: Bool
+            switch field { case .saved: acknowledged = model.saved; case .favorite: acknowledged = model.favorite; case .later: acknowledged = model.later }
+            await controller.acknowledgeShelfChange(bookID: bookID, field: field, value: acknowledged, account: owner)
+        }
     }
 }

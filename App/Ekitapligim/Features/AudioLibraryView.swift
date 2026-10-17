@@ -120,13 +120,15 @@ struct AudioProfileSectionView: View {
     @StateObject private var model: AudioLibraryModel
     @ObservedObject var controller: AudioPlaybackController
     let account: String?
+    let commentsURL: URL?
     var onBook: (Int) -> Void
     var onBrowse: () -> Void
     var onLibrary: () -> Void
     var onTab: (AudioLibraryTab) -> Void
-    init(repository: AudioRepository, controller: AudioPlaybackController, account: String?, onBook: @escaping (Int) -> Void,
+    init(repository: AudioRepository, controller: AudioPlaybackController, account: String?, commentsURL: URL? = nil, onBook: @escaping (Int) -> Void,
          onBrowse: @escaping () -> Void, onLibrary: @escaping () -> Void, onTab: @escaping (AudioLibraryTab) -> Void) {
         _model = StateObject(wrappedValue: AudioLibraryModel(repository: repository)); self.controller = controller; self.account = account
+        self.commentsURL = commentsURL
         self.onBook = onBook; self.onBrowse = onBrowse; self.onLibrary = onLibrary; self.onTab = onTab
     }
     var body: some View {
@@ -150,7 +152,12 @@ struct AudioProfileSectionView: View {
                 shelf(.listening, icon: "headphones", key: "active")
                 shelf(.completed, icon: "checkmark.circle", key: "completedTab")
                 shelf(.history, icon: "clock.arrow.circlepath", key: "historyTab")
-                shelf(.saved, icon: "books.vertical", key: "savedTab")
+                if let commentsURL {
+                    Link(destination: commentsURL) { commentsTile }.buttonStyle(.plain)
+                        .accessibilityIdentifier("profile.audio.comments")
+                } else {
+                    commentsTile.opacity(0.6)
+                }
             }
             Button(action: onLibrary) { HStack { Text(AudioL10n.text("journey")); Spacer(); Image(systemName: "arrow.right") }.font(.caption.weight(.semibold)).frame(minHeight: 44) }
         }.padding(18).foregroundStyle(AudioStyle.ink)
@@ -158,6 +165,17 @@ struct AudioProfileSectionView: View {
             .clipShape(RoundedRectangle(cornerRadius: 24)).overlay(RoundedRectangle(cornerRadius: 24).stroke(AudioStyle.line, lineWidth: 1))
             .task(id: account) { await model.load(account: account) }
             .onChange(of: controller.revision) { _, _ in Task { await model.load(account: account) } }
+    }
+    private var commentsTile: some View {
+        VStack(alignment: .leading, spacing: 15) {
+            Label(AudioL10n.text("myAudioComments"), systemImage: "text.bubble")
+                .font(.caption).fixedSize(horizontal: false, vertical: true)
+            Image(systemName: "arrow.right").font(.title3.weight(.semibold)).foregroundStyle(AudioStyle.teal)
+                .accessibilityHidden(true)
+        }
+        .frame(maxWidth: .infinity, minHeight: 66, alignment: .leading).padding(15)
+        .background(.white, in: RoundedRectangle(cornerRadius: 18))
+        .overlay(RoundedRectangle(cornerRadius: 18).stroke(AudioStyle.line, lineWidth: 1))
     }
     private func shelf(_ tab: AudioLibraryTab, icon: String, key: String) -> some View {
         Button { onTab(tab) } label: {

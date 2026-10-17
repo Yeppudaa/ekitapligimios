@@ -5,6 +5,9 @@ workflows:
     instance_type: mac_mini_m2
     environment:
       xcode: 26.3
+    cache:
+      cache_paths:
+        - .build/xcode-packages
     scripts:
       - name: Native iPhone and iPad tests, screenshots and unsigned Production build
         script: bash Scripts/modern-parity-macos-validation.sh

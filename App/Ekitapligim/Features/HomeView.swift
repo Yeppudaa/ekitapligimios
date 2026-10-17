@@ -10,7 +10,7 @@ struct HomeView: View {
     @State private var newestBooks: [BookDTO] = []
     @State private var premiumBooks: [BookDTO] = []
     @State private var editorialBooks: [BookDTO] = []
-    @State private var editorialSpotlight: BookDTO?
+    @State private var categoryForums: [ForumDTO] = []
     @State private var agendaPosts: [BookAgendaPostDTO] = []
     @State private var liveItems: [LiveActivityItemDTO] = []
     @State private var chatRoom: ChatRoomDTO?
@@ -28,9 +28,10 @@ struct HomeView: View {
                     LazyVStack(spacing: 18) {
                         headerBlock
                         heroCard
-                        nextBookSection
                         searchBar
+                        nextBookSection
                         genreSection
+                        chatPreviewCard
                         continueReadingCard
                         if let repository = container.audioRepository, let controller = container.audioPlayback {
                             AudioHomePreviewView(repository: repository, controller: controller, account: container.audioAccount,
@@ -39,13 +40,29 @@ struct HomeView: View {
                                 onLibrary: { container.open(route: .audioLibrary(tab: "saved")) })
                                 .padding(.horizontal, 16)
                         }
-                        discoverySection
-                        chatPreviewCard
                         agendaRail
                         communityBanner
-                        dailySelectionSection
                         newArrivalsSection
-                        statsCard
+                        dailySelectionSection
+                        ModernHomePromoPair()
+                            .padding(.horizontal, 16)
+                        ModernHomeCategoryShowcase(forums: categoryForums, books: newestBooks + popularBooks) {
+                            container.open(route: .catalog)
+                        }
+                        .padding(.horizontal, 16)
+                        ModernHomeLibraryBanner(stats: stats,
+                            onLibrary: { container.open(route: .library(tab: 0)) },
+                            onBooks: { container.open(route: .catalog) },
+                            onAuthors: { container.open(route: .authors) },
+                            onCategories: { container.open(route: .catalog) })
+                            .padding(.horizontal, 16)
+                        if let errorMessage {
+                            EKInlineError(message: errorMessage, retryTitle: L10n.commonRetry) {
+                                Task { await load() }
+                            }
+                            .padding(.horizontal, 16)
+                        }
+                        discoverySection
                         liveActivityCard
                         if !premiumBooks.isEmpty {
                             bookRail(
@@ -59,8 +76,10 @@ struct HomeView: View {
                     .padding(.bottom, 28)
                 }
                 .refreshable {
+                    async let categoryRequest: Void = loadCategoryForums()
                     await load()
                     await loadEditorialBooks()
+                    await categoryRequest
                     await refreshDynamicContent(force: true)
                 }
             }
@@ -70,8 +89,10 @@ struct HomeView: View {
             }
             .task {
                 async let editorRequest: Void = loadEditorialBooks()
+                async let categoryRequest: Void = loadCategoryForums()
                 await loadIfNeeded()
                 await editorRequest
+                await categoryRequest
                 await refreshDynamicContent()
                 startChatPolling()
             }
@@ -128,12 +149,12 @@ struct HomeView: View {
     }
 
     @ViewBuilder private var nextBookSection: some View {
-        if let editorialSpotlight {
+        if let newestBook = newestBooks.first {
             VStack(alignment: .leading, spacing: 12) {
                 ModernSectionHeading(title: HomeRefreshL10n.text("next.title"), subtitle: "", actionTitle: L10n.homeSeeAll) {
                     container.open(route: .catalog)
                 }
-                ModernHomeSpotlight(book: editorialSpotlight)
+                ModernHomeSpotlight(book: newestBook)
             }
             .padding(.horizontal, 16)
         }
@@ -221,37 +242,6 @@ struct HomeView: View {
         .padding(.horizontal, 16)
     }
 
-    // MARK: - İstatistikler
-
-    @ViewBuilder private var statsCard: some View {
-        HStack(spacing: 0) {
-            if let stats {
-                HomeStat(value: stats.totalBooks, label: L10n.homeStatBooks, systemImage: "books.vertical.fill", tint: EKitapligimPalette.amber)
-                divider
-                HomeStat(value: stats.totalAuthors, label: L10n.homeStatAuthors, systemImage: "person.2.fill", tint: EKitapligimPalette.teal)
-
-            } else if isLoading {
-                ProgressView(L10n.homeStatsLoading)
-                    .tint(EKitapligimPalette.teal)
-                    .frame(maxWidth: .infinity, minHeight: 82)
-            } else {
-                Button { Task { await load() } } label: {
-                    Label(errorMessage ?? L10n.homeStatsLoadFailed, systemImage: "arrow.clockwise")
-                        .font(.subheadline)
-                        .foregroundStyle(EKitapligimPalette.muted)
-                        .frame(maxWidth: .infinity, minHeight: 82)
-                }
-            }
-        }
-        .padding(.vertical, 10)
-        .ekitapligimCard(radius: 12)
-        .padding(.horizontal, 16)
-    }
-
-    private var divider: some View {
-        Rectangle().fill(EKitapligimPalette.border).frame(width: 1, height: 46)
-    }
-
     // MARK: - Devam et
 
     @ViewBuilder private var continueReadingCard: some View {
@@ -260,13 +250,19 @@ struct HomeView: View {
                 Text(HomeRefreshL10n.text("continue.eyebrow"))
                     .font(.caption2.weight(.bold)).tracking(1.5).foregroundStyle(EKitapligimPalette.muted)
                 ModernSectionHeading(title: HomeRefreshL10n.text("continue.title"), subtitle: "", actionTitle: L10n.libraryHeaderTitle) {
-                    container.open(route: .library(0))
+                    container.open(route: .library(tab: 0))
                 }
                 ModernHomeReadingPanel(item: container.continueReadingItem,
-                    otherBooks: Array(container.currentlyReading.filter { $0.bookId != container.continueReadingItem?.bookId }.prefix(2)))
+                    otherBooks: Array(container.currentlyReading.filter { $0.bookId != container.continueReadingItem?.bookId }.prefix(2)),
+                    onRead: openReader)
             }
             .padding(.horizontal, 16)
         }
+    }
+
+    private func openReader(_ bookID: String) {
+        guard let id = Int(bookID), id > 0, id <= Int(Int32.max) else { return }
+        container.open(route: .reader(id))
     }
 
     // MARK: - Keşif Merkezi
@@ -593,11 +589,21 @@ struct HomeView: View {
 
     private func loadEditorialBooks() async {
         do {
-            let loaded = try await HomeEditorialRepository(webBaseURL: container.config.webBaseURL).books()
+            let loaded = try await container.homeEditorial.books()
             guard !Task.isCancelled else { return }
             editorialBooks = loaded
-            editorialSpotlight = HomeEditorialSelection.select(from: loaded, retaining: editorialSpotlight?.id)
         } catch { /* Retain an existing valid selection during transient network failures. */ }
+    }
+
+    private func loadCategoryForums() async {
+        guard let page = try? await container.community.forums(), !Task.isCancelled else { return }
+        // Only live book-category nodes qualify; forum counts are never synthesized.
+        let knownBookIDs = Set((6...38).filter { $0 != 31 }.map(String.init))
+        var seen = Set<String>()
+        categoryForums = page.forums.filter {
+            knownBookIDs.contains($0.id) && !$0.title.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty
+                && seen.insert($0.id).inserted
+        }
     }
 
     private func loadIfNeeded() async {
@@ -664,7 +670,9 @@ struct HomeView: View {
             )
 
             stats = loadedStats
-            popularBooks = shuffledPopular(popular.books + newest.books)
+            popularBooks = uniqueBooks(popular.books.isEmpty
+                ? newest.books.sorted { ($0.downloadCount ?? 0) > ($1.downloadCount ?? 0) }
+                : popular.books)
             newestBooks = newest.books
             premiumBooks = newest.books.filter(\.isPremiumOnly).shuffled()
         } catch {
@@ -672,8 +680,9 @@ struct HomeView: View {
         }
     }
 
-    private func shuffledPopular(_ books: [BookDTO]) -> [BookDTO] {
-        Array(Set(books.map(\.id))).compactMap { id in books.first { $0.id == id } }.shuffled()
+    private func uniqueBooks(_ books: [BookDTO]) -> [BookDTO] {
+        var seen = Set<String>()
+        return books.filter { seen.insert($0.id).inserted }
     }
 
     private func loadChatPreview(reset: Bool = false) async {
@@ -724,28 +733,6 @@ struct HomeView: View {
 }
 
 // MARK: - Alt bileşenler
-
-private struct HomeStat: View {
-    let value: Int
-    let label: String
-    let systemImage: String
-    let tint: Color
-
-    var body: some View {
-        VStack(spacing: 4) {
-            Image(systemName: systemImage).foregroundStyle(tint)
-            Text(EKitapligimFormat.compactCount(value))
-                .font(.headline.monospacedDigit())
-                .foregroundStyle(EKitapligimPalette.ink)
-            Text(label).font(.caption2).foregroundStyle(EKitapligimPalette.muted)
-                .multilineTextAlignment(.center)
-                .fixedSize(horizontal: false, vertical: true)
-        }
-        .frame(maxWidth: .infinity, minHeight: 64)
-        .accessibilityElement(children: .ignore)
-        .accessibilityLabel(L10n.homeStatAccessibility(label, value))
-    }
-}
 
 private struct HomeBookCard: View {
     @ScaledMetric(relativeTo: .body) private var cardWidth = 148.0

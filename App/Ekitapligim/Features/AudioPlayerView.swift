@@ -72,6 +72,7 @@ struct AudioPlayerView: View {
                 }
             }.background(AudioStyle.cream)
         }.navigationTitle(AudioL10n.text("nowListening")).navigationBarTitleDisplayMode(.inline)
+            .navigationBarBackButtonHidden(true)
             .toolbar {
                 ToolbarItem(placement: .topBarLeading) { Button { dismiss() } label: { Image(systemName: "chevron.down").frame(width: 44, height: 44) }.accessibilityLabel(AudioL10n.text("minimize")) }
                 ToolbarItem(placement: .topBarTrailing) { Button { controller.close(); dismiss() } label: { Image(systemName: "xmark").frame(width: 44, height: 44) }.accessibilityLabel(AudioL10n.text("stopClose")) }

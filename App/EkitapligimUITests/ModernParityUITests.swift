@@ -1,7 +1,8 @@
 import XCTest
 
 /// Run the same suite on iPhone SE, a current iPhone and iPad simulators. The DEBUG host injects
-/// offline read-only payloads into real shipping screens; this suite never purchases or signs in.
+/// offline payloads into real shipping screens; only explicitly enabled local audio manifests/progress
+/// can be written to the fixture transport. This suite never purchases, signs in or mutates a server.
 @MainActor
 final class ModernParityUITests: XCTestCase {
     override func setUpWithError() throws {
@@ -11,7 +12,7 @@ final class ModernParityUITests: XCTestCase {
 
     override func tearDownWithError() throws { XCUIDevice.shared.orientation = .portrait }
 
-    private func launch(_ screen: String, largeText: Bool = false, dark: Bool = false, guest: Bool = false, standardMember: Bool = false) -> XCUIApplication {
+    private func launch(_ screen: String, largeText: Bool = false, dark: Bool = false, guest: Bool = false, standardMember: Bool = false, playAudio: Bool = false) -> XCUIApplication {
         let app = XCUIApplication()
         app.launchArguments = ["-modern-parity-ui-fixture", "-AppleLanguages", "(tr)", "-AppleLocale", "tr_TR"]
         app.launchEnvironment["MODERN_PARITY_SCREEN"] = screen
@@ -19,6 +20,7 @@ final class ModernParityUITests: XCTestCase {
         app.launchEnvironment["MODERN_PARITY_DARK"] = dark ? "1" : "0"
         app.launchEnvironment["MODERN_PARITY_GUEST"] = guest ? "1" : "0"
         app.launchEnvironment["MODERN_PARITY_STANDARD_MEMBER"] = standardMember ? "1" : "0"
+        app.launchEnvironment["MODERN_PARITY_PLAY_AUDIO"] = playAudio ? "1" : "0"
         app.launch()
         XCTAssertTrue(app.otherElements["modern-parity-ready"].waitForExistence(timeout: 10), "The offline screen did not become ready: \(screen)")
         XCTAssertFalse(app.staticTexts["modern-parity-error"].exists)
@@ -47,8 +49,9 @@ final class ModernParityUITests: XCTestCase {
     }
 
     func testEveryRefreshedNativeScreenRendersWithNormalText() {
-        for screen in ["home", "catalog", "library", "profile", "requests", "forum", "threads", "authors", "publishers", "agenda", "live", "chat", "audio", "audio-detail", "audio-library", "notifications"] {
+        for screen in ["home", "catalog", "library", "profile", "requests", "forum", "threads", "authors", "publishers", "agenda", "live", "chat", "audio", "audio-detail", "audio-library", "audio-player", "notifications"] {
             let app = launch(screen)
+            if screen == "audio-player" { XCTAssertTrue(app.buttons["Duraklat"].firstMatch.waitForExistence(timeout: 15), "The local native audio fixture did not become ready") }
             XCTAssertTrue(app.scrollViews.firstMatch.waitForExistence(timeout: 10), "Expected native scroll content on \(screen)")
             capture(app, "modern-\(screen)-portrait")
             app.swipeUp()
@@ -58,9 +61,45 @@ final class ModernParityUITests: XCTestCase {
         }
     }
 
+    func testHomeLowerScenicSectionsRemainReachableAndContained() {
+        let app = launch("home")
+        let promo = app.buttons["home.promo.explore"].firstMatch
+        reveal(promo, in: app)
+        XCTAssertTrue(promo.isHittable)
+        assertContained(promo, in: app)
+        capture(app, "modern-home-paired-scenic-promotions")
+        let category = app.buttons["home.categoryShowcase.6"].firstMatch
+        reveal(category, in: app)
+        XCTAssertTrue(category.isHittable)
+        assertContained(category, in: app)
+        capture(app, "modern-home-scenic-category-showcase")
+        let library = app.buttons["home.libraryBanner.open"].firstMatch
+        reveal(library, in: app)
+        XCTAssertTrue(library.isHittable)
+        assertContained(library, in: app)
+        capture(app, "modern-home-personal-library-footer")
+    }
+
+    func testHomeGenreOpensFilteredCatalogAndReturnsToHomeInTheSameNavigationStack() {
+        let app = launch("home")
+        let genre = app.buttons["home.genre.6"].firstMatch
+        reveal(genre, in: app)
+        XCTAssertTrue(genre.isHittable)
+        genre.tap()
+        let catalogHero = app.descendants(matching: .any)["catalog.scenicHero"].firstMatch
+        XCTAssertTrue(catalogHero.waitForExistence(timeout: 10))
+        capture(app, "modern-home-genre-native-catalog")
+        let back = app.navigationBars.buttons.firstMatch
+        XCTAssertTrue(back.isHittable)
+        back.tap()
+        XCTAssertTrue(app.buttons["home.genre.6"].firstMatch.waitForExistence(timeout: 5))
+        XCTAssertFalse(catalogHero.exists)
+    }
+
     func testCommunityAndLibraryStayUsableAtAccessibilityTextSizeInLandscape() throws {
-        for screen in ["requests", "forum", "authors", "library", "profile", "chat", "audio", "audio-detail", "audio-library", "notifications"] {
+        for screen in ["home", "catalog", "library", "profile", "requests", "forum", "threads", "authors", "publishers", "agenda", "live", "chat", "audio", "audio-detail", "audio-library", "audio-player", "notifications"] {
             let app = launch(screen, largeText: true, dark: true)
+            if screen == "audio-player" { XCTAssertTrue(app.buttons["Duraklat"].firstMatch.waitForExistence(timeout: 15)) }
             XCUIDevice.shared.orientation = .landscapeLeft
             XCTAssertTrue(app.scrollViews.firstMatch.waitForExistence(timeout: 8))
             capture(app, "modern-\(screen)-landscape-accessibility3-dark")
@@ -127,7 +166,7 @@ final class ModernParityUITests: XCTestCase {
 
     func testNonPremiumAudiobookListenShowsAccessMessageWithoutStartingPurchase() {
         let app = launch("audio-detail", standardMember: true)
-        let listen = app.buttons["Sesli dinle"]
+        let listen = app.buttons["audio.detail.listen"]
         reveal(listen, in: app)
         XCTAssertTrue(listen.isHittable)
         listen.tap()
@@ -180,5 +219,83 @@ final class ModernParityUITests: XCTestCase {
         assertContained(notification, in: app)
         capture(app, "modern-notification-permission-card-and-unread-event")
         // Reading permission and rendering the list do not request permission or mark alerts read.
+    }
+
+    func testNativeFullAudioPlayerRendersReadyCoverChaptersAndVisibleControls() {
+        let app = launch("audio-player")
+        let player = app.descendants(matching: .any)["audio.player"].firstMatch
+        XCTAssertTrue(player.waitForExistence(timeout: 10))
+        XCTAssertTrue(app.buttons["Duraklat"].firstMatch.waitForExistence(timeout: 15))
+        XCTAssertTrue(app.staticTexts["Beyaz Zambaklar Ülkesinde"].firstMatch.exists)
+        capture(app, "modern-native-audio-player-ready-cover")
+        let rewind = app.buttons["15 saniye geri"].firstMatch
+        reveal(rewind, in: app)
+        XCTAssertTrue(rewind.isHittable)
+        assertContained(rewind, in: app)
+        let forward = app.buttons["15 saniye ileri"].firstMatch
+        XCTAssertTrue(forward.isHittable)
+        assertContained(forward, in: app)
+        let settings = app.buttons["Dinleme ayarları"].firstMatch
+        reveal(settings, in: app)
+        XCTAssertTrue(settings.isHittable)
+        settings.tap()
+        XCTAssertTrue(app.staticTexts["Uyku zamanlayıcısı"].firstMatch.waitForExistence(timeout: 5))
+        capture(app, "modern-native-audio-player-settings")
+        app.buttons["Bitti"].tap()
+        let chapter = app.buttons.matching(NSPredicate(format: "label CONTAINS %@", "Birinci Bölüm · Yerel test kaydı")).firstMatch
+        reveal(chapter, in: app)
+        XCTAssertTrue(chapter.isHittable)
+        capture(app, "modern-native-audio-player-chapters")
+        XCTAssertEqual(app.buttons.matching(identifier: "audio.mini.close").count, 0, "Full player must not display a duplicate mini player")
+    }
+
+    func testAudioAnnotationTextRemainsVisibleAndEditableInDarkAppearance() {
+        let app = launch("audio-player", dark: true)
+        XCTAssertTrue(app.buttons["Duraklat"].firstMatch.waitForExistence(timeout: 15))
+        let note = app.buttons["Not ekle"].firstMatch
+        reveal(note, in: app)
+        XCTAssertTrue(note.isHittable)
+        note.tap()
+        let editor = app.textViews["audio.annotation.text"]
+        XCTAssertTrue(editor.waitForExistence(timeout: 5))
+        editor.tap()
+        let text = "Bu hikâyede yeni bir dünya buldum."
+        editor.typeText(text)
+        XCTAssertTrue((editor.value as? String)?.contains(text) == true)
+        assertContained(editor, in: app)
+        capture(app, "modern-audio-annotation-typed-text-dark")
+        app.buttons["Vazgeç"].firstMatch.tap()
+        XCTAssertFalse(editor.exists)
+        // Typing and cancelling never writes an annotation, even to the offline transport.
+    }
+
+    func testSingleMiniPlayerPersistsAcrossActualRootNavigationAndClosesAudio() {
+        let app = launch("home", playAudio: true)
+        let closeQuery = app.buttons.matching(identifier: "audio.mini.close")
+        XCTAssertTrue(closeQuery.firstMatch.waitForExistence(timeout: 15))
+        XCTAssertTrue(app.buttons["Duraklat"].firstMatch.waitForExistence(timeout: 15))
+        XCTAssertEqual(closeQuery.count, 1)
+        for tab in ["primary-tab-catalog", "primary-tab-profile", "primary-tab-home"] {
+            let destination = app.buttons[tab]
+            XCTAssertTrue(destination.isHittable)
+            destination.tap()
+            XCTAssertTrue(closeQuery.firstMatch.waitForExistence(timeout: 5))
+            XCTAssertEqual(closeQuery.count, 1, "Navigation created a second mini player")
+        }
+        capture(app, "modern-single-mini-player-root-navigation")
+        app.buttons["Oynatıcıyı aç"].firstMatch.tap()
+        XCTAssertTrue(app.descendants(matching: .any)["audio.player"].firstMatch.waitForExistence(timeout: 8))
+        XCTAssertTrue(app.buttons["Duraklat"].firstMatch.waitForExistence(timeout: 8))
+        XCTAssertEqual(closeQuery.count, 0)
+        app.buttons["Oynatıcıyı küçült"].firstMatch.tap()
+        XCTAssertTrue(closeQuery.firstMatch.waitForExistence(timeout: 5))
+        XCTAssertEqual(closeQuery.count, 1)
+        closeQuery.firstMatch.tap()
+        let closed = XCTNSPredicateExpectation(predicate: NSPredicate(format: "exists == false"), object: closeQuery.firstMatch)
+        XCTAssertEqual(XCTWaiter.wait(for: [closed], timeout: 5), .completed)
+        XCTAssertFalse(app.buttons["Duraklat"].exists)
+        app.buttons["primary-tab-catalog"].tap()
+        XCTAssertEqual(closeQuery.count, 0, "A closed player must not reappear after navigation")
+        capture(app, "modern-mini-player-closed-after-navigation")
     }
 }

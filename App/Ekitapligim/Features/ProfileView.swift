@@ -197,12 +197,24 @@ struct ProfileView: View {
 
     @ViewBuilder private var audioProfileSection: some View {
         if let repository = container.audioRepository, let controller = container.audioPlayback {
-            AudioProfileSectionView(repository: repository, controller: controller, account: container.audioAccount,
+            AudioProfileSectionView(repository: repository, controller: controller, account: container.audioAccount, commentsURL: audioCommentsURL,
                 onBook: { container.open(route: .audiobook($0)) },
                 onBrowse: { container.open(route: .audiobooks) },
                 onLibrary: { container.open(route: .audioLibrary(tab: "saved")) },
                 onTab: { container.open(route: .audioLibrary(tab: $0.rawValue)) })
         }
+    }
+
+    /// Matches Android's first-party, filtered profile-comments link; no session credential is put in the URL.
+    private var audioCommentsURL: URL? {
+        guard case .signedIn(let session) = container.authState else { return nil }
+        let identifier = session.userID ?? (profile?.username == session.username ? profile?.id : nil)
+        guard let identifier, let userID = Int(identifier), userID > 0, userID <= Int32.max else { return nil }
+        let baseURL = container.config.webBaseURL
+        guard baseURL.scheme?.lowercased() == "https", baseURL.user == nil, baseURL.password == nil else { return nil }
+        var components = URLComponents(url: baseURL.appendingPathComponent("kullanicilar/\(userID)/profile-posts/"), resolvingAgainstBaseURL: false)
+        components?.queryItems = [.init(name: "filter", value: "comments"), .init(name: "audio", value: "1")]
+        return components?.url
     }
 
     private var accountActions: some View {

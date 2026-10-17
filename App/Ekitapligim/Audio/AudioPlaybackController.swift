@@ -198,8 +198,16 @@ final class AudioPlaybackController: ObservableObject {
         do {
             let value = !favorite
             try await repository.shelf(bookID: book.id, field: .favorite, value: value, account: account)
-            guard expected == generation else { return }; favorite = value; revision = UUID(); onActivityChanged?()
+            guard expected == generation else { return }
+            await acknowledgeShelfChange(bookID: book.id, field: .favorite, value: value, account: account)
         } catch is CancellationError { } catch { if expected == generation { self.error = AudioL10n.error(error) } }
+    }
+    /// Apply only a server-acknowledged shelf mutation. A detail screen can update an already playing
+    /// book without obtaining a new manifest, resetting its position or restarting AVPlayer.
+    func acknowledgeShelfChange(bookID: Int, field: AudioShelfField, value: Bool, account owner: String) async {
+        guard bookID > 0, account == owner, await repository.isCurrent(account: owner), account == owner else { return }
+        if book?.id == bookID, field == .favorite { favorite = value }
+        revision = UUID(); onActivityChanged?()
     }
     private func prepare(index: Int, position: Double, generation expected: UUID) throws {
         guard let manifest, let account, manifest.chapters.indices.contains(index) else { throw AudioError.invalidResponse }

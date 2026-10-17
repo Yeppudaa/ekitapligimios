@@ -12,6 +12,10 @@ public enum HomeRefreshL10n {
     public static func page(_ number: Int) -> String {
         String(format: text("continue.page"), locale: Locale.current, number)
     }
+
+    public static func categoryBooks(_ count: Int) -> String {
+        String(format: text("showcase.books"), locale: Locale.current, count)
+    }
 }
 
 public enum HomeEditorialSelection {

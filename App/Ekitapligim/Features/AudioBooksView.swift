@@ -12,6 +12,7 @@ struct AudioBooksView: View {
     var onPremium: () -> Void
     @State private var filtersExpanded = false
     @State private var query = ""
+    @ScaledMetric(relativeTo: .body) private var categoryCardWidth: CGFloat = 210
     init(repository: AudioRepository, controller: AudioPlaybackController, account: String?, initialFilters: AudioFilters = .init(), onBook: @escaping (Int) -> Void,
          onLibrary: @escaping () -> Void, onLogin: @escaping () -> Void, onPremium: @escaping () -> Void) {
         _model = StateObject(wrappedValue: AudioCatalogModel(repository: repository, filters: initialFilters)); _query = State(initialValue: initialFilters.query)
@@ -22,15 +23,12 @@ struct AudioBooksView: View {
         ScrollView {
             LazyVStack(alignment: .leading, spacing: 24) {
                 hero
-                filters
+                features
                 if let categories = model.catalog?.categories, !categories.isEmpty {
-                    ScrollView(.horizontal, showsIndicators: false) {
-                        HStack(spacing: 8) {
-                            chip(AudioL10n.text("allCategories"), selected: model.filters.category == 0) { Task { await model.apply { $0.category = 0 } } }
-                            ForEach(categories) { category in chip(category.title, selected: model.filters.category == category.id) { Task { await model.apply { $0.category = category.id } } } }
-                        }
-                    }
+                    categorySection(categories)
                 }
+                filters
+                if let personFilter = activePersonFilter { personFilterChip(personFilter) }
                 if let error = model.error { AudioErrorView(message: error) { Task { await model.retry() } } }
                 if model.loading && model.books.isEmpty { ProgressView().frame(maxWidth: .infinity).padding(25) }
                 if !model.filters.active, let sections = model.catalog?.sections {
@@ -90,6 +88,71 @@ struct AudioBooksView: View {
             if let id = model.catalog?.hero?.id { onBook(id) }
         }.disabled(model.catalog?.hero == nil)
     }
+    private var features: some View {
+        AudioCatalogFeatureLayout(spacing: 20, rowSpacing: 14) {
+            feature("featureAnywhere", icon: "headphones")
+            feature("featureWorlds", icon: "book.pages")
+            feature("featurePremium", icon: "rosette")
+        }.accessibilityElement(children: .combine)
+    }
+    private func feature(_ key: String, icon: String) -> some View {
+        VStack(spacing: 7) {
+            Image(systemName: icon).font(.body).foregroundStyle(AudioStyle.teal).accessibilityHidden(true)
+            Text(AudioL10n.text(key)).font(.caption2).foregroundStyle(AudioStyle.muted)
+                .multilineTextAlignment(.center).fixedSize(horizontal: false, vertical: true)
+        }.padding(.horizontal, 4)
+    }
+    private func categorySection(_ categories: [AudioCategoryDTO]) -> some View {
+        VStack(alignment: .leading, spacing: 13) {
+            VStack(alignment: .leading, spacing: 5) {
+                Text(AudioL10n.text("categoryHeading")).font(.system(.title2, design: .serif, weight: .bold)).foregroundStyle(AudioStyle.ink)
+                Text(AudioL10n.text("categoryHint")).font(.subheadline).foregroundStyle(AudioStyle.muted)
+            }.fixedSize(horizontal: false, vertical: true)
+            ScrollView(.horizontal, showsIndicators: false) {
+                HStack(alignment: .top, spacing: 10) {
+                    ForEach(categories) { category in
+                        categoryCard(category)
+                            .containerRelativeFrame(.horizontal) { length, _ in min(categoryCardWidth, max(1, length - 16)) }
+                    }
+                }.padding(.vertical, 1)
+            }
+        }.accessibilityIdentifier("audio.catalog.categories")
+    }
+    private func categoryCard(_ category: AudioCategoryDTO) -> some View {
+        let selected = model.filters.category == category.id
+        return Button {
+            Task { await model.apply { $0.category = selected ? 0 : category.id } }
+        } label: {
+            HStack(spacing: 12) {
+                Image(systemName: "book.pages").font(.title3).foregroundStyle(AudioStyle.teal).accessibilityHidden(true)
+                VStack(alignment: .leading, spacing: 5) {
+                    Text(category.title).font(.subheadline.weight(.semibold)).foregroundStyle(AudioStyle.ink)
+                    Text(AudioL10n.format("categoryBookCount", category.count)).font(.caption).foregroundStyle(AudioStyle.muted)
+                }.fixedSize(horizontal: false, vertical: true).frame(maxWidth: .infinity, alignment: .leading)
+            }.padding(16).frame(maxWidth: .infinity, minHeight: 44, alignment: .leading)
+                .background(selected ? AudioStyle.teal.opacity(0.13) : Color.white)
+                .clipShape(RoundedRectangle(cornerRadius: 18))
+                .overlay(RoundedRectangle(cornerRadius: 18).stroke(AudioStyle.line, lineWidth: 1))
+        }.buttonStyle(.plain).accessibilityAddTraits(selected ? .isSelected : [])
+            .accessibilityIdentifier("audio.category.\(category.id)")
+    }
+    private var activePersonFilter: String? {
+        let author = model.filters.author.trimmingCharacters(in: .whitespacesAndNewlines)
+        let narrator = model.filters.narrator.trimmingCharacters(in: .whitespacesAndNewlines)
+        return !author.isEmpty ? author : (!narrator.isEmpty ? narrator : nil)
+    }
+    private func personFilterChip(_ name: String) -> some View {
+        Button {
+            Task { await model.apply { $0.author = ""; $0.narrator = "" } }
+        } label: {
+            HStack(spacing: 12) {
+                Text(name).font(.subheadline.weight(.semibold)).fixedSize(horizontal: false, vertical: true)
+                Image(systemName: "xmark.circle.fill").font(.body).accessibilityHidden(true)
+            }.padding(.horizontal, 15).padding(.vertical, 10).frame(minHeight: 44)
+                .foregroundStyle(AudioStyle.teal).background(AudioStyle.teal.opacity(0.1)).clipShape(Capsule())
+        }.buttonStyle(.plain).accessibilityLabel(Text(name)).accessibilityHint(AudioL10n.text("removePersonFilter"))
+            .accessibilityIdentifier("audio.filter.person.clear")
+    }
     private var filters: some View {
         VStack(alignment: .leading, spacing: 16) {
             Button { withAnimation(.easeInOut(duration: 0.2)) { filtersExpanded.toggle() } } label: {
@@ -127,5 +190,43 @@ struct AudioBooksView: View {
                 .foregroundStyle(selected ? Color.white : AudioStyle.ink).background(selected ? AudioStyle.teal : .white)
                 .clipShape(Capsule()).overlay(Capsule().stroke(AudioStyle.line, lineWidth: selected ? 0 : 1)) }.buttonStyle(.plain)
             .accessibilityAddTraits(selected ? .isSelected : [])
+    }
+}
+
+private struct AudioCatalogFeatureLayout: Layout {
+    var spacing: CGFloat
+    var rowSpacing: CGFloat
+
+    func sizeThatFits(proposal: ProposedViewSize, subviews: Subviews, cache: inout ()) -> CGSize {
+        arrange(subviews, width: proposal.width).size
+    }
+
+    func placeSubviews(in bounds: CGRect, proposal: ProposedViewSize, subviews: Subviews, cache: inout ()) {
+        let arrangement = arrange(subviews, width: bounds.width)
+        for (index, frame) in arrangement.frames.enumerated() {
+            subviews[index].place(at: CGPoint(x: bounds.minX + frame.minX, y: bounds.minY + frame.minY), proposal: ProposedViewSize(frame.size))
+        }
+    }
+
+    private func arrange(_ subviews: Subviews, width: CGFloat?) -> (size: CGSize, frames: [CGRect]) {
+        let availableWidth = max(1, width ?? .greatestFiniteMagnitude)
+        var frames: [CGRect] = []
+        var x: CGFloat = 0
+        var y: CGFloat = 0
+        var rowHeight: CGFloat = 0
+        var measuredWidth: CGFloat = 0
+        for subview in subviews {
+            let size = subview.sizeThatFits(ProposedViewSize(width: availableWidth, height: nil))
+            if x > 0 && x + size.width > availableWidth {
+                x = 0
+                y += rowHeight + rowSpacing
+                rowHeight = 0
+            }
+            frames.append(CGRect(x: x, y: y, width: size.width, height: size.height))
+            measuredWidth = max(measuredWidth, x + size.width)
+            rowHeight = max(rowHeight, size.height)
+            x += size.width + spacing
+        }
+        return (CGSize(width: width ?? measuredWidth, height: y + rowHeight), frames)
     }
 }

@@ -126,6 +126,9 @@ final class AppContainer: ObservableObject {
     let config: AppConfig
     // Isolated, additive audio services. Existing authentication and purchasing services remain unchanged.
     private let audioURLSession: URLSession?
+    lazy var homeEditorial: HomeEditorialRepository = {
+        HomeEditorialRepository(webBaseURL: config.webBaseURL, session: audioURLSession ?? .shared)
+    }()
     lazy var profileVisitRecorder: ProfileVisitRecorder? = {
         try? ProfileVisitRecorder(webBaseURL: config.webBaseURL, tokens: tokenStore, session: audioURLSession)
     }()

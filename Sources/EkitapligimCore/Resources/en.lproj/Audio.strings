@@ -137,3 +137,11 @@
 "premiumHint" = "Discover the joy of listening with Premium";
 "discoverBookWorld" = "Explore the world of this book";
 "showChapters" = "View chapters";
+"featureAnywhere" = "Always by your side";
+"featureWorlds" = "New worlds";
+"featurePremium" = "Premium experience";
+"categoryHeading" = "A story for every mood";
+"categoryHint" = "Browse the categories";
+"categoryBookCount" = "%d audiobooks";
+"removePersonFilter" = "Remove the author / narrator filter";
+"myAudioComments" = "My audiobook comments";

@@ -5,6 +5,7 @@ import EkitapligimCore
 struct CatalogView: View {
     @EnvironmentObject private var container: AppContainer
     let onOpenMenu: (() -> Void)?
+    let embeddedInNavigationStack: Bool
     @Environment(\.dynamicTypeSize) private var dynamicTypeSize
     @State private var editorialSpotlight: BookDTO?
     @State private var heroExpanded = true
@@ -24,9 +25,11 @@ struct CatalogView: View {
     @State private var errorMessage: String?
     @AppStorage("catalog.displayMode") private var displayModeRawValue = CatalogDisplayMode.grid.rawValue
 
-    init(initialCategoryID: String = "", onOpenMenu: (() -> Void)? = nil) {
+    init(initialCategoryID: String = "", initialOrder: String = "latest", embeddedInNavigationStack: Bool = false,
+         onOpenMenu: (() -> Void)? = nil) {
         self.onOpenMenu = onOpenMenu
-        _filters = State(initialValue: CatalogFilters(categoryID: initialCategoryID))
+        self.embeddedInNavigationStack = embeddedInNavigationStack
+        _filters = State(initialValue: CatalogFilters(categoryID: initialCategoryID, order: initialOrder))
     }
 
     private var displayMode: CatalogDisplayMode {
@@ -43,7 +46,13 @@ struct CatalogView: View {
     }
 
     var body: some View {
-        NavigationStack {
+        Group {
+            if embeddedInNavigationStack { catalogContent }
+            else { NavigationStack { catalogContent } }
+        }
+    }
+
+    private var catalogContent: some View {
             ZStack {
                 EKitapligimPageBackground()
                 ScrollView {
@@ -67,6 +76,7 @@ struct CatalogView: View {
             }
             .navigationTitle(L10n.catalogTitle)
             .navigationBarTitleDisplayMode(.inline)
+            .toolbar(.visible, for: .navigationBar)
             .searchable(text: $query, prompt: L10n.catalogSearchPrompt)
             .tint(EKitapligimPalette.teal)
             .toolbar {
@@ -113,7 +123,6 @@ struct CatalogView: View {
                     Task { await load(reset: true) }
                 }
             }
-        }
     }
 
     private var catalogHero: some View {
@@ -211,7 +220,7 @@ struct CatalogView: View {
     }
 
     private func loadEditorSelection() async {
-        guard let loaded = try? await HomeEditorialRepository(webBaseURL: container.config.webBaseURL).books(), !Task.isCancelled else { return }
+        guard let loaded = try? await container.homeEditorial.books(), !Task.isCancelled else { return }
         editorialSpotlight = HomeEditorialSelection.select(from: loaded, retaining: editorialSpotlight?.id)
     }
 
