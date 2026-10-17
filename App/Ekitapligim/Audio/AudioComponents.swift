@@ -168,6 +168,7 @@ struct AudioPremiumAccessView: View {
                         }.accessibilityHidden(true)
                     }
                     .clipShape(RoundedRectangle(cornerRadius: 24))
+                    .contentShape(.accessibility, RoundedRectangle(cornerRadius: 24))
                     .accessibilityIdentifier("audio.premium.hero")
                 Text(AudioL10n.text("premiumTitle")).font(.system(.largeTitle, design: .serif, weight: .bold))
                 Text(AudioL10n.text("premiumMessage")).font(.body).foregroundStyle(AudioStyle.muted)
