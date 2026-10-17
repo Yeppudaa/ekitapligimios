@@ -39,6 +39,10 @@ Ana sayfadaki **2K+ Yayınevi** istatistiği bulunmaz. Sahte yerel kitap/progres
 
 Kaynak sözdizimi, taşınabilir çekirdek testleri, korunan dosya karşılaştırması ve yerelleştirme/görsel kontrolleri ayrı kanıtlanır. Sözdizimi taraması SwiftUI tip denetimi veya görsel test yerine geçmez.
 
+Windows üzerinde tamamlanan kontroller: **415/415 Core XCTest**, tam çalışma alanı/statik/erişilebilirlik doğrulaması ve **13/13 korunan akış karşılaştırması** başarılı. 40 korunan dosya, AppContainer'ın 45 mevcut metodu, profil üyelik/kota blokları ve Google handlerları aynı. Doğrulama kayıtları hazırlık paketinde saklanır. Yazar/forum hero başlıklarındaki eski 126 pt kırpma kaldırıldı; metin boyuna göre doğal yükseklik kullanılır.
+
+Beş yeni native AVPlayer testi, uygulama içinden üretilen sessiz WAV verisini gerçek `AVAssetResourceLoader` ve kimlik doğrulamalı HEAD/206 üzerinden oynatır: ilerleme, duraklatma/devam, ±15 saniye, kapatma, hesap değişimi, Premium reddi ve sonlandırma. Bunlar yalnız Apple simülatöründe çalışabilir; fixture hiçbir canlı kitap dosyası veya canlı hesaba yazma kullanmaz.
+
 `ios-modern-parity-validation` Codemagic iş akışı yalnız Swift testleri, native iPhone/iPad simülatör testleri/ekran görüntüleri ve imzasız Production derlemesi çalıştırır. Mevcut `ios-production` iş akışı korunur; bu doğrulama iş akışı Apple hesabına bağlanmaz, profil oluşturmaz, TestFlight/App Store dağıtmaz ve e-posta göndermez.
 
 DEBUG fixture 16 gerçek ekranı, büyük yazı/koyu görünüm/yatay yönü, menü kaydırma/kapatma, sabit sohbet üst alanı, filtre açma/kapama, Premium erişim mesajı ve profil→sesli kitaplık rotasını denetler. Tüm fixture istekleri yerelde karşılanır ve yazmalar 405 döner. Canlı hesabın bildirim/ödemesi test fixture ile doğrulanmış sayılmaz.

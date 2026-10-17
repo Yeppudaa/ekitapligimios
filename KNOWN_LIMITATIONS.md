@@ -1,5 +1,13 @@
 # Known Limitations
 
+## Current modern-design update — 2026-10-17
+
+The modern native design/audio update has passed 415 portable Swift tests, workspace/static/accessibility audits and protected-source checks. Xcode execution is pending in the connected Codemagic project. The repository is connected at `Yeppudaa/ekitapligimios`, and work is isolated on `codex/android-ios-design-audio-20261017`; earlier notes below about missing remotes/identifiers describe historical bootstrap state.
+
+Native visual parity and real playback are not proven by a Windows parse. The test-only Codemagic workflow covers iPhone/iPad UI fixtures, real AVPlayer with generated offline media and an unsigned Production build. Device background/lock-screen behavior, APNs delivery and live Sandbox purchase/Google regression remain release checks. Purchase/authentication implementations are unchanged. Scope: [MODERN_ANDROID_IOS_PARITY.md](MODERN_ANDROID_IOS_PARITY.md).
+
+## Historical baseline notes
+
 - This Windows workspace has Swift 6.3.3 and Visual Studio Build Tools; the portable `EkitapligimCore` package builds and all unit tests pass through `swift test`. Xcode is unavailable, so the SwiftUI iOS target, Apple frameworks, simulator, UI tests, archive, and signing remain unverified here.
 - The source tree is committed locally, but the git repository has no configured remote, so the prepared macOS GitHub Actions workflow cannot yet be dispatched. It supports manual dispatch plus `main`, `master`, `codex/**`, and pull-request triggers once connected to a host.
 - `project.yml` is present for XcodeGen, but the `.xcodeproj` has not been generated or built in this workspace.

@@ -1,5 +1,16 @@
 # App Store Checklist
 
+## Next version 1.1.0: modern design and audio gate (2026-10-17)
+
+- [x] Portable Swift suite: 415 tests passed; workspace/static/accessibility audits passed.
+- [x] Purchase, membership and Google source invariants verified; no backend deployment in this update.
+- [ ] Connected Codemagic native iPhone/iPad tests and screenshot inspection.
+- [ ] Unsigned Production clean build with Apple SDK.
+- [ ] Real-device background/lock-screen/termination audio, APNs delivery and VoiceOver.
+- [ ] Existing App Store Sandbox purchase/restore and Google session regression on the final signed build.
+
+Earlier release evidence below applies to its dated version. See [MODERN_ANDROID_IOS_PARITY.md](MODERN_ANDROID_IOS_PARITY.md).
+
 ## 2026-10-13 renewable catalog — release blockers
 
 - [x] Deploy IosApi 1.0.36 and confirm authenticated preparation advertises quarterly/semiannual support. Live public HTTPS smoke test passed on 2026-10-13.
