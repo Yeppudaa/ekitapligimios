@@ -115,6 +115,14 @@ if [ "$evidence_status" -ne 0 ]; then result=1; fi
 printf '\nAUDIO DETAIL SCROLL DIAGNOSTIC SUMMARY (not full parity validation)\nTest exit: %s\nEvidence exit: %s\nWatchdog exit: %s\n' "$test_status" "$evidence_status" "$watchdog_status"
 grep -E 'MODERN_DETAIL_|AUDIO_DETAIL_UI|error:|Test Case|Executed [0-9]+ tests|exceeded execution|\*\* TEST.* (FAILED|SUCCEEDED)' \
   "$EVIDENCE/audio-detail-scroll-tests.log" | tail -n 160 || true
+for watchdog_file in "$EVIDENCE/app-stack-samples/watchdog-status.json" "$EVIDENCE/watchdog-console.log"; do
+  printf '\nAUDIO DETAIL SCROLL WATCHDOG %s (first 80 lines; full text retained in evidence)\n' "$(basename "$watchdog_file")"
+  if [ -f "$watchdog_file" ]; then
+    head -n 80 "$watchdog_file" || true
+  else
+    printf 'Missing watchdog evidence file\n'
+  fi
+done
 for sample_file in "$EVIDENCE"/app-stack-samples/app-*-sample-*.txt; do
   if [ ! -f "$sample_file" ]; then continue; fi
   printf '\nSELECTED APP STACK SAMPLE %s (first 160 lines; full text retained in evidence)\n' "$(basename "$sample_file")"

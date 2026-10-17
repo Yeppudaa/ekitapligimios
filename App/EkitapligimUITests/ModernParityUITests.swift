@@ -108,7 +108,7 @@ final class ModernParityUITests: XCTestCase {
         XCTAssertEqual(app.launchEnvironment["MODERN_PARITY_PLAY_AUDIO"], "0")
         XCTAssertTrue(app.buttons["audio.detail.listen"].waitForExistence(timeout: 10))
         XCTAssertFalse(app.descendants(matching: .any)["audio.player"].exists)
-        let viewport = app.scrollViews["audio.detail.scroll"]
+        let viewport = app.scrollViews["audio.detail"]
         XCTAssertTrue(viewport.waitForExistence(timeout: 5), "The real outer detail scroll view must be identifiable")
         capture(app, "modern-audio-detail-\(mode)-before-scroll")
         let chapter = app.buttons["audio.detail.chapter.1010"]

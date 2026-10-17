@@ -39,7 +39,7 @@ struct AudioBookDetailView: View {
                     } else if model.loading { ProgressView().frame(maxWidth: .infinity).padding(50) }
                     else if let error = model.error { AudioErrorView(message: error) { Task { await model.load() } } }
                 }.padding(14).padding(.bottom, 28).frame(maxWidth: 900).frame(maxWidth: .infinity)
-            }.background(AudioStyle.paper).accessibilityIdentifier("audio.detail.scroll")
+            }.background(AudioStyle.paper).accessibilityIdentifier("audio.detail")
         }.navigationTitle(AudioL10n.text("detailTitle")).navigationBarTitleDisplayMode(.inline)
             .task(id: account) {
                 traceDetail("task.enter")
@@ -48,7 +48,6 @@ struct AudioBookDetailView: View {
             }.refreshable { await model.load() }
             .onChange(of: controller.revision) { _, _ in Task { await model.load() } }
             .sheet(isPresented: $premiumPresented) { AudioPremiumAccessView(onPremium: onPremium, onLogin: account == nil ? onLogin : nil) }
-            .accessibilityIdentifier("audio.detail")
     }
     private func anchors(proxy: ScrollViewProxy) -> some View {
         ScrollView(.horizontal, showsIndicators: false) {
