@@ -11,7 +11,12 @@ final class ModernParityUITests: XCTestCase {
         XCUIDevice.shared.orientation = .portrait
     }
 
-    override func tearDownWithError() throws { XCUIDevice.shared.orientation = .portrait }
+    override func tearDownWithError() throws {
+        if let run = testRun, run.failureCount > 0 || run.unexpectedExceptionCount > 0 {
+            attachFailureDiagnostics(XCUIApplication(), name: "native-ui-failure")
+        }
+        XCUIDevice.shared.orientation = .portrait
+    }
 
     private func launch(_ screen: String, largeText: Bool = false, dark: Bool = false, guest: Bool = false, standardMember: Bool = false, playAudio: Bool = false, catalogFailure: Bool = false) -> XCUIApplication {
         let app = XCUIApplication()
@@ -37,11 +42,41 @@ final class ModernParityUITests: XCTestCase {
     }
 
     private func reveal(_ element: XCUIElement, in app: XCUIApplication) {
-        for _ in 0..<12 {
-            if element.isHittable { return }
-            if element.exists && element.frame.midY < app.frame.midY { app.swipeDown() }
-            else { app.swipeUp() }
+        // Bind vertical gestures to the page, rather than a nested horizontal carousel. LazyVStack
+        // can report an existing, not-yet-laid-out child with a zero frame; that is not "above us".
+        let viewport = ["home.scroll", "notifications.list", "audio.catalog"]
+            .map { app.scrollViews[$0] }.first(where: { $0.exists }) ?? app.scrollViews.firstMatch
+        guard viewport.waitForExistence(timeout: 5) else {
+            attachFailureDiagnostics(app, name: "reveal-missing-viewport")
+            return
         }
+        for step in 0..<24 {
+            if element.isHittable { return }
+            let bounds = viewport.frame.intersection(app.frame)
+            let exists = element.exists
+            let frame = exists ? element.frame : .zero
+            let hasFrame = !frame.isEmpty && !frame.isNull && !frame.isInfinite
+            let identifier = exists ? element.identifier : "not-instantiated"
+            print("UI_REVEAL step=\(step),identifier=\(identifier),exists=\(exists),frame=\(frame),viewport=\(bounds),hittable=\(element.isHittable)")
+            guard bounds.width > 0, bounds.height > 0 else { break }
+            let needsDown = hasFrame && frame.maxY <= bounds.minY
+            let origin = app.coordinate(withNormalizedOffset: .zero)
+            let x = bounds.minX - app.frame.minX + bounds.width * 0.88
+            let top = origin.withOffset(CGVector(dx: x, dy: bounds.minY - app.frame.minY + bounds.height * 0.18))
+            let bottom = origin.withOffset(CGVector(dx: x, dy: bounds.minY - app.frame.minY + bounds.height * 0.85))
+            if needsDown { top.press(forDuration: 0.05, thenDragTo: bottom) }
+            else { bottom.press(forDuration: 0.05, thenDragTo: top) }
+        }
+        if !element.isHittable { attachFailureDiagnostics(app, name: "reveal-unreachable") }
+    }
+
+    private func attachFailureDiagnostics(_ app: XCUIApplication, name: String) {
+        capture(app, name)
+        // These tests run only the explicit offline fixture. Never attach a real account's tree.
+        let tree = XCTAttachment(string: String(app.debugDescription.prefix(40_000)))
+        tree.name = name + "-accessibility-tree"
+        tree.lifetime = .keepAlways
+        add(tree)
     }
 
     private func assertContained(_ element: XCUIElement, in app: XCUIApplication, file: StaticString = #filePath, line: UInt = #line) {
@@ -157,11 +192,20 @@ final class ModernParityUITests: XCTestCase {
         XCTAssertEqual(toggle.value as? String, "Filtreler kapalı")
         XCTAssertFalse(app.textFields["audio.filter.query"].exists)
         toggle.tap()
+        let opened = XCTNSPredicateExpectation(predicate: NSPredicate(format: "value == %@", "Filtreler açık"), object: toggle)
+        XCTAssertEqual(XCTWaiter.wait(for: [opened], timeout: 3), .completed, "Tapping the filter header must expand the controls")
         let query = app.textFields["audio.filter.query"]
+        reveal(query, in: app)
         XCTAssertTrue(query.waitForExistence(timeout: 3))
+        XCTAssertTrue(query.isHittable)
+        assertContained(query, in: app)
         XCTAssertEqual(toggle.value as? String, "Filtreler açık")
         capture(app, "modern-audio-filters-expanded")
+        reveal(toggle, in: app)
         toggle.tap()
+        let closed = XCTNSPredicateExpectation(predicate: NSPredicate(format: "value == %@", "Filtreler kapalı"), object: toggle)
+        let removed = XCTNSPredicateExpectation(predicate: NSPredicate(format: "exists == false"), object: query)
+        XCTAssertEqual(XCTWaiter.wait(for: [closed, removed], timeout: 3), .completed)
         XCTAssertFalse(query.exists)
         XCTAssertEqual(toggle.value as? String, "Filtreler kapalı")
     }

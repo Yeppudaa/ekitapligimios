@@ -165,10 +165,13 @@ struct RootView: View {
                 .transition(.opacity)
                 .zIndex(1)
 
-            HStack(spacing: 0) {
-                ModernSideMenu(onSelect: navigate, onClose: closeMenu)
-                    .frame(maxWidth: 368)
-                Spacer(minLength: 0)
+            GeometryReader { geometry in
+                HStack(spacing: 0) {
+                    ModernSideMenu(onSelect: navigate, onClose: closeMenu)
+                        .frame(width: min(368, geometry.size.width), height: geometry.size.height)
+                    Spacer(minLength: 0)
+                }
+                .frame(width: geometry.size.width, height: geometry.size.height, alignment: .leading)
             }
             .transition(.move(edge: .leading))
             .zIndex(2)

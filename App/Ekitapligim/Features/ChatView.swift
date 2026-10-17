@@ -55,11 +55,11 @@ struct ChatView: View {
             GeometryReader { geometry in
                 let compactHeader = geometry.size.height < 540 || dynamicTypeSize.isAccessibilitySize || isComposerFocused
                 VStack(spacing: 0) {
-                    pinnedChatHeader(compact: compactHeader)
-                        .frame(maxWidth: 900)
+                    pinnedChatHeader(compact: compactHeader, width: min(900, geometry.size.width))
                         .frame(maxWidth: .infinity)
-                    transcript.frame(maxHeight: .infinity)
+                    transcript.frame(maxWidth: .infinity, maxHeight: .infinity)
                 }
+                .frame(width: geometry.size.width, height: geometry.size.height, alignment: .top)
             }
         }
         .safeAreaInset(edge: .bottom, spacing: 0) {
@@ -134,7 +134,7 @@ struct ChatView: View {
     // MARK: Hero + odalar
 
     /// The artwork and current-room status stay still; only the transcript scrolls.
-    private func pinnedChatHeader(compact: Bool) -> some View {
+    private func pinnedChatHeader(compact: Bool, width: CGFloat) -> some View {
         VStack(spacing: 8) {
             if !compact {
                 ModernHeroView(
@@ -166,6 +166,7 @@ struct ChatView: View {
             .overlay(RoundedRectangle(cornerRadius: 16).stroke(EKitapligimPalette.chatBorder))
         }
         .padding(.horizontal, 14).padding(.top, 8).padding(.bottom, 8)
+        .frame(width: width)
         .accessibilityIdentifier("chat-pinned-header")
     }
 

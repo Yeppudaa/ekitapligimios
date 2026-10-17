@@ -23,9 +23,46 @@ final class AudioAssetResourceLoader: NSObject, AVAssetResourceLoaderDelegate {
     private var cancelledCount = 0
     private var failureCount = 0
     private var lastRequestedLength = 0
-    /// Numeric transport state only. No URL, account, token, title, or response body is retained.
+    private enum DebugMIME: String { case unknown, wav, mpeg, aac, mp4, flac, ogg, octet, other }
+    private enum DebugUTI: String { case unknown, wav, mp3, aac, m4a, flac, ogg, dynamic, other }
+    private var debugMIME: DebugMIME = .unknown
+    private var debugUTI: DebugUTI = .unknown
+    private var debugAllowedCount = -1
+    private var debugSelectedAllowed = true
+    private var debugIsDynamic = false
+    /// Numeric/enum transport state only. No URL, account, token, title, or response body is retained.
     var debugSnapshot: String {
-        "requests=\(requestCount),info=\(informationCount),data=\(dataRequestCount),bytes=\(responseBytes),finished=\(finishedCount),cancelled=\(cancelledCount),failures=\(failureCount),lastLength=\(lastRequestedLength),jobs=\(jobs.count),metadata=\(metadata != nil)"
+        "requests=\(requestCount),info=\(informationCount),data=\(dataRequestCount),bytes=\(responseBytes),finished=\(finishedCount),cancelled=\(cancelledCount),failures=\(failureCount),lastLength=\(lastRequestedLength),jobs=\(jobs.count),metadata=\(metadata != nil),mime=\(debugMIME.rawValue),uti=\(debugUTI.rawValue),allowedCount=\(debugAllowedCount),selectedAllowed=\(debugSelectedAllowed),isDynamic=\(debugIsDynamic)"
+    }
+    private func recordContentType(_ info: AVAssetResourceLoadingContentInformationRequest, metadata: AudioMediaMetadata) {
+        switch metadata.mimeType {
+        case "audio/wav", "audio/wave", "audio/x-wav", "audio/vnd.wave": debugMIME = .wav
+        case "audio/mpeg", "audio/mp3", "audio/x-mp3": debugMIME = .mpeg
+        case "audio/aac", "audio/aacp", "audio/x-aac": debugMIME = .aac
+        case "audio/mp4", "audio/m4a", "audio/x-m4a": debugMIME = .mp4
+        case "audio/flac", "audio/x-flac": debugMIME = .flac
+        case "audio/ogg", "audio/vorbis": debugMIME = .ogg
+        case "application/octet-stream": debugMIME = .octet
+        default: debugMIME = .other
+        }
+        let identifier = info.contentType
+        debugIsDynamic = identifier.flatMap { UTType($0) }?.isDynamic == true
+        if debugIsDynamic { debugUTI = .dynamic }
+        else {
+            switch identifier {
+            case UTType.wav.identifier: debugUTI = .wav
+            case UTType.mp3.identifier: debugUTI = .mp3
+            case "public.aac-audio": debugUTI = .aac
+            case "public.mpeg-4-audio": debugUTI = .m4a
+            case "org.xiph.flac": debugUTI = .flac
+            case "org.xiph.ogg-audio": debugUTI = .ogg
+            case nil: debugUTI = .unknown
+            default: debugUTI = .other
+            }
+        }
+        debugAllowedCount = info.allowedContentTypes?.count ?? -1
+        if let identifier, let allowed = info.allowedContentTypes { debugSelectedAllowed = allowed.contains(identifier) }
+        else { debugSelectedAllowed = true }
     }
     #endif
     var onFailure: ((Error) -> Void)?
@@ -76,6 +113,9 @@ final class AudioAssetResourceLoader: NSObject, AVAssetResourceLoaderDelegate {
                 if let info = request.contentInformationRequest {
                     info.contentType = metadata.mimeType == "application/octet-stream" ? UTType.mp3.identifier : (UTType(mimeType: metadata.mimeType)?.identifier ?? UTType.mp3.identifier)
                     info.contentLength = metadata.length; info.isByteRangeAccessSupported = true
+                    #if DEBUG
+                    self.recordContentType(info, metadata: metadata)
+                    #endif
                 }
                 if let target = request.dataRequest {
                     guard target.requestedOffset >= 0 else { throw AudioError.invalidRange }

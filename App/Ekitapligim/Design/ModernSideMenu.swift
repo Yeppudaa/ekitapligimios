@@ -29,7 +29,7 @@ struct ModernSideMenu: View {
         GeometryReader { geometry in
             let compact = geometry.size.height < 530 || dynamicTypeSize.isAccessibilitySize
             VStack(spacing: 0) {
-                header(compact: compact)
+                header(compact: compact, width: geometry.size.width)
                 ScrollView {
                     LazyVStack(alignment: .leading, spacing: 20) {
                         section(ShellRefreshL10n.text("menuExplore"), items: exploration)
@@ -44,13 +44,14 @@ struct ModernSideMenu: View {
                 }
                 .accessibilityIdentifier("modern-menu-scroll")
             }
+            .frame(width: geometry.size.width, height: geometry.size.height, alignment: .top)
             .background(Color(hex: 0xFAFCF7))
         }
         .onReceive(container.assistantModel.$bootstrap) { assistantAvailable = $0?.enabled ?? true }
         .accessibilityAddTraits(.isModal)
     }
 
-    private func header(compact: Bool) -> some View {
+    private func header(compact: Bool, width: CGFloat) -> some View {
         VStack(alignment: .leading, spacing: 17) {
             HStack(spacing: 10) {
                 Image("menu_logo").resizable().scaledToFit().padding(5)
@@ -66,13 +67,13 @@ struct ModernSideMenu: View {
                     }
                 }
                 .fixedSize(horizontal: false, vertical: true)
-                Spacer(minLength: 0)
+                .frame(maxWidth: .infinity, alignment: .leading)
                 Button(action: onClose) {
                     Image(systemName: "xmark").font(.headline).foregroundStyle(.white)
                         .frame(width: 48, height: 48)
                         .background(.white.opacity(0.13), in: Circle())
                 }
-                .buttonStyle(.plain).accessibilityLabel(L10n.menuClose)
+                .buttonStyle(.plain).fixedSize().layoutPriority(1).accessibilityLabel(L10n.menuClose)
                 .accessibilityIdentifier("modern-menu-close")
             }
             if !compact {
@@ -84,6 +85,7 @@ struct ModernSideMenu: View {
             }
         }
         .padding(17)
+        .frame(width: width, alignment: .leading)
         .background {
             GeometryReader { geometry in
                 Image("catalog_scenic_reading").resizable().scaledToFill()
@@ -93,6 +95,7 @@ struct ModernSideMenu: View {
             }
         }
         .clipped()
+        .accessibilityElement(children: .contain)
         .accessibilityIdentifier("modern-menu-header")
     }
 

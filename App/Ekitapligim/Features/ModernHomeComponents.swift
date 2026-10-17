@@ -197,6 +197,7 @@ struct ModernHomePromoPair: View {
             }
             VStack(spacing: 12) { promo(teal: true); promo(teal: false) }
         }
+        .accessibilityElement(children: .contain)
         .accessibilityIdentifier("home.scenicPromos")
     }
 

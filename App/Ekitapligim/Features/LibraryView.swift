@@ -113,6 +113,7 @@ struct LibraryView: View {
         }
         .clipShape(RoundedRectangle(cornerRadius: 24))
         .overlay { RoundedRectangle(cornerRadius: 24).stroke(Color(hex: 0xE7DECD)) }
+        .accessibilityElement(children: .contain)
         .accessibilityIdentifier("library.scenicHero")
     }
 

@@ -56,9 +56,11 @@ final class AudioPlaybackController: ObservableObject {
     private var acknowledgedActivities: Set<String> = []
     #if DEBUG
     private var debugAudioSessionPhase = "not-requested"
+    private enum DebugInitialSeekPhase: String { case notStarted, awaiting, completed, interrupted }
+    private var debugInitialSeekPhase: DebugInitialSeekPhase = .notStarted
     /// Content-free state used only by native tests; it never exposes media or account data.
     var debugPlaybackState: String {
-        "loading=\(loading),playing=\(playing),position=\(position),duration=\(duration),itemStatus=\(player?.currentItem?.status.rawValue ?? -1),timeControl=\(player?.timeControlStatus.rawValue ?? -1),waiting=\(player?.reasonForWaitingToPlay?.rawValue ?? "none"),audioSession=\(debugAudioSessionPhase),loader={\(loader?.debugSnapshot ?? "none")}"
+        "loading=\(loading),playing=\(playing),position=\(position),duration=\(duration),itemStatus=\(player?.currentItem?.status.rawValue ?? -1),timeControl=\(player?.timeControlStatus.rawValue ?? -1),waiting=\(player?.reasonForWaitingToPlay?.rawValue ?? "none"),audioSession=\(debugAudioSessionPhase),initialSeek=\(debugInitialSeekPhase.rawValue),loader={\(loader?.debugSnapshot ?? "none")}"
     }
     #endif
 
@@ -220,6 +222,9 @@ final class AudioPlaybackController: ObservableObject {
         guard let manifest, let account, manifest.chapters.indices.contains(index) else { throw AudioError.invalidResponse }
         releasePlayer(); chapterIndex = index; self.position = min(AudioPolicy.finite(position), manifest.chapters[index].duration)
         duration = manifest.chapters[index].duration; loading = true; playing = false; error = nil; accessError = nil
+        #if DEBUG
+        debugInitialSeekPhase = .notStarted
+        #endif
         let loader = AudioAssetResourceLoader(repository: repository, bookID: manifest.book.id, chapter: manifest.chapters[index], account: account)
         loader.onFailure = { [weak self] error in guard self?.generation == expected else { return }; self?.fail(error) }
         let item = AVPlayerItem(asset: try loader.asset()); self.loader = loader
@@ -233,7 +238,15 @@ final class AudioPlaybackController: ObservableObject {
                     self.loading = false
                     let realDuration = item.duration.seconds
                     if realDuration.isFinite, realDuration > 0 { self.duration = realDuration }
+                    #if DEBUG
+                    self.debugInitialSeekPhase = .awaiting
+                    let seekFinished = await player.seek(to: CMTime(seconds: min(initialPosition, self.duration), preferredTimescale: 600), toleranceBefore: .zero, toleranceAfter: .zero)
+                    if self.generation == expected, self.player === player {
+                        self.debugInitialSeekPhase = seekFinished ? .completed : .interrupted
+                    }
+                    #else
                     await player.seek(to: CMTime(seconds: min(initialPosition, self.duration), preferredTimescale: 600), toleranceBefore: .zero, toleranceAfter: .zero)
+                    #endif
                     guard self.generation == expected, self.player === player else { return }
                     if self.playWhenReady { self.resume() }; self.updateNowPlaying()
                 case .failed: self.fail(item.error ?? AudioError.invalidResponse)

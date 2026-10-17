@@ -157,6 +157,7 @@ struct NotificationsView: View {
         .frame(maxWidth: .infinity, alignment: .leading)
         .background(deliveryEnabled ? Color(hex: 0xF0F8F6) : Color(hex: 0xFFF8E9), in: RoundedRectangle(cornerRadius: 18))
         .overlay(RoundedRectangle(cornerRadius: 18).stroke(deliveryEnabled ? Color(hex: 0xD0E5DF) : Color(hex: 0xEBD8AA)))
+        .accessibilityElement(children: .contain)
         .accessibilityIdentifier("notifications.delivery.status")
     }
 

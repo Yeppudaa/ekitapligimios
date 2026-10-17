@@ -82,6 +82,7 @@ struct HomeView: View {
                     await categoryRequest
                     await refreshDynamicContent(force: true)
                 }
+                .accessibilityIdentifier("home.scroll")
             }
             .toolbar(.hidden, for: .navigationBar)
             .navigationDestination(for: String.self) { id in
