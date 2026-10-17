@@ -43,6 +43,45 @@ final class ModernParityUITests: XCTestCase {
         add(attachment)
     }
 
+    private func captureDevice(_ name: String) {
+        let attachment = XCTAttachment(screenshot: XCUIDevice.shared.screenshot())
+        attachment.name = name
+        attachment.lifetime = .keepAlways
+        add(attachment)
+    }
+
+    private func waitForStableLandscapeGeometry(_ app: XCUIApplication, screen: String) async -> Bool {
+        let deadline = Date().addingTimeInterval(15)
+        var previousAppFrame = CGRect.null
+        var previousWindowFrame = CGRect.null
+        var stableSamples = 0
+        while Date() < deadline && !Task.isCancelled {
+            let appFrame = app.frame
+            let window = app.windows.firstMatch
+            let windowFrame = window.exists ? window.frame : .zero
+            let landscape = XCUIDevice.shared.orientation == .landscapeLeft &&
+                appFrame.width > appFrame.height && appFrame.height > 0 &&
+                windowFrame.width > windowFrame.height && windowFrame.height > 0
+            let sameBounds = abs(appFrame.minX - windowFrame.minX) <= 1 &&
+                abs(appFrame.minY - windowFrame.minY) <= 1 &&
+                abs(appFrame.width - windowFrame.width) <= 1 && abs(appFrame.height - windowFrame.height) <= 1
+            if landscape && sameBounds && appFrame == previousAppFrame && windowFrame == previousWindowFrame {
+                stableSamples += 1
+            } else {
+                stableSamples = 0
+            }
+            print("LANDSCAPE_GEOMETRY screen=\(screen),app=\(appFrame),window=\(windowFrame),landscape=\(landscape),stableSamples=\(stableSamples)")
+            if stableSamples >= 2 { return true }
+            previousAppFrame = appFrame
+            previousWindowFrame = windowFrame
+            try? await Task.sleep(nanoseconds: 250_000_000)
+        }
+        // Preserve both actual rasters on failure; never rotate, crop or fill missing pixels.
+        captureDevice("modern-\(screen)-landscape-geometry-failure-device")
+        attachFailureDiagnostics(app, name: "modern-\(screen)-landscape-geometry-failure-app")
+        return false
+    }
+
     private func reveal(_ element: XCUIElement, in app: XCUIApplication, towardStart: Bool = false) {
         // Bind vertical gestures to the page, rather than a nested horizontal carousel. LazyVStack
         // can report an existing, not-yet-laid-out child with a zero frame; that is not "above us".
@@ -281,16 +320,37 @@ final class ModernParityUITests: XCTestCase {
         XCTAssertFalse(catalogHero.exists)
     }
 
-    func testRefreshedScreensCaptureSmokeEvidenceAtAccessibilityTextSizeInLandscape() throws {
+    func testRefreshedScreensCaptureSmokeEvidenceAtAccessibilityTextSizeInLandscape() async throws {
         // This collects visual evidence; per-feature tests assert actual control reachability.
         for screen in ["home", "catalog", "library", "profile", "requests", "forum", "threads", "authors", "publishers", "agenda", "live", "chat", "audio", "audio-detail", "audio-library", "notifications", "audio-player"] {
             let app = launch(screen, largeText: true, dark: true)
             if screen == "audio-player" { XCTAssertTrue(app.buttons["Duraklat"].firstMatch.waitForExistence(timeout: 15)) }
             XCUIDevice.shared.orientation = .landscapeLeft
+            let landscapeReady = await waitForStableLandscapeGeometry(app, screen: screen)
+            XCTAssertTrue(landscapeReady, "The actual application and window must settle in landscape before visual evidence is captured")
             XCTAssertTrue(app.scrollViews.firstMatch.waitForExistence(timeout: 8))
-            capture(app, "modern-\(screen)-landscape-accessibility3-dark")
+            captureDevice("modern-\(screen)-landscape-accessibility3-dark")
             app.swipeUp()
-            capture(app, "modern-\(screen)-landscape-accessibility3-scrolled")
+            captureDevice("modern-\(screen)-landscape-accessibility3-scrolled")
+            XCTAssertFalse(app.alerts.firstMatch.exists)
+            app.terminate()
+            XCUIDevice.shared.orientation = .portrait
+        }
+    }
+
+    func testLandscapeRotationSettlesActualWindowAndCapturesWholeDevice() async {
+        for screen in ["home", "chat", "audio"] {
+            let app = launch(screen)
+            XCUIDevice.shared.orientation = .landscapeLeft
+            let landscapeReady = await waitForStableLandscapeGeometry(app, screen: screen)
+            XCTAssertTrue(landscapeReady, "A supported landscape orientation must update the real application and window bounds")
+            XCTAssertGreaterThan(app.frame.width, app.frame.height)
+            XCTAssertTrue(app.windows.firstMatch.exists)
+            XCTAssertGreaterThan(app.windows.firstMatch.frame.width, app.windows.firstMatch.frame.height)
+            XCTAssertTrue(app.scrollViews.firstMatch.waitForExistence(timeout: 8))
+            // Keep the full device and application captures side by side for raster comparison.
+            captureDevice("modern-\(screen)-landscape-normal-device-comparison")
+            capture(app, "modern-\(screen)-landscape-normal-app-comparison")
             XCTAssertFalse(app.alerts.firstMatch.exists)
             app.terminate()
             XCUIDevice.shared.orientation = .portrait
@@ -443,9 +503,19 @@ final class ModernParityUITests: XCTestCase {
         reveal(listen, in: app)
         XCTAssertTrue(listen.isHittable)
         listen.tap()
-        XCTAssertTrue(app.staticTexts["Hikâyeler sana seslensin."].waitForExistence(timeout: 5))
+        let title = app.staticTexts["Hikâyeler sana seslensin."]
+        XCTAssertTrue(title.waitForExistence(timeout: 5))
+        assertContained(title, in: app)
         let message = app.staticTexts.matching(NSPredicate(format: "label CONTAINS %@", "Sadece Premium üyeler sesli kitap dinleyebilir")).firstMatch
         XCTAssertTrue(message.exists)
+        assertContained(message, in: app)
+        let hero = app.descendants(matching: .any)["audio.premium.hero"].firstMatch
+        XCTAssertTrue(hero.exists)
+        assertContained(hero, in: app)
+        let premium = app.buttons["Premium'u keşfet"]
+        reveal(premium, in: app)
+        XCTAssertTrue(premium.isHittable)
+        assertContained(premium, in: app)
         capture(app, "modern-audio-premium-explanation")
         // No Premium purchase, authentication, restore, or media manifest action is invoked.
         app.buttons["Şimdi değil"].tap()

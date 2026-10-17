@@ -42,7 +42,8 @@ struct ProfileView: View {
         .navigationBarTitleDisplayMode(.inline)
         .toolbar {
             if container.isSignedIn, profile?.canEdit != false {
-                ToolbarItem(placement: .topBarTrailing) {
+                // The shell's menu occupies the trailing corner; keep Edit in its own slot.
+                ToolbarItem(placement: .topBarLeading) {
                     Button { route = .edit } label: {
                         Text(L10n.commonEdit)
                             .font(.caption.weight(.bold))
@@ -51,6 +52,7 @@ struct ProfileView: View {
                             .padding(.vertical, 6)
                             .background(EKitapligimPalette.profileTealSoft, in: Capsule())
                     }
+                    .accessibilityIdentifier("profile.edit")
                 }
             }
         }

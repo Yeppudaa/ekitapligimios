@@ -280,7 +280,13 @@ struct AudioPlayerView: View {
                 Spacer()
             }.padding(22).background(AudioStyle.paper).foregroundStyle(AudioStyle.ink)
                 .navigationTitle(AudioL10n.text(anchor.kind == .quote ? "addQuote" : "addNote"))
+                .navigationBarTitleDisplayMode(.inline)
                 .toolbar {
+                    ToolbarItem(placement: .principal) {
+                        Text(AudioL10n.text(anchor.kind == .quote ? "addQuote" : "addNote"))
+                            .font(.headline).foregroundStyle(AudioStyle.ink)
+                            .accessibilityAddTraits(.isHeader)
+                    }
                     ToolbarItem(placement: .cancellationAction) { Button(AudioL10n.text("cancel")) { annotation = nil; editorText = "" } }
                     ToolbarItem(placement: .confirmationAction) {
                         Button(AudioL10n.text("saveAnnotation")) {

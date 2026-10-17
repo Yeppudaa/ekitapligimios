@@ -60,6 +60,7 @@ struct ChatView: View {
                     transcript.frame(maxWidth: .infinity, maxHeight: .infinity)
                 }
                 .frame(width: geometry.size.width, height: geometry.size.height, alignment: .top)
+                .clipped()
             }
         }
         .safeAreaInset(edge: .bottom, spacing: 0) {

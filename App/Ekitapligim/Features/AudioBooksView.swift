@@ -180,7 +180,7 @@ struct AudioBooksView: View {
             .overlay(RoundedRectangle(cornerRadius: 22).stroke(AudioStyle.line, lineWidth: 1))
     }
     private var clearButton: some View { Button(AudioL10n.text("clearFilters")) { query = ""; Task { await model.apply { $0 = AudioFilters() } } }.font(.caption).frame(minHeight: 44) }
-    private var searchButton: some View { Button(action: search) { Label(AudioL10n.text("search"), systemImage: "magnifyingglass").padding(.horizontal, 20).frame(minHeight: 44) }.buttonStyle(.borderedProminent).tint(AudioStyle.teal) }
+    private var searchButton: some View { Button(action: search) { Label(AudioL10n.text("search"), systemImage: "magnifyingglass").foregroundStyle(.white).padding(.horizontal, 20).frame(minHeight: 44) }.buttonStyle(.borderedProminent).tint(AudioStyle.teal) }
     private func search() { Task { await model.apply { $0.query = query.trimmingCharacters(in: .whitespacesAndNewlines) } } }
     private func chipRow(_ values: [(String, String)], selected: String, onSelect: @escaping (String) -> Void) -> some View {
         ScrollView(.horizontal, showsIndicators: false) { HStack(spacing: 8) { ForEach(values, id: \.0) { value, key in chip(AudioL10n.text(key), selected: selected == value) { onSelect(value) } } } }

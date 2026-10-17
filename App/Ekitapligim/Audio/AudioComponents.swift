@@ -154,12 +154,21 @@ struct AudioPremiumAccessView: View {
     var body: some View {
         ScrollView {
             VStack(alignment: .leading, spacing: 20) {
-                ZStack(alignment: .bottomLeading) {
-                    AudioArtwork(name: "audio_story_landscape").frame(height: 220).clipped()
-                    LinearGradient(colors: [.clear, AudioStyle.ink.opacity(0.95)], startPoint: .top, endPoint: .bottom)
-                    Label(AudioL10n.text("premiumEyebrow"), systemImage: "crown.fill").font(.caption.weight(.bold)).tracking(1.5)
-                        .foregroundStyle(AudioStyle.cream).padding(24)
-                }.clipShape(RoundedRectangle(cornerRadius: 24))
+                Label(AudioL10n.text("premiumEyebrow"), systemImage: "crown.fill")
+                    .font(.caption.weight(.bold)).tracking(1.5)
+                    .foregroundStyle(AudioStyle.cream).padding(24)
+                    .frame(maxWidth: .infinity, minHeight: 220, alignment: .bottomLeading)
+                    .background {
+                        GeometryReader { geometry in
+                            AudioArtwork(name: "audio_story_landscape")
+                                .frame(width: geometry.size.width, height: geometry.size.height).clipped()
+                                .overlay {
+                                    LinearGradient(colors: [.clear, AudioStyle.ink.opacity(0.95)], startPoint: .top, endPoint: .bottom)
+                                }
+                        }.accessibilityHidden(true)
+                    }
+                    .clipShape(RoundedRectangle(cornerRadius: 24))
+                    .accessibilityIdentifier("audio.premium.hero")
                 Text(AudioL10n.text("premiumTitle")).font(.system(.largeTitle, design: .serif, weight: .bold))
                 Text(AudioL10n.text("premiumMessage")).font(.body).foregroundStyle(AudioStyle.muted)
                 ForEach([("headphones", "premiumListen"), ("arrow.down.circle", "premiumDownload"), ("book.pages", "premiumReader")], id: \.1) { feature in

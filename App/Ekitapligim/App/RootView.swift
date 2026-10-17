@@ -133,9 +133,9 @@ struct RootView: View {
         Button(action: openMenu) {
             Image(systemName: "line.3.horizontal")
                 .accessibilityHidden(true)
-                .font(.title3.weight(.semibold))
+                .font(.system(size: 19, weight: .semibold))
                 .foregroundStyle(EKitapligimPalette.ink)
-                .frame(width: 42, height: 42)
+                .frame(width: 44, height: 44)
                 .background(.white.opacity(0.96))
                 .clipShape(RoundedRectangle(cornerRadius: 8, style: .continuous))
                 .overlay { RoundedRectangle(cornerRadius: 8).stroke(EKitapligimPalette.border) }

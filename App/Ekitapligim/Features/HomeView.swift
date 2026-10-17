@@ -85,6 +85,7 @@ struct HomeView: View {
                     await refreshDynamicContent(force: true)
                 }
                 .accessibilityIdentifier("home.scroll")
+                .clipped()
             }
             .toolbar(.hidden, for: .navigationBar)
             .navigationDestination(for: String.self) { id in
