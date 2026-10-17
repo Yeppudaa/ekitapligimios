@@ -24,8 +24,8 @@ struct AudioBooksView: View {
             LazyVStack(alignment: .leading, spacing: 24) {
                 hero
                 features
-                if let categories = model.catalog?.categories, !categories.isEmpty {
-                    categorySection(categories)
+                if !model.categories.isEmpty {
+                    categorySection(model.categories)
                 }
                 filters
                 if let personFilter = activePersonFilter { personFilterChip(personFilter) }
@@ -41,7 +41,7 @@ struct AudioBooksView: View {
                 LazyVGrid(columns: [GridItem(.adaptive(minimum: 150), spacing: 12)], alignment: .leading, spacing: 14) {
                     ForEach(model.books) { book in AudioCardView(book: book) { onBook(book.id) } }
                 }
-                if model.filters.page < (model.catalog?.pagination.pages ?? 1) {
+                if model.hasMore {
                     AudioActionButton(title: AudioL10n.text("loadMore"), icon: "arrow.down") { Task { await model.more() } }.disabled(model.loading)
                 }
             }.padding(16).padding(.bottom, 24).frame(maxWidth: 1050)
@@ -61,7 +61,7 @@ struct AudioBooksView: View {
                 HStack { heroListen; Button(AudioL10n.text("library"), action: onLibrary).frame(minHeight: 44) }
                 VStack { heroListen; Button(AudioL10n.text("library"), action: onLibrary).frame(minHeight: 44) }
             }.tint(AudioStyle.ink)
-            if let book = model.catalog?.hero {
+            if let book = model.hero {
                 AudioCoverView(book: book, width: 120).frame(maxWidth: .infinity).padding(.vertical, 6)
                 Button { onBook(book.id) } label: {
                     HStack(spacing: 14) {
@@ -85,8 +85,8 @@ struct AudioBooksView: View {
     }
     private var heroListen: some View {
         AudioActionButton(title: AudioL10n.text("startListening"), icon: "headphones", prominent: true) {
-            if let id = model.catalog?.hero?.id { onBook(id) }
-        }.disabled(model.catalog?.hero == nil)
+            if let id = model.hero?.id { onBook(id) }
+        }.disabled(model.hero == nil)
     }
     private var features: some View {
         AudioCatalogFeatureLayout(spacing: 20, rowSpacing: 14) {

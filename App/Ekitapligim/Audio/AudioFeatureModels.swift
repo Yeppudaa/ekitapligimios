@@ -5,39 +5,80 @@ import EkitapligimCore
 @MainActor
 final class AudioCatalogModel: ObservableObject {
     @Published private(set) var catalog: AudioCatalogDTO?
+    @Published private(set) var categories: [AudioCategoryDTO] = []
+    @Published private(set) var hero: AudioBookDTO?
     @Published private(set) var books: [AudioBookDTO] = []
     @Published private(set) var loading = false
     @Published private(set) var error: String?
     @Published var filters = AudioFilters()
     private let repository: any AudioServing
     private var generation = UUID()
-    private var retryPage: Int?
+    private var successfulCriteria: AudioCatalogCriteria?
+    private var successfulPage = 0
+    private var successfulPageCount = 1
+    private var failedRequest: AudioCatalogPageRequest?
+    var hasMore: Bool {
+        successfulCriteria == AudioCatalogCriteria(filters) && successfulPage > 0 && successfulPage < successfulPageCount
+    }
     init(repository: any AudioServing, filters: AudioFilters = .init()) { self.repository = repository; self.filters = filters }
     func load(append: Bool = false) async {
+        if append { await more(); return }
         var requestFilters = filters
-        if !append { requestFilters.page = 1 }
-        await loadPage(requestFilters, append: append)
+        requestFilters.page = 1
+        await loadPage(requestFilters, append: false)
     }
     private func loadPage(_ requestFilters: AudioFilters, append: Bool) async {
-        generation = UUID(); let expected = generation; loading = true; error = nil
+        let criteria = AudioCatalogCriteria(requestFilters)
+        guard criteria == AudioCatalogCriteria(filters) else { return }
+        if append {
+            guard successfulCriteria == criteria, successfulPage > 0,
+                  requestFilters.page == successfulPage + 1, requestFilters.page <= successfulPageCount else { return }
+        } else if successfulCriteria != criteria {
+            // Browse artwork/categories remain useful, but results and pagination belong to one criteria set.
+            books = []; catalog = nil; successfulCriteria = nil; successfulPage = 0; successfulPageCount = 1
+        }
+        generation = UUID(); let expected = generation; loading = true; error = nil; failedRequest = nil
         defer { if generation == expected { loading = false } }
         do {
             let result = try await repository.catalog(filters: requestFilters)
-            try Task.checkCancellation(); guard generation == expected else { return }
-            catalog = result; filters = requestFilters; retryPage = nil
+            try Task.checkCancellation()
+            guard generation == expected, AudioCatalogCriteria(filters) == criteria else { return }
+            catalog = result; filters = requestFilters
+            if !result.categories.isEmpty { categories = result.categories }
+            if let resultHero = result.hero { hero = resultHero }
+            successfulCriteria = criteria; successfulPage = requestFilters.page; successfulPageCount = result.pagination.pages
             if append { let ids = Set(books.map(\.id)); books.append(contentsOf: result.books.filter { !ids.contains($0.id) }) }
             else { books = result.books }
-        } catch is CancellationError { } catch { if generation == expected { self.error = AudioL10n.error(error); retryPage = append ? requestFilters.page : nil } }
+        } catch is CancellationError { } catch {
+            guard generation == expected, AudioCatalogCriteria(filters) == criteria else { return }
+            self.error = AudioL10n.error(error); failedRequest = AudioCatalogPageRequest(filters: requestFilters, append: append)
+        }
     }
     func apply(_ update: (inout AudioFilters) -> Void) async { update(&filters); filters.page = 1; await load() }
     func more() async {
-        guard !loading, filters.page < (catalog?.pagination.pages ?? 1) else { return }
-        var next = filters; next.page += 1; await loadPage(next, append: true)
+        guard !loading, hasMore else { return }
+        var next = filters; next.page = successfulPage + 1; await loadPage(next, append: true)
     }
     func retry() async {
-        if let retryPage { var next = filters; next.page = retryPage; await loadPage(next, append: true) }
+        guard !loading else { return }
+        if let failedRequest, AudioCatalogCriteria(failedRequest.filters) == AudioCatalogCriteria(filters) {
+            await loadPage(failedRequest.filters, append: failedRequest.append)
+        }
         else { await load() }
     }
+}
+
+private struct AudioCatalogCriteria: Equatable {
+    let filters: AudioFilters
+    init(_ filters: AudioFilters) {
+        var criteria = filters; criteria.page = 1
+        self.filters = criteria
+    }
+}
+
+private struct AudioCatalogPageRequest {
+    let filters: AudioFilters
+    let append: Bool
 }
 
 @MainActor

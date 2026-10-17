@@ -120,7 +120,7 @@ final class AudioAssetResourceLoader: NSObject, AVAssetResourceLoaderDelegate {
                 if let target = request.dataRequest {
                     guard target.requestedOffset >= 0 else { throw AudioError.invalidRange }
                     var offset = max(target.requestedOffset, target.currentOffset)
-                    guard offset >= 0, offset <= metadata.length else { throw AudioError.invalidRange }
+                    guard offset >= 0 else { throw AudioError.invalidRange }
                     let requestedEnd: Int64
                     if target.requestsAllDataToEndOfResource { requestedEnd = metadata.length }
                     else {
@@ -128,6 +128,7 @@ final class AudioAssetResourceLoader: NSObject, AVAssetResourceLoaderDelegate {
                         guard length >= 0, target.requestedOffset <= Int64.max - length else { throw AudioError.invalidRange }
                         requestedEnd = min(metadata.length, target.requestedOffset + length)
                     }
+                    // A request at or beyond EOF is satisfied by finishing without a data response.
                     while offset < requestedEnd {
                         try Task.checkCancellation()
                         guard !self.stopped, !request.isCancelled else { throw CancellationError() }
