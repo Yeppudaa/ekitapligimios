@@ -229,9 +229,21 @@ struct ModernHomePromoPair: View {
                 if teal {
                     LinearGradient(colors: [Color(hex: 0x064A51), Color(hex: 0x51A18D)], startPoint: .leading, endPoint: .trailing)
                     Image("home_teal_books_scene").resizable().scaledToFit()
+                        .mask {
+                            LinearGradient(stops: [.init(color: .clear, location: 0), .init(color: .white, location: 0.22), .init(color: .white, location: 1)], startPoint: .leading, endPoint: .trailing)
+                        }
+                        .mask {
+                            LinearGradient(stops: [.init(color: .clear, location: 0), .init(color: .white, location: 0.20), .init(color: .white, location: 1)], startPoint: .top, endPoint: .bottom)
+                        }
                         .frame(width: proxy.size.width * 0.53, height: max(110, proxy.size.height - 105))
                         .frame(maxWidth: .infinity, maxHeight: .infinity, alignment: .bottomTrailing)
                     Image("home_teal_leaves_scene").resizable().scaledToFit()
+                        .mask {
+                            LinearGradient(stops: [.init(color: .clear, location: 0), .init(color: .white, location: 0.20), .init(color: .white, location: 0.80), .init(color: .clear, location: 1)], startPoint: .leading, endPoint: .trailing)
+                        }
+                        .mask {
+                            LinearGradient(stops: [.init(color: .clear, location: 0), .init(color: .white, location: 0.20), .init(color: .white, location: 0.80), .init(color: .clear, location: 1)], startPoint: .top, endPoint: .bottom)
+                        }
                         .frame(width: 75, height: 105)
                         .padding(.trailing, 20)
                         .frame(maxWidth: .infinity, maxHeight: .infinity, alignment: .topTrailing)
