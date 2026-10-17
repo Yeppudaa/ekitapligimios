@@ -179,6 +179,25 @@ final class ModernParityUITests: XCTestCase {
         capture(app, "modern-home-personal-library-footer")
     }
 
+    func testHomeNewArrivalCardsRemainVisibleAndOpenNativeBookDetails() {
+        for largeText in [false, true] {
+            let app = launch("home", largeText: largeText)
+            let firstBook = app.buttons["home.bookRail.newest.book.900041"]
+            reveal(firstBook, in: app)
+            XCTAssertTrue(firstBook.isHittable, "A loaded newest-book card must be visible beneath its heading")
+            XCTAssertGreaterThan(firstBook.frame.height, 100, "The horizontal rail must retain its actual card height")
+            assertContained(firstBook, in: app)
+            capture(app, largeText ? "modern-home-newest-cards-accessibility3" : "modern-home-newest-cards-normal")
+            firstBook.tap()
+            XCTAssertTrue(app.staticTexts["Sonsuzluğun Büyüsü"].firstMatch.waitForExistence(timeout: 8), "The selected newest book must open its own native detail")
+            let back = app.buttons["book.detail.back"]
+            XCTAssertTrue(back.waitForExistence(timeout: 5))
+            back.tap()
+            XCTAssertTrue(firstBook.waitForExistence(timeout: 5))
+            app.terminate()
+        }
+    }
+
     func testHomeGenreOpensFilteredCatalogAndReturnsToHomeInTheSameNavigationStack() {
         let app = launch("home")
         let genre = app.buttons["home.genre.6"].firstMatch

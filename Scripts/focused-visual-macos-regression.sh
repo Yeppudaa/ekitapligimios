@@ -29,7 +29,7 @@ finish_evidence() {
 }
 trap 'finish_evidence "$?"' EXIT
 
-printf '%s\n' 'Seven selected offline UI cases on compact/large iPhone and iPad. Does not validate native audio output, all pages or purchase/auth services.' > "$EVIDENCE/scope.txt"
+printf '%s\n' 'Nine selected offline UI cases on compact/large iPhone and iPad. Does not validate native audio output, all pages or purchase/auth services.' > "$EVIDENCE/scope.txt"
 git rev-parse HEAD > "$EVIDENCE/revision.txt"
 xcodebuild -version | tee "$EVIDENCE/xcode-version.txt"
 xcrun xcresulttool version > "$EVIDENCE/xcresulttool-version.txt"
@@ -70,8 +70,8 @@ while IFS=$'\t' read -r label device; do
   while IFS= read -r method; do
     arguments+=("-only-testing:EkitapligimUITests/ModernParityUITests/$method")
   done < <(python3 -c 'import runpy; print("\n".join(sorted(runpy.run_path("Scripts/focused-visual-regression.py")["TEST_METHODS"])))')
-  if [ "${#arguments[@]}" -ne 7 ]; then
-    printf 'Expected exactly seven selectors; refusing to run an unbounded suite\n' >&2
+  if [ "${#arguments[@]}" -ne 9 ]; then
+    printf 'Expected exactly nine selectors; refusing to run an unbounded suite\n' >&2
     exit 1
   fi
   xcodebuild test -project Ekitapligim.xcodeproj -scheme "$scheme" \
@@ -107,7 +107,7 @@ while IFS=$'\t' read -r label device; do
   if [ "$evidence_status" -ne 0 ]; then result=1; fi
 done < "$EVIDENCE/simulators.tsv"
 
-printf '\nFOCUSED VISUAL REGRESSION SUMMARY (seven selected cases per device; not full parity or release validation)\n'
+printf '\nFOCUSED VISUAL REGRESSION SUMMARY (nine selected cases per device; not full parity or release validation)\n'
 while IFS=$'\t' read -r label device; do
   printf '%s exit: %s (simulator %s)\n' "$label" "$(cat "$EVIDENCE/$label-status.txt")" "$device"
 done < "$EVIDENCE/simulators.tsv"

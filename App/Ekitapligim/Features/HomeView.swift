@@ -69,7 +69,8 @@ struct HomeView: View {
                             bookRail(
                                 title: L10n.homePremiumRailTitle,
                                 subtitle: L10n.homePremiumRailSubtitle,
-                                books: premiumBooks
+                                books: premiumBooks,
+                                identifier: "premium"
                             )
                         }
                         requestCenterCard
@@ -186,7 +187,7 @@ struct HomeView: View {
                 title: HomeRefreshL10n.text("new.title"), subtitle: HomeRefreshL10n.text("new.subtitle"), minHeight: 180,
                 actionTitle: L10n.homeSeeAll) { container.open(route: .catalog) }
                 .padding(.horizontal, 16)
-            bookRail(title: L10n.homeNewestTitle, subtitle: L10n.homeNewestSubtitle, books: newestBooks)
+            bookRail(title: L10n.homeNewestTitle, subtitle: L10n.homeNewestSubtitle, books: newestBooks, identifier: "newest")
         }
     }
 
@@ -491,7 +492,7 @@ struct HomeView: View {
 
     // MARK: - Kitap rayları
 
-    private func bookRail(title: String, subtitle: String, books: [BookDTO]) -> some View {
+    private func bookRail(title: String, subtitle: String, books: [BookDTO], identifier: String) -> some View {
         VStack(alignment: .leading, spacing: 12) {
             ModernSectionHeading(title: title, subtitle: subtitle, actionTitle: L10n.homeSeeAll) {
                 container.open(route: .catalog)
@@ -502,13 +503,19 @@ struct HomeView: View {
                 ProgressView().tint(EKitapligimPalette.teal).frame(maxWidth: .infinity, minHeight: 180)
             } else if !books.isEmpty {
                 ScrollView(.horizontal, showsIndicators: false) {
-                    LazyHStack(alignment: .top, spacing: 12) {
+                    // This bounded eight-card rail must supply its natural height inside the
+                    // vertically scrolling home page, including at accessibility text sizes.
+                    HStack(alignment: .top, spacing: 12) {
                         ForEach(books.prefix(8)) { book in
-                            NavigationLink(value: book.id) { HomeBookCard(book: book) }.buttonStyle(.plain)
+                            NavigationLink(value: book.id) { HomeBookCard(book: book) }
+                                .buttonStyle(.plain)
+                                .accessibilityIdentifier("home.bookRail.\(identifier).book.\(book.id)")
                         }
                     }
                     .padding(.horizontal, 16)
                 }
+                .accessibilityElement(children: .contain)
+                .accessibilityIdentifier("home.bookRail.\(identifier)")
             }
         }
     }

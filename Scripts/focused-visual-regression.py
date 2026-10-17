@@ -10,6 +10,8 @@ TEST_METHODS = {
     "testA01AudioDetailTargetedDragReachesItsChapterWithoutPlayback",
     "testChatTranscriptScrollDoesNotMoveItsHeaderOrExposeRemovedRoomTabs",
     "testHomeLowerScenicSectionsRemainReachableAndContained",
+    "testHomeNewArrivalCardsRemainVisibleAndOpenNativeBookDetails",
+    "testFailedCatalogCategoryChangeRemovesOldResultsAndRetryUsesTheNewCategory",
     "testHomeGenreOpensFilteredCatalogAndReturnsToHomeInTheSameNavigationStack",
     "testLibraryArtworkAndActualShelfNavigationRemainReachable",
     "testProfileFavoriteShelfAndDetailBackNavigationKeepTheChosenShelf",
@@ -25,7 +27,7 @@ def verify(summary_path, tests_path, output):
         report["counts"] = counts
         expected = {"totalTestCount": len(TEST_METHODS), "passedTests": len(TEST_METHODS), "failedTests": 0, "skippedTests": 0}
         if any(type(counts[key]) is not int or counts[key] != value for key, value in expected.items()):
-            errors.append("Summary must record exactly the seven selected passing cases, zero failures and zero skips")
+            errors.append("Summary must record exactly the nine selected passing cases, zero failures and zero skips")
         leaves = []
         def visit(node):
             if isinstance(node, dict):
@@ -41,7 +43,7 @@ def verify(summary_path, tests_path, output):
         visit(tests)
         report["testCases"] = leaves
         if len(leaves) != len(TEST_METHODS) or any(len(leaf["methods"]) != 1 or leaf["result"] != "Passed" for leaf in leaves):
-            errors.append("Tree must contain exactly seven recognized passing test-case leaves")
+            errors.append("Tree must contain exactly nine recognized passing test-case leaves")
         methods = [method for leaf in leaves for method in leaf["methods"]]
         if len(methods) != len(TEST_METHODS) or set(methods) != TEST_METHODS:
             errors.append("Exact selected UI methods did not each run once")

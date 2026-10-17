@@ -71,7 +71,7 @@ workflows:
       cache_paths:
         - .build/xcode-packages
     scripts:
-      - name: Seven selected UI regressions on three device sizes
+      - name: Nine selected UI regressions on three device sizes
         script: bash Scripts/focused-visual-macos-regression.sh
     artifacts:
       - build/focused-visual-regression-archives/modern-parity-evidence.zip
