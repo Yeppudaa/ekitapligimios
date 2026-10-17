@@ -13,7 +13,7 @@ final class ModernParityUITests: XCTestCase {
 
     override func tearDownWithError() throws { XCUIDevice.shared.orientation = .portrait }
 
-    private func launch(_ screen: String, largeText: Bool = false, dark: Bool = false, guest: Bool = false, standardMember: Bool = false, playAudio: Bool = false) -> XCUIApplication {
+    private func launch(_ screen: String, largeText: Bool = false, dark: Bool = false, guest: Bool = false, standardMember: Bool = false, playAudio: Bool = false, catalogFailure: Bool = false) -> XCUIApplication {
         let app = XCUIApplication()
         app.launchArguments = ["-modern-parity-ui-fixture", "-AppleLanguages", "(tr)", "-AppleLocale", "tr_TR"]
         app.launchEnvironment["MODERN_PARITY_SCREEN"] = screen
@@ -22,6 +22,7 @@ final class ModernParityUITests: XCTestCase {
         app.launchEnvironment["MODERN_PARITY_GUEST"] = guest ? "1" : "0"
         app.launchEnvironment["MODERN_PARITY_STANDARD_MEMBER"] = standardMember ? "1" : "0"
         app.launchEnvironment["MODERN_PARITY_PLAY_AUDIO"] = playAudio ? "1" : "0"
+        app.launchEnvironment["MODERN_PARITY_CATALOG_FAILURE"] = catalogFailure ? "1" : "0"
         app.launch()
         XCTAssertTrue(app.otherElements["modern-parity-ready"].waitForExistence(timeout: 10), "The offline screen did not become ready: \(screen)")
         XCTAssertFalse(app.staticTexts["modern-parity-error"].exists)
@@ -165,6 +166,33 @@ final class ModernParityUITests: XCTestCase {
         XCTAssertEqual(toggle.value as? String, "Filtreler kapalı")
     }
 
+    func testFailedCatalogCategoryChangeRemovesOldResultsAndRetryUsesTheNewCategory() {
+        let app = launch("catalog", catalogFailure: true)
+        let oldBook = app.buttons["catalog.book.900041"]
+        reveal(oldBook, in: app)
+        XCTAssertTrue(oldBook.waitForExistence(timeout: 8))
+        let categories = app.scrollViews["catalog.categories"]
+        reveal(categories, in: app)
+        XCTAssertTrue(categories.isHittable)
+        let category = app.buttons["catalog.category.35"]
+        for _ in 0..<12 {
+            if category.isHittable { break }
+            categories.swipeLeft()
+        }
+        XCTAssertTrue(category.isHittable)
+        category.tap()
+        let retry = app.buttons["catalog.retry"]
+        reveal(retry, in: app)
+        XCTAssertTrue(retry.waitForExistence(timeout: 8), "A failed category reset must show an error instead of the old results")
+        capture(app, "modern-catalog-category-failure-without-stale-results")
+        retry.tap()
+        let newBook = app.buttons["catalog.book.900140"]
+        reveal(newBook, in: app)
+        XCTAssertTrue(newBook.waitForExistence(timeout: 8))
+        XCTAssertFalse(oldBook.exists, "Old category results must never be mixed with the retried category")
+        capture(app, "modern-catalog-category-retry-recovered")
+    }
+
     func testNonPremiumAudiobookListenShowsAccessMessageWithoutStartingPurchase() {
         let app = launch("audio-detail", standardMember: true)
         let listen = app.buttons["audio.detail.listen"]
@@ -205,6 +233,27 @@ final class ModernParityUITests: XCTestCase {
         XCTAssertTrue(destination.waitForExistence(timeout: 8))
         XCTAssertTrue(app.staticTexts["Dinleme yolculuğun"].exists)
         capture(app, "modern-profile-to-audiobook-library-native-route")
+    }
+
+    func testProfileFavoriteShelfAndDetailBackNavigationKeepTheChosenShelf() {
+        let app = launch("profile")
+        let favorites = app.buttons["profile.ebook.shelf.3"]
+        reveal(favorites, in: app)
+        XCTAssertTrue(favorites.isHittable)
+        favorites.tap()
+        let selectedShelf = app.buttons["library.shelf.3"]
+        XCTAssertTrue(selectedShelf.waitForExistence(timeout: 8))
+        XCTAssertTrue(selectedShelf.isSelected, "The profile's Favorites route must not open the Reading shelf")
+        let book = app.buttons["library.book.900042"]
+        reveal(book, in: app)
+        XCTAssertTrue(book.isHittable)
+        book.tap()
+        let back = app.navigationBars.buttons.firstMatch
+        XCTAssertTrue(back.waitForExistence(timeout: 8))
+        back.tap()
+        XCTAssertTrue(selectedShelf.waitForExistence(timeout: 5))
+        XCTAssertTrue(selectedShelf.isSelected, "Returning from book details must retain the selected shelf")
+        capture(app, "modern-profile-favorites-retained-after-book-detail")
     }
 
     func testNotificationsReadPermissionStatusWithoutAutomaticallyRequestingPermission() {

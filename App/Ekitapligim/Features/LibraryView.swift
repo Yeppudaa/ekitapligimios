@@ -40,16 +40,15 @@ enum LibraryTab: Int, CaseIterable, Identifiable, Hashable {
 struct LibraryView: View {
     @EnvironmentObject private var container: AppContainer
 
-    private let initialTab: LibraryTab
     @State private var selectedTab: LibraryTab
     @State private var isLoading = false
     @State private var errorMessage: String?
     @State private var showingLogin = false
+    @State private var hasAppliedInitialShelf = false
 
     private var items: [LibraryItemDTO] { container.libraryItems }
 
     init(initialTab: LibraryTab = .reading) {
-        self.initialTab = initialTab
         _selectedTab = State(initialValue: initialTab)
     }
 
@@ -74,8 +73,12 @@ struct LibraryView: View {
         .navigationBarTitleDisplayMode(.large)
         .sheet(isPresented: $showingLogin) { LoginView() }
         .task { await load() }
+        // Keep the requested shelf and local selection when a book detail is popped.
+        // Explicit external library routes can still change an already mounted view.
         .onAppear {
-            selectedTab = LibraryTab(index: container.libraryShelfTab)
+            guard !hasAppliedInitialShelf else { return }
+            hasAppliedInitialShelf = true
+            container.libraryShelfTab = selectedTab.rawValue
         }
         .onChange(of: container.libraryShelfTab) { _, tab in
             selectedTab = LibraryTab(index: tab)
@@ -166,6 +169,7 @@ struct LibraryView: View {
                     Button {
                         withAnimation(.spring(response: 0.35, dampingFraction: 0.8)) {
                             selectedTab = tab
+                            container.libraryShelfTab = tab.rawValue
                         }
                     } label: {
                         HStack(spacing: 9) {
@@ -209,10 +213,13 @@ struct LibraryView: View {
                     }
                     .buttonStyle(.plain)
                     .accessibilityLabel(tab.title)
+                    .accessibilityIdentifier("library.shelf.\(tab.rawValue)")
+                    .accessibilityAddTraits(selected ? [.isSelected] : [])
                 }
             }
         }
         .accessibilityLabel(L10n.libraryShelfPicker)
+        .accessibilityIdentifier("library.shelves")
     }
 
     @ViewBuilder private var content: some View {
@@ -237,6 +244,7 @@ struct LibraryView: View {
                 }
                 .buttonStyle(.plain)
                 .accessibilityHint(L10n.libraryOpenBookDetail)
+                .accessibilityIdentifier("library.book.\(item.bookId)")
             }
         }
     }

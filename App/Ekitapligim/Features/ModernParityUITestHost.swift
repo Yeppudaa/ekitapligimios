@@ -146,6 +146,8 @@ private actor ModernParityTokenStore: TokenStore {
 }
 
 private final class ModernParityProtocol: URLProtocol, @unchecked Sendable {
+    private static let catalogFailureLock = NSLock()
+    private static var didFailFilteredCatalog = false
     override class func canInit(with request: URLRequest) -> Bool { true }
     override class func canonicalRequest(for request: URLRequest) -> URLRequest { request }
     override func startLoading() {
@@ -155,6 +157,21 @@ private final class ModernParityProtocol: URLProtocol, @unchecked Sendable {
             return
         }
         let readOnly = request.httpMethod == nil || request.httpMethod == "GET" || request.httpMethod == "HEAD"
+        if readOnly, ProcessInfo.processInfo.environment["MODERN_PARITY_CATALOG_FAILURE"] == "1",
+           url.path.hasSuffix("/ios-api/v1/books"),
+           URLComponents(url: url, resolvingAgainstBaseURL: false)?.queryItems?.contains(where: { $0.name == "category" && !($0.value ?? "").isEmpty }) == true {
+            Self.catalogFailureLock.lock()
+            let fail = !Self.didFailFilteredCatalog
+            Self.didFailFilteredCatalog = true
+            Self.catalogFailureLock.unlock()
+            let payload: [String: Any] = fail ? ["errors": ["Deliberate offline category failure"]]
+                : ["books": [ModernParityPayload.book(100)], "pagination": ["page": 1, "pages": 1, "total": 1]]
+            guard let data = try? JSONSerialization.data(withJSONObject: payload) else {
+                client?.urlProtocol(self, didFailWithError: URLError(.cannotDecodeContentData)); return
+            }
+            deliver(url: url, status: fail ? 503 : 200, headers: ["Content-Type": "application/json", "Cache-Control": "no-store"], data: data)
+            return
+        }
         if readOnly, ["/books", "/books/"].contains(url.path),
            URLComponents(url: url, resolvingAgainstBaseURL: false)?.queryItems?.contains(.init(name: "featured", value: "1")) == true {
             let cards = (1...4).map { value in

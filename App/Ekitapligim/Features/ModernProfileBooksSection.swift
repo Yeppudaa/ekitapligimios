@@ -24,9 +24,12 @@ struct ModernProfileBooksSection: View {
                 subtitle: ShellRefreshL10n.text("profileShelvesNote"))
             LazyVGrid(columns: columns, spacing: 10) {
                 ModernShelfTile(title: L10n.libraryTabFavorites, value: String(container.favoriteBooks.count), icon: "heart", tint: Color(hex: 0xAC7967)) { onLibrary(.favorites) }
+                    .accessibilityIdentifier("profile.ebook.shelf.3")
                 ModernShelfTile(title: L10n.profileActionReadLater, value: String(container.wantToRead.count), icon: "bookmark") { onLibrary(.wantToRead) }
+                    .accessibilityIdentifier("profile.ebook.shelf.1")
                 ModernShelfTile(title: L10n.profileActionReadingNow, value: String(container.currentlyReading.count), icon: "book.pages") { onLibrary(.reading) }
                 ModernShelfTile(title: L10n.profileActionFinished, value: String(container.finishedBooks.count), icon: "checkmark.circle.fill", tint: Color(hex: 0x72875D)) { onLibrary(.finished) }
+                    .accessibilityIdentifier("profile.ebook.shelf.2")
                 ModernShelfTile(title: L10n.profileActionDownloads, value: String(container.downloadedBooks.count), icon: "arrow.down.circle.fill", action: onDownloads)
                 ModernShelfTile(title: L10n.profileActionMyComments, value: "→", icon: "text.bubble", tint: Color(hex: 0xB48A40), action: onComments)
             }

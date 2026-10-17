@@ -21,8 +21,10 @@ struct CatalogView: View {
     @State private var isRefreshing = false
     @State private var isLoadingMore = false
     @State private var loadGeneration = UUID()
+    @State private var loadedRequest: CatalogRequestIdentity?
     @State private var showingFilters = false
     @State private var errorMessage: String?
+    @State private var retryResetsResults = true
     @AppStorage("catalog.displayMode") private var displayModeRawValue = CatalogDisplayMode.grid.rawValue
 
     init(initialCategoryID: String = "", initialOrder: String = "latest", embeddedInNavigationStack: Bool = false,
@@ -108,8 +110,9 @@ struct CatalogView: View {
             }
             .task {
                 async let editorRequest: Void = loadEditorSelection()
-                await loadCategories()
+                async let categoryRequest: Void = loadCategories()
                 await load(reset: true)
+                await categoryRequest
                 await editorRequest
             }
             .alert(HomeRefreshL10n.text("catalog.help"), isPresented: $showingReadingHelp) {
@@ -244,19 +247,32 @@ struct CatalogView: View {
                         filters.categoryID = forum.id
                         Task { await load(reset: true) }
                     }
+                    .accessibilityIdentifier("catalog.category.\(forum.id)")
                 }
             }
         }
+        .accessibilityIdentifier("catalog.categories")
     }
 
     @ViewBuilder
     private var catalogBookArea: some View {
         if let message = errorMessage, books.isEmpty {
-            ContentUnavailableView(
-                L10n.catalogUnavailableTitle,
-                systemImage: "wifi.exclamationmark",
-                description: Text(message)
-            )
+            VStack(spacing: 12) {
+                ContentUnavailableView(
+                    L10n.catalogUnavailableTitle,
+                    systemImage: "wifi.exclamationmark",
+                    description: Text(message)
+                )
+                Button { retryFailedLoad() } label: {
+                    Label(L10n.commonRetry, systemImage: "arrow.clockwise")
+                        .font(.subheadline.weight(.semibold))
+                        .foregroundStyle(.white).padding(.horizontal, 20).padding(.vertical, 12)
+                        .frame(minHeight: 48)
+                        .background(EKitapligimPalette.teal, in: Capsule())
+                }
+                .buttonStyle(.plain)
+                .accessibilityIdentifier("catalog.retry")
+            }
             .frame(minHeight: 220)
         } else if books.isEmpty && !isLoading && !isRefreshing {
             ContentUnavailableView(
@@ -266,6 +282,10 @@ struct CatalogView: View {
             )
             .frame(minHeight: 220)
         } else {
+            if let message = errorMessage {
+                EKInlineError(message: message, retryTitle: L10n.commonRetry, retry: retryFailedLoad)
+                    .accessibilityIdentifier("catalog.retryInline")
+            }
             catalogGridOrList
         }
     }
@@ -277,6 +297,7 @@ struct CatalogView: View {
             ForEach(books) { book in
                 NavigationLink(value: book.id) { BookRow(book: book) }
                     .buttonStyle(.plain)
+                    .accessibilityIdentifier("catalog.book.\(book.id)")
             }
         case .grid:
             LazyVGrid(
@@ -286,6 +307,7 @@ struct CatalogView: View {
                 ForEach(books) { book in
                     NavigationLink(value: book.id) { BookGridItem(book: book) }
                         .buttonStyle(.plain)
+                        .accessibilityIdentifier("catalog.book.\(book.id)")
                 }
             }
         }
@@ -307,9 +329,25 @@ struct CatalogView: View {
 
     private func load(reset: Bool) async {
         guard reset || (!isLoadingMore && !isLoading && !isRefreshing) else { return }
+        // Pagination belongs to the last successful query, not text still being edited.
+        let request: CatalogRequestIdentity
+        if reset {
+            request = CatalogRequestIdentity(query: query.nilIfBlank, filters: filters)
+        } else {
+            guard let loadedRequest else { return }
+            request = loadedRequest
+        }
         let generation = UUID()
         loadGeneration = generation
         if reset {
+            if loadedRequest != request {
+                books = []
+                currentPage = 1
+                lastPage = 1
+                totalBooks = 0
+                loadedRequest = nil
+            }
+            isLoadingMore = false
             if books.isEmpty {
                 isLoading = true
             } else {
@@ -330,12 +368,12 @@ struct CatalogView: View {
             let page = reset ? 1 : currentPage + 1
             let result = try await container.books.books(
                 page: page,
-                query: query.nilIfBlank,
-                category: filters.categoryID.nilIfBlank,
-                author: filters.author.nilIfBlank,
-                publisher: filters.publisher.nilIfBlank,
-                isbn: filters.isbn.nilIfBlank,
-                order: filters.order,
+                query: request.query,
+                category: request.filters.categoryID.nilIfBlank,
+                author: request.filters.author.nilIfBlank,
+                publisher: request.filters.publisher.nilIfBlank,
+                isbn: request.filters.isbn.nilIfBlank,
+                order: request.filters.order,
                 premiumOnly: false
             )
             guard loadGeneration == generation, !Task.isCancelled else { return }
@@ -343,12 +381,17 @@ struct CatalogView: View {
             currentPage = result.currentPage
             lastPage = result.lastPage
             totalBooks = result.totalBooks
+            loadedRequest = request
         } catch {
             guard loadGeneration == generation, !Task.isCancelled else { return }
-            if reset, books.isEmpty {
-                errorMessage = L10n.catalogLoadFailed
-            }
+            retryResetsResults = reset
+            errorMessage = L10n.catalogLoadFailed
         }
+    }
+
+    private func retryFailedLoad() {
+        let reset = retryResetsResults
+        Task { await load(reset: reset) }
     }
 
     private func loadCategories() async {
@@ -470,6 +513,11 @@ private struct CatalogFilters: Equatable {
     var isActive: Bool {
         !categoryID.isEmpty || !author.isEmpty || !publisher.isEmpty || !isbn.isEmpty || order != "latest"
     }
+}
+
+private struct CatalogRequestIdentity: Equatable {
+    let query: String?
+    let filters: CatalogFilters
 }
 
 @MainActor
