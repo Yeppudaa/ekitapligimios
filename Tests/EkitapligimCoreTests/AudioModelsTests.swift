@@ -47,10 +47,13 @@ final class AudioModelsTests: XCTestCase {
         XCTAssertEqual(fields["per_page"], "24"); XCTAssertEqual(fields["category"], "2"); XCTAssertTrue(filters.active)
     }
     func testEveryAudioStringResolvesFromResourceTable() {
-        for key in ["title", "premiumMessage", "stopClose", "rewind", "forward", "rangeError", "libraryHero", "profileTitle", "quoteText", "noteText"] {
+        for key in ["title", "premiumMessage", "stopClose", "rewind", "forward", "rangeError", "libraryHero", "profileTitle", "quoteText", "noteText", "hoursMinutes", "minutes", "seconds"] {
             XCTAssertNotEqual(AudioL10n.text(key), key)
         }
-        XCTAssertTrue(AudioL10n.duration(3660).contains("1")); XCTAssertTrue(AudioL10n.duration(3660).contains("sa"))
+        // The chosen resource language follows the host; unit conversions must not assume Turkish suffixes.
+        XCTAssertEqual(AudioL10n.duration(3660), AudioL10n.format("hoursMinutes", 1, 1))
+        XCTAssertEqual(AudioL10n.duration(60), AudioL10n.format("minutes", 1))
+        XCTAssertEqual(AudioL10n.duration(59), AudioL10n.format("seconds", 59))
     }
 }
 

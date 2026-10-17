@@ -4,11 +4,12 @@ set -euo pipefail
 # Test-only workflow: no App Store Connect, signing-profile creation or publishing.
 EVIDENCE="$PWD/build/modern-parity"
 mkdir -p "$EVIDENCE"
+result=0
 git rev-parse HEAD > "$EVIDENCE/revision.txt"
 xcodebuild -version | tee "$EVIDENCE/xcode-version.txt"
 if ! command -v xcodegen >/dev/null 2>&1; then brew install xcodegen; fi
 xcodegen generate
-swift test 2>&1 | tee "$EVIDENCE/core-tests.log"
+swift test 2>&1 | tee "$EVIDENCE/core-tests.log" || result=1
 xcodebuild -resolvePackageDependencies -project Ekitapligim.xcodeproj -scheme Ekitapligim \
   -clonedSourcePackagesDirPath .build/xcode-packages 2>&1 | tee "$EVIDENCE/package-resolution.log"
 
@@ -37,7 +38,6 @@ selected = [('iPhone-compact', small), ('iPhone-large', large), ('iPad', pad)]
 (root / 'simulators.tsv').write_text('\n'.join(f"{label}\t{device['udid']}" for label, device in selected) + '\n')
 PY
 
-result=0
 while IFS=$'\t' read -r label device; do
   arguments=(-only-testing:EkitapligimUITests/ModernParityUITests)
   if [ "$label" = "iPhone-compact" ]; then arguments+=(-only-testing:EkitapligimTests); fi

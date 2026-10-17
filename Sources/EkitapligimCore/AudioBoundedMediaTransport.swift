@@ -7,14 +7,16 @@ import FoundationNetworking
 /// In particular an origin/proxy ignoring Range cannot turn a 512 KiB read into a whole-book download.
 final class AudioBoundedMediaTransport: @unchecked Sendable {
     private let configuration: URLSessionConfiguration
+    private let onTransferFinished: (@Sendable (AudioMediaTransferMetrics) -> Void)?
 
-    init(configuration: URLSessionConfiguration) {
+    init(configuration: URLSessionConfiguration, onTransferFinished: (@Sendable (AudioMediaTransferMetrics) -> Void)? = nil) {
         let copy = configuration.copy() as? URLSessionConfiguration ?? .ephemeral
         copy.httpCookieStorage = nil
         copy.httpShouldSetCookies = false
         copy.urlCredentialStorage = nil
         copy.urlCache = nil
         self.configuration = copy
+        self.onTransferFinished = onTransferFinished
     }
 
     func data(for request: URLRequest, range: ClosedRange<Int64>?) async throws -> (Data, HTTPURLResponse) {
@@ -22,12 +24,23 @@ final class AudioBoundedMediaTransport: @unchecked Sendable {
             guard range.lowerBound >= 0, range.upperBound >= range.lowerBound,
                   range.upperBound - range.lowerBound < AudioRangePolicy.chunkSize else { throw AudioError.invalidRange }
         } else if request.httpMethod != "HEAD" { throw AudioError.invalidInput }
-        let operation = AudioBoundedMediaOperation(configuration: configuration, request: request, range: range)
+        let operation = AudioBoundedMediaOperation(configuration: configuration, request: request, range: range,
+                                                  onTransferFinished: onTransferFinished)
         return try await withTaskCancellationHandler {
             try Task.checkCancellation()
             return try await withCheckedThrowingContinuation { operation.start($0) }
         } onCancel: { operation.cancel() }
     }
+}
+
+/// Content-free diagnostics of the application's own Data buffer, not upstream/socket bytes.
+/// URLProtocol may enqueue bytes before URLSession asynchronously processes a header rejection.
+/// The optional internal observer is unset by production callers and cannot alter transfer policy.
+struct AudioMediaTransferMetrics: Equatable, Sendable {
+    let bodyHeadersAccepted: Bool
+    let expectedBodyBytes: Int
+    let maximumBufferedBytes: Int
+    let bufferedBytesAtFinish: Int
 }
 
 private final class AudioBoundedMediaOperation: NSObject, URLSessionDataDelegate, @unchecked Sendable {
@@ -36,6 +49,7 @@ private final class AudioBoundedMediaOperation: NSObject, URLSessionDataDelegate
     private let configuration: URLSessionConfiguration
     private let request: URLRequest
     private let range: ClosedRange<Int64>?
+    private let onTransferFinished: (@Sendable (AudioMediaTransferMetrics) -> Void)?
     private var continuation: CheckedContinuation<Output, Error>?
     private var terminal: Result<Output, Error>?
     private var session: URLSession?
@@ -43,11 +57,14 @@ private final class AudioBoundedMediaOperation: NSObject, URLSessionDataDelegate
     private var response: HTTPURLResponse?
     private var buffer = Data()
     private var expectedLength = 0
+    private var maximumBufferedBytes = 0
 
-    init(configuration: URLSessionConfiguration, request: URLRequest, range: ClosedRange<Int64>?) {
+    init(configuration: URLSessionConfiguration, request: URLRequest, range: ClosedRange<Int64>?,
+         onTransferFinished: (@Sendable (AudioMediaTransferMetrics) -> Void)?) {
         self.configuration = configuration
         self.request = request
         self.range = range
+        self.onTransferFinished = onTransferFinished
     }
 
     func start(_ continuation: CheckedContinuation<Output, Error>) {
@@ -115,6 +132,7 @@ private final class AudioBoundedMediaOperation: NSObject, URLSessionDataDelegate
             return
         }
         buffer.append(data)
+        maximumBufferedBytes = max(maximumBufferedBytes, buffer.count)
         lock.unlock()
     }
 
@@ -137,6 +155,9 @@ private final class AudioBoundedMediaOperation: NSObject, URLSessionDataDelegate
         let continuation = self.continuation
         let task = self.task
         let session = self.session
+        let metrics = AudioMediaTransferMetrics(bodyHeadersAccepted: response != nil,
+            expectedBodyBytes: expectedLength, maximumBufferedBytes: maximumBufferedBytes,
+            bufferedBytesAtFinish: buffer.count)
         self.continuation = nil
         self.task = nil
         self.session = nil
@@ -144,6 +165,7 @@ private final class AudioBoundedMediaOperation: NSObject, URLSessionDataDelegate
         lock.unlock()
         task?.cancel()
         session?.invalidateAndCancel()
+        onTransferFinished?(metrics)
         continuation?.resume(with: result)
     }
 

@@ -2,7 +2,7 @@
 
 ## Next version 1.1.0: modern design and audio gate (2026-10-17)
 
-- [x] Portable Swift suite: 415 tests passed; workspace/static/accessibility audits passed.
+- [x] Portable Swift suite: 416 tests passed; workspace/static/accessibility audits passed.
 - [x] Purchase, membership and Google source invariants verified; no backend deployment in this update.
 - [ ] Connected Codemagic native iPhone/iPad tests and screenshot inspection.
 - [ ] Unsigned Production clean build with Apple SDK.

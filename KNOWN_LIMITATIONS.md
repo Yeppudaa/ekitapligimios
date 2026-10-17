@@ -2,7 +2,7 @@
 
 ## Current modern-design update — 2026-10-17
 
-The modern native design/audio update has passed 415 portable Swift tests, workspace/static/accessibility audits and protected-source checks. Xcode execution is pending in the connected Codemagic project. The repository is connected at `Yeppudaa/ekitapligimios`, and work is isolated on `codex/android-ios-design-audio-20261017`; earlier notes below about missing remotes/identifiers describe historical bootstrap state.
+The modern native design/audio update has passed 416 portable Swift tests, workspace/static/accessibility audits and protected-source checks. Xcode execution is pending in the connected Codemagic project. The repository is connected at `Yeppudaa/ekitapligimios`, and work is isolated on `codex/android-ios-design-audio-20261017`; earlier notes below about missing remotes/identifiers describe historical bootstrap state.
 
 Native visual parity and real playback are not proven by a Windows parse. The test-only Codemagic workflow covers iPhone/iPad UI fixtures, real AVPlayer with generated offline media and an unsigned Production build. Device background/lock-screen behavior, APNs delivery and live Sandbox purchase/Google regression remain release checks. Purchase/authentication implementations are unchanged. Scope: [MODERN_ANDROID_IOS_PARITY.md](MODERN_ANDROID_IOS_PARITY.md).
 
