@@ -18,7 +18,7 @@ final class ModernParityUITests: XCTestCase {
         XCUIDevice.shared.orientation = .portrait
     }
 
-    private func launch(_ screen: String, largeText: Bool = false, dark: Bool = false, guest: Bool = false, standardMember: Bool = false, playAudio: Bool = false, catalogFailure: Bool = false, longAgenda: Bool = false) -> XCUIApplication {
+    private func launch(_ screen: String, largeText: Bool = false, dark: Bool = false, guest: Bool = false, standardMember: Bool = false, playAudio: Bool = false, catalogFailure: Bool = false, longAgenda: Bool = false, traceAudioDetail: Bool = false) -> XCUIApplication {
         let app = XCUIApplication()
         app.launchArguments = ["-modern-parity-ui-fixture", "-AppleLanguages", "(tr)", "-AppleLocale", "tr_TR"]
         app.launchEnvironment["MODERN_PARITY_SCREEN"] = screen
@@ -29,6 +29,7 @@ final class ModernParityUITests: XCTestCase {
         app.launchEnvironment["MODERN_PARITY_PLAY_AUDIO"] = playAudio ? "1" : "0"
         app.launchEnvironment["MODERN_PARITY_CATALOG_FAILURE"] = catalogFailure ? "1" : "0"
         app.launchEnvironment["MODERN_PARITY_LONG_AGENDA"] = longAgenda ? "1" : "0"
+        app.launchEnvironment["MODERN_PARITY_DETAIL_TRACE"] = traceAudioDetail ? "1" : "0"
         app.launch()
         XCTAssertTrue(app.otherElements["modern-parity-ready"].waitForExistence(timeout: 10), "The offline screen did not become ready: \(screen)")
         XCTAssertFalse(app.staticTexts["modern-parity-error"].exists)
@@ -86,6 +87,63 @@ final class ModernParityUITests: XCTestCase {
         XCTAssertGreaterThan(element.frame.width, 0, file: file, line: line)
         XCTAssertGreaterThanOrEqual(element.frame.minX, app.frame.minX - 1, file: file, line: line)
         XCTAssertLessThanOrEqual(element.frame.maxX, app.frame.maxX + 1, file: file, line: line)
+    }
+
+    func testA00AudioDetailAppSwipeReachesItsChapterWithoutPlayback() {
+        executionTimeAllowance = 90
+        checkAudioDetailScroll(reproduceAppSwipe: true)
+    }
+
+    func testA01AudioDetailTargetedDragReachesItsChapterWithoutPlayback() {
+        executionTimeAllowance = 90
+        checkAudioDetailScroll(reproduceAppSwipe: false)
+    }
+
+    private func checkAudioDetailScroll(reproduceAppSwipe: Bool) {
+        // Use the real detail screen and its normal non-listenable payload. No manifest/player is
+        // started: this isolates the scrolling stall from the separately tested native AVPlayer.
+        let app = launch("audio-detail", playAudio: false, traceAudioDetail: true)
+        defer { app.terminate() }
+        let mode = reproduceAppSwipe ? "app-swipe" : "targeted-drag"
+        XCTAssertEqual(app.launchEnvironment["MODERN_PARITY_PLAY_AUDIO"], "0")
+        XCTAssertTrue(app.buttons["audio.detail.listen"].waitForExistence(timeout: 10))
+        XCTAssertFalse(app.descendants(matching: .any)["audio.player"].exists)
+        let viewport = app.scrollViews["audio.detail.scroll"]
+        XCTAssertTrue(viewport.waitForExistence(timeout: 5), "The real outer detail scroll view must be identifiable")
+        capture(app, "modern-audio-detail-\(mode)-before-scroll")
+        let chapter = app.buttons["audio.detail.chapter.1010"]
+        for step in 0..<8 {
+            // Always execute the first gesture, including on a tall iPad where the chapter may
+            // already be partially visible. Later queries bound the amount of scrolling.
+            if step > 0 {
+                print("AUDIO_DETAIL_UI mode=\(mode) step=\(step) phase=chapter-query.begin")
+                let reached = chapter.isHittable
+                print("AUDIO_DETAIL_UI mode=\(mode) step=\(step) phase=chapter-query.end reached=\(reached)")
+                if reached { break }
+            }
+            print("AUDIO_DETAIL_UI mode=\(mode) step=\(step) phase=gesture.begin")
+            if reproduceAppSwipe {
+                // Retain the exact gesture that stalled in the full normal-screen smoke test.
+                app.swipeUp()
+            } else {
+                let bounds = viewport.frame.intersection(app.frame)
+                XCTAssertGreaterThan(bounds.width, 0)
+                XCTAssertGreaterThan(bounds.height, 0)
+                let origin = app.coordinate(withNormalizedOffset: .zero)
+                let x = bounds.minX - app.frame.minX + bounds.width * 0.88
+                let top = origin.withOffset(CGVector(dx: x, dy: bounds.minY - app.frame.minY + bounds.height * 0.25))
+                let bottom = origin.withOffset(CGVector(dx: x, dy: bounds.minY - app.frame.minY + bounds.height * 0.80))
+                bottom.press(forDuration: 0.05, thenDragTo: top)
+            }
+            print("AUDIO_DETAIL_UI mode=\(mode) step=\(step) phase=gesture.returned")
+        }
+        XCTAssertTrue(chapter.isHittable, "The real chapter action must remain reachable without starting playback")
+        assertContained(chapter, in: app)
+        let anchors = app.descendants(matching: .any)["audio.detail.anchors"].firstMatch
+        XCTAssertTrue(anchors.exists)
+        assertContained(anchors, in: app)
+        XCTAssertFalse(app.descendants(matching: .any)["audio.player"].exists)
+        capture(app, "modern-audio-detail-\(mode)-chapter-reached")
     }
 
     func testEveryRefreshedNativeScreenRendersWithNormalText() {

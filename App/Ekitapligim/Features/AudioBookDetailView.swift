@@ -30,6 +30,7 @@ struct AudioBookDetailView: View {
                         if let error = model.error { AudioErrorView(message: error) { Task { await model.load() } } }
                         Section {
                             chapters(detail.book).id("audioChapters")
+                                .onAppear { traceDetail("chapters.appear") }
                             if !detail.book.description.isEmpty { about(detail.book).id("audioAbout") }
                             if !detail.related.isEmpty { AudioShelfView(title: AudioL10n.text("similar"), books: detail.related, artwork: "audio_shelf_recommended", onBook: onBook).id("audioRelated") }
                             if !detail.sameAuthor.isEmpty { AudioShelfView(title: AudioL10n.text("sameAuthor"), books: detail.sameAuthor, artwork: "audio_shelf_editor", onBook: onBook,
@@ -38,9 +39,13 @@ struct AudioBookDetailView: View {
                     } else if model.loading { ProgressView().frame(maxWidth: .infinity).padding(50) }
                     else if let error = model.error { AudioErrorView(message: error) { Task { await model.load() } } }
                 }.padding(14).padding(.bottom, 28).frame(maxWidth: 900).frame(maxWidth: .infinity)
-            }.background(AudioStyle.paper)
+            }.background(AudioStyle.paper).accessibilityIdentifier("audio.detail.scroll")
         }.navigationTitle(AudioL10n.text("detailTitle")).navigationBarTitleDisplayMode(.inline)
-            .task(id: account) { model.activate(account: account); await model.load() }.refreshable { await model.load() }
+            .task(id: account) {
+                traceDetail("task.enter")
+                model.activate(account: account); await model.load()
+                traceDetail("task.load-complete")
+            }.refreshable { await model.load() }
             .onChange(of: controller.revision) { _, _ in Task { await model.load() } }
             .sheet(isPresented: $premiumPresented) { AudioPremiumAccessView(onPremium: onPremium, onLogin: account == nil ? onLogin : nil) }
             .accessibilityIdentifier("audio.detail")
@@ -58,6 +63,19 @@ struct AudioBookDetailView: View {
             }.padding(6)
         }.background(.white).clipShape(RoundedRectangle(cornerRadius: 20)).overlay(RoundedRectangle(cornerRadius: 20).stroke(AudioStyle.line, lineWidth: 1))
             .padding(.vertical, 4).background(AudioStyle.paper).accessibilityIdentifier("audio.detail.anchors")
+            .onAppear { traceDetail("anchors.appear") }
+            .onDisappear { traceDetail("anchors.disappear") }
+    }
+    /// Explicit offline diagnostics only: no titles, identifiers, account information or URLs.
+    private func traceDetail(_ phase: StaticString) {
+        #if DEBUG
+        let process = ProcessInfo.processInfo
+        guard process.arguments.contains("-modern-parity-ui-fixture"),
+              process.environment["MODERN_PARITY_DETAIL_TRACE"] == "1" else { return }
+        NSLog("MODERN_DETAIL_PHASE %@ loaded=%d playerVisible=%d playerPlaying=%d playerLoading=%d",
+              String(describing: phase), model.detail != nil ? 1 : 0,
+              controller.visible ? 1 : 0, controller.playing ? 1 : 0, controller.loading ? 1 : 0)
+        #endif
     }
     private var sectionAnchors: [(String, String, String)] {
         var anchors = [("chapters", "audioChapters", "headphones")]
@@ -156,7 +174,7 @@ struct AudioBookDetailView: View {
                         Text(chapter.title).font(.subheadline.weight(.semibold)).frame(maxWidth: .infinity, alignment: .leading)
                         Text(AudioPolicy.time(chapter.duration)).font(.caption).foregroundStyle(AudioStyle.muted)
                     }.padding(16).frame(minHeight: 54).background(AudioStyle.paper).clipShape(RoundedRectangle(cornerRadius: 16))
-                }.buttonStyle(.plain)
+                }.buttonStyle(.plain).accessibilityIdentifier("audio.detail.chapter.\(chapter.id)")
             }
         }.padding(20).foregroundStyle(AudioStyle.ink).frame(maxWidth: .infinity, alignment: .leading).background(.white).clipShape(RoundedRectangle(cornerRadius: 22))
     }

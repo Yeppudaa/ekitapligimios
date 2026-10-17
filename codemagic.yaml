@@ -43,6 +43,24 @@ workflows:
       - build/native-audio-archives/packaging-status.json
       - build/native-audio-packaging.log
 
+  ios-audio-detail-scroll-diagnostic:
+    name: Ekitapligim iOS Audio Detail Scroll Diagnostic
+    max_build_duration: 30
+    instance_type: mac_mini_m2
+    environment:
+      xcode: 26.3
+    cache:
+      cache_paths:
+        - .build/xcode-packages
+    scripts:
+      - name: Two actual audio detail scroll tests with selected-app stack samples
+        script: bash Scripts/audio-detail-scroll-macos-diagnostic.sh
+    artifacts:
+      - build/audio-detail-scroll-archives/modern-parity-evidence.zip
+      - build/audio-detail-scroll-archives/forensics/*.xcresult.zip
+      - build/audio-detail-scroll-archives/packaging-status.json
+      - build/audio-detail-scroll-packaging.log
+
   ios-production:
     name: Ekitapligim iOS Production
     max_build_duration: 120
