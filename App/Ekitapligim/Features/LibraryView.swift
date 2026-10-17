@@ -110,6 +110,7 @@ struct LibraryView: View {
                         LinearGradient(colors: [Color(hex: 0xFCF6EA), Color(hex: 0xFCF6EA).opacity(0.93), Color(hex: 0xFCF6EA).opacity(0.46)], startPoint: .leading, endPoint: .trailing)
                     }
             }
+            .accessibilityHidden(true)
         }
         .clipShape(RoundedRectangle(cornerRadius: 24))
         .overlay { RoundedRectangle(cornerRadius: 24).stroke(Color(hex: 0xE7DECD)) }
