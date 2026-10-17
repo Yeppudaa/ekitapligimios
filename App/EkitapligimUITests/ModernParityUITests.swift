@@ -44,7 +44,7 @@ final class ModernParityUITests: XCTestCase {
     }
 
     private func captureDevice(_ name: String) {
-        let attachment = XCTAttachment(screenshot: XCUIDevice.shared.screenshot())
+        let attachment = XCTAttachment(screenshot: XCUIScreen.main.screenshot())
         attachment.name = name
         attachment.lifetime = .keepAlways
         add(attachment)
