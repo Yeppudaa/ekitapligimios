@@ -1,0 +1,15 @@
+{
+  "reviewedSource": "5e8a245faf70dd977458f9fefc498b61d1f38f54",
+  "evidenceArchiveSHA256": "f589e2724f291413f4350277e134aebfe7d0010eadf543531255945f19a8b189",
+  "core": {"source": "7e7ddfb01bd1a0ff90e092bcb68670ca5a2733c0", "passed": 416, "failed": 0},
+  "native": {"source": "7e7ddfb01bd1a0ff90e092bcb68670ca5a2733c0", "passed": 143, "failed": 0},
+  "compactScoped": {"source": "52d4dfaedc6162f1b838971a5c5ecd9f203ce9ce", "passed": 6, "failed": 1},
+  "premiumFailureRecovery": {"source": "5e8a245faf70dd977458f9fefc498b61d1f38f54", "passed": 1, "failed": 0, "assertionUnchanged": true},
+  "iPadScoped": {"source": "52d4dfaedc6162f1b838971a5c5ecd9f203ce9ce", "passed": 3, "failed": 0},
+  "iPadPageRendering": {"source": "52d4dfaedc6162f1b838971a5c5ecd9f203ce9ce", "pages": 17, "passed": 1, "failed": 0},
+  "productionBuild": {"source": "5e8a245faf70dd977458f9fefc498b61d1f38f54", "exit": 0},
+  "limitations": [
+    "The original full CI matrix retains historical failures and interruption; it is not represented as entirely green.",
+    "Native runtime and UI evidence uses offline fixtures. Real Google, StoreKit sandbox, APNs and physical background behavior are the purpose of the requested TestFlight testing."
+  ]
+}
