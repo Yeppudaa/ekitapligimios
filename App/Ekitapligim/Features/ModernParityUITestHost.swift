@@ -202,10 +202,21 @@ private enum ModernParityPayload {
         ["book_id": "900042", "title": "Kutup Yıldızı - Yaz Rüzgârı", "author": "Örnek Yazar", "shelf_state": "reading", "progress_percent": 42, "last_read_page": 84, "page_count": 200, "cover_url": "", "is_favorite": true],
         ["book_id": "900043", "title": "Yeni Bir Hikâye", "author": "Örnek Yazar", "shelf_state": "want_to_read", "progress_percent": 0, "last_read_page": 0, "page_count": 240, "cover_url": ""]
     ]
-    static let requests: [[String: Any]] = (1...6).map { value -> [String: Any] in
+    static let requests: [[String: Any]] = (1...6).map(requestItem)
+
+    private static func requestItem(_ value: Int) -> [String: Any] {
         let title = value == 1 ? "Bir Sonraki Hikâyemiz" : "Okurların Seçtiği Kitap \(value)"
         let status = value == 3 ? "ACQUIRED" : value == 4 ? "REJECTED" : "PENDING"
-        return ["id": String(910000 + value), "title": title, "author": "Örnek Yazar", "requested_by": "Ada", "user_id": 900002, "vote_count": 8 + value, "status": status, "book_id": value == 3 ? "900042" : ""]
+        var item: [String: Any] = [:]
+        item["id"] = String(910000 + value)
+        item["title"] = title
+        item["author"] = "Örnek Yazar"
+        item["requested_by"] = "Ada"
+        item["user_id"] = 900002
+        item["vote_count"] = 8 + value
+        item["status"] = status
+        item["book_id"] = value == 3 ? "900042" : ""
+        return item
     }
     static func book(_ value: Int) -> [String: Any] {
         ["id": String(900040 + value), "title": ["Varoluş Yolunda Sayılı Yıllar", "Sonsuzluğun Büyüsü", "Beyaz Zambaklar Ülkesinde", "Küçük Prens"][value % 4], "author": value == 3 ? "Grigori Petrov" : "Örnek Yazar", "publisher": "Örnek Yayınevi", "isbn": "", "category": "Roman", "language": "Türkçe", "publish_year": "2024", "description": "Her sayfada yeni bir dünya. Okuma yolculuğunda sana eşlik edecek bir hikâye.", "cover_url": "", "pdf_url": "", "page_count": 200, "is_premium_only": false, "view_count": 320, "download_count": 18, "rating": 4.5, "file_type": "PDF"]
@@ -252,44 +263,113 @@ private enum ModernParityPayload {
         if path.hasSuffix("/chat/rooms") { return ["items": [room], "capabilities": ["authenticated": true, "can_use": true]] }
         if path.contains("/chat/rooms/") {
             let after = query.first { $0.name == "after_id" }?.value
-            let messages: [[String: Any]] = after == nil ? (1...24).map { value in
-                ["id": 920000 + value, "room_id": 4, "user_id": 900002, "username": "Ada", "message": "\(value). mesaj · Kitaplar üzerine yeni bir sohbet. Uzun cümleler dar ekranda da rahat okunmalı.", "can_quote": true, "can_react": true, "message_date": timestamp + value]
-            } : []
-            return ["room": room, "items": messages, "pagination": ["oldest_id": 920001, "newest_id": 920024, "has_more": false], "reaction_options": [["reaction_id": 1, "title": "Beğen", "emoji": "👍"]]]
+            let messages: [[String: Any]] = after == nil ? (1...24).map(chatMessageItem) : []
+            let pagination: [String: Any] = ["oldest_id": 920001, "newest_id": 920024, "has_more": false]
+            let reactions: [[String: Any]] = [["reaction_id": 1, "title": "Beğen", "emoji": "👍"]]
+            var result: [String: Any] = [:]
+            result["room"] = room
+            result["items"] = messages
+            result["pagination"] = pagination
+            result["reaction_options"] = reactions
+            return result
         }
         if path.hasSuffix("/live-activity") {
-            return ["items": (1...8).map { value -> [String: Any] in
-                ["id": String(930000 + value), "type": value.isMultiple(of: 2) ? "audio_started" : "reading", "message": value.isMultiple(of: 2) ? "Ada sesli kitabı dinlemeye başladı." : "Ada okumaya başladı.", "event_date": timestamp + value, "actor": actor, "audio_book_id": value.isMultiple(of: 2) ? "101" : "", "app_route": value.isMultiple(of: 2) ? "audiobook/101" : "book/900042", "book": ["id": "900042", "title": "Beyaz Zambaklar Ülkesinde", "author": "Grigori Petrov", "cover_url": ""]]
-            }, "pagination": ["has_more": false]]
+            let items: [[String: Any]] = (1...8).map(liveActivityItem)
+            let pagination: [String: Any] = ["has_more": false]
+            return ["items": items, "pagination": pagination]
         }
         if path.hasSuffix("/book-agenda") {
-            return ["items": (1...4).map { value -> [String: Any] in
-                ["id": String(940000 + value), "type": value == 1 ? "quotation" : "standard", "message": value == 1 ? "Bir kitap, hayatına yeni bir pencere açabilir." : "Bugün okuduklarımızdan güzel bir öneri paylaşalım.", "created_at": timestamp + value, "actor": actor, "book": ["id": "900042", "title": "Yeni Bir Hikâye", "author": "Örnek Yazar", "cover_url": ""], "viewer": ["can_react": true, "can_bookmark": true], "reaction_score": 12]
-            }, "capabilities": ["authenticated": true, "can_create": true], "pagination": ["page": 1, "has_more": false]]
+            let items: [[String: Any]] = (1...4).map(agendaItem)
+            let capabilities: [String: Any] = ["authenticated": true, "can_create": true]
+            let pagination: [String: Any] = ["page": 1, "has_more": false]
+            return ["items": items, "capabilities": capabilities, "pagination": pagination]
         }
         if path.hasSuffix("/authors") || path.hasSuffix("/publishers") {
             let author = path.hasSuffix("/authors")
             let names = author ? ["Ahmet Hamdi Tanpınar", "Grigori Petrov", "Sabahattin Ali", "Stefan Zweig", "Zygmunt Bauman"] : ["Can Yayınları", "İletişim Yayınları", "Türkiye İş Bankası Kültür Yayınları", "Yapı Kredi Yayınları"]
-            return ["items": names.enumerated().filter { search.isEmpty || $0.element.localizedStandardContains(search) }.map { index, name in ["id": String(950000 + index), "name": name, "slug": "fixture-\(index)", "book_count": 12 + index] }, "pagination": ["page": 1, "pages": 1, "total": names.count]]
+            var items: [[String: Any]] = []
+            for (index, name) in names.enumerated() where search.isEmpty || name.localizedStandardContains(search) {
+                var item: [String: Any] = [:]
+                item["id"] = String(950000 + index)
+                item["name"] = name
+                item["slug"] = "fixture-\(index)"
+                item["book_count"] = 12 + index
+                items.append(item)
+            }
+            let pagination: [String: Any] = ["page": 1, "pages": 1, "total": names.count]
+            return ["items": items, "pagination": pagination]
         }
         if path.hasSuffix("/forums") || path.hasSuffix("/book-categories") { return ["forums": forums, "items": forums] }
         if path.contains("/forums/") && path.hasSuffix("/threads") {
-            let threads: [[String: Any]] = (1...6).map { value -> [String: Any] in
-                var thread: [String: Any] = ["id": String(960000 + value), "title": "Okuma yolculuğumuz \(value)", "username": "Ada"]
-                thread["reply_count"] = value * 4
-                thread["view_count"] = value * 25
-                thread["post_date"] = timestamp
-                thread["can_reply"] = true
-                thread["is_sticky"] = value == 1
-                return thread
-            }
-            return ["threads": threads, "pagination": ["page": 1, "pages": 1]]
+            let threads: [[String: Any]] = (1...6).map(forumThreadItem)
+            let pagination: [String: Any] = ["page": 1, "pages": 1]
+            return ["threads": threads, "pagination": pagination]
         }
-        if path.hasSuffix("/books") { return ["books": (1...8).map(book), "pagination": ["page": 1, "pages": 1, "total": 8]] }
+        if path.hasSuffix("/books") {
+            let books: [[String: Any]] = (1...8).map(book)
+            let pagination: [String: Any] = ["page": 1, "pages": 1, "total": 8]
+            return ["books": books, "pagination": pagination]
+        }
         if path.contains("/books/") { return ["book": book(2)] }
         if path.contains("/members/") { return ["member": ["id": "900002", "username": "Ada", "can_view_profile": true], "items": []] }
         if path.contains("bootstrap") { return ["enabled": false] }
         return ["items": [], "members": [], "posts": [], "success": true]
+    }
+
+    private static func chatMessageItem(_ value: Int) -> [String: Any] {
+        var item: [String: Any] = [:]
+        item["id"] = 920000 + value
+        item["room_id"] = 4
+        item["user_id"] = 900002
+        item["username"] = "Ada"
+        item["message"] = "\(value). mesaj · Kitaplar üzerine yeni bir sohbet. Uzun cümleler dar ekranda da rahat okunmalı."
+        item["can_quote"] = true
+        item["can_react"] = true
+        item["message_date"] = timestamp + value
+        return item
+    }
+
+    private static func liveActivityItem(_ value: Int) -> [String: Any] {
+        let isAudio = value.isMultiple(of: 2)
+        let referencedBook: [String: Any] = ["id": "900042", "title": "Beyaz Zambaklar Ülkesinde", "author": "Grigori Petrov", "cover_url": ""]
+        var item: [String: Any] = [:]
+        item["id"] = String(930000 + value)
+        item["type"] = isAudio ? "audio_started" : "reading"
+        item["message"] = isAudio ? "Ada sesli kitabı dinlemeye başladı." : "Ada okumaya başladı."
+        item["event_date"] = timestamp + value
+        item["actor"] = actor
+        item["audio_book_id"] = isAudio ? "101" : ""
+        item["app_route"] = isAudio ? "audiobook/101" : "book/900042"
+        item["book"] = referencedBook
+        return item
+    }
+
+    private static func agendaItem(_ value: Int) -> [String: Any] {
+        let referencedBook: [String: Any] = ["id": "900042", "title": "Yeni Bir Hikâye", "author": "Örnek Yazar", "cover_url": ""]
+        let viewer: [String: Any] = ["can_react": true, "can_bookmark": true]
+        var item: [String: Any] = [:]
+        item["id"] = String(940000 + value)
+        item["type"] = value == 1 ? "quotation" : "standard"
+        item["message"] = value == 1 ? "Bir kitap, hayatına yeni bir pencere açabilir." : "Bugün okuduklarımızdan güzel bir öneri paylaşalım."
+        item["created_at"] = timestamp + value
+        item["actor"] = actor
+        item["book"] = referencedBook
+        item["viewer"] = viewer
+        item["reaction_score"] = 12
+        return item
+    }
+
+    private static func forumThreadItem(_ value: Int) -> [String: Any] {
+        var thread: [String: Any] = [:]
+        thread["id"] = String(960000 + value)
+        thread["title"] = "Okuma yolculuğumuz \(value)"
+        thread["username"] = "Ada"
+        thread["reply_count"] = value * 4
+        thread["view_count"] = value * 25
+        thread["post_date"] = timestamp
+        thread["can_reply"] = true
+        thread["is_sticky"] = value == 1
+        return thread
     }
 }
 #endif
