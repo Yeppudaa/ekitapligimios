@@ -83,6 +83,73 @@ final class ModernParityUITests: XCTestCase {
         add(tree)
     }
 
+    private func revealCatalogCategory(_ element: XCUIElement, in app: XCUIApplication) -> CGRect {
+        // A short category chip must be fully exposed before the ordinary element tap. XCUI
+        // can report a partially obscured chip as hittable beneath navigation/search chrome.
+        let viewport = app.scrollViews["catalog.scroll"]
+        guard viewport.waitForExistence(timeout: 5) else {
+            attachFailureDiagnostics(app, name: "catalog-category-missing-viewport")
+            XCTFail("The catalog scroll viewport must exist before revealing a category")
+            return .zero
+        }
+        func valid(_ frame: CGRect) -> Bool {
+            !frame.isEmpty && !frame.isNull && !frame.isInfinite &&
+                frame.minX.isFinite && frame.minY.isFinite && frame.maxX.isFinite && frame.maxY.isFinite
+        }
+        func usableBounds() -> CGRect {
+            let bounds = viewport.frame.intersection(app.frame)
+            guard valid(bounds) else { return .zero }
+            var top = bounds.minY
+            var bottom = bounds.maxY
+            for bar in app.navigationBars.allElementsBoundByIndex where bar.exists {
+                let frame = bar.frame
+                if valid(frame), frame.intersects(bounds), frame.midY < bounds.midY {
+                    top = max(top, frame.maxY)
+                }
+            }
+            let primaryTabs = app.buttons.matching(NSPredicate(format: "identifier BEGINSWITH %@", "primary-tab-"))
+            for button in primaryTabs.allElementsBoundByIndex where button.exists {
+                let frame = button.frame
+                if valid(frame), frame.intersects(bounds), frame.midY > bounds.midY {
+                    bottom = min(bottom, frame.minY)
+                }
+            }
+            // Newer iOS navigation layouts can place the catalog search field at the bottom.
+            for field in app.searchFields.allElementsBoundByIndex where field.exists && field.isHittable {
+                let frame = field.frame
+                if valid(frame), frame.intersects(bounds), frame.midY > bounds.midY {
+                    bottom = min(bottom, frame.minY)
+                }
+            }
+            guard bottom > top + 8 else { return .zero }
+            return CGRect(x: bounds.minX, y: top, width: bounds.width, height: bottom - top)
+                .insetBy(dx: 4, dy: 4)
+        }
+        for attempt in 0...8 {
+            let usable = usableBounds()
+            let exists = element.exists
+            let frame = exists ? element.frame : .zero
+            let hittable = exists && element.isHittable
+            print("CATALOG_CATEGORY_REVEAL attempt=\(attempt),exists=\(exists),frame=\(frame),usable=\(usable),hittable=\(hittable)")
+            if valid(usable), valid(frame), frame.height >= 44, usable.contains(frame), hittable {
+                return usable
+            }
+            guard attempt < 8, valid(usable) else { break }
+            let towardStart = !valid(frame) || frame.minY < usable.minY
+            let distance = min(CGFloat(140), usable.height * 0.30)
+            let origin = app.coordinate(withNormalizedOffset: .zero)
+            let x = usable.minX - app.frame.minX + usable.width * 0.80
+            let middleY = usable.midY - app.frame.minY
+            let upper = origin.withOffset(CGVector(dx: x, dy: middleY - distance / 2))
+            let lower = origin.withOffset(CGVector(dx: x, dy: middleY + distance / 2))
+            if towardStart { upper.press(forDuration: 0.05, thenDragTo: lower) }
+            else { lower.press(forDuration: 0.05, thenDragTo: upper) }
+        }
+        attachFailureDiagnostics(app, name: "catalog-category-not-fully-visible")
+        XCTFail("The complete 44-point category control must be visible outside navigation, search and tab chrome")
+        return usableBounds()
+    }
+
     private func assertContained(_ element: XCUIElement, in app: XCUIApplication, file: StaticString = #filePath, line: UInt = #line) {
         XCTAssertGreaterThan(element.frame.width, 0, file: file, line: line)
         XCTAssertGreaterThanOrEqual(element.frame.minX, app.frame.minX - 1, file: file, line: line)
@@ -341,10 +408,18 @@ final class ModernParityUITests: XCTestCase {
         // This real chip is above the verified book results. Do not require a particular XCUI
         // element type for its horizontal container or scroll farther down when AX evicts it.
         let category = app.buttons["catalog.category.35"]
-        reveal(category, in: app, towardStart: true)
+        let usableCategoryBounds = revealCatalogCategory(category, in: app)
         XCTAssertTrue(category.isHittable)
         assertContained(category, in: app)
+        XCTAssertGreaterThanOrEqual(category.frame.height, 44)
+        XCTAssertTrue(usableCategoryBounds.contains(category.frame), "The entire category control must be inside the unobscured catalog viewport")
+        XCTAssertFalse(category.isSelected)
+        print("CATALOG_CATEGORY_BEFORE_TAP frame=\(category.frame),usable=\(usableCategoryBounds)")
+        capture(app, "modern-catalog-category-fully-visible-before-tap")
         category.tap()
+        let categorySelected = XCTNSPredicateExpectation(predicate: NSPredicate(format: "isSelected == true"), object: category)
+        XCTAssertEqual(XCTWaiter.wait(for: [categorySelected], timeout: 3), .completed,
+                       "A single ordinary tap on the fully visible category must select it before checking the failure response")
         let retry = app.buttons["catalog.retry"]
         reveal(retry, in: app)
         XCTAssertTrue(retry.waitForExistence(timeout: 8), "A failed category reset must show an error instead of the old results")
