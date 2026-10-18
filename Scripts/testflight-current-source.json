@@ -291,7 +291,7 @@
     "App/EkitapligimTests/Fixtures/ReadingSync.epub": "18f753ac6b21f890b92bb442361bef9c8c10f36f15252ee9bd6f063231fff487",
     "App/EkitapligimTests/GoogleSignInServiceTests.swift": "c0fa01ea39b3f60f00ddceeae9b2ae65895ef3fe3bd8c6ef0742f21ad83b122c",
     "App/EkitapligimTests/KeychainSessionPersistenceTests.swift": "a407364f4639091bcae09608a346bab123bd2051090c7b660e30f95452d9b711",
-    "App/EkitapligimTests/LayoutReviewCapture.swift": "e509fa9b44150088f12665b1bfbda3c6a4eb3958dca5fcf81e849d76d95ee246",
+    "App/EkitapligimTests/LayoutReviewCapture.swift": "572c058c51d2f1619d5689a89b893cb6e497eb10221c63df13bf28a2b97c85ce",
     "App/EkitapligimTests/NotificationReadSyncServiceTests.swift": "b39cc122763d3a4ba0696810b17b3cfa1e0082e5fe508dd596f0872911eecb23",
     "App/EkitapligimTests/PDFReaderAppearanceTests.swift": "e6720dd6c37af46f05f71c236c5b7235d50f6028cad6ef3862e42d2d9b47d5af",
     "App/EkitapligimTests/PDFReaderPerformanceTests.swift": "52ba6155f27b4aebfdcdc13df01833f730930e67d1c100036c8c947e1cc8a1a2",
