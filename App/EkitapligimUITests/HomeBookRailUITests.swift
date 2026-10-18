@@ -149,15 +149,29 @@ final class HomeBookRailUITests: XCTestCase {
     }
 
     private func revealHorizontally(_ card: XCUIElement, rail: XCUIElement, app: XCUIApplication) {
-        for _ in 0..<12 {
+        for _ in 0..<20 {
+            let viewport = rail.frame.intersection(app.frame).insetBy(dx: 8, dy: 8)
             let frame = card.exists ? card.frame : CGRect.null
-            // XCTest can throw when asking for an offscreen element's activation point.
-            if finite(frame), frame.minX >= app.frame.minX + 8,
-               frame.maxX <= app.frame.maxX - 8, card.isHittable { return }
-            rail.coordinate(withNormalizedOffset: CGVector(dx: 0.85, dy: 0.5))
-                .press(forDuration: 0.05, thenDragTo: rail.coordinate(withNormalizedOffset: CGVector(dx: 0.45, dy: 0.5)))
+            // Frame queries are safe for offscreen cards; activation-point queries are not.
+            if finite(frame), frame.minX >= viewport.minX,
+               frame.maxX <= viewport.maxX, card.isHittable { return }
+            let moveRight = finite(frame) && frame.minX < viewport.minX
+            let remaining = finite(frame)
+                ? (moveRight ? viewport.minX - frame.minX : frame.maxX - viewport.maxX)
+                : viewport.width
+            let distance = min(max(remaining + 12, 40), viewport.width * 0.3)
+            let direction: CGFloat = moveRight ? 1 : -1
+            let origin = app.coordinate(withNormalizedOffset: CGVector(dx: 0, dy: 0))
+            let start = origin.withOffset(CGVector(dx: viewport.midX - direction * distance / 2 - app.frame.minX,
+                                                   dy: viewport.midY - app.frame.minY))
+            let end = origin.withOffset(CGVector(dx: viewport.midX + direction * distance / 2 - app.frame.minX,
+                                                 dy: viewport.midY - app.frame.minY))
+            // A slow drag with a final hold avoids flinging past the target. Correct either
+            // direction when previous momentum has already moved the target to the left.
+            start.press(forDuration: 0.1, thenDragTo: end, withVelocity: .slow, thenHoldForDuration: 0.25)
         }
-        XCTFail("The target card must be fully visible in its horizontal rail")
+        capture(app, "home-book-horizontal-unreachable-\(card.identifier)")
+        XCTFail("The target card must be fully visible in its horizontal rail; frame=\(card.exists ? card.frame : .null), rail=\(rail.frame)")
     }
 
     private func reveal(_ card: XCUIElement, in app: XCUIApplication) throws {
@@ -167,9 +181,12 @@ final class HomeBookRailUITests: XCTestCase {
         for _ in 0..<80 {
             let viewport = scroll.frame.intersection(app.frame).insetBy(dx: 8, dy: 8)
             let coverFrame = cover.exists ? cover.frame : CGRect.null
-            if cover.exists, finite(coverFrame), viewport.contains(coverFrame) { return }
             let cardFrame = card.exists ? card.frame : CGRect.null
-            let above = finite(coverFrame) ? coverFrame.midY < viewport.midY :
+            // Normal cards fit as a whole. Very tall accessibility cards only need their
+            // visible cover to fit, so that the navigation target can still be tapped.
+            let target = finite(cardFrame) && cardFrame.height <= viewport.height ? cardFrame : coverFrame
+            if finite(target), viewport.contains(target) { return }
+            let above = finite(target) ? target.midY < viewport.midY :
                 (finite(cardFrame) && cardFrame.minY < viewport.minY)
             let start = scroll.coordinate(withNormalizedOffset: CGVector(dx: 0.93, dy: above ? 0.45 : 0.70))
             let end = scroll.coordinate(withNormalizedOffset: CGVector(dx: 0.93, dy: above ? 0.70 : 0.45))
