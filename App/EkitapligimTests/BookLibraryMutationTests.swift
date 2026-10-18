@@ -358,6 +358,11 @@ private actor LibraryMutationServer {
     let gates: [Int: LibraryMutationGate]
     init(rejectWrites: Bool, gates: [Int: LibraryMutationGate]) { self.rejectWrites = rejectWrites; self.gates = gates }
     func response(for request: URLRequest) async throws -> Data {
+        // Signing in also refreshes the independent assistant model in the native host.
+        // Keep that bootstrap local without counting it as a library write.
+        if request.httpMethod == "GET", request.url?.path == "/mobile-api/v1/ai/bootstrap" {
+            return Data(#"{"enabled":false,"authenticated":true}"#.utf8)
+        }
         guard request.httpMethod == "PUT", request.url?.path.hasSuffix("/me/library/101") == true else {
             XCTFail("Unexpected request in library mutation test: \(request.httpMethod ?? "") \(request.url?.path ?? "")")
             throw URLError(.unsupportedURL)

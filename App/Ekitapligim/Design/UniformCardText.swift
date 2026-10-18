@@ -17,7 +17,19 @@ struct UniformCardText: View {
             if dynamicTypeSize.isAccessibilitySize {
                 Text(value).lineLimit(nil)
             } else {
-                Text(value).lineLimit(lines, reservesSpace: true)
+                // A fixed sample reserves identical font metrics for empty, short and
+                // accented text. reservesSpace alone still varies with fallback glyphs.
+                Text(Array(repeating: "ÂĞİŞgj", count: max(1, lines)).joined(separator: "\n"))
+                    .lineLimit(lines)
+                    .hidden()
+                    .frame(maxWidth: .infinity, alignment: .leading)
+                    .overlay(alignment: .topLeading) {
+                        Text(value)
+                            .lineLimit(lines)
+                            .frame(maxWidth: .infinity, alignment: .leading)
+                    }
+                    .accessibilityElement(children: .ignore)
+                    .accessibilityLabel(Text(value))
             }
         }
         .fixedSize(horizontal: false, vertical: true)
