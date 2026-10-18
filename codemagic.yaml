@@ -238,8 +238,10 @@ workflows:
     environment:
       xcode: 26.3
       ios_signing:
-        distribution_type: app_store
-        bundle_identifier: com.ekitapligim.app
+        certificates:
+        - ekitapligim_distribution_20261018
+        provisioning_profiles:
+        - ekitapligim_app_store_20261018
       vars:
         APP_STORE_APPLE_ID: '6789584323'
         APPLE_TEAM_ID: QA67383767
@@ -323,8 +325,10 @@ workflows:
     environment:
       xcode: 26.3
       ios_signing:
-        distribution_type: app_store
-        bundle_identifier: com.ekitapligim.app
+        certificates:
+        - ekitapligim_distribution_20261018
+        provisioning_profiles:
+        - ekitapligim_app_store_20261018
       vars:
         APP_STORE_APPLE_ID: '6789584323'
         APPLE_TEAM_ID: QA67383767

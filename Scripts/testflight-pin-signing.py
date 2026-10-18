@@ -6,7 +6,7 @@ import subprocess
 
 TEAM = "QA67383767"
 BUNDLE = "com.ekitapligim.app"
-IDENTITY = "2D336E3D11A04C7E0644846019C9E850159DA36B"
+IDENTITY = "45A48456F6BC51F7DBC9C2E1F571543462585C33"
 
 root = Path(__file__).resolve().parent.parent
 identities = subprocess.check_output(
