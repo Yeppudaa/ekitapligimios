@@ -63,10 +63,15 @@ final class ShellMenuLayoutUITests: XCTestCase {
                        "The root Home menu must not overlay a pushed catalog's controls")
         let catalog = app.scrollViews["catalog.scroll"]
         let book = app.buttons.matching(NSPredicate(format: "identifier BEGINSWITH %@", "catalog.book.")).firstMatch
+        // A partially visible grid card can be hittable while its activation point is
+        // underneath the bottom tab bar. Reveal the complete card, as the library tests do.
         for _ in 0..<12 {
-            if book.isHittable { break }
+            let bounds = catalog.frame.intersection(app.frame)
+            if book.exists, bounds.contains(book.frame), book.isHittable { break }
             catalog.swipeUp()
         }
+        XCTAssertTrue(catalog.frame.intersection(app.frame).contains(book.frame),
+                      "The complete book card must be inside the catalog viewport before tapping")
         XCTAssertTrue(book.isHittable)
         book.tap()
         let back = app.buttons["book.detail.back"]
