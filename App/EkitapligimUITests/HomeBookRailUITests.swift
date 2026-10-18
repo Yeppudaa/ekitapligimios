@@ -90,7 +90,9 @@ final class HomeBookRailUITests: XCTestCase {
     }
 
     private func geometry(id: String, app: XCUIApplication) async throws -> CardGeometry {
-        let deadline = Date().addingTimeInterval(8)
+        // Each accessibility frame query takes a simulator round trip; allow four complete
+        // samples while retaining the stable-frame and geometry assertions below.
+        let deadline = Date().addingTimeInterval(30)
         var previous: CardGeometry?
         var matches = 0
         while Date() < deadline {

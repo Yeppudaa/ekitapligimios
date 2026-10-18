@@ -40,8 +40,11 @@ enum ModernParityLibraryFixture {
     }
 
     static func response(for request: URLRequest) -> (status: Int, headers: [String: String], data: Data)? {
+        // Development uses a reserved invalid host. Both origins remain local URLProtocol responses
+        // and are accepted only with the explicit DEBUG launch flag and fixture marker.
         guard enabled, let url = request.url,
-              url.scheme == "https", url.host == "ekitapligim.com", (url.port ?? 443) == 443,
+              url.scheme == "https", ["ekitapligim.com", "ekitapligim.local.invalid"].contains(url.host ?? ""),
+              (url.port ?? 443) == 443,
               url.user == nil, url.password == nil, url.fragment == nil,
               request.value(forHTTPHeaderField: ModernParityAudioFixture.markerHeader) == ModernParityAudioFixture.markerValue else { return nil }
         let path = url.path
