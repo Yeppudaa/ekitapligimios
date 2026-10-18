@@ -30,10 +30,11 @@ for suite in "${NATIVE[@]}"; do SELECT+=("-only-testing:EkitapligimTests/$suite"
 SELECT+=(
   -only-testing:EkitapligimTests/AudioPlaybackRuntimeTests/testAssetDurationLoadsThroughAuthenticatedRangesWithoutStartingAudioOutput
   -only-testing:EkitapligimTests/AudioPlaybackRuntimeTests/testAssetDurationWithMissingHeadMetadataUsesOneByteProbe)
+native_status=0
 xcodebuild test -scheme EkitapligimModernUnit "${COMMON[@]}" "${SELECT[@]}" \
-  -resultBundlePath "$EVIDENCE/current-native.xcresult" 2>&1 | tee "$EVIDENCE/current-native.log"
-xcrun xcresulttool get test-results summary --path "$EVIDENCE/current-native.xcresult" > "$EVIDENCE/current-native-summary.json"
-python3 - "$EVIDENCE/current-native-summary.json" <<'PY'
+  -resultBundlePath "$EVIDENCE/current-native.xcresult" 2>&1 | tee "$EVIDENCE/current-native.log" || native_status=$?
+xcrun xcresulttool get test-results summary --path "$EVIDENCE/current-native.xcresult" > "$EVIDENCE/current-native-summary.json" || native_status=1
+python3 - "$EVIDENCE/current-native-summary.json" <<'PY' || native_status=1
 from pathlib import Path
 import json,re,sys
 suites=('AudioPageRoutingTests','BookAgendaFeedModelTests','BookAgendaDetailModelTests','PremiumLayoutTests','ResponsiveComponentLayoutTests')
@@ -54,10 +55,11 @@ UI=(
   ModernParityUITests/testAudiobookCatalogDetailAndLibraryKeepNativeBackNavigation)
 SELECT=()
 for test in "${UI[@]}"; do SELECT+=("-only-testing:EkitapligimUITests/$test"); done
+ui_status=0
 xcodebuild test -scheme Ekitapligim "${COMMON[@]}" "${SELECT[@]}" \
-  -resultBundlePath "$EVIDENCE/current-ui.xcresult" 2>&1 | tee "$EVIDENCE/current-ui.log"
-xcrun xcresulttool get test-results summary --path "$EVIDENCE/current-ui.xcresult" > "$EVIDENCE/current-ui-summary.json"
-python3 - "$EVIDENCE/current-ui-summary.json" "${#UI[@]}" <<'PY'
+  -resultBundlePath "$EVIDENCE/current-ui.xcresult" 2>&1 | tee "$EVIDENCE/current-ui.log" || ui_status=$?
+xcrun xcresulttool get test-results summary --path "$EVIDENCE/current-ui.xcresult" > "$EVIDENCE/current-ui-summary.json" || ui_status=1
+python3 - "$EVIDENCE/current-ui-summary.json" "${#UI[@]}" <<'PY' || ui_status=1
 import json,sys
 s=json.load(open(sys.argv[1])); expected=int(sys.argv[2])
 assert s['passedTests']==expected and s['failedTests']==0 and s.get('skippedTests',0)==0,(expected,s)
@@ -68,3 +70,7 @@ for label in current-native current-ui; do
 done
 ditto -c -k --keepParent "$EVIDENCE/current-native-images" "$EVIDENCE/current-native-images.zip"
 ditto -c -k --keepParent "$EVIDENCE/current-ui-images" "$EVIDENCE/current-ui-images.zip"
+if [ "$native_status" -ne 0 ] || [ "$ui_status" -ne 0 ]; then
+  echo "Current validation failed: native=$native_status UI=$ui_status; upload remains blocked."
+  exit 1
+fi
