@@ -11,14 +11,14 @@ final class HomeBookCardLayoutTests: XCTestCase {
         let tall = syntheticImage(CGSize(width: 80, height: 240))
         let phases: [AnyView] = [
             AnyView(ProgressView()),
-            AnyView(EKitapligimMissingBookCover(title: "Kapak bulunamadı", author: "Yazar")),
+            AnyView(EKitapligimMissingBookCover(title: "Kapak bulunamadÄ±", author: "Yazar")),
             AnyView(Image(uiImage: wide).resizable().scaledToFit()),
             AnyView(Image(uiImage: tall).resizable().scaledToFit())
         ]
         for width: CGFloat in [124, 148, 220] {
             for (index, phase) in phases.enumerated() {
                 let host = host(AnyView(HomeBookCoverSlot { phase }), size: .large)
-                let measured = host.sizeThatFits(in: CGSize(width: width, height: .greatestFiniteMagnitude))
+                let measured = host.sizeThatFits(in: CGSize(width: width, height: CGFloat.greatestFiniteMagnitude))
                 XCTAssertEqual(measured.width, width, accuracy: 0.5, "phase \(index)")
                 XCTAssertEqual(measured.height, width * 1.48, accuracy: 0.5, "phase \(index)")
             }
@@ -30,7 +30,7 @@ final class HomeBookCardLayoutTests: XCTestCase {
         for width: CGFloat in [156, 172, 220, 320] {
             let heights = samples.map { book in
                 host(AnyView(HomeBookCard(book: book)), size: .large)
-                    .sizeThatFits(in: CGSize(width: width, height: .greatestFiniteMagnitude)).height
+                    .sizeThatFits(in: CGSize(width: width, height: CGFloat.greatestFiniteMagnitude)).height
             }
             let first = try XCTUnwrap(heights.first)
             for height in heights { XCTAssertEqual(height, first, accuracy: 1, "width \(width)") }
@@ -42,7 +42,7 @@ final class HomeBookCardLayoutTests: XCTestCase {
                 UniformCardText(samples[0].author, lines: 1).font(.caption)
             }
             let copyHeight = host(AnyView(copy), size: .large)
-                .sizeThatFits(in: CGSize(width: width - 24, height: .greatestFiniteMagnitude)).height
+                .sizeThatFits(in: CGSize(width: width - 24, height: CGFloat.greatestFiniteMagnitude)).height
             XCTAssertEqual(first, coverHeight + copyHeight + 9 + 24, accuracy: 1,
                            "The card must contain only its measured cover, copy, spacing and padding")
         }
@@ -52,16 +52,16 @@ final class HomeBookCardLayoutTests: XCTestCase {
         let book = try XCTUnwrap(books().last)
         let width: CGFloat = 220
         let normal = host(AnyView(HomeBookCard(book: book)), size: .large)
-        let normalSize = normal.sizeThatFits(in: CGSize(width: width, height: .greatestFiniteMagnitude))
+        let normalSize = normal.sizeThatFits(in: CGSize(width: width, height: CGFloat.greatestFiniteMagnitude))
         let constrained = normal.sizeThatFits(in: CGSize(width: width, height: 1_500))
         XCTAssertEqual(constrained.height, normalSize.height, accuracy: 1)
 
         let large = host(AnyView(HomeBookCard(book: book)), size: .accessibility5)
-            .sizeThatFits(in: CGSize(width: width, height: .greatestFiniteMagnitude))
+            .sizeThatFits(in: CGSize(width: width, height: CGFloat.greatestFiniteMagnitude))
         let fullTitle = host(AnyView(Text(book.title).font(.subheadline.weight(.semibold))), size: .accessibility5)
-            .sizeThatFits(in: CGSize(width: width - 24, height: .greatestFiniteMagnitude))
+            .sizeThatFits(in: CGSize(width: width - 24, height: CGFloat.greatestFiniteMagnitude))
         let fullAuthor = host(AnyView(Text(book.author).font(.caption)), size: .accessibility5)
-            .sizeThatFits(in: CGSize(width: width - 24, height: .greatestFiniteMagnitude))
+            .sizeThatFits(in: CGSize(width: width - 24, height: CGFloat.greatestFiniteMagnitude))
         XCTAssertGreaterThan(large.height, normalSize.height)
         XCTAssertGreaterThanOrEqual(large.height, (width - 44) * 1.48 + fullTitle.height + fullAuthor.height)
         XCTAssertEqual(large.width, width, accuracy: 1)
@@ -78,7 +78,7 @@ final class HomeBookCardLayoutTests: XCTestCase {
                 }
             }
             let controller = host(AnyView(page), size: size)
-            let measured = controller.sizeThatFits(in: CGSize(width: 360, height: .greatestFiniteMagnitude))
+            let measured = controller.sizeThatFits(in: CGSize(width: 360, height: CGFloat.greatestFiniteMagnitude))
             XCTAssertTrue(measured.height.isFinite)
             try await LayoutReviewCapture.record(host: controller,
                 size: CGSize(width: 360, height: ceil(measured.height)),
@@ -102,9 +102,9 @@ final class HomeBookCardLayoutTests: XCTestCase {
     private func books() throws -> [BookDTO] {
         try [
             ("1", "Gizli Tarih", "Donna Tartt", "Roman"),
-            ("2", "Taşıyıcı Anne", "Penelope Ward", "Roman"),
-            ("3", "Birlikte Keşfettiğimiz Hikâyelerin İzinde Çok Uzun Bir Okuma Yolculuğu", "", ""),
-            ("4", "Birlikte Keşfettiğimiz Hikâyelerin İzinde Çok Uzun Bir Okuma Yolculuğu", "Birbirinden Güzel Kitapların Çok Uzun İsimli Örnek Yazarı", "Edebiyat")
+            ("2", "TaÅŸÄ±yÄ±cÄ± Anne", "Penelope Ward", "Roman"),
+            ("3", "Birlikte KeÅŸfettiÄŸimiz HikÃ¢yelerin Ä°zinde Ã‡ok Uzun Bir Okuma YolculuÄŸu", "", ""),
+            ("4", "Birlikte KeÅŸfettiÄŸimiz HikÃ¢yelerin Ä°zinde Ã‡ok Uzun Bir Okuma YolculuÄŸu", "Birbirinden GÃ¼zel KitaplarÄ±n Ã‡ok Uzun Ä°simli Ã–rnek YazarÄ±", "Edebiyat")
         ].map { id, title, author, category in
             let data = try JSONSerialization.data(withJSONObject: [
                 "id": id, "title": title, "author": author, "category": category,
