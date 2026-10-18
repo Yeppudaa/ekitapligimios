@@ -51,7 +51,7 @@ final class PremiumLayoutTests: XCTestCase {
         }
     }
 
-    func testRenderNarrowLayoutReviewAttachments() {
+    func testRenderNarrowLayoutReviewAttachments() async throws {
         let scenarios: [(CGFloat, DynamicTypeSize, Bool)] = [
             (320, .large, false), (375, .xLarge, false), (393, .large, false),
             (393, .accessibility3, true), (320, .accessibility5, true)
@@ -76,10 +76,14 @@ final class PremiumLayoutTests: XCTestCase {
             let window = UIWindow(frame: bounds)
             window.overrideUserInterfaceStyle = darkAndDisabled ? .dark : .light
             window.rootViewController = host
-            window.isHidden = false
+            window.makeKeyAndVisible()
             defer { window.isHidden = true; window.rootViewController = nil }
             host.view.frame = bounds
             host.view.setNeedsLayout()
+            host.view.layoutIfNeeded()
+            // Give SwiftUI/UIKit a main-run-loop turn to commit the newly attached hierarchy.
+            await Task.yield()
+            try await Task.sleep(for: .milliseconds(150))
             host.view.layoutIfNeeded()
             let format = UIGraphicsImageRendererFormat()
             format.scale = 1
@@ -88,7 +92,7 @@ final class PremiumLayoutTests: XCTestCase {
             let image = renderer.image { _ in
                 rendered = host.view.drawHierarchy(in: bounds, afterScreenUpdates: true)
             }
-            XCTAssertTrue(rendered, "UIKit did not finish rendering the hosted Premium content")
+            XCTAssertTrue(rendered, "UIKit did not finish rendering Premium \(width)pt / \(size), height \(bounds.height)")
             XCTAssertEqual(image.size.width, width, accuracy: 0.5)
             let attachment = XCTAttachment(image: image)
             attachment.name = "Premium-\(Int(width))pt-\(size)-\(darkAndDisabled ? "dark-disabled" : "light")"

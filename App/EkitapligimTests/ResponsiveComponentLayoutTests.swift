@@ -32,7 +32,7 @@ final class ResponsiveComponentLayoutTests: XCTestCase {
         }
     }
 
-    func testSharedCardsRenderForNarrowWidthReview() {
+    func testSharedCardsRenderForNarrowWidthReview() async throws {
         for (width, size) in [(CGFloat(390), DynamicTypeSize.large), (414, .large), (320, .accessibility5)] {
             let page = VStack(alignment: .leading, spacing: 20) {
                 ForEach(Array(samples.enumerated()), id: \.offset) { _, sample in sample.1 }
@@ -46,10 +46,13 @@ final class ResponsiveComponentLayoutTests: XCTestCase {
             let bounds = CGRect(x: 0, y: 0, width: width, height: ceil(fitted.height))
             let window = UIWindow(frame: bounds)
             window.rootViewController = controller
-            window.isHidden = false
+            window.makeKeyAndVisible()
             defer { window.isHidden = true; window.rootViewController = nil }
             controller.view.frame = bounds
             controller.view.setNeedsLayout()
+            controller.view.layoutIfNeeded()
+            await Task.yield()
+            try await Task.sleep(for: .milliseconds(150))
             controller.view.layoutIfNeeded()
             let format = UIGraphicsImageRendererFormat()
             format.scale = 1
@@ -57,7 +60,7 @@ final class ResponsiveComponentLayoutTests: XCTestCase {
             let image = UIGraphicsImageRenderer(bounds: bounds, format: format).image { _ in
                 rendered = controller.view.drawHierarchy(in: bounds, afterScreenUpdates: true)
             }
-            XCTAssertTrue(rendered)
+            XCTAssertTrue(rendered, "UIKit did not finish rendering shared cards \(width)pt / \(size), height \(bounds.height)")
             let attachment = XCTAttachment(image: image)
             attachment.name = "shared-layout-\(Int(width))pt-\(size)"
             attachment.lifetime = .keepAlways
