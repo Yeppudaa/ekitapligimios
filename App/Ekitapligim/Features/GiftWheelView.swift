@@ -65,7 +65,7 @@ import EkitapligimCore
     }
     private func font(_ size: CGFloat, _ weight: Font.Weight = .regular) -> Font { .system(size: size * fontScale, weight: weight) }
     private func kicker(_ key: String) -> some View {
-        Text(WheelL10n.text(key)).font(font(9, .bold)).tracking(1.4)
+        Text(WheelL10n.text(key)).font(font(11, .bold)).tracking(1.4)
             .foregroundStyle(GiftWheelPalette.color(0x80738F)).fixedSize(horizontal: false, vertical: true)
     }
     private var hero: some View {
@@ -150,6 +150,7 @@ import EkitapligimCore
             } label: {
                 HStack(spacing: 8) {
                     Text(actionTitle).font(font(13, .bold)).frame(maxWidth: .infinity, alignment: .leading)
+                        .fixedSize(horizontal: false, vertical: true)
                     if state.loading || state.submitting { ProgressView().tint(GiftWheelPalette.violet) }
                     else { Image(systemName: "arrow.right").accessibilityHidden(true) }
                 }
@@ -159,7 +160,10 @@ import EkitapligimCore
             }.buttonStyle(.plain).disabled(!canAct).padding(.top, 18).accessibilityIdentifier("gift-wheel-spin")
             Text(WheelL10n.text("cardFootnote")).font(font(10)).foregroundStyle(GiftWheelPalette.color(0x898191)).padding(.top, 13).padding(.bottom, 22)
             Rectangle().fill(GiftWheelPalette.color(0xEEE8F2)).frame(height: 1)
-            HStack(alignment: .firstTextBaseline) {
+            let walletLayout = dynamicTypeSize > .xLarge
+                ? AnyLayout(VStackLayout(alignment: .leading, spacing: 6))
+                : AnyLayout(HStackLayout(alignment: .firstTextBaseline))
+            walletLayout {
                 Text(WheelL10n.text("walletTitle")).font(font(11)).frame(maxWidth: .infinity, alignment: .leading)
                 Text(state.wallet.label).font(font(22, .bold)).foregroundStyle(GiftWheelPalette.color(0x6B4B91))
             }.foregroundStyle(GiftWheelPalette.color(0x84728F)).padding(.top, 18)
@@ -174,7 +178,7 @@ import EkitapligimCore
         VStack(spacing: 6) {
             Text(WheelL10n.text("countdown")).font(font(10))
             Text(String(format: "%02d : %02d : %02d", state.waitSeconds / 3600, state.waitSeconds % 3600 / 60, state.waitSeconds % 60))
-                .font(font(26, .bold)).monospacedDigit().foregroundStyle(GiftWheelPalette.color(0x665084))
+                .font(.system(size: 26, weight: .bold)).monospacedDigit().foregroundStyle(GiftWheelPalette.color(0x665084))
                 .minimumScaleFactor(0.7).lineLimit(1)
         }.padding(13).frame(maxWidth: .infinity).background(GiftWheelPalette.color(0xF6F2FA), in: RoundedRectangle(cornerRadius: 12))
     }
@@ -197,7 +201,7 @@ import EkitapligimCore
     private var legend: some View {
         VStack(alignment: .leading, spacing: 0) {
             sectionTitle("legendKicker", "legendTitle")
-            LazyVGrid(columns: Array(repeating: GridItem(.flexible(), spacing: 9), count: dynamicTypeSize.isAccessibilitySize ? 2 : 3), spacing: 10) {
+            LazyVGrid(columns: Array(repeating: GridItem(.flexible(), spacing: 9), count: dynamicTypeSize > .xLarge ? 1 : 3), spacing: 10) {
                 ForEach(Array(GiftWheelSegmentDTO.defaults.prefix(6)), id: \.index) { segment in
                     VStack(spacing: 0) {
                         Rectangle().fill(GiftWheelPalette.color(segment.colorHex)).frame(height: 3)
@@ -205,9 +209,11 @@ import EkitapligimCore
                             .font(.system(size: 23)).foregroundStyle(segment.days == 0 ? GiftWheelPalette.violet : GiftWheelPalette.color(segment.colorHex))
                             .padding(.top, 17).padding(.bottom, 10).accessibilityHidden(true)
                         Text(segment.label).font(font(12, .bold)).foregroundStyle(GiftWheelPalette.ink)
+                            .fixedSize(horizontal: false, vertical: true)
                         Text(WheelL10n.text(segment.days == 0 ? "noReward" : "premiumMembership")).font(font(9))
                             .foregroundStyle(GiftWheelPalette.muted).padding(.top, 5).padding(.bottom, 15)
                     }.frame(maxWidth: .infinity).multilineTextAlignment(.center)
+                        .fixedSize(horizontal: false, vertical: true)
                         .background(.white).clipShape(RoundedRectangle(cornerRadius: 15))
                         .overlay(RoundedRectangle(cornerRadius: 15).strokeBorder(GiftWheelPalette.border, lineWidth: 1))
                         .accessibilityElement(children: .combine)

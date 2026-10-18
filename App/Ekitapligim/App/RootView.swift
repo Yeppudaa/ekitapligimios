@@ -9,7 +9,8 @@ struct RootView: View {
     @State private var isMenuPresented = false
     @State private var assistantHidden = false
     @State private var assistantCollapsed = true
-    @State private var keyboardVisible = false
+    @State private var keyboardBottomInset: CGFloat = 0
+    @State private var keyboardDismissRequest = 0
     @State private var readerRequestedPremium = false
 
     init() {
@@ -25,11 +26,20 @@ struct RootView: View {
     var body: some View {
         ZStack(alignment: .topTrailing) {
             tabs
-            if container.isForumPresented || container.selectedTab != .catalog {
-                menuButton
-            }
             drawer
         }
+        .frame(maxWidth: .infinity, maxHeight: .infinity)
+        // The shell owns keyboard avoidance once. Descendant scroll views receive its safe inset;
+        // UIKit sheets keep their own presentation-local keyboard avoidance.
+        .background {
+            WindowKeyboardLayoutReader(dismissRequest: keyboardDismissRequest) { keyboardBottomInset = $0 }
+                .ignoresSafeArea(.container, edges: .bottom)
+                .allowsHitTesting(false)
+                .accessibilityHidden(true)
+        }
+        .ignoresSafeArea(.keyboard, edges: .bottom)
+        .onChange(of: container.selectedTab) { _, _ in dismissKeyboard() }
+        .onChange(of: container.isForumPresented) { _, _ in dismissKeyboard() }
         .onOpenURL { url in
             if GoogleSignInService.handle(url) { return }
             guard let route = DeepLinkParser().parse(url.absoluteString) else { return }
@@ -42,14 +52,15 @@ struct RootView: View {
             container.audioPlayback?.activate(account: container.audioAccount)
         }
         .onPreferenceChange(AILauncherHiddenKey.self) { assistantHidden = $0 }
-        .onReceive(NotificationCenter.default.publisher(for: UIResponder.keyboardWillShowNotification)) { _ in keyboardVisible = true }
-        .onReceive(NotificationCenter.default.publisher(for: UIResponder.keyboardWillHideNotification)) { _ in keyboardVisible = false }
         .onChange(of: scenePhase) { _, phase in
             if phase == .active { container.handleScenePhaseActive() }
-            if phase == .background { container.handleScenePhaseBackground() }
+            if phase == .background {
+                dismissKeyboard()
+                container.handleScenePhaseBackground()
+            }
         }
         .sheet(item: sheetRoute) { route in
-            AppRouteSheet(route: route)
+            AppRouteSheet(route: route, keyboardIsPresented: keyboardBottomInset > 0.5)
         }
         .fullScreenCover(item: readerRoute, onDismiss: {
             if readerRequestedPremium {
@@ -86,74 +97,63 @@ struct RootView: View {
     }
 
     private var tabs: some View {
-        VStack(spacing: 0) {
-            Group {
-                if container.isForumPresented {
-                    CommunityView()
-                } else {
-                    switch container.selectedTab {
-                    case .home:
-                        HomeView()
-                    case .catalog:
-                        CatalogView(onOpenMenu: openMenu)
-                    case .agenda:
-                        NavigationStack { BookAgendaView() }
-                    case .flow:
-                        NavigationStack { LiveActivityView() }
-                    case .requests:
-                        NavigationStack { BookRequestsView() }
-                    case .profile:
-                        NavigationStack { ProfileView() }
+        GeometryReader { geometry in
+            activeContent
+                .frame(maxWidth: .infinity, maxHeight: .infinity)
+                .environment(\.replyViewportHeight, max(0, geometry.size.height - geometry.safeAreaInsets.bottom - geometry.safeAreaInsets.top))
+                .accessibilityElement(children: .contain)
+                .accessibilityIdentifier("shell.content")
+                .overlay(alignment: .bottomTrailing) {
+                    if !isMenuPresented && !assistantHidden && keyboardBottomInset <= 0.5 && container.presentedRoute == nil && container.audioPageRoute == nil {
+                        AIAssistantLauncher(model: container.assistantModel, isCollapsed: $assistantCollapsed) {
+                            container.open(route: .aiAssistant(bookID: nil))
+                        }
+                        .padding(.trailing, 16)
+                        .padding(.bottom, 16)
                     }
                 }
-            }
-            .frame(maxWidth: .infinity, maxHeight: .infinity)
-            .overlay(alignment: .bottomTrailing) {
-                if !isMenuPresented && !assistantHidden && !keyboardVisible && container.presentedRoute == nil {
-                    AIAssistantLauncher(model: container.assistantModel, isCollapsed: $assistantCollapsed) {
-                        container.open(route: .aiAssistant(bookID: nil))
+        }
+        .safeAreaInset(edge: .bottom, spacing: 0) {
+            if keyboardBottomInset > 0.5 {
+                Color.clear.frame(height: keyboardBottomInset)
+                    .allowsHitTesting(false)
+                    .accessibilityHidden(true)
+            } else {
+                VStack(spacing: 0) {
+                    if container.presentedRoute == nil, let controller = container.audioPlayback {
+                        AudioMiniPlayerView(controller: controller) { container.open(route: .audioPlayer) }
                     }
-                    .padding(.trailing, 16)
-                    .padding(.bottom, 16)
+                    PrimaryTabBar(selection: $container.selectedTab, profileBadgeCount: container.totalUnread)
+                        .accessibilityElement(children: .contain)
+                        .accessibilityIdentifier("shell.primary-tabs")
                 }
             }
-
-            if container.presentedRoute == nil, let controller = container.audioPlayback {
-                AudioMiniPlayerView(controller: controller) { container.open(route: .audioPlayer) }
-            }
-            PrimaryTabBar(
-                selection: $container.selectedTab,
-                profileBadgeCount: container.totalUnread
-            )
         }
         .tint(EKitapligimPalette.teal)
     }
 
-    private var menuButton: some View {
-        Button(action: openMenu) {
-            Image(systemName: "line.3.horizontal")
-                .accessibilityHidden(true)
-                .font(.system(size: 19, weight: .semibold))
-                .foregroundStyle(EKitapligimPalette.ink)
-                .frame(width: 44, height: 44)
-                .background(.white.opacity(0.96))
-                .clipShape(RoundedRectangle(cornerRadius: 8, style: .continuous))
-                .overlay { RoundedRectangle(cornerRadius: 8).stroke(EKitapligimPalette.border) }
-                .overlay(alignment: .topTrailing) {
-                    if container.totalUnread > 0 {
-                        Circle()
-                            .fill(EKitapligimPalette.amber)
-                            .frame(width: 9, height: 9)
-                            .offset(x: 3, y: -3)
-                    }
-                }
+    @ViewBuilder private var activeContent: some View {
+        if container.isForumPresented {
+            CommunityView(hostsAudioNavigation: true, onOpenMenu: shellMenuAction)
+        } else {
+            switch container.selectedTab {
+            case .home: HomeView(hostsAudioNavigation: true, onOpenMenu: shellMenuAction)
+            case .catalog: CatalogView(hostsAudioNavigation: true, onOpenMenu: shellMenuAction)
+            case .agenda: NavigationStack { BookAgendaView().shellMenu(action: shellMenuAction).audioPageNavigation() }
+            case .flow: NavigationStack { LiveActivityView().shellMenu(action: shellMenuAction).audioPageNavigation() }
+            case .requests: NavigationStack { BookRequestsView().shellMenu(action: shellMenuAction).audioPageNavigation() }
+            case .profile: NavigationStack { ProfileView().shellMenu(action: shellMenuAction).audioPageNavigation() }
+            }
         }
-        .accessibilityLabel(L10n.menuTitle)
-        .padding(.top, 8)
-        .padding(.trailing, 12)
+    }
+
+    private func dismissKeyboard() { keyboardDismissRequest += 1 }
+    private var shellMenuAction: (() -> Void)? {
+        container.audioPageRoute == nil ? openMenu : nil
     }
 
     private func openMenu() {
+        dismissKeyboard()
         withAnimation(.easeOut(duration: 0.2)) { isMenuPresented = true }
     }
 
@@ -195,12 +195,17 @@ private struct AppRouteSheet: View {
     @EnvironmentObject private var container: AppContainer
     @Environment(\.dismiss) private var dismiss
     let route: AppRoute
+    var keyboardIsPresented = false
 
     var body: some View {
         NavigationStack {
-            destination
+            GeometryReader { geometry in
+                destination
+                    .frame(maxWidth: .infinity, maxHeight: .infinity)
+                    .environment(\.replyViewportHeight, max(0, geometry.size.height - geometry.safeAreaInsets.bottom - geometry.safeAreaInsets.top))
+            }
                 .safeAreaInset(edge: .bottom, spacing: 0) {
-                    if showsMiniPlayer, let controller = container.audioPlayback {
+                    if showsMiniPlayer, !keyboardIsPresented, let controller = container.audioPlayback {
                         AudioMiniPlayerView(controller: controller) { container.open(route: .audioPlayer) }
                     }
                 }
@@ -208,8 +213,10 @@ private struct AppRouteSheet: View {
                     ToolbarItem(placement: .topBarTrailing) {
                         if let controller = container.audioPlayback {
                             AudioAwareRouteCloseButton(controller: controller) { dismiss() }
+                                .accessibilityIdentifier("shell.route.close")
                         } else {
                             Button(L10n.commonClose) { dismiss() }
+                                .accessibilityIdentifier("shell.route.close")
                         }
                     }
                 }
@@ -314,7 +321,7 @@ private struct AudioAwareRouteCloseButton: View {
 }
 
 @MainActor
-private struct LoginRequiredView: View {
+struct LoginRequiredView: View {
     @State private var showingLogin = false
 
     var body: some View {

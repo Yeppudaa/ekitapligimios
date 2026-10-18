@@ -4,6 +4,7 @@ import EkitapligimCore
 @MainActor
 struct MembersView: View {
     @EnvironmentObject private var container: AppContainer
+    @Environment(\.dynamicTypeSize) private var dynamicTypeSize
     @State private var members: [MemberDTO] = []
     @State private var query = ""
     @State private var sort = "alphabetical"
@@ -57,7 +58,7 @@ struct MembersView: View {
 
     private var membersHeader: some View {
         VStack(alignment: .leading, spacing: 12) {
-            HStack(alignment: .firstTextBaseline) {
+            (dynamicTypeSize.isAccessibilitySize ? AnyLayout(VStackLayout(alignment: .leading, spacing: 10)) : AnyLayout(HStackLayout(alignment: .firstTextBaseline, spacing: 10))) {
                 VStack(alignment: .leading, spacing: 4) {
                     Text(L10n.membersTitle)
                         .font(.title3.weight(.heavy))
@@ -74,16 +75,25 @@ struct MembersView: View {
                     .padding(.vertical, 8)
                     .background(EKitapligimPalette.tealSoft, in: RoundedRectangle(cornerRadius: 12, style: .continuous))
             }
-            Picker(L10n.membersSortLabel, selection: $sort) {
-                Text(L10n.membersSortAlphabetical).tag("alphabetical")
-                Text(L10n.membersSortNewest).tag("newest")
-                Text(L10n.membersSortActive).tag("active")
+            Group {
+                if dynamicTypeSize > .large {
+                    membersSortPicker.pickerStyle(.menu)
+                } else {
+                    membersSortPicker.pickerStyle(.segmented)
+                }
             }
-            .pickerStyle(.segmented)
             .onChange(of: sort) { _, _ in Task { await load(reset: true) } }
         }
         .padding(16)
         .ekitapligimCard(radius: 16)
+    }
+
+    private var membersSortPicker: some View {
+        Picker(L10n.membersSortLabel, selection: $sort) {
+            Text(L10n.membersSortAlphabetical).tag("alphabetical")
+            Text(L10n.membersSortNewest).tag("newest")
+            Text(L10n.membersSortActive).tag("active")
+        }
     }
 
     private func load(reset: Bool) async {
@@ -119,10 +129,11 @@ struct MembersView: View {
 
 @MainActor
 private struct MemberRow: View {
+    @Environment(\.dynamicTypeSize) private var dynamicTypeSize
     let member: MemberDTO
 
     var body: some View {
-        HStack(spacing: 14) {
+        (dynamicTypeSize.isAccessibilitySize ? AnyLayout(VStackLayout(alignment: .leading, spacing: 14)) : AnyLayout(HStackLayout(spacing: 14))) {
             ZStack(alignment: .bottomTrailing) {
                 AsyncImage(url: URL(string: member.avatarUrl)) { image in
                     image.resizable().scaledToFill()
@@ -156,11 +167,11 @@ private struct MemberRow: View {
                 Text(member.username)
                     .font(.headline.weight(.semibold))
                     .foregroundStyle(EKitapligimPalette.ink)
-                    .lineLimit(1)
+                    .lineLimit(dynamicTypeSize.isAccessibilitySize ? nil : 2)
                 Text(member.roleLabel.isEmpty ? member.userTitle : member.roleLabel)
                     .font(.caption.weight(.semibold))
                     .foregroundStyle(EKitapligimPalette.tealDark)
-                    .lineLimit(1)
+                    .lineLimit(dynamicTypeSize.isAccessibilitySize ? nil : 2)
                 if member.isOnline {
                     Text(L10n.profileOnline)
                         .font(.caption2.weight(.bold))
@@ -189,6 +200,7 @@ private struct MemberRow: View {
 @MainActor
 struct MemberProfileView: View {
     @EnvironmentObject private var container: AppContainer
+    @Environment(\.dynamicTypeSize) private var dynamicTypeSize
     let memberID: String
 
     @State private var profile: MemberProfileDTO?
@@ -296,7 +308,7 @@ struct MemberProfileView: View {
 
     private func actionBar(_ profile: MemberProfileDTO) -> some View {
         VStack(spacing: 8) {
-            HStack(spacing: 10) {
+            (dynamicTypeSize.isAccessibilitySize ? AnyLayout(VStackLayout(spacing: 10)) : AnyLayout(HStackLayout(spacing: 10))) {
                 if profile.member.canFollow || profile.member.isFollowed {
                     Button {
                         Task { await toggleFollow(profile) }
@@ -306,6 +318,8 @@ struct MemberProfileView: View {
                             systemImage: profile.member.isFollowed ? "person.badge.minus" : "person.badge.plus"
                         )
                         .font(.subheadline.weight(.bold))
+                        .fixedSize(horizontal: false, vertical: true)
+                        .multilineTextAlignment(.center)
                         .foregroundStyle(.white)
                         .frame(maxWidth: .infinity)
                         .padding(.vertical, 12)
@@ -325,6 +339,8 @@ struct MemberProfileView: View {
                     } label: {
                         Label(L10n.membersSendMessage, systemImage: "envelope.fill")
                             .font(.subheadline.weight(.bold))
+                            .fixedSize(horizontal: false, vertical: true)
+                            .multilineTextAlignment(.center)
                             .foregroundStyle(.white)
                             .frame(maxWidth: .infinity)
                             .padding(.vertical, 12)
@@ -357,7 +373,7 @@ struct MemberProfileView: View {
             .accessibilityHidden(true)
 
             VStack(alignment: .leading, spacing: 12) {
-                HStack(alignment: .center, spacing: 13) {
+                (dynamicTypeSize.isAccessibilitySize ? AnyLayout(VStackLayout(alignment: .leading, spacing: 13)) : AnyLayout(HStackLayout(alignment: .top, spacing: 13))) {
                     EKAvatar(
                         urlString: member.avatarUrl,
                         username: member.username,
@@ -372,7 +388,7 @@ struct MemberProfileView: View {
                             Text(member.username)
                                 .font(.title3.weight(.heavy))
                                 .foregroundStyle(.white)
-                                .lineLimit(1)
+                                .lineLimit(dynamicTypeSize.isAccessibilitySize ? nil : 2)
                             if member.showVerifiedBadge {
                                 Image(systemName: "checkmark.seal.fill")
                                     .font(.footnote)
@@ -382,8 +398,8 @@ struct MemberProfileView: View {
                         Text(member.roleLabel.isEmpty ? member.userTitle : member.roleLabel)
                             .font(.caption)
                             .foregroundStyle(.white.opacity(0.82))
-                            .lineLimit(1)
-                        HStack(spacing: 7) {
+                            .fixedSize(horizontal: false, vertical: true)
+                        LazyVGrid(columns: dynamicTypeSize.isAccessibilitySize ? [GridItem(.flexible())] : [GridItem(.adaptive(minimum: 95), spacing: 7)], alignment: .leading, spacing: 7) {
                             if member.isOnline {
                                 memberChip(L10n.profileOnline)
                             }
@@ -399,14 +415,13 @@ struct MemberProfileView: View {
                 }
 
                 if member.registerDate > 0 || member.lastActivity > 0 {
-                    HStack(spacing: 16) {
+                    VStack(alignment: .leading, spacing: 8) {
                         if let joined = EKitapligimFormat.date(member.registerDate) {
                             heroFootnote(L10n.profileJoinedOn(joined), systemImage: "calendar")
                         }
                         if let seen = EKitapligimFormat.date(member.lastActivity) {
                             heroFootnote(L10n.profileLastSeen(seen), systemImage: "clock")
                         }
-                        Spacer(minLength: 0)
                     }
                 }
             }
@@ -418,20 +433,22 @@ struct MemberProfileView: View {
 
     private func memberChip(_ title: String) -> some View {
         Text(title)
-            .font(.system(size: 10, weight: .heavy))
+            .font(.caption2.weight(.heavy))
+            .multilineTextAlignment(.center)
+            .fixedSize(horizontal: false, vertical: true)
             .foregroundStyle(EKitapligimPalette.profileGold)
             .padding(.horizontal, 8)
             .padding(.vertical, 4)
-            .background(.white.opacity(0.13), in: Capsule())
+            .background(.white.opacity(0.13), in: RoundedRectangle(cornerRadius: dynamicTypeSize.isAccessibilitySize ? 10 : 999))
     }
 
     private func heroFootnote(_ text: String, systemImage: String) -> some View {
         HStack(spacing: 4) {
             Image(systemName: systemImage).font(.system(size: 9))
-            Text(text).font(.system(size: 10))
+            Text(text).font(.caption2)
+                .fixedSize(horizontal: false, vertical: true)
         }
         .foregroundStyle(.white.opacity(0.75))
-        .lineLimit(1)
     }
 
     private func statsBand(_ profile: MemberProfileDTO) -> some View {
@@ -540,7 +557,7 @@ struct MemberProfileView: View {
     private func shelfOverview(_ profile: MemberProfileDTO) -> some View {
         VStack(alignment: .leading, spacing: 12) {
             ProfileSectionHeading(title: L10n.membersShelvesTitle, subtitle: nil)
-            LazyVGrid(columns: [GridItem(.flexible(), spacing: 10), GridItem(.flexible(), spacing: 10)], spacing: 10) {
+            LazyVGrid(columns: dynamicTypeSize.isAccessibilitySize ? [GridItem(.flexible())] : [GridItem(.flexible(), spacing: 10), GridItem(.flexible(), spacing: 10)], spacing: 10) {
                 LibraryShelfCard(title: L10n.profileStatReading, count: profile.readingCount, systemImage: "book.pages.fill") {
                     section = .library
                 }
@@ -687,6 +704,7 @@ struct MemberProfileView: View {
     private var messageComposeSheet: some View {
         NavigationStack {
             EKitapligimScreen {
+                ScrollView {
                 VStack(alignment: .leading, spacing: 14) {
                     Text(L10n.membersMessagePrompt)
                         .font(.caption.weight(.bold))
@@ -710,6 +728,7 @@ struct MemberProfileView: View {
                     .disabled(isSendingMessage || messageDraft.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty)
                 }
                 .padding(18)
+                }
             }
             .navigationTitle(L10n.membersSendMessage)
             .navigationBarTitleDisplayMode(.inline)

@@ -6,12 +6,15 @@ struct CatalogView: View {
     @EnvironmentObject private var container: AppContainer
     let onOpenMenu: (() -> Void)?
     let embeddedInNavigationStack: Bool
+    let hostsAudioNavigation: Bool
     @Environment(\.dynamicTypeSize) private var dynamicTypeSize
+    @ScaledMetric(relativeTo: .title2) private var heroTitleSize: CGFloat = 25
+    @ScaledMetric(relativeTo: .caption2) private var heroEyebrowSize: CGFloat = 11
     @State private var editorialSpotlight: BookDTO?
     @State private var heroExpanded = true
     @State private var showingReadingHelp = false
     @State private var books: [BookDTO] = []
-    @State private var categories: [ForumDTO] = CatalogBookCategories.sortedFallbacks
+    @State private var categories: [ForumDTO] = BookCategoryCatalog.sorted(BookCategoryCatalog.defaults)
     @State private var query = ""
     @State private var filters = CatalogFilters()
     @State private var currentPage = 1
@@ -28,9 +31,11 @@ struct CatalogView: View {
     @AppStorage("catalog.displayMode") private var displayModeRawValue = CatalogDisplayMode.grid.rawValue
 
     init(initialCategoryID: String = "", initialOrder: String = "latest", embeddedInNavigationStack: Bool = false,
+         hostsAudioNavigation: Bool = false,
          onOpenMenu: (() -> Void)? = nil) {
         self.onOpenMenu = onOpenMenu
         self.embeddedInNavigationStack = embeddedInNavigationStack
+        self.hostsAudioNavigation = hostsAudioNavigation
         _filters = State(initialValue: CatalogFilters(categoryID: initialCategoryID, order: initialOrder))
     }
 
@@ -90,25 +95,25 @@ struct CatalogView: View {
                         Image(systemName: displayMode == .list ? "square.grid.2x2" : "list.bullet")
                     }
                     .accessibilityLabel(displayMode == .list ? L10n.catalogShowGrid : L10n.catalogShowList)
+                    .accessibilityIdentifier("catalog.displayMode")
                 }
                 ToolbarItem(placement: .topBarTrailing) {
                     Button { showingFilters = true } label: {
                         Image(systemName: filters.isActive ? "line.3.horizontal.decrease.circle.fill" : "line.3.horizontal.decrease.circle")
                     }
                     .accessibilityLabel(L10n.catalogFiltersTitle)
+                    .accessibilityIdentifier("catalog.filters")
                 }
                 if let onOpenMenu {
                     ToolbarItem(placement: .topBarTrailing) {
-                        Button(action: onOpenMenu) {
-                            Image(systemName: "line.3.horizontal")
-                        }
-                        .accessibilityLabel(L10n.menuTitle)
+                        EKitapligimMenuButton(action: onOpenMenu)
                     }
                 }
             }
             .navigationDestination(for: String.self) { id in
                 BookDetailDestination(bookIDString: id)
             }
+            .audioPageNavigation(enabled: hostsAudioNavigation)
             .task {
                 async let editorRequest: Void = loadEditorSelection()
                 async let categoryRequest: Void = loadCategories()
@@ -130,14 +135,11 @@ struct CatalogView: View {
     }
 
     private var catalogHero: some View {
-        VStack(alignment: .leading, spacing: 14) {
+        Group {
             if heroExpanded && !dynamicTypeSize.isAccessibilitySize && query.isEmpty {
-                ViewThatFits(in: .horizontal) {
-                    HStack(alignment: .center, spacing: 18) {
-                        catalogHeroCopy.frame(minWidth: 170)
-                        catalogSpotlight
-                    }
-                    VStack(alignment: .leading, spacing: 18) { catalogHeroCopy; catalogSpotlight }
+                CatalogHeroColumns {
+                    catalogHeroCopy
+                    ZStack { catalogSpotlight }
                 }
             } else {
                 HStack(alignment: .top, spacing: 10) {
@@ -159,45 +161,85 @@ struct CatalogView: View {
                 }
             }
         }
-        .padding(20)
+        .padding(.horizontal, 18)
+        .padding(.vertical, 22)
         .frame(maxWidth: .infinity, alignment: .leading)
         .background {
             GeometryReader { geometry in
                 Image(ModernCatalogArtwork.asset(categoryID: filters.categoryID))
                     .resizable().scaledToFill()
-                    .frame(width: geometry.size.width, height: geometry.size.height).clipped()
-                    .overlay { LinearGradient(colors: [Color(hex: 0xFFFAF2).opacity(0.97), Color(hex: 0xFFFAF2).opacity(0.82), Color(hex: 0xFFFAF2).opacity(0.18)], startPoint: .leading, endPoint: .trailing) }
+                    .frame(width: geometry.size.width, height: geometry.size.height, alignment: .trailing)
+                    .clipped()
+                    .overlay {
+                        LinearGradient(stops: [
+                            .init(color: Color(hex: 0xFFFAF2).opacity(0.98), location: 0),
+                            .init(color: Color(hex: 0xFFFAF2).opacity(0.90), location: 0.36),
+                            .init(color: Color(hex: 0xFFFAF2).opacity(0.40), location: 0.64),
+                            .init(color: Color(hex: 0xFFFAF2).opacity(0.04), location: 1)
+                        ], startPoint: .leading, endPoint: .trailing)
+                    }
             }
+            .accessibilityHidden(true)
         }
-        .clipShape(RoundedRectangle(cornerRadius: 23))
-        .overlay { RoundedRectangle(cornerRadius: 23).stroke(Color(hex: 0xE6DECD)) }
+        .clipShape(RoundedRectangle(cornerRadius: 24, style: .continuous))
+        .overlay {
+            RoundedRectangle(cornerRadius: 24, style: .continuous)
+                .strokeBorder(Color(hex: 0xDCE5DF).opacity(0.8))
+        }
+        .shadow(color: Color(hex: 0x294F4C).opacity(0.06), radius: 14, y: 6)
+        .accessibilityElement(children: .contain)
         .accessibilityIdentifier("catalog.scenicHero")
     }
 
     private var catalogHeroCopy: some View {
-        VStack(alignment: .leading, spacing: 12) {
+        VStack(alignment: .leading, spacing: 10) {
             Text(HomeRefreshL10n.text("catalog.eyebrow"))
-                .font(.caption2.weight(.semibold)).tracking(1.1)
-                .foregroundStyle(EKitapligimPalette.tealDark)
+                .font(.system(size: heroEyebrowSize, weight: .semibold)).tracking(0.9)
+                .foregroundStyle(Color(hex: 0x236673))
                 .fixedSize(horizontal: false, vertical: true)
-            Text(filters.categoryID.isEmpty ? HomeRefreshL10n.text("catalog.title") : selectedCategoryTitle)
-                .font(.system(.largeTitle, design: .serif, weight: .bold))
-                .foregroundStyle(EKitapligimPalette.ink)
-                .fixedSize(horizontal: false, vertical: true)
+            catalogHeroTitle
+                .font(.system(size: heroTitleSize, weight: .medium, design: .serif))
+                .foregroundStyle(Color(hex: 0x173F4B))
+                .lineSpacing(1)
             Text(HomeRefreshL10n.text("catalog.subtitle"))
-                .font(.subheadline).foregroundStyle(EKitapligimPalette.muted)
+                .font(.caption).foregroundStyle(Color(hex: 0x4D6D78))
+                .lineSpacing(2)
                 .fixedSize(horizontal: false, vertical: true)
+            catalogHeroActions
+        }
+        .frame(maxWidth: 440, alignment: .leading)
+    }
+
+    @ViewBuilder private var catalogHeroTitle: some View {
+        if filters.categoryID.isEmpty {
+            (Text(HomeRefreshL10n.text("catalog.title.lead"))
+                + Text("\n")
+                + Text(HomeRefreshL10n.text("catalog.title.emphasis"))
+                    .italic().foregroundColor(Color(hex: 0x237785)))
+                .fixedSize(horizontal: false, vertical: true)
+                .accessibilityLabel(HomeRefreshL10n.text("catalog.title"))
+        } else {
+            Text(selectedCategoryTitle)
+                .fixedSize(horizontal: false, vertical: true)
+        }
+    }
+
+    private var catalogHeroActions: some View {
+        VStack(alignment: .leading, spacing: 4) {
             Button { heroExpanded = false } label: {
                 Label(HomeRefreshL10n.text("catalog.explore"), systemImage: "book.pages")
                     .font(.caption.weight(.bold)).foregroundStyle(.white)
-                    .padding(.horizontal, 16).padding(.vertical, 12).frame(minHeight: 48)
-                    .background(EKitapligimPalette.tealDark, in: Capsule())
+                    .fixedSize(horizontal: false, vertical: true)
+                    .padding(.horizontal, 13).padding(.vertical, 10).frame(minHeight: 44)
+                    .background(Color(hex: 0x205865), in: Capsule())
+                    .overlay { Capsule().strokeBorder(.white.opacity(0.18)) }
             }.buttonStyle(.plain)
             Button { showingReadingHelp = true } label: {
                 Label(HomeRefreshL10n.text("catalog.help"), systemImage: "questionmark.circle")
-                    .font(.caption.weight(.semibold)).foregroundStyle(EKitapligimPalette.tealDark)
-                    .padding(.horizontal, 14).padding(.vertical, 12).frame(minHeight: 44)
-                    .background(.white.opacity(0.9), in: Capsule())
+                    .font(.caption.weight(.semibold)).foregroundStyle(Color(hex: 0x205865))
+                    .fixedSize(horizontal: false, vertical: true)
+                    .padding(.horizontal, 13).padding(.vertical, 10).frame(minHeight: 44)
+                    .background(.white.opacity(0.92), in: Capsule())
             }.buttonStyle(.plain)
         }
     }
@@ -205,21 +247,56 @@ struct CatalogView: View {
     @ViewBuilder private var catalogSpotlight: some View {
         if let book = editorialSpotlight {
             NavigationLink(value: book.id) {
-                VStack(spacing: 9) {
+                VStack(spacing: 0) {
                     EKitapligimRemoteCover(urlString: book.coverUrl, title: book.title, author: book.author)
-                        .frame(width: 108, height: 162)
-                        .clipShape(RoundedRectangle(cornerRadius: 7))
-                    Text(book.title).font(.caption2.weight(.semibold))
-                        .foregroundStyle(EKitapligimPalette.ink)
-                        .multilineTextAlignment(.center).fixedSize(horizontal: false, vertical: true)
+                        .aspectRatio(2.0 / 3.0, contentMode: .fit)
+                        .clipShape(RoundedRectangle(cornerRadius: 3, style: .continuous))
+                        .overlay {
+                            RoundedRectangle(cornerRadius: 3, style: .continuous)
+                                .strokeBorder(.white.opacity(0.14))
+                        }
+                    Text(book.title)
+                        .font(.system(size: 9, weight: .medium, design: .serif))
+                        .foregroundStyle(Color(hex: 0xF4EAD5))
+                        .multilineTextAlignment(.center)
+                        .lineLimit(2)
+                        .fixedSize(horizontal: false, vertical: true)
+                        .frame(maxWidth: .infinity, minHeight: 28)
+                        .padding(.horizontal, 2)
+                        .padding(.top, 3)
                 }
-                .padding(9).frame(width: 126)
-                .background(.white.opacity(0.82), in: RoundedRectangle(cornerRadius: 13))
-                .shadow(color: EKitapligimPalette.ink.opacity(0.15), radius: 12, y: 7)
+                .padding(.horizontal, 7)
+                .padding(.top, 7)
+                .padding(.bottom, 3)
+                .background {
+                    RoundedRectangle(cornerRadius: 8, style: .continuous)
+                        .fill(LinearGradient(colors: [Color(hex: 0x31575A), Color(hex: 0x173B40)],
+                                             startPoint: .topLeading, endPoint: .bottomTrailing))
+                }
+                .overlay {
+                    RoundedRectangle(cornerRadius: 8, style: .continuous)
+                        .strokeBorder(.white.opacity(0.28))
+                }
+                .overlay(alignment: .leading) {
+                    RoundedRectangle(cornerRadius: 1)
+                        .fill(.white.opacity(0.14))
+                        .frame(width: 2)
+                        .padding(.leading, 3)
+                        .padding(.vertical, 8)
+                }
+                .shadow(color: Color(hex: 0x102D32).opacity(0.28), radius: 12, x: 5, y: 12)
+                .rotation3DEffect(.degrees(-6), axis: (x: 0, y: 1, z: 0), perspective: 0.3)
                 .rotationEffect(.degrees(-3))
             }
             .buttonStyle(.plain)
+            .accessibilityLabel(book.title)
+            .accessibilityValue(book.author)
             .accessibilityIdentifier("catalog.editorialSpotlight")
+        } else {
+            // Reserve the book column while the real editorial selection loads.
+            Color.clear
+                .aspectRatio(2.0 / 3.0, contentMode: .fit)
+                .accessibilityHidden(true)
         }
     }
 
@@ -411,76 +488,42 @@ struct CatalogView: View {
 
     private func loadCategories() async {
         guard let result = try? await container.community.forums() else { return }
-        categories = CatalogBookCategories.merged(live: result.forums)
+        categories = BookCategoryCatalog.sorted(BookCategoryCatalog.merging(live: result.forums))
     }
 }
 
-private enum CatalogBookCategories {
-    static let fallback: [ForumDTO] = [
-        ("6", "Roman"),
-        ("7", "Edebiyat"),
-        ("8", "Eğitim"),
-        ("9", "Bilim"),
-        ("10", "Tarih"),
-        ("11", "Din"),
-        ("12", "Psikoloji"),
-        ("13", "Kişisel Gelişim"),
-        ("14", "Ekonomi"),
-        ("15", "Çocuk"),
-        ("16", "Biyografi"),
-        ("17", "Felsefe"),
-        ("18", "Öykü / Hikaye"),
-        ("19", "Siyaset"),
-        ("20", "Romantik"),
-        ("21", "Fantastik"),
-        ("22", "Bilimkurgu"),
-        ("23", "Macera"),
-        ("24", "Polisiye"),
-        ("25", "Korku / Gerilim"),
-        ("26", "Gençlik"),
-        ("27", "Sağlık"),
-        ("28", "Türk Klasikleri"),
-        ("29", "Dünya Klasikleri"),
-        ("30", "Teknoloji / Bilişim"),
-        ("32", "Yabancı Dil"),
-        ("33", "Kültür / Sanat"),
-        ("34", "Sinema / Tiyatro"),
-        ("35", "Akademik"),
-        ("36", "Aile ve Yaşam"),
-        ("37", "Yemek / Mutfak"),
-        ("38", "Masal")
-    ].map { ForumDTO(id: $0.0, title: $0.1, isBookForum: true) }
+/// Measure wrapped copy at its actual column width instead of falling back to a vertical hero.
+private struct CatalogHeroColumns: Layout {
+    private let spacing: CGFloat = 14
 
-    static var knownIDs: Set<String> {
-        Set(fallback.map(\.id))
+    func sizeThatFits(proposal: ProposedViewSize, subviews: Subviews, cache: inout ()) -> CGSize {
+        guard subviews.count == 2 else { return .zero }
+        let proposedWidth = proposal.width ?? 320
+        let width = proposedWidth.isFinite ? max(0, proposedWidth) : 320
+        let columns = columnWidths(for: width)
+        let copy = subviews[0].sizeThatFits(ProposedViewSize(width: columns.copy, height: nil))
+        let book = subviews[1].sizeThatFits(ProposedViewSize(width: columns.book, height: nil))
+        return CGSize(width: width, height: max(copy.height, book.height))
     }
 
-    static var sortedFallbacks: [ForumDTO] {
-        sorted(fallback)
+    func placeSubviews(in bounds: CGRect, proposal: ProposedViewSize, subviews: Subviews, cache: inout ()) {
+        guard subviews.count == 2 else { return }
+        let columns = columnWidths(for: bounds.width)
+        subviews[0].place(
+            at: CGPoint(x: bounds.minX, y: bounds.midY),
+            anchor: .leading,
+            proposal: ProposedViewSize(width: columns.copy, height: nil)
+        )
+        subviews[1].place(
+            at: CGPoint(x: bounds.maxX, y: bounds.midY),
+            anchor: .trailing,
+            proposal: ProposedViewSize(width: columns.book, height: nil)
+        )
     }
 
-    static func sorted(_ forums: [ForumDTO]) -> [ForumDTO] {
-        forums.sorted { lhs, rhs in
-            lhs.title.compare(rhs.title, locale: EKitapligimFormat.locale) == .orderedAscending
-        }
-    }
-
-    static func merged(live: [ForumDTO]) -> [ForumDTO] {
-        var byID = Dictionary(uniqueKeysWithValues: fallback.map { ($0.id, $0) })
-        for forum in live where knownIDs.contains(forum.id) {
-            let title = forum.title.trimmingCharacters(in: .whitespacesAndNewlines)
-            guard !title.isEmpty, title.caseInsensitiveCompare("Genel") != .orderedSame else { continue }
-            byID[forum.id] = ForumDTO(
-                id: forum.id,
-                title: title,
-                description: forum.description,
-                url: forum.url,
-                stats: forum.stats,
-                threadCount: forum.threadCount,
-                isBookForum: true
-            )
-        }
-        return sorted(Array(byID.values))
+    private func columnWidths(for width: CGFloat) -> (copy: CGFloat, book: CGFloat) {
+        let book = min(154, width * 0.32)
+        return (max(0, width - book - spacing), book)
     }
 }
 
@@ -573,7 +616,7 @@ private struct CatalogFiltersView: View {
                         Text(L10n.catalogOrderPopular).tag("popular")
                         Text(L10n.catalogOrderRated).tag("rated")
                     }
-                    .pickerStyle(.segmented)
+                    .pickerStyle(.inline)
                 }
             }
             .navigationTitle(L10n.catalogFiltersTitle)
@@ -640,46 +683,29 @@ private struct BookRow: View {
                 .clipShape(RoundedRectangle(cornerRadius: 10, style: .continuous))
                 .shadow(color: EKitapligimPalette.ink.opacity(0.16), radius: 10, y: 5)
             VStack(alignment: .leading, spacing: 6) {
-                Text(book.title)
+                UniformCardText(book.title, lines: 2)
                     .font(.headline.weight(.semibold))
                     .foregroundStyle(EKitapligimPalette.ink)
-                    .lineLimit(dynamicTypeSize.isAccessibilitySize ? nil : 2)
-                    .fixedSize(horizontal: false, vertical: true)
-                Text(book.author)
+                UniformCardText(book.author, lines: 1)
                     .font(.subheadline)
                     .foregroundStyle(EKitapligimPalette.muted)
-                    .lineLimit(dynamicTypeSize.isAccessibilitySize ? nil : 1)
-                    .fixedSize(horizontal: false, vertical: true)
-                let metadataLayout = dynamicTypeSize.isAccessibilitySize
-                    ? AnyLayout(VStackLayout(alignment: .leading, spacing: 8))
-                    : AnyLayout(HStackLayout(alignment: .center, spacing: 8))
-                metadataLayout {
-                    if !book.category.isEmpty {
-                        Text(book.category)
-                            .font(.caption.weight(.semibold))
-                            .foregroundStyle(EKitapligimPalette.tealDark)
-                            .padding(.horizontal, 9)
-                            .padding(.vertical, 4)
-                            .background(EKitapligimPalette.tealSoft)
-                            .clipShape(Capsule())
-                            .lineLimit(dynamicTypeSize.isAccessibilitySize ? nil : 1)
-                    }
-                    if book.pageCount > 1 {
-                        Text(L10n.catalogBookPageCount(book.pageCount))
-                            .font(.caption.weight(.semibold))
-                            .foregroundStyle(EKitapligimPalette.muted)
-                    }
+                if dynamicTypeSize.isAccessibilitySize {
+                    VStack(alignment: .leading, spacing: 8) { metadata }
+                } else {
+                    HStack(spacing: 8) { metadata }
                 }
                 Spacer(minLength: 0)
                 HStack {
-                    if let rating = book.rating, rating > 0 {
-                        Label(rating.formatted(.number.precision(.fractionLength(1))), systemImage: "star.fill")
-                            .foregroundStyle(EKitapligimPalette.amber)
-                    }
+                    Label((book.rating ?? 0).formatted(.number.precision(.fractionLength(1))), systemImage: "star.fill")
+                        .foregroundStyle(EKitapligimPalette.amber)
+                        .lineLimit(1)
+                        .opacity(hasRating ? 1 : 0)
+                        .accessibilityHidden(!hasRating)
                     Spacer()
                     Image(systemName: "chevron.right").foregroundStyle(EKitapligimPalette.teal)
                 }.font(.caption.weight(.bold))
             }
+            .frame(maxWidth: .infinity, alignment: .leading)
         }
         .padding(12)
         .frame(maxWidth: .infinity, alignment: .leading)
@@ -690,10 +716,34 @@ private struct BookRow: View {
                 .stroke(EKitapligimPalette.border)
         }
     }
+
+    @ViewBuilder private var metadata: some View {
+        if !dynamicTypeSize.isAccessibilitySize || !book.category.isEmpty {
+            UniformCardText(book.category, lines: 1)
+                .font(.caption.weight(.semibold))
+                .foregroundStyle(EKitapligimPalette.tealDark)
+                .padding(.horizontal, 9).padding(.vertical, 4)
+                .background(EKitapligimPalette.tealSoft, in: Capsule())
+                .opacity(book.category.isEmpty ? 0 : 1)
+                .accessibilityHidden(book.category.isEmpty)
+        }
+        if !dynamicTypeSize.isAccessibilitySize || book.pageCount > 1 {
+            Text(L10n.catalogBookPageCount(book.pageCount))
+                .font(.caption.weight(.semibold)).foregroundStyle(EKitapligimPalette.muted)
+                .lineLimit(dynamicTypeSize.isAccessibilitySize ? nil : 1)
+                .fixedSize(horizontal: false, vertical: true)
+                .layoutPriority(1)
+                .opacity(book.pageCount > 1 ? 1 : 0)
+                .accessibilityHidden(book.pageCount <= 1)
+        }
+    }
+
+    private var hasRating: Bool { (book.rating ?? 0) > 0 }
 }
 
 @MainActor
 private struct BookGridItem: View {
+    @ScaledMetric(relativeTo: .caption2) private var metadataLineHeight: CGFloat = 14
     let book: BookDTO
 
     var body: some View {
@@ -703,15 +753,12 @@ private struct BookGridItem: View {
                 .frame(maxWidth: .infinity)
                 .clipShape(RoundedRectangle(cornerRadius: 12, style: .continuous))
                 .shadow(color: Color.black.opacity(0.18), radius: 12, y: 6)
-            Text(book.title)
+            UniformCardText(book.title, lines: 2)
                 .font(.caption.weight(.bold))
                 .foregroundStyle(EKitapligimPalette.ink)
-                .lineLimit(2)
-                .frame(minHeight: 32, alignment: .topLeading)
-            Text(book.author)
+            UniformCardText(book.author, lines: 1)
                 .font(.caption2)
                 .foregroundStyle(EKitapligimPalette.muted)
-                .lineLimit(1)
             HStack(spacing: 6) {
                 if book.pageCount > 1 {
                     Text(L10n.catalogBookPageCount(book.pageCount))
@@ -727,6 +774,7 @@ private struct BookGridItem: View {
                     .foregroundStyle(EKitapligimPalette.amber)
                 }
             }
+            .frame(minHeight: metadataLineHeight, alignment: .topLeading)
         }
         .frame(maxWidth: .infinity, alignment: .leading)
         .accessibilityElement(children: .combine)

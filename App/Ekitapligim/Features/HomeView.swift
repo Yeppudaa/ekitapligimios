@@ -5,13 +5,15 @@ import EkitapligimCore
 struct HomeView: View {
     @EnvironmentObject private var container: AppContainer
     @Environment(\.dynamicTypeSize) private var dynamicTypeSize
+    var hostsAudioNavigation = false
+    var onOpenMenu: (() -> Void)? = nil
 
     @State private var stats: SiteStatsDTO?
     @State private var popularBooks: [BookDTO] = []
     @State private var newestBooks: [BookDTO] = []
     @State private var premiumBooks: [BookDTO] = []
     @State private var editorialBooks: [BookDTO] = []
-    @State private var categoryForums: [ForumDTO] = []
+    @State private var categoryForums: [ForumDTO] = BookCategoryCatalog.defaults
     @State private var agendaPosts: [BookAgendaPostDTO] = []
     @State private var liveItems: [LiveActivityItemDTO] = []
     @State private var chatRoom: ChatRoomDTO?
@@ -91,6 +93,7 @@ struct HomeView: View {
             .navigationDestination(for: String.self) { id in
                 BookDetailDestination(bookIDString: id)
             }
+            .audioPageNavigation(enabled: hostsAudioNavigation)
             .task {
                 async let editorRequest: Void = loadEditorialBooks()
                 async let categoryRequest: Void = loadCategoryForums()
@@ -117,13 +120,18 @@ struct HomeView: View {
     // MARK: - Üst bölüm
 
     private var headerBlock: some View {
-        ViewThatFits(in: .horizontal) {
-            HStack(spacing: 12) { headerBrand; Spacer(minLength: 4); premiumShortcut }
-            VStack(alignment: .leading, spacing: 10) { headerBrand; premiumShortcut }
+        HStack(alignment: .top, spacing: 12) {
+            ViewThatFits(in: .horizontal) {
+                HStack(spacing: 12) { headerBrand; Spacer(minLength: 4); premiumShortcut.fixedSize() }
+                VStack(alignment: .leading, spacing: 10) { headerBrand; premiumShortcut }
+            }
+            .frame(maxWidth: .infinity, alignment: .leading)
+            if let onOpenMenu {
+                EKitapligimMenuButton(action: onOpenMenu)
+            }
         }
         .padding(.horizontal, 16)
         .padding(.top, 12)
-        .padding(.trailing, 58)
     }
 
     private var headerBrand: some View {
@@ -137,6 +145,7 @@ struct HomeView: View {
                 .padding(.horizontal, 14).padding(.vertical, 12).frame(minHeight: 48)
                 .background(EKitapligimPalette.teal, in: RoundedRectangle(cornerRadius: 15))
         }.buttonStyle(.plain)
+        .accessibilityIdentifier("shell.home.premium")
     }
 
     private var heroCard: some View {
@@ -232,13 +241,14 @@ struct HomeView: View {
                 Text(L10n.homeSearchPlaceholder)
                     .font(.subheadline)
                     .foregroundStyle(EKitapligimPalette.muted)
-                    .lineLimit(1)
+                    .fixedSize(horizontal: false, vertical: true)
                 Spacer()
                 Image(systemName: "slider.horizontal.3")
                     .foregroundStyle(EKitapligimPalette.teal)
             }
             .padding(.horizontal, 17)
-            .frame(height: 58)
+            .padding(.vertical, 14)
+            .frame(minHeight: 58)
             .ekitapligimCard(radius: 17)
         }
         .buttonStyle(.plain)
@@ -281,7 +291,7 @@ struct HomeView: View {
             .padding(.horizontal, 16)
 
             ScrollView(.horizontal, showsIndicators: false) {
-                LazyHStack(spacing: 12) {
+                HStack(alignment: .top, spacing: 12) {
                     discoveryCard(
                         badge: L10n.homeDiscoveryCatalogBadge,
                         title: L10n.tabCatalogShort,
@@ -365,16 +375,17 @@ struct HomeView: View {
             VStack(alignment: .leading, spacing: 10) {
                 HStack {
                     EKPill(title: badge, foreground: tint, background: tint.opacity(0.12))
+                        .lineLimit(dynamicTypeSize.isAccessibilitySize ? nil : 1)
                     Spacer(minLength: 0)
                     Image(systemName: systemImage)
                         .font(.title3.weight(.semibold))
                         .foregroundStyle(tint.opacity(0.9))
                 }
-                Text(title)
+                UniformCardText(title, lines: 2)
                     .font(.subheadline.weight(.heavy))
                     .foregroundStyle(EKitapligimPalette.ink)
                     .fixedSize(horizontal: false, vertical: true)
-                Text(subtitle)
+                UniformCardText(subtitle, lines: 2)
                     .font(.caption2)
                     .foregroundStyle(EKitapligimPalette.muted)
                     .fixedSize(horizontal: false, vertical: true)
@@ -388,7 +399,9 @@ struct HomeView: View {
                 }
             }
             .padding(14)
-            .frame(width: 220, alignment: .topLeading)
+            .containerRelativeFrame(.horizontal) { length, _ in
+                min(220, max(1, length - 32))
+            }
             .frame(minHeight: 140)
             .background(
                 LinearGradient(
@@ -620,13 +633,7 @@ struct HomeView: View {
 
     private func loadCategoryForums() async {
         guard let page = try? await container.community.forums(), !Task.isCancelled else { return }
-        // Only live book-category nodes qualify; forum counts are never synthesized.
-        let knownBookIDs = Set((6...38).filter { $0 != 31 }.map(String.init))
-        var seen = Set<String>()
-        categoryForums = page.forums.filter {
-            knownBookIDs.contains($0.id) && !$0.title.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty
-                && seen.insert($0.id).inserted
-        }
+        categoryForums = BookCategoryCatalog.merging(live: page.forums)
     }
 
     private func loadIfNeeded() async {
@@ -759,31 +766,31 @@ struct HomeView: View {
 
 private struct HomeBookCard: View {
     @ScaledMetric(relativeTo: .body) private var cardWidth = 148.0
-    @Environment(\.dynamicTypeSize) private var dynamicTypeSize
     let book: BookDTO
 
     var body: some View {
         VStack(alignment: .leading, spacing: 10) {
             EKitapligimRemoteCover(urlString: book.coverUrl, title: book.title, author: book.author)
-                .frame(width: cardWidth - 24, height: (cardWidth - 24) * 1.48)
+                .aspectRatio(1 / 1.48, contentMode: .fit)
                 .clipShape(RoundedRectangle(cornerRadius: 8))
                 .padding(12)
                 .background(EKitapligimPalette.tealSoft.opacity(0.55), in: RoundedRectangle(cornerRadius: 12))
-            if !book.category.isEmpty {
-                Label(book.category, systemImage: "book.closed")
-                    .font(.caption2.weight(.semibold)).foregroundStyle(EKitapligimPalette.teal)
+            Label {
+                UniformCardText(book.category, lines: 1)
+            } icon: {
+                Image(systemName: "book.closed").accessibilityHidden(true)
             }
-            Text(book.title).font(.subheadline.weight(.semibold))
+            .font(.caption2.weight(.semibold)).foregroundStyle(EKitapligimPalette.teal)
+            .opacity(book.category.isEmpty ? 0 : 1)
+            .accessibilityHidden(book.category.isEmpty)
+            UniformCardText(book.title, lines: 3).font(.subheadline.weight(.semibold))
                 .foregroundStyle(EKitapligimPalette.ink)
-                .lineLimit(dynamicTypeSize.isAccessibilitySize ? nil : 3)
-                .fixedSize(horizontal: false, vertical: true)
-            if !book.author.isEmpty {
-                Text(book.author).font(.caption).foregroundStyle(EKitapligimPalette.muted)
-                    .fixedSize(horizontal: false, vertical: true)
-            }
+            UniformCardText(book.author, lines: 1).font(.caption).foregroundStyle(EKitapligimPalette.muted)
         }
         .padding(12)
-        .frame(width: cardWidth + 24, alignment: .topLeading)
+        .containerRelativeFrame(.horizontal) { length, _ in
+            min(cardWidth + 24, max(1, length - 32))
+        }
         .ekitapligimCard(radius: 18)
     }
 }
@@ -857,7 +864,8 @@ struct HomeAgendaCard: View {
         .multilineTextAlignment(.leading)
         .padding(16)
         .frame(maxWidth: .infinity, alignment: .topLeading)
-        .frame(height: isRailLayout ? Self.railHeight : nil)
+        // The eager rail measures its tallest card, then stretches every card to that height.
+        .frame(minHeight: isRailLayout ? Self.railHeight : nil, maxHeight: isRailLayout ? .infinity : nil, alignment: .topLeading)
         .fixedSize(horizontal: false, vertical: !isRailLayout)
         .background {
             RoundedRectangle(cornerRadius: 24, style: .continuous)
@@ -885,7 +893,7 @@ struct HomeAgendaCard: View {
     private var cardButtonContent: some View {
         VStack(alignment: .leading, spacing: 12) {
             Label(typeTitle, systemImage: typeIcon)
-                .font(.caption.weight(.semibold))
+                .font(.caption2.weight(.semibold))
                 .foregroundStyle(style.accent)
                 .padding(.horizontal, 11)
                 .padding(.vertical, 7)
@@ -894,24 +902,24 @@ struct HomeAgendaCard: View {
             VStack(alignment: .leading, spacing: 10) {
                 if isQuotation {
                     Image(systemName: "quote.opening")
-                        .font(.system(size: 24, weight: .bold, design: .serif))
+                        .font(.system(.body, design: .serif, weight: .medium))
                         .foregroundStyle(style.accent.opacity(0.6))
                         .accessibilityHidden(true)
                 }
                 if post.type == "review", !plainText(post.reviewTitle).isEmpty,
                    plainText(post.reviewTitle) != preview {
                     Text(plainText(post.reviewTitle))
-                        .font(.headline)
+                        .font(.subheadline.weight(.semibold))
                         .lineLimit(dynamicTypeSize.isAccessibilitySize ? nil : 2)
                 }
                 Text(preview)
-                    .font(isQuotation ? .system(.title3, design: .serif, weight: .medium) : .subheadline)
-                    .lineSpacing(isQuotation ? 5 : 3)
+                    .font(isQuotation ? .system(.callout, design: .serif, weight: .regular) : .subheadline)
+                    .lineSpacing(3)
                     .lineLimit(previewLineLimit)
-                    .fixedSize(horizontal: false, vertical: !isRailLayout)
+                    .fixedSize(horizontal: false, vertical: true)
                 if isQuotation, post.pageNumber > 0 {
                     Text(L10n.agendaPageLabel(post.pageNumber))
-                        .font(.caption.weight(.semibold))
+                        .font(.caption2.weight(.medium))
                         .foregroundStyle(style.accent)
                 }
             }
@@ -944,7 +952,7 @@ struct HomeAgendaCard: View {
                 .accessibilityHidden(true)
             VStack(alignment: .leading, spacing: 4) {
                 Text(post.actor.username)
-                    .font(.subheadline.weight(.bold))
+                    .font(.subheadline.weight(.semibold))
                     .lineLimit(dynamicTypeSize.isAccessibilitySize ? nil : 2)
                 if post.createdAt > 0 {
                     Text(EKitapligimFormat.relativeTime(post.createdAt))
@@ -1001,7 +1009,7 @@ struct HomeAgendaCard: View {
                 .accessibilityHidden(true)
             VStack(alignment: .leading, spacing: 5) {
                 Text(plainText(book.title))
-                    .font(.subheadline.weight(.semibold))
+                    .font(.subheadline.weight(.medium))
                     .lineLimit(dynamicTypeSize.isAccessibilitySize ? nil : 2)
                 if !plainText(book.author).isEmpty {
                     Text(plainText(book.author))
@@ -1057,7 +1065,7 @@ struct HomeAgendaCard: View {
 
     private var openIndicator: some View {
         Image(systemName: "arrow.up.right")
-            .font(.subheadline.weight(.semibold))
+            .font(.system(size: 16, weight: .semibold))
             .foregroundStyle(style.accent)
             .frame(width: 32, height: 32)
             .background(style.badge, in: Circle())

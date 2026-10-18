@@ -38,6 +38,9 @@ The iOS app must consume a public HTTPS mobile API. It must not use XenForo data
 - Reader: PDFKit for PDF. EPUB dependency must be separately reviewed for license, privacy manifest, maintenance, and App Store risk.
 - Payments: StoreKit 2, never Google Play.
 - Web rendering: only legal documents or unavoidable rich content, never primary navigation.
+- Audio navigation: catalog, audiobook detail and audio library routes push onto the active shell page's native navigation stack. Back returns to the originating page; choosing a bottom tab clears this audio navigation. The expanded player, login and Premium remain secondary presentations and preserve the underlying audio page.
+- Keyboard layout: the root shell retains its full window bounds and applies one local inset from UIKit's keyboard layout guide. Its bottom navigation/player chrome hides for a docked keyboard. Native sheets own their presentation-local avoidance. `KeyboardLayoutMetrics` supplies portable geometry validation and compact reply editor sizing; `replyViewportHeight` uses the current content viewport. See [keyboard validation](KEYBOARD_LAYOUT_VALIDATION.md) for executed tests and native device checks still pending.
+- Keyboard layout: the root shell retains its full window bounds and applies one local inset from UIKit's keyboard layout guide. Its bottom navigation/player chrome hides for a docked keyboard. Native sheets own their presentation-local avoidance. `KeyboardLayoutMetrics` supplies portable geometry validation and compact reply editor sizing; `replyViewportHeight` uses the current content viewport. See [keyboard validation](KEYBOARD_LAYOUT_VALIDATION.md) for executed tests and native device checks still pending.
 
 ## Key Risks
 - Public HTTPS staging URL is not provided yet.

@@ -6,6 +6,7 @@ import EkitapligimCore
 struct ProfileEditView: View {
     @EnvironmentObject private var container: AppContainer
     @Environment(\.dismiss) private var dismiss
+    @Environment(\.dynamicTypeSize) private var dynamicTypeSize
 
     @State private var about = ""
     @State private var location = ""
@@ -57,7 +58,7 @@ struct ProfileEditView: View {
 
     private var imageSection: some View {
         Section(L10n.profileEditPhotoSection) {
-            HStack(spacing: 14) {
+            (dynamicTypeSize.isAccessibilitySize ? AnyLayout(VStackLayout(alignment: .leading, spacing: 14)) : AnyLayout(HStackLayout(spacing: 14))) {
                 EKAvatar(urlString: profile?.avatarUrl, username: profile?.username ?? "", size: 62)
                 VStack(alignment: .leading, spacing: 3) {
                     Text(L10n.profileEditAvatar)
@@ -69,10 +70,11 @@ struct ProfileEditView: View {
                     }
                     .disabled(uploadingKind != nil || profile?.canUploadAvatar == false)
                 }
+                .fixedSize(horizontal: false, vertical: true)
                 Spacer(minLength: 0)
             }
 
-            HStack(spacing: 14) {
+            (dynamicTypeSize.isAccessibilitySize ? AnyLayout(VStackLayout(alignment: .leading, spacing: 14)) : AnyLayout(HStackLayout(spacing: 14))) {
                 bannerPreview
                 VStack(alignment: .leading, spacing: 3) {
                     Text(L10n.profileEditBanner)
@@ -84,6 +86,7 @@ struct ProfileEditView: View {
                     }
                     .disabled(uploadingKind != nil || profile?.canUploadBanner == false)
                 }
+                .fixedSize(horizontal: false, vertical: true)
                 Spacer(minLength: 0)
             }
 

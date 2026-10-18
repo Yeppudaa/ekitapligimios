@@ -17,6 +17,7 @@ struct AIHistoryView: View {
                     model.loadConversation(conversation.id); dismiss()
                 } label: {
                     Label(conversation.title, systemImage: "bubble.left").foregroundStyle(AIStyle.navy)
+                        .fixedSize(horizontal: false, vertical: true)
                         .padding(.vertical, 8)
                 }.disabled(model.busy)
                 .swipeActions {
@@ -96,8 +97,8 @@ struct AICollectionsView: View {
                 if model.bootstrap?.enabled == true && model.bootstrap?.features.collections == true {
                     if let slug {
                         if let collection = model.selectedCollection, collection.slug == slug {
-                            Text(collection.title).font(.largeTitle.bold()).foregroundStyle(AIStyle.navy)
-                            Text(collection.description).foregroundStyle(AIStyle.muted)
+                            Text(collection.title).font(.largeTitle.bold()).foregroundStyle(AIStyle.navy).fixedSize(horizontal: false, vertical: true)
+                            Text(collection.description).foregroundStyle(AIStyle.muted).fixedSize(horizontal: false, vertical: true)
                             AIBookStrip(title: "", books: collection.books)
                         }
                     } else {
@@ -107,8 +108,8 @@ struct AICollectionsView: View {
                         ForEach(model.collections) { collection in
                             NavigationLink { AICollectionsView(model: model, slug: collection.slug) } label: {
                                 VStack(alignment: .leading, spacing: 10) {
-                                    Label(collection.title, systemImage: "books.vertical.fill").font(.title3.bold()).foregroundStyle(AIStyle.navy)
-                                    Text(collection.description).font(.subheadline).foregroundStyle(AIStyle.muted)
+                                    Label(collection.title, systemImage: "books.vertical.fill").font(.title3.bold()).foregroundStyle(AIStyle.navy).fixedSize(horizontal: false, vertical: true)
+                                    Text(collection.description).font(.subheadline).foregroundStyle(AIStyle.muted).fixedSize(horizontal: false, vertical: true)
                                 }.padding(20).frame(maxWidth: .infinity, alignment: .leading).aiCard()
                             }.buttonStyle(.plain)
                         }
@@ -139,8 +140,8 @@ struct AIModelFeedback: View {
     @ObservedObject var model: AIAssistantModel
     var body: some View {
         if model.busy { ProgressView().frame(maxWidth: .infinity).padding() }
-        if let error = model.error { Text(error).foregroundStyle(AIStyle.navy) }
-        if let notice = model.notice { Label(notice, systemImage: "checkmark.circle").foregroundStyle(AIStyle.success) }
+        if let error = model.error { Text(error).foregroundStyle(AIStyle.navy).fixedSize(horizontal: false, vertical: true) }
+        if let notice = model.notice { Label(notice, systemImage: "checkmark.circle").foregroundStyle(AIStyle.success).fixedSize(horizontal: false, vertical: true) }
     }
 }
 
@@ -162,15 +163,9 @@ struct AIAssistantLauncher: View {
             Button {
                 action()
             } label: {
-                HStack(spacing: 9) {
-                    AIEmblem(size: 38)
-                    if !isCollapsed {
-                        VStack(alignment: .leading, spacing: 0) {
-                            Text(AIL10n.text("title")).font(.subheadline.weight(.bold))
-                            Text(AIL10n.text("online")).font(.caption2).foregroundStyle(.white.opacity(0.9))
-                        }
-                        Image(systemName: "sparkles").accessibilityHidden(true)
-                    }
+                ViewThatFits(in: .horizontal) {
+                    launcherLabel(expanded: !isCollapsed).fixedSize(horizontal: true, vertical: false)
+                    launcherLabel(expanded: false)
                 }
                 .foregroundStyle(.white)
                 .padding(7)
@@ -199,6 +194,19 @@ struct AIAssistantLauncher: View {
         }
     }
 
+    private func launcherLabel(expanded: Bool) -> some View {
+        HStack(spacing: 9) {
+            AIEmblem(size: 38)
+            if expanded {
+                VStack(alignment: .leading, spacing: 0) {
+                    Text(AIL10n.text("title")).font(.subheadline.weight(.bold))
+                    Text(AIL10n.text("online")).font(.caption2).foregroundStyle(.white.opacity(0.9))
+                }
+                Image(systemName: "sparkles").accessibilityHidden(true)
+            }
+        }
+    }
+
     private func setCollapsed(_ collapsed: Bool) {
         withAnimation(reduceMotion ? nil : .easeInOut(duration: 0.2)) {
             isCollapsed = collapsed
@@ -220,8 +228,7 @@ struct AIBookEntry: View {
                     VStack(alignment: .leading, spacing: 4) {
                         Text(AIL10n.text("askBook")).font(.headline).foregroundStyle(AIStyle.navy)
                         Text(AIL10n.text("menuSubtitle")).font(.caption).foregroundStyle(AIStyle.muted)
-                    }
-                    Spacer()
+                    }.fixedSize(horizontal: false, vertical: true).frame(maxWidth: .infinity, alignment: .leading)
                     Image(systemName: "arrow.up.right").foregroundStyle(AIStyle.blue)
                 }.padding(16).aiCard()
             }.buttonStyle(.plain).accessibilityIdentifier("ai-book-entry")

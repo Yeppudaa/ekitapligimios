@@ -34,6 +34,7 @@ struct AudioRouteDestination: View {
                 EKErrorState(title: AudioL10n.text("title"), message: AudioL10n.text("loadError"))
             }
         }
+        .toolbar(.visible, for: .navigationBar)
         .navigationDestination(item: $childRoute) { route in AudioRouteDestination(route: route, initialFilters: route == .audiobooks ? childFilters : nil) }
         .onAppear { container.audioPlayback?.activate(account: container.audioAccount) }
         .onChange(of: container.sessionRevision) { _, _ in

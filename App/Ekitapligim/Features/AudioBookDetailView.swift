@@ -3,6 +3,7 @@ import EkitapligimCore
 
 @MainActor
 struct AudioBookDetailView: View {
+    @Environment(\.dynamicTypeSize) private var dynamicTypeSize
     @StateObject private var model: AudioDetailModel
     @ObservedObject var controller: AudioPlaybackController
     let account: String?
@@ -54,7 +55,7 @@ struct AudioBookDetailView: View {
             HStack(spacing: 6) {
                 ForEach(Array(sectionAnchors.enumerated()), id: \.offset) { index, item in
                     Button { selectedAnchor = index; withAnimation { proxy.scrollTo(item.1, anchor: .top) } } label: {
-                        Label(AudioL10n.text(item.0), systemImage: item.2).font(.caption.weight(.semibold)).padding(.horizontal, 13).frame(minHeight: 46)
+                        Label(AudioL10n.text(item.0), systemImage: item.2).font(.caption.weight(.semibold)).fixedSize(horizontal: true, vertical: true).padding(.horizontal, 13).padding(.vertical, 6).frame(minHeight: 46)
                             .foregroundStyle(selectedAnchor == index ? Color.white : AudioStyle.ink)
                             .background(selectedAnchor == index ? AudioStyle.teal : Color.white).clipShape(RoundedRectangle(cornerRadius: 14))
                     }.buttonStyle(.plain).accessibilityAddTraits(selectedAnchor == index ? .isSelected : [])
@@ -92,7 +93,7 @@ struct AudioBookDetailView: View {
                 LinearGradient(colors: [AudioStyle.ink.opacity(0.05), AudioStyle.ink], startPoint: .top, endPoint: .bottom)
                 VStack(spacing: 20) {
                     Label(AudioL10n.text(book.isDemo ? "demo" : "storyVoice"), systemImage: "headphones")
-                        .font(.caption2.weight(.bold)).tracking(1).foregroundStyle(AudioStyle.cream).padding(.horizontal, 14).padding(.vertical, 9)
+                        .font(.caption2.weight(.bold)).tracking(1).fixedSize(horizontal: false, vertical: true).foregroundStyle(AudioStyle.cream).padding(.horizontal, 14).padding(.vertical, 9)
                         .background(AudioStyle.ink.opacity(0.8)).clipShape(Capsule())
                     AudioCoverView(book: book, width: 154).rotationEffect(.degrees(-3)).rotation3DEffect(.degrees(-5), axis: (x: 0, y: 1, z: 0))
                 }.padding(.bottom, 22).padding(.top, 18)
@@ -105,8 +106,8 @@ struct AudioBookDetailView: View {
             VStack(alignment: .leading, spacing: 16) {
                 Text(book.title).font(.system(.largeTitle, design: .serif, weight: .bold)).foregroundStyle(.white).fixedSize(horizontal: false, vertical: true)
                 if let onFilterCatalog, !book.author.isEmpty {
-                    Button { onFilterCatalog("author", book.author) } label: { Label(book.author, systemImage: "pencil").font(.subheadline).frame(minHeight: 44) }.buttonStyle(.plain).foregroundStyle(AudioStyle.cream.opacity(0.9))
-                } else { Text(book.author).font(.subheadline).foregroundStyle(AudioStyle.cream.opacity(0.9)) }
+                    Button { onFilterCatalog("author", book.author) } label: { Label(book.author, systemImage: "pencil").font(.subheadline).fixedSize(horizontal: false, vertical: true).frame(minHeight: 44) }.buttonStyle(.plain).foregroundStyle(AudioStyle.cream.opacity(0.9))
+                } else { Text(book.author).font(.subheadline).foregroundStyle(AudioStyle.cream.opacity(0.9)).fixedSize(horizontal: false, vertical: true) }
                 if let url = URL(string: book.url), url.scheme == "https", url.user == nil, url.password == nil {
                     ShareLink(item: url) { Label(AudioL10n.text("share"), systemImage: "square.and.arrow.up").font(.caption.weight(.semibold)).frame(minHeight: 44) }.foregroundStyle(AudioStyle.cream)
                 }
@@ -116,12 +117,14 @@ struct AudioBookDetailView: View {
                 } }.font(.caption).foregroundStyle(AudioStyle.cream.opacity(0.85))
                 Button { play(book) } label: {
                     HStack(spacing: 13) {
-                        Image(systemName: "play.fill").font(.title3).foregroundStyle(.white).frame(width: 40, height: 40).background(AudioStyle.ink).clipShape(Circle())
+                        if !dynamicTypeSize.isAccessibilitySize {
+                            Image(systemName: "play.fill").font(.system(size: 20)).foregroundStyle(.white).frame(width: 40, height: 40).background(AudioStyle.ink).clipShape(Circle()).accessibilityHidden(true)
+                        }
                         VStack(alignment: .leading, spacing: 5) {
-                            Text(AudioL10n.text("listen")).font(.headline)
-                            Text(AudioL10n.text(account != nil && book.canListen && book.state.progress > 0 ? "resumeListeningHint" : "listenHint")).font(.caption)
+                            Text(AudioL10n.text("listen")).font(.headline).fixedSize(horizontal: false, vertical: true)
+                            Text(AudioL10n.text(account != nil && book.canListen && book.state.progress > 0 ? "resumeListeningHint" : "listenHint")).font(.caption).fixedSize(horizontal: false, vertical: true)
                         }.frame(maxWidth: .infinity, alignment: .leading)
-                        Image(systemName: "arrow.right")
+                        Image(systemName: "arrow.right").font(.system(size: 17)).accessibilityHidden(true)
                     }.padding(15).frame(minHeight: 64).foregroundStyle(AudioStyle.ink)
                         .background(LinearGradient(colors: [Color(red: 1, green: 0.91, blue: 0.71), Color(red: 0.95, green: 0.82, blue: 0.6)], startPoint: .leading, endPoint: .trailing))
                         .clipShape(RoundedRectangle(cornerRadius: 19))
@@ -131,10 +134,10 @@ struct AudioBookDetailView: View {
             }.clipShape(RoundedRectangle(cornerRadius: 25))
             VStack(alignment: .leading, spacing: 12) {
                 ViewThatFits(in: .horizontal) {
-                    HStack { chaptersAction(book, proxy: proxy); saveAction }
+                    HStack { chaptersAction(book, proxy: proxy); saveAction }.fixedSize(horizontal: true, vertical: false)
                     VStack { chaptersAction(book, proxy: proxy); saveAction }
                 }
-                ViewThatFits(in: .horizontal) { HStack { favoriteAction; noteAction(book) }; VStack { favoriteAction; noteAction(book) } }
+                ViewThatFits(in: .horizontal) { HStack { favoriteAction; noteAction(book) }.fixedSize(horizontal: true, vertical: false); VStack { favoriteAction; noteAction(book) } }
                 if !book.categories.isEmpty {
                     Divider()
                     ScrollView(.horizontal, showsIndicators: false) { HStack(spacing: 8) {
@@ -160,7 +163,7 @@ struct AudioBookDetailView: View {
                 .overlay(RoundedRectangle(cornerRadius: 21).stroke(AudioStyle.line, lineWidth: 1))
         }
     }
-    private func categoryLabel(_ category: AudioCategoryDTO) -> some View { Text(category.title).font(.caption.weight(.semibold)).foregroundStyle(AudioStyle.ink).padding(.horizontal, 12).frame(minHeight: 44).background(AudioStyle.teal.opacity(0.08)).clipShape(Capsule()) }
+    private func categoryLabel(_ category: AudioCategoryDTO) -> some View { Text(category.title).font(.caption.weight(.semibold)).fixedSize(horizontal: true, vertical: true).foregroundStyle(AudioStyle.ink).padding(.horizontal, 12).padding(.vertical, 6).frame(minHeight: 44).background(AudioStyle.teal.opacity(0.08)).clipShape(Capsule()) }
     private var saveAction: some View { AudioActionButton(title: AudioL10n.text(model.saved ? "saved" : "save"), icon: model.saved ? "checkmark.circle.fill" : "books.vertical") { shelf(.saved) }.disabled(model.shelfBusy) }
     private func chaptersAction(_ book: AudioBookDTO, proxy: ScrollViewProxy) -> some View { AudioActionButton(title: AudioL10n.text("showChapters"), icon: "list.bullet") { if book.isDemo, let first = book.chapters.first { play(book, chapterID: first.id) } else { withAnimation { proxy.scrollTo("audioChapters", anchor: .top) } } } }
     private func noteAction(_ book: AudioBookDTO) -> some View { AudioActionButton(title: AudioL10n.text("note"), icon: "square.and.pencil") { play(book); if book.canListen, account != nil { controller.noteRequested = true } } }
@@ -174,14 +177,28 @@ struct AudioBookDetailView: View {
             Label(AudioL10n.text("chapters"), systemImage: "headphones").font(.system(.title2, design: .serif, weight: .bold))
             ForEach(book.chapters) { chapter in
                 Button { play(book, chapterID: chapter.id) } label: {
-                    HStack(spacing: 12) {
+                    HStack(alignment: .top, spacing: 12) {
                         Image(systemName: book.canListen ? "play.circle.fill" : "lock.fill").font(.title2).foregroundStyle(AudioStyle.teal)
-                        Text(chapter.title).font(.subheadline.weight(.semibold)).frame(maxWidth: .infinity, alignment: .leading)
-                        Text(AudioPolicy.time(chapter.duration)).font(.caption).foregroundStyle(AudioStyle.muted)
+                        if dynamicTypeSize.isAccessibilitySize {
+                            VStack(alignment: .leading, spacing: 8) {
+                                chapterTitle(chapter.title)
+                                chapterDuration(chapter.duration)
+                            }.frame(maxWidth: .infinity, alignment: .leading)
+                        } else {
+                            chapterTitle(chapter.title)
+                            chapterDuration(chapter.duration)
+                        }
                     }.padding(16).frame(minHeight: 54).background(AudioStyle.paper).clipShape(RoundedRectangle(cornerRadius: 16))
-                }.buttonStyle(.plain).accessibilityIdentifier("audio.detail.chapter.\(chapter.id)")
+                }.buttonStyle(.plain).accessibilityLabel(chapter.title).accessibilityValue(AudioPolicy.time(chapter.duration))
+                    .accessibilityIdentifier("audio.detail.chapter.\(chapter.id)")
             }
         }.padding(20).foregroundStyle(AudioStyle.ink).frame(maxWidth: .infinity, alignment: .leading).background(.white).clipShape(RoundedRectangle(cornerRadius: 22))
+    }
+    private func chapterTitle(_ title: String) -> some View {
+        Text(title).font(.subheadline.weight(.semibold)).fixedSize(horizontal: false, vertical: true).frame(maxWidth: .infinity, alignment: .leading)
+    }
+    private func chapterDuration(_ duration: Double) -> some View {
+        Text(AudioPolicy.time(duration)).font(.caption).foregroundStyle(AudioStyle.muted).fixedSize()
     }
     private func about(_ book: AudioBookDTO) -> some View {
         VStack(alignment: .leading, spacing: 16) {

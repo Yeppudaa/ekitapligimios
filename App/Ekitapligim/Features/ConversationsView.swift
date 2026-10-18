@@ -113,7 +113,13 @@ struct ConversationsView: View {
 
 @MainActor
 private struct ConversationRow: View {
+    @Environment(\.dynamicTypeSize) private var dynamicTypeSize
     let conversation: ConversationDTO
+
+    private var hasSafetyMenu: Bool {
+        guard let message = conversation.lastMessage else { return false }
+        return !message.isMine && Int(message.id) != nil
+    }
 
     var body: some View {
         HStack(alignment: .top, spacing: 0) {
@@ -122,7 +128,7 @@ private struct ConversationRow: View {
                 .frame(width: 3)
                 .accessibilityHidden(true)
 
-            HStack(alignment: .top, spacing: 12) {
+            (dynamicTypeSize.isAccessibilitySize ? AnyLayout(VStackLayout(alignment: .leading, spacing: 12)) : AnyLayout(HStackLayout(alignment: .top, spacing: 12))) {
                 EKAvatar(
                     urlString: avatarURL,
                     username: avatarName,
@@ -135,7 +141,8 @@ private struct ConversationRow: View {
                         Text(conversation.title)
                             .font(.headline.weight(conversation.isUnread ? .bold : .semibold))
                             .foregroundStyle(EKitapligimPalette.ink)
-                            .lineLimit(2)
+                            .lineLimit(dynamicTypeSize.isAccessibilitySize ? nil : 2)
+                            .fixedSize(horizontal: false, vertical: true)
                         if conversation.isUnread {
                             Circle()
                                 .fill(EKitapligimPalette.teal)
@@ -149,19 +156,21 @@ private struct ConversationRow: View {
                                 .foregroundStyle(EKitapligimPalette.amber)
                                 .accessibilityLabel(L10n.conversationsStarred)
                         }
-                        if conversation.lastMessageDate > 0 {
-                            Text(EKitapligimFormat.relativeTime(conversation.lastMessageDate))
-                                .font(.caption.weight(.semibold))
-                                .foregroundStyle(EKitapligimPalette.muted)
-                                .lineLimit(1)
-                        }
+                    }
+                    .padding(.trailing, hasSafetyMenu && !dynamicTypeSize.isAccessibilitySize ? 36 : 0)
+
+                    if conversation.lastMessageDate > 0 {
+                        Text(EKitapligimFormat.relativeTime(conversation.lastMessageDate))
+                            .font(.caption.weight(.semibold))
+                            .foregroundStyle(EKitapligimPalette.muted)
+                            .fixedSize(horizontal: false, vertical: true)
                     }
 
                     if !participantLine.isEmpty {
                         Text(participantLine)
                             .font(.caption.weight(.medium))
                             .foregroundStyle(EKitapligimPalette.tealDark)
-                            .lineLimit(1)
+                            .lineLimit(dynamicTypeSize.isAccessibilitySize ? nil : 2)
                     }
 
                     if !conversation.preview.isEmpty {
@@ -211,6 +220,8 @@ private struct ConversationRow: View {
 @MainActor
 struct ConversationDetailView: View {
     @EnvironmentObject private var container: AppContainer
+    @Environment(\.dynamicTypeSize) private var dynamicTypeSize
+    @Environment(\.replyViewportHeight) private var replyViewportHeight
     let conversationID: String
 
     @State private var detail: ConversationDetailDTO?
@@ -246,6 +257,8 @@ struct ConversationDetailView: View {
                         .padding(.horizontal, 18)
                         .padding(.vertical, 12)
                     }
+                    .accessibilityIdentifier("conversation-messages-scroll")
+                    .scrollDismissesKeyboard(.interactively)
                     .safeAreaInset(edge: .bottom, spacing: 0) {
                         if detail.conversation.canReply {
                             replyComposer
@@ -261,9 +274,11 @@ struct ConversationDetailView: View {
             ToolbarItemGroup(placement: .keyboard) {
                 Spacer()
                 Button(L10n.commonDismiss) { isReplyFocused = false }
+                    .accessibilityIdentifier("keyboard-dismiss")
             }
         }
         .task { await load() }
+        .onDisappear { isReplyFocused = false }
         .alert(
             L10n.conversationsSendFailedTitle,
             isPresented: Binding(
@@ -278,7 +293,7 @@ struct ConversationDetailView: View {
     }
 
     private func conversationHero(_ conversation: ConversationDTO) -> some View {
-        HStack(alignment: .center, spacing: 14) {
+        (dynamicTypeSize.isAccessibilitySize ? AnyLayout(VStackLayout(alignment: .leading, spacing: 14)) : AnyLayout(HStackLayout(alignment: .top, spacing: 14))) {
             Image(systemName: "envelope.open.fill")
                 .font(.system(size: 28, weight: .semibold))
                 .foregroundStyle(EKitapligimPalette.teal)
@@ -295,12 +310,12 @@ struct ConversationDetailView: View {
                     .font(.system(.title3, design: .serif).weight(.heavy))
                     .foregroundStyle(EKitapligimPalette.ink)
                     .multilineTextAlignment(.leading)
-                    .lineLimit(3)
+                    .fixedSize(horizontal: false, vertical: true)
                 if !conversationParticipantLine(conversation).isEmpty {
                     Text(conversationParticipantLine(conversation))
                         .font(.subheadline.weight(.medium))
                         .foregroundStyle(EKitapligimPalette.tealDark)
-                        .lineLimit(2)
+                        .fixedSize(horizontal: false, vertical: true)
                 }
                 Text(L10n.conversationsReplyCount(conversation.replyCount))
                     .font(.caption)
@@ -312,67 +327,100 @@ struct ConversationDetailView: View {
         .forumHeroSurface(radius: 12)
     }
 
+    private var usesCompactReply: Bool { replyViewportHeight < 300 }
+
     private var replyComposer: some View {
         VStack(alignment: .leading, spacing: 10) {
-            TextEditor(text: $replyText)
-                .focused($isReplyFocused)
-                .accessibilityLabel(L10n.conversationsReplyPlaceholder)
-                .ekPinnedReplyEditor()
-                .padding(10)
-                .scrollContentBackground(.hidden)
-                .background(.white, in: RoundedRectangle(cornerRadius: 16, style: .continuous))
-                .overlay {
-                    RoundedRectangle(cornerRadius: 16, style: .continuous)
-                        .stroke(Color(hex: isReplyFocused ? 0x087A80 : 0xD7C59C), lineWidth: 1)
-                }
-                .overlay(alignment: .topLeading) {
-                    if replyText.trimmed.isEmpty {
-                        Text(L10n.conversationsReplyPlaceholder)
-                            .font(.body)
-                            .foregroundStyle(EKitapligimPalette.muted)
-                            .padding(.horizontal, 16)
-                            .padding(.vertical, 18)
-                            .allowsHitTesting(false)
-                    }
-                }
-                .onChange(of: replyText) { _, value in replyText = String(value.prefix(10_000)) }
-
-            HStack(alignment: .center) {
-                Text("\(replyText.count)")
-                    .font(.caption2.weight(.semibold))
+            if !usesCompactReply && dynamicTypeSize.isAccessibilitySize && replyText.trimmed.isEmpty {
+                Text(L10n.conversationsReplyPlaceholder)
+                    .font(.body)
                     .foregroundStyle(EKitapligimPalette.muted)
+                    .fixedSize(horizontal: false, vertical: true)
                     .accessibilityHidden(true)
-                Spacer(minLength: 0)
-                Button {
-                    Task { await sendReply() }
-                } label: {
-                    Group {
-                        if isSending {
-                            ProgressView().tint(.white)
-                        } else {
-                            Label(L10n.commonSubmit, systemImage: "paperplane.fill")
-                        }
+            }
+            // AnyLayout preserves editor focus when the keyboard changes the viewport.
+            (usesCompactReply
+                ? AnyLayout(HStackLayout(alignment: .bottom, spacing: 8))
+                : AnyLayout(VStackLayout(alignment: .leading, spacing: 10))) {
+                replyEditor
+                HStack(alignment: .center) {
+                    if !usesCompactReply {
+                        Text("\(replyText.count)")
+                            .font(.caption2.weight(.semibold))
+                            .foregroundStyle(EKitapligimPalette.muted)
+                            .accessibilityHidden(true)
+                        Spacer(minLength: 0)
                     }
-                    .font(.subheadline.weight(.bold))
-                    .foregroundStyle(.white)
-                    .padding(.horizontal, 16)
-                    .padding(.vertical, 10)
+                    replySendButton
                 }
-                .background(
-                    (isSending || replyText.trimmed.isEmpty)
-                        ? EKitapligimPalette.teal.opacity(0.45)
-                        : EKitapligimPalette.teal,
-                    in: RoundedRectangle(cornerRadius: 14, style: .continuous)
-                )
-                .disabled(replyText.trimmed.isEmpty || isSending)
-                .accessibilityLabel(L10n.commonSubmit)
+                .fixedSize(horizontal: usesCompactReply, vertical: true)
             }
         }
-        .padding(12)
+        .padding(usesCompactReply ? 8 : 12)
         .background(.white)
         .overlay(alignment: .top) {
             Rectangle().fill(EKitapligimPalette.border).frame(height: 1)
         }
+    }
+
+    private var replyEditor: some View {
+        TextEditor(text: $replyText)
+            .focused($isReplyFocused)
+            .accessibilityLabel(L10n.conversationsReplyPlaceholder)
+            .accessibilityIdentifier("conversation-reply-input")
+            .ekPinnedReplyEditor()
+            .padding(usesCompactReply ? 4 : 10)
+            .scrollContentBackground(.hidden)
+            .background(.white, in: RoundedRectangle(cornerRadius: 16, style: .continuous))
+            .overlay {
+                RoundedRectangle(cornerRadius: 16, style: .continuous)
+                    .stroke(Color(hex: isReplyFocused ? 0x087A80 : 0xD7C59C), lineWidth: 1)
+            }
+            .overlay(alignment: .topLeading) {
+                if !usesCompactReply && !dynamicTypeSize.isAccessibilitySize && replyText.trimmed.isEmpty {
+                    Text(L10n.conversationsReplyPlaceholder)
+                        .font(.body)
+                        .foregroundStyle(EKitapligimPalette.muted)
+                        .padding(.horizontal, 16)
+                        .padding(.vertical, 18)
+                        .allowsHitTesting(false)
+                        .accessibilityHidden(true)
+                }
+            }
+            .onChange(of: replyText) { _, value in replyText = String(value.prefix(10_000)) }
+            .frame(maxWidth: .infinity)
+    }
+
+    private var replySendButton: some View {
+        Button {
+            Task { await sendReply() }
+        } label: {
+            Group {
+                if isSending {
+                    ProgressView().tint(.white)
+                } else if usesCompactReply {
+                    Image(systemName: "paperplane.fill")
+                        .font(.system(size: 17, weight: .bold))
+                        .accessibilityHidden(true)
+                } else {
+                    Label(L10n.commonSubmit, systemImage: "paperplane.fill")
+                }
+            }
+            .font(.subheadline.weight(.bold))
+            .foregroundStyle(.white)
+            .padding(.horizontal, usesCompactReply ? 0 : 16)
+            .padding(.vertical, usesCompactReply ? 0 : 10)
+            .frame(minWidth: 44, minHeight: 44)
+        }
+        .background(
+            (isSending || replyText.trimmed.isEmpty)
+                ? EKitapligimPalette.teal.opacity(0.45)
+                : EKitapligimPalette.teal,
+            in: RoundedRectangle(cornerRadius: 14, style: .continuous)
+        )
+        .disabled(replyText.trimmed.isEmpty || isSending)
+        .accessibilityLabel(L10n.commonSubmit)
+        .accessibilityIdentifier("conversation-reply-send")
     }
 
     private func load() async {
@@ -407,6 +455,7 @@ struct ConversationDetailView: View {
 
 @MainActor
 private struct ConversationMessageCard: View {
+    @Environment(\.dynamicTypeSize) private var dynamicTypeSize
     let message: ConversationMessageDTO
 
     var body: some View {
@@ -421,11 +470,11 @@ private struct ConversationMessageCard: View {
                             cornerRadius: 12
                         )
                         VStack(alignment: .leading, spacing: 4) {
-                            HStack(spacing: 6) {
+                            (dynamicTypeSize.isAccessibilitySize ? AnyLayout(VStackLayout(alignment: .leading, spacing: 6)) : AnyLayout(HStackLayout(spacing: 6))) {
                                 Text(ForumMessageFormatting.displayUsername(message.username))
                                     .font(.subheadline.weight(.bold))
                                     .foregroundStyle(EKitapligimPalette.ink)
-                                    .lineLimit(1)
+                                    .lineLimit(dynamicTypeSize.isAccessibilitySize ? nil : 2)
                                 if message.isMine {
                                     EKPill(
                                         title: L10n.conversationsYou,
@@ -514,7 +563,8 @@ private struct NewConversationView: View {
                             TextEditor(text: $message)
                                 .focused($focusedField, equals: .message)
                                 .accessibilityLabel(L10n.conversationsMessageBody)
-                                .frame(minHeight: 160)
+                                .accessibilityIdentifier("conversation-new-message-input")
+                                .frame(minHeight: 160, maxHeight: 240)
                                 .scrollContentBackground(.hidden)
                                 .overlay(alignment: .topLeading) {
                                     if message.trimmed.isEmpty {
@@ -546,6 +596,7 @@ private struct NewConversationView: View {
                     .padding(.horizontal, 18)
                     .padding(.vertical, 12)
                 }
+                .scrollDismissesKeyboard(.interactively)
             }
             .navigationTitle(L10n.conversationsNew)
             .navigationBarTitleDisplayMode(.inline)
@@ -569,9 +620,11 @@ private struct NewConversationView: View {
                 ToolbarItemGroup(placement: .keyboard) {
                     Spacer()
                     Button(L10n.commonDismiss) { focusedField = nil }
+                        .accessibilityIdentifier("keyboard-dismiss")
                 }
             }
         }
+        .onDisappear { focusedField = nil }
     }
 
     private func labeledField(title: String, text: Binding<String>, focus: Field, limit: Int) -> some View {

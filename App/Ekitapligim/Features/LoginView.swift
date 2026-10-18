@@ -6,6 +6,7 @@ import EkitapligimCore
 struct LoginView: View {
     @EnvironmentObject private var container: AppContainer
     @Environment(\.dismiss) private var dismiss
+    @Environment(\.dynamicTypeSize) private var dynamicTypeSize
 
     @State private var mode: AuthFormMode
     @State private var username = ""
@@ -38,7 +39,7 @@ struct LoginView: View {
                     signalRow
                     authCard
                 }
-                .padding(.horizontal, 24)
+                .padding(.horizontal, 16)
                 .padding(.vertical, 20)
             }
             .background(
@@ -90,7 +91,7 @@ struct LoginView: View {
     }
 
     private var signalRow: some View {
-        HStack(spacing: 10) {
+        (dynamicTypeSize.isAccessibilitySize ? AnyLayout(VStackLayout(spacing: 10)) : AnyLayout(HStackLayout(spacing: 10))) {
             loginSignal(L10n.loginSignalShelf, systemImage: "books.vertical.fill")
             loginSignal(L10n.loginSignalChat, systemImage: "bubble.left.and.bubble.right.fill")
             loginSignal(L10n.loginSignalPremium, systemImage: "crown.fill")
@@ -106,7 +107,7 @@ struct LoginView: View {
                 .font(.caption2)
                 .foregroundStyle(Color(hex: 0x657484))
                 .multilineTextAlignment(.center)
-                .lineLimit(2)
+                .fixedSize(horizontal: false, vertical: true)
         }
         .frame(maxWidth: .infinity)
         .padding(.horizontal, 6)
@@ -120,6 +121,8 @@ struct LoginView: View {
             Text(headingTitle)
                 .font(.title2.weight(.bold))
                 .foregroundStyle(Color(hex: 0x172033))
+                .multilineTextAlignment(.center)
+                .fixedSize(horizontal: false, vertical: true)
             Text(headingSubtitle)
                 .font(.footnote)
                 .foregroundStyle(Color(hex: 0x657484))
@@ -159,11 +162,15 @@ struct LoginView: View {
                     } else {
                         Text(submitTitle)
                             .font(.body.weight(.bold))
+                            .multilineTextAlignment(.center)
+                            .fixedSize(horizontal: false, vertical: true)
                     }
                 }
                 .foregroundStyle(.white)
                 .frame(maxWidth: .infinity)
-                .frame(height: 54)
+                .padding(.horizontal, 12)
+                .padding(.vertical, 14)
+                .frame(minHeight: 54)
                 .background(
                     canSubmit && !isSubmitting ? Color(hex: 0x0E7C86) : Color(hex: 0x0E7C86).opacity(0.45),
                     in: RoundedRectangle(cornerRadius: 16, style: .continuous)
@@ -193,7 +200,7 @@ struct LoginView: View {
             .foregroundStyle(Color(hex: 0x244C73))
             .padding(.top, 2)
         }
-        .padding(24)
+        .padding(20)
         .frame(maxWidth: .infinity)
         .background(
             LinearGradient(colors: [.white, Color(hex: 0xFAFEFE)], startPoint: .top, endPoint: .bottom),
@@ -329,14 +336,13 @@ struct LoginView: View {
             }
             .tint(Color(hex: 0x0E7C86))
 
-            HStack(spacing: 12) {
-                Link(L10n.loginEULA, destination: legalTerms?.eulaUrl ?? container.config.eulaURL)
-                Link(L10n.settingsTerms, destination: legalTerms?.termsUrl ?? container.config.termsURL)
-                Link(L10n.settingsPrivacyPolicy, destination: legalTerms?.privacyUrl ?? container.config.privacyPolicyURL)
+            ViewThatFits(in: .horizontal) {
+                HStack(spacing: 12) { legalLinks }
+                    .fixedSize(horizontal: true, vertical: false)
+                VStack(alignment: .leading, spacing: 10) { legalLinks }
             }
             .font(.caption.weight(.semibold))
             .foregroundStyle(Color(hex: 0x0E7C86))
-            .lineLimit(1)
 
             if isLoadingLegalTerms {
                 ProgressView(L10n.loginLegalLoading)
@@ -353,6 +359,13 @@ struct LoginView: View {
         .padding(12)
         .frame(maxWidth: .infinity, alignment: .leading)
         .background(Color(hex: 0xF7FAFC), in: RoundedRectangle(cornerRadius: 16, style: .continuous))
+    }
+
+    @ViewBuilder
+    private var legalLinks: some View {
+        Link(L10n.loginEULA, destination: legalTerms?.eulaUrl ?? container.config.eulaURL)
+        Link(L10n.settingsTerms, destination: legalTerms?.termsUrl ?? container.config.termsURL)
+        Link(L10n.settingsPrivacyPolicy, destination: legalTerms?.privacyUrl ?? container.config.privacyPolicyURL)
     }
 
     private func notice(_ text: String, isError: Bool) -> some View {
@@ -436,11 +449,15 @@ struct LoginView: View {
                     } else {
                         Text(mode == .register ? L10n.loginGoogleRegister : L10n.loginGoogleSignIn)
                             .font(.body.weight(.bold))
+                            .multilineTextAlignment(.center)
+                            .fixedSize(horizontal: false, vertical: true)
                     }
                 }
                 .foregroundStyle(Color(hex: 0x172033))
                 .frame(maxWidth: .infinity)
-                .frame(height: 54)
+                .padding(.horizontal, 12)
+                .padding(.vertical, 14)
+                .frame(minHeight: 54)
                 .background(Color.white, in: RoundedRectangle(cornerRadius: 16, style: .continuous))
                 .overlay {
                     RoundedRectangle(cornerRadius: 16, style: .continuous)

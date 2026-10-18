@@ -3,8 +3,9 @@ import EkitapligimCore
 
 @MainActor
 struct ModernHomeGenreStrip: View {
-    @ScaledMetric(relativeTo: .headline) private var tileWidth = 132.0
-    @ScaledMetric(relativeTo: .headline) private var tileHeight = 154.0
+    @Environment(\.dynamicTypeSize) private var dynamicTypeSize
+    @ScaledMetric(relativeTo: .headline) private var tileWidth = 148.0
+    @ScaledMetric(relativeTo: .headline) private var tileHeight = 182.0
     private let genres = [
         ("6", "roman"), ("21", "fantastik"), ("13", "kisisel_gelisim"), ("7", "edebiyat"),
         ("12", "psikoloji"), ("10", "tarih"), ("9", "bilim"), ("15", "cocuk")
@@ -12,44 +13,72 @@ struct ModernHomeGenreStrip: View {
 
     var body: some View {
         ScrollView(.horizontal, showsIndicators: false) {
-            HStack(spacing: 10) {
+            HStack(alignment: .bottom, spacing: 10) {
                 ForEach(genres, id: \.0) { genre in
                     NavigationLink { CatalogView(initialCategoryID: genre.0, embeddedInNavigationStack: true) } label: {
-                        VStack(alignment: .leading, spacing: 4) {
-                            Spacer(minLength: 40)
-                            HStack(alignment: .bottom, spacing: 8) {
-                                Text(HomeRefreshL10n.text("genre.\(genre.1)"))
-                                    .font(.system(.headline, design: .serif, weight: .bold))
-                                    .fixedSize(horizontal: false, vertical: true)
+                        VStack(alignment: .leading, spacing: 10) {
+                            Spacer(minLength: 48)
+                            genreTitle(HomeRefreshL10n.text("genre.\(genre.1)"))
+                            HStack {
                                 Spacer(minLength: 0)
                                 Image(systemName: "arrow.right")
-                                    .font(.caption.weight(.bold))
+                                    .font(.system(size: 13, weight: .bold))
                                     .foregroundStyle(EKitapligimPalette.ink)
                                     .frame(width: 26, height: 26)
                                     .background(.white, in: Circle())
+                                    .accessibilityHidden(true)
                             }
                         }
                         .foregroundStyle(.white)
                         .padding(12)
-                        .frame(width: tileWidth, alignment: .bottomLeading)
+                        .containerRelativeFrame(.horizontal) { length, _ in
+                            min(tileWidth, max(1, length - 32))
+                        }
                         .frame(minHeight: tileHeight, alignment: .bottomLeading)
                         .background {
-                            Image("home_genre_\(genre.1)").resizable().scaledToFill()
-                                .overlay { LinearGradient(colors: [.clear, .black.opacity(0.85)], startPoint: .center, endPoint: .bottom) }
+                            GeometryReader { geometry in
+                                Image("home_genre_\(genre.1)").resizable().scaledToFill()
+                                    .frame(width: geometry.size.width, height: geometry.size.height)
+                                    .clipped()
+                                    .overlay {
+                                        LinearGradient(colors: [.clear, .black.opacity(0.88)],
+                                                       startPoint: .top, endPoint: .bottom)
+                                    }
+                            }
+                            .accessibilityHidden(true)
                         }
                         .clipShape(RoundedRectangle(cornerRadius: 16))
+                        .multilineTextAlignment(.leading)
                     }
                     .buttonStyle(.plain)
+                    .accessibilityLabel(HomeRefreshL10n.text("genre.\(genre.1)"))
                     .accessibilityIdentifier("home.genre.\(genre.0)")
                 }
             }
             .padding(.horizontal, 16)
         }
+        .accessibilityElement(children: .contain)
+        .accessibilityIdentifier("home.genres")
+    }
+
+    @ViewBuilder private func genreTitle(_ title: String) -> some View {
+        Group {
+            if dynamicTypeSize.isAccessibilitySize {
+                Text(title)
+            } else {
+                // The arrow has its own row so every title can use the full card width.
+                Text(title).lineLimit(2, reservesSpace: true)
+            }
+        }
+        .font(.system(.headline, design: .serif, weight: .bold))
+        .fixedSize(horizontal: false, vertical: true)
+        .frame(maxWidth: .infinity, alignment: .leading)
     }
 }
 
 struct ModernHomeSpotlight: View {
     @Environment(\.dynamicTypeSize) private var dynamicTypeSize
+    @ScaledMetric(relativeTo: .caption) private var minimumCopyWidth = 180.0
     let book: BookDTO
 
     var body: some View {
@@ -58,7 +87,13 @@ struct ModernHomeSpotlight: View {
                 if dynamicTypeSize.isAccessibilitySize {
                     VStack(alignment: .leading, spacing: 16) { cover; copy }
                 } else {
-                    HStack(alignment: .top, spacing: 16) { cover; copy }
+                    ViewThatFits(in: .horizontal) {
+                        HStack(alignment: .top, spacing: 16) {
+                            cover
+                            copy.frame(minWidth: minimumCopyWidth)
+                        }
+                        VStack(alignment: .leading, spacing: 16) { cover; copy }
+                    }
                 }
             }
             .frame(maxWidth: .infinity, alignment: .leading)
@@ -85,15 +120,21 @@ struct ModernHomeSpotlight: View {
         VStack(alignment: .leading, spacing: 8) {
             Text(book.title).font(.system(.title3, design: .serif, weight: .bold))
                 .foregroundStyle(EKitapligimPalette.ink).fixedSize(horizontal: false, vertical: true)
-            if !book.author.isEmpty { Text(book.author).font(.subheadline).foregroundStyle(EKitapligimPalette.muted) }
+            if !book.author.isEmpty {
+                Text(book.author).font(.subheadline).foregroundStyle(EKitapligimPalette.muted)
+                    .fixedSize(horizontal: false, vertical: true)
+            }
             Label(HomeRefreshL10n.text("next.caption"), systemImage: "book")
                 .font(.caption).foregroundStyle(EKitapligimPalette.muted)
+                .fixedSize(horizontal: false, vertical: true)
             Label(HomeRefreshL10n.text("next.action"), systemImage: "arrow.right")
                 .font(.caption.weight(.bold)).foregroundStyle(.white)
+                .fixedSize(horizontal: false, vertical: true)
                 .padding(.horizontal, 14).padding(.vertical, 12)
                 .frame(minHeight: 44)
                 .background(EKitapligimPalette.teal, in: Capsule())
         }
+        .frame(maxWidth: .infinity, alignment: .leading)
         .multilineTextAlignment(.leading)
     }
 }
@@ -108,6 +149,7 @@ struct ModernHomeReadingPanel: View {
             Label(HomeRefreshL10n.text("continue.read"), systemImage: "book.pages")
                 .font(.system(.title3, design: .serif, weight: .bold))
                 .foregroundStyle(EKitapligimPalette.ink)
+                .fixedSize(horizontal: false, vertical: true)
             Text(HomeRefreshL10n.text("continue.subtitle"))
                 .font(.caption).foregroundStyle(EKitapligimPalette.muted)
             if let item {
@@ -122,6 +164,7 @@ struct ModernHomeReadingPanel: View {
                 Button { onRead(item.bookId) } label: {
                     Label(HomeRefreshL10n.text("continue.read"), systemImage: "book.pages.fill")
                         .font(.subheadline.weight(.bold)).foregroundStyle(.white)
+                        .fixedSize(horizontal: false, vertical: true)
                         .padding(.horizontal, 18).padding(.vertical, 12).frame(minHeight: 48)
                         .background(EKitapligimPalette.teal, in: Capsule())
                 }
@@ -135,7 +178,10 @@ struct ModernHomeReadingPanel: View {
                             ForEach(otherBooks, id: \.bookId) { next in
                                 Button { onRead(next.bookId) } label: {
                                     ModernLibraryResumeItem(item: next, compact: true)
-                                        .frame(width: 220, alignment: .leading).padding(12)
+                                        .padding(12)
+                                        .containerRelativeFrame(.horizontal) { length, _ in
+                                            min(244, max(1, length))
+                                        }
                                         .background(.white.opacity(0.86), in: RoundedRectangle(cornerRadius: 14))
                                 }
                                 .buttonStyle(.plain)
@@ -178,11 +224,20 @@ private struct ModernLibraryResumeItem: View {
         VStack(alignment: .leading, spacing: 6) {
             Text(HomeRefreshL10n.page(max(1, item.lastReadPage)))
                 .font(.caption.weight(.semibold)).foregroundStyle(EKitapligimPalette.amber)
-            Text(item.title).font(compact ? .subheadline.weight(.semibold) : .system(.title3, design: .serif, weight: .bold))
-                .foregroundStyle(EKitapligimPalette.ink)
-                .lineLimit(dynamicTypeSize.isAccessibilitySize ? nil : 3)
-                .fixedSize(horizontal: false, vertical: true)
-            if !item.author.isEmpty { Text(item.author).font(.caption).foregroundStyle(EKitapligimPalette.muted) }
+            if compact {
+                UniformCardText(item.title, lines: 3)
+                    .font(.subheadline.weight(.semibold)).foregroundStyle(EKitapligimPalette.ink)
+                UniformCardText(item.author, lines: 1)
+                    .font(.caption).foregroundStyle(EKitapligimPalette.muted)
+            } else {
+                Text(item.title).font(.system(.title3, design: .serif, weight: .bold))
+                    .foregroundStyle(EKitapligimPalette.ink)
+                    .lineLimit(dynamicTypeSize.isAccessibilitySize ? nil : 3)
+                    .fixedSize(horizontal: false, vertical: true)
+                if !item.author.isEmpty {
+                    Text(item.author).font(.caption).foregroundStyle(EKitapligimPalette.muted)
+                }
+            }
         }
     }
 }
@@ -203,16 +258,20 @@ struct ModernHomePromoPair: View {
 
     private func promo(teal: Bool) -> some View {
         VStack(alignment: .leading, spacing: 13) {
-            Text(HomeRefreshL10n.text(teal ? "promo.reading.title" : "promo.new.title"))
+            UniformCardText(HomeRefreshL10n.text(teal ? "promo.reading.title" : "promo.new.title"), lines: 2)
                 .font(.system(.title, design: .serif, weight: .bold))
-                .fixedSize(horizontal: false, vertical: true)
-            Text(HomeRefreshL10n.text(teal ? "promo.reading.subtitle" : "promo.new.subtitle"))
-                .font(.subheadline).fixedSize(horizontal: false, vertical: true)
+            UniformCardText(HomeRefreshL10n.text(teal ? "promo.reading.subtitle" : "promo.new.subtitle"), lines: 2)
+                .font(.subheadline)
             NavigationLink {
                 CatalogView(initialOrder: "latest", embeddedInNavigationStack: true)
             } label: {
-                Label(HomeRefreshL10n.text(teal ? "catalog.explore" : "promo.new.action"), systemImage: "arrow.right")
+                Label {
+                    UniformCardText(HomeRefreshL10n.text(teal ? "catalog.explore" : "promo.new.action"), lines: 1)
+                } icon: {
+                    Image(systemName: "arrow.right").accessibilityHidden(true)
+                }
                     .font(.subheadline.weight(.semibold))
+                    .fixedSize(horizontal: false, vertical: true)
                     .foregroundStyle(EKitapligimPalette.ink)
                     .padding(.horizontal, 18).padding(.vertical, 12)
                     .frame(minHeight: 48)
@@ -306,6 +365,7 @@ struct ModernHomeCategoryShowcase: View {
             let category = $0.category.trimmingCharacters(in: .whitespacesAndNewlines)
             return !category.isEmpty && (category.localizedCaseInsensitiveContains(title) || title.localizedCaseInsensitiveContains(category))
         }
+        let countLabel = forum.threadCount.flatMap { $0 > 0 ? HomeRefreshL10n.categoryBooks($0) : nil } ?? ""
         return HStack(alignment: .top, spacing: 12) {
             if let book {
                 EKitapligimRemoteCover(urlString: book.coverUrl, title: book.title, author: book.author)
@@ -319,18 +379,19 @@ struct ModernHomeCategoryShowcase: View {
                     .accessibilityHidden(true)
             }
             VStack(alignment: .leading, spacing: 7) {
-                if let count = forum.threadCount, count > 0 {
-                    Text(HomeRefreshL10n.categoryBooks(count)).font(.caption2).foregroundStyle(EKitapligimPalette.muted)
-                }
-                Text(title).font(.headline).foregroundStyle(EKitapligimPalette.ink)
-                    .fixedSize(horizontal: false, vertical: true)
-                Text(book?.title ?? HomeRefreshL10n.text("showcase.discover"))
+                UniformCardText(countLabel, lines: 1)
+                    .font(.caption2).foregroundStyle(EKitapligimPalette.muted)
+                UniformCardText(title, lines: 2)
+                    .font(.headline).foregroundStyle(EKitapligimPalette.ink)
+                UniformCardText(book?.title ?? HomeRefreshL10n.text("showcase.discover"), lines: 2)
                     .font(.caption).foregroundStyle(EKitapligimPalette.muted)
-                    .fixedSize(horizontal: false, vertical: true)
             }
             .frame(maxWidth: .infinity, alignment: .leading)
         }
-        .padding(12).frame(width: cardWidth, alignment: .leading)
+        .padding(12)
+        .containerRelativeFrame(.horizontal) { length, _ in
+            min(cardWidth, max(1, length - 2))
+        }
         .background(.white, in: RoundedRectangle(cornerRadius: 15))
         .overlay { RoundedRectangle(cornerRadius: 15).stroke(EKitapligimPalette.border) }
         .accessibilityElement(children: .combine)
@@ -358,6 +419,7 @@ struct ModernHomeLibraryBanner: View {
                 Button(action: onLibrary) {
                     Label(HomeRefreshL10n.text("libraryBanner.action"), systemImage: "arrow.right")
                         .font(.subheadline.weight(.bold)).foregroundStyle(.white)
+                        .fixedSize(horizontal: false, vertical: true)
                         .padding(.horizontal, 18).padding(.vertical, 12).frame(minHeight: 48)
                         .background(EKitapligimPalette.teal, in: Capsule())
                 }
@@ -407,15 +469,14 @@ struct ModernHomeLibraryBanner: View {
     private func statistic(_ value: Int?, label: String, icon: String, action: @escaping () -> Void) -> some View {
         Button(action: action) {
             VStack(spacing: 8) {
-                Image(systemName: icon).font(.title3).foregroundStyle(EKitapligimPalette.teal)
+                Image(systemName: icon).font(.system(size: 22)).foregroundStyle(EKitapligimPalette.teal)
                     .frame(width: 44, height: 44).background(.white.opacity(0.92), in: Circle())
                     .accessibilityHidden(true)
-                Text(value.flatMap { $0 >= 0 ? EKitapligimFormat.count($0) : nil } ?? "—")
+                UniformCardText(value.flatMap { $0 >= 0 ? EKitapligimFormat.count($0) : nil } ?? "—", lines: 1)
                     .font(.system(.title2, design: .serif, weight: .bold)).monospacedDigit()
                     .foregroundStyle(EKitapligimPalette.ink)
-                    .fixedSize(horizontal: false, vertical: true)
-                Text(HomeRefreshL10n.text(label)).font(.caption)
-                    .foregroundStyle(EKitapligimPalette.muted).fixedSize(horizontal: false, vertical: true)
+                UniformCardText(HomeRefreshL10n.text(label), lines: 2).font(.caption)
+                    .foregroundStyle(EKitapligimPalette.muted)
             }
             .multilineTextAlignment(.center)
             .padding(.vertical, 9).frame(maxWidth: .infinity, minHeight: 48)
@@ -444,10 +505,10 @@ struct ModernHomeEditorialPanel: View {
                         EKitapligimRemoteCover(urlString: book.coverUrl, title: book.title, author: book.author)
                             .frame(width: 44, height: 66).clipShape(RoundedRectangle(cornerRadius: 5))
                         VStack(alignment: .leading, spacing: 5) {
-                            Text(book.title).font(.subheadline.weight(.semibold)).foregroundStyle(EKitapligimPalette.ink)
-                                .fixedSize(horizontal: false, vertical: true)
-                            Text(book.author).font(.caption).foregroundStyle(EKitapligimPalette.muted)
-                                .fixedSize(horizontal: false, vertical: true)
+                            UniformCardText(book.title, lines: 2)
+                                .font(.subheadline.weight(.semibold)).foregroundStyle(EKitapligimPalette.ink)
+                            UniformCardText(book.author, lines: 1)
+                                .font(.caption).foregroundStyle(EKitapligimPalette.muted)
                         }
                         Spacer(minLength: 0)
                         Image(systemName: "chevron.right").font(.caption).foregroundStyle(tint)

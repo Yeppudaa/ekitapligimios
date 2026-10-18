@@ -41,6 +41,7 @@ struct AIAssistantDestination: View {
 struct AIAssistantView: View {
     @EnvironmentObject private var container: AppContainer
     @Environment(\.scenePhase) private var scenePhase
+    @Environment(\.dynamicTypeSize) private var dynamicTypeSize
     @ObservedObject var model: AIAssistantModel
     var initialBook: BookDTO?
     var initialBookID: Int?
@@ -102,23 +103,26 @@ struct AIAssistantView: View {
         .toolbar {
             ToolbarItem(placement: .principal) {
                 HStack(spacing: 9) {
-                    AIEmblem(size: 34)
+                    if !dynamicTypeSize.isAccessibilitySize { AIEmblem(size: 34) }
                     VStack(alignment: .leading, spacing: 0) {
                         Text(AIL10n.text("title")).font(.subheadline.bold()).foregroundStyle(AIStyle.navy)
-                        Text(AIL10n.text("online")).font(.caption2.weight(.medium)).foregroundStyle(AIStyle.success)
+                            .lineLimit(1).minimumScaleFactor(0.8)
+                        if !dynamicTypeSize.isAccessibilitySize {
+                            Text(AIL10n.text("online")).font(.caption2.weight(.medium)).foregroundStyle(AIStyle.success)
+                        }
                     }
                 }
                 .accessibilityElement(children: .combine)
             }
-            ToolbarItemGroup(placement: .topBarTrailing) {
-                Button { model.newConversation() } label: { Image(systemName: "square.and.pencil") }
-                    .accessibilityLabel(AIL10n.newConversation)
-                Button { panel = .history } label: { Image(systemName: "clock.arrow.circlepath") }
-                    .accessibilityLabel(AIL10n.text("history"))
-                Button {
-                    if model.signedIn { model.loadPreferences(); panel = .preferences } else { panel = .login }
-                } label: { Image(systemName: "slider.horizontal.3") }
-                    .accessibilityLabel(AIL10n.text("preferences"))
+            ToolbarItem(placement: .topBarTrailing) {
+                Menu {
+                    Button { model.newConversation() } label: { Label(AIL10n.newConversation, systemImage: "square.and.pencil") }
+                    Button { panel = .history } label: { Label(AIL10n.text("history"), systemImage: "clock.arrow.circlepath") }
+                    Button {
+                        if model.signedIn { model.loadPreferences(); panel = .preferences } else { panel = .login }
+                    } label: { Label(AIL10n.text("preferences"), systemImage: "slider.horizontal.3") }
+                } label: { Image(systemName: "ellipsis.circle") }
+                    .accessibilityLabel(AIL10n.text("more"))
             }
         }
         .sheet(item: $panel) { selection in
@@ -162,13 +166,14 @@ struct AIAssistantView: View {
 
     private var quota: some View {
         VStack(alignment: .leading, spacing: 8) {
-            HStack {
-                Text(model.bootstrap == nil ? AIL10n.text("quotaLoading") : AIL10n.text("dailyUsage"))
-                    .font(.subheadline.weight(.semibold))
-                Spacer()
-                if let b = model.bootstrap {
-                    Text(AIL10n.remaining(b.usage.remaining, b.usage.limit)).font(.subheadline)
-                } else if model.busy { ProgressView() }
+            ViewThatFits(in: .horizontal) {
+                HStack {
+                    quotaTitle.fixedSize()
+                    Spacer(minLength: 12)
+                    quotaRemaining.fixedSize()
+                }
+                VStack(alignment: .leading, spacing: 8) { quotaTitle; quotaRemaining }
+                    .frame(maxWidth: .infinity, alignment: .leading)
             }
             if let b = model.bootstrap {
                 ProgressView(value: Double(b.usage.used), total: Double(max(1, b.usage.limit)))
@@ -185,6 +190,15 @@ struct AIAssistantView: View {
         .accessibilityElement(children: .combine)
         .accessibilityIdentifier("ai-quota")
     }
+    private var quotaTitle: some View {
+        Text(model.bootstrap == nil ? AIL10n.text("quotaLoading") : AIL10n.text("dailyUsage"))
+            .font(.subheadline.weight(.semibold)).fixedSize(horizontal: false, vertical: true)
+    }
+    @ViewBuilder private var quotaRemaining: some View {
+        if let b = model.bootstrap {
+            Text(AIL10n.remaining(b.usage.remaining, b.usage.limit)).font(.subheadline).fixedSize(horizontal: false, vertical: true)
+        } else if model.busy { ProgressView() }
+    }
     private var contextCard: some View {
         HStack(spacing: 12) {
             EKitapligimRemoteCover(urlString: model.book?.coverUrl ?? "", title: model.book?.title ?? "", author: model.book?.author ?? "")
@@ -192,8 +206,7 @@ struct AIAssistantView: View {
             VStack(alignment: .leading, spacing: 4) {
                 Text(AIL10n.text("bookContext")).font(.caption.weight(.semibold)).foregroundStyle(AIStyle.blue)
                 if let title = model.book?.title { Text(title).font(.subheadline.weight(.semibold)).foregroundStyle(AIStyle.navy) }
-            }
-            Spacer()
+            }.fixedSize(horizontal: false, vertical: true).frame(maxWidth: .infinity, alignment: .leading)
         }
         .padding(14)
         .background(AIStyle.surface, in: RoundedRectangle(cornerRadius: 16))
@@ -269,9 +282,15 @@ struct AIAssistantView: View {
         if let error = model.error {
             VStack(alignment: .leading, spacing: 12) {
                 Label(error, systemImage: "exclamationmark.circle").foregroundStyle(AIStyle.navy)
-                HStack {
+                let layout = dynamicTypeSize.isAccessibilitySize
+                    ? AnyLayout(VStackLayout(alignment: .leading, spacing: 8))
+                    : AnyLayout(HStackLayout(spacing: 12))
+                layout {
                     Button(AIL10n.text("refresh")) { model.refresh() }.disabled(model.busy)
-                    if error == AIL10n.sessionRequired { Button(AIL10n.text("login")) { panel = .login } }
+                        .fixedSize(horizontal: false, vertical: true).frame(minHeight: 44)
+                    if error == AIL10n.sessionRequired {
+                        Button(AIL10n.text("login")) { panel = .login }.fixedSize(horizontal: false, vertical: true).frame(minHeight: 44)
+                    }
                 }
             }.padding(16).background(AIStyle.surface, in: RoundedRectangle(cornerRadius: 14))
                 .padding(.horizontal, 16).accessibilityIdentifier("ai-error")
@@ -282,7 +301,7 @@ struct AIAssistantView: View {
             HStack(alignment: .bottom, spacing: 10) {
                 TextField("", text: $model.input,
                     prompt: Text(AIL10n.text("compose")).foregroundStyle(AIStyle.muted), axis: .vertical)
-                    .lineLimit(1...5).focused($composerFocused).padding(.horizontal, 16).padding(.vertical, 13)
+                    .lineLimit(1...(dynamicTypeSize.isAccessibilitySize ? 3 : 5)).focused($composerFocused).padding(.horizontal, 16).padding(.vertical, 13)
                     .foregroundStyle(AIStyle.navy)
                     .background(.white, in: RoundedRectangle(cornerRadius: 22))
                     .overlay(RoundedRectangle(cornerRadius: 22).stroke(AIStyle.border, lineWidth: 1))
@@ -322,8 +341,10 @@ struct AISuggestion: View {
         Button(action: action) {
             Label(title, systemImage: icon)
                 .font(.subheadline.weight(.medium))
+                .fixedSize(horizontal: true, vertical: true)
                 .foregroundStyle(AIStyle.blue)
                 .padding(.horizontal, 14)
+                .padding(.vertical, 6)
                 .frame(minHeight: 46)
                 .background(AIStyle.surface, in: Capsule())
                 .overlay(Capsule().stroke(AIStyle.border, lineWidth: 1))
@@ -333,6 +354,8 @@ struct AISuggestion: View {
 }
 
 struct AIBookStrip: View {
+    @Environment(\.dynamicTypeSize) private var dynamicTypeSize
+    @ScaledMetric(relativeTo: .subheadline) private var cardWidth: CGFloat = 154
     var title: String
     let books: [AIBookCardDTO]
     var body: some View {
@@ -343,26 +366,11 @@ struct AIBookStrip: View {
                         .padding(.horizontal, 16)
                 }
                 ScrollView(.horizontal) {
-                    LazyHStack(alignment: .top, spacing: 10) {
-                        ForEach(books.filter { $0.threadId > 0 }) { book in
-                            NavigationLink { BookDetailView(bookID: book.threadId) } label: {
-                                VStack(alignment: .leading, spacing: 9) {
-                                    EKitapligimRemoteCover(urlString: book.coverUrl, title: book.title, author: book.author).frame(width: 154, height: 154)
-                                        .clipShape(RoundedRectangle(cornerRadius: 12))
-                                    Text(book.title).font(.subheadline.weight(.semibold)).foregroundStyle(AIStyle.navy)
-                                        .lineLimit(2)
-                                    Text(book.author).font(.caption).foregroundStyle(AIStyle.muted)
-                                        .lineLimit(1)
-                                    if !book.recommendationReason.isEmpty {
-                                        Text(book.recommendationReason).font(.caption).foregroundStyle(AIStyle.blue)
-                                            .lineLimit(2)
-                                    }
-                                }
-                                .frame(width: 154, alignment: .leading)
-                                .padding(10)
-                                .background(.white, in: RoundedRectangle(cornerRadius: 16))
-                                .shadow(color: AIStyle.navy.opacity(0.10), radius: 8, y: 3)
-                            }.buttonStyle(.plain)
+                    Group {
+                        if books.filter({ $0.threadId > 0 }).count <= 8 {
+                            HStack(alignment: .top, spacing: 10) { bookCards }
+                        } else {
+                            LazyHStack(alignment: .top, spacing: 10) { bookCards }
                         }
                     }.padding(.vertical, 5)
                 }
@@ -371,9 +379,34 @@ struct AIBookStrip: View {
             }
         }
     }
+
+    private var bookCards: some View {
+        ForEach(books.filter { $0.threadId > 0 }) { book in
+            NavigationLink { BookDetailView(bookID: book.threadId) } label: {
+                VStack(alignment: .leading, spacing: 9) {
+                    EKitapligimRemoteCover(urlString: book.coverUrl, title: book.title, author: book.author)
+                        .aspectRatio(1, contentMode: .fit).frame(maxWidth: .infinity)
+                        .clipShape(RoundedRectangle(cornerRadius: 12))
+                    Text(book.title).font(.subheadline.weight(.semibold)).foregroundStyle(AIStyle.navy)
+                        .lineLimit(dynamicTypeSize.isAccessibilitySize ? nil : 2).fixedSize(horizontal: false, vertical: true)
+                    Text(book.author).font(.caption).foregroundStyle(AIStyle.muted)
+                        .lineLimit(dynamicTypeSize.isAccessibilitySize ? nil : 1).fixedSize(horizontal: false, vertical: true)
+                    if !book.recommendationReason.isEmpty {
+                        Text(book.recommendationReason).font(.caption).foregroundStyle(AIStyle.blue)
+                            .lineLimit(dynamicTypeSize.isAccessibilitySize ? nil : 2).fixedSize(horizontal: false, vertical: true)
+                    }
+                }
+                .padding(10)
+                .containerRelativeFrame(.horizontal) { length, _ in min(cardWidth + 20, max(1, length - 32)) }
+                .background(.white, in: RoundedRectangle(cornerRadius: 16))
+                .shadow(color: AIStyle.navy.opacity(0.10), radius: 8, y: 3)
+            }.buttonStyle(.plain)
+        }
+    }
 }
 
 struct AIMessageView: View {
+    @Environment(\.dynamicTypeSize) private var dynamicTypeSize
     let message: AIMessageDTO, features: AIFeaturesDTO
     let canSend: Bool, confirmed: Set<Int>
     let onPrompt: (String) -> Void
@@ -383,7 +416,7 @@ struct AIMessageView: View {
     var body: some View {
         if isUser {
             HStack(alignment: .bottom, spacing: 7) {
-                Spacer(minLength: 44)
+                Spacer(minLength: dynamicTypeSize.isAccessibilitySize ? 0 : 44)
                 Text(message.content)
                     .font(.body)
                     .textSelection(.enabled)
@@ -417,11 +450,14 @@ struct AIMessageView: View {
                     if !p.title.isEmpty { Text(p.title).font(.headline).foregroundStyle(AIStyle.navy) }
                     if !p.summary.isEmpty && p.summary != message.content { Text(p.summary).foregroundStyle(AIStyle.muted) }
                     ForEach(Array(p.facts.enumerated()), id: \.offset) { _, fact in
-                        HStack(alignment: .top, spacing: 10) {
+                        let layout = dynamicTypeSize.isAccessibilitySize
+                            ? AnyLayout(VStackLayout(alignment: .leading, spacing: 8))
+                            : AnyLayout(HStackLayout(alignment: .top, spacing: 10))
+                        layout {
                             Text(fact.label).font(.subheadline.weight(.bold)).foregroundStyle(AIStyle.navy)
-                                .frame(maxWidth: .infinity, alignment: .leading)
+                                .fixedSize(horizontal: false, vertical: true).frame(maxWidth: .infinity, alignment: .leading)
                             Text(fact.value).font(.subheadline).foregroundStyle(AIStyle.navy)
-                                .frame(maxWidth: .infinity, alignment: .leading)
+                                .fixedSize(horizontal: false, vertical: true).frame(maxWidth: .infinity, alignment: .leading)
                         }
                         .padding(11)
                         .background(AIStyle.surface, in: RoundedRectangle(cornerRadius: 12))
@@ -431,11 +467,14 @@ struct AIMessageView: View {
                         ForEach(Array(p.comparison.enumerated()), id: \.offset) { _, row in
                             VStack(alignment: .leading, spacing: 6) {
                                 ForEach(row.keys.sorted(), id: \.self) { key in
-                                    HStack(alignment: .top, spacing: 10) {
+                                    let layout = dynamicTypeSize.isAccessibilitySize
+                                        ? AnyLayout(VStackLayout(alignment: .leading, spacing: 6))
+                                        : AnyLayout(HStackLayout(alignment: .top, spacing: 10))
+                                    layout {
                                         Text(key).font(.caption.weight(.semibold)).foregroundStyle(AIStyle.navy)
-                                            .frame(maxWidth: .infinity, alignment: .leading)
+                                            .fixedSize(horizontal: false, vertical: true).frame(maxWidth: .infinity, alignment: .leading)
                                         Text(row[key] ?? "").font(.subheadline).foregroundStyle(AIStyle.navy)
-                                            .frame(maxWidth: .infinity, alignment: .leading)
+                                            .fixedSize(horizontal: false, vertical: true).frame(maxWidth: .infinity, alignment: .leading)
                                     }
                                 }
                             }.padding(12).background(AIStyle.surface, in: RoundedRectangle(cornerRadius: 14))
@@ -450,7 +489,7 @@ struct AIMessageView: View {
                             Link(destination: url) {
                                 Label(source.label.isEmpty ? source.source : source.label,
                                       systemImage: source.verified ? "checkmark.seal" : "link")
-                                    .font(.subheadline).frame(minHeight: 44, alignment: .leading)
+                                    .font(.subheadline).fixedSize(horizontal: false, vertical: true).frame(minHeight: 44, alignment: .leading)
                             }
                         }
                     }
@@ -471,7 +510,7 @@ struct AIMessageView: View {
                     ForEach(Array(p.followUps.enumerated()), id: \.offset) { _, follow in
                         Button { onPrompt(follow.prompt) } label: {
                             Label(follow.label, systemImage: "arrow.turn.down.right").font(.subheadline)
-                                .frame(minHeight: 44, alignment: .leading)
+                                .fixedSize(horizontal: false, vertical: true).frame(minHeight: 44, alignment: .leading)
                         }.disabled(!canSend)
                     }
                 }

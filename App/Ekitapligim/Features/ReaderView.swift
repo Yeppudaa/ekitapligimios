@@ -602,43 +602,54 @@ private struct ReaderPreviewLimitOverlay: View {
             Color.black.opacity(0.55)
                 .ignoresSafeArea()
                 .onTapGesture(perform: onDismiss)
-            VStack(spacing: 16) {
-                Image(systemName: "lock.fill")
-                    .font(.system(size: 28, weight: .semibold))
-                    .foregroundStyle(.white)
-                    .frame(width: 56, height: 56)
-                    .background(EKitapligimPalette.quotaPremiumGradient)
-                    .clipShape(Circle())
-                Text(L10n.readerPreviewLimitTitle)
-                    .font(.title3.weight(.bold))
-                    .foregroundStyle(EKitapligimPalette.ink)
-                    .multilineTextAlignment(.center)
-                Text(L10n.readerPreviewLimitMessage(pages: pageCount))
-                    .font(.subheadline)
-                    .foregroundStyle(EKitapligimPalette.muted)
-                    .multilineTextAlignment(.center)
-                Button(action: onUpgrade) {
-                    Text(L10n.readerPreviewLimitUpgrade)
-                        .font(.headline)
-                        .frame(maxWidth: .infinity)
-                        .padding(.vertical, 12)
-                }
-                .buttonStyle(.borderedProminent)
-                .tint(EKitapligimPalette.teal)
-                .accessibilityIdentifier("reader.previewLimit.premium")
-                Button(L10n.readerPreviewLimitDismiss, action: onDismiss)
-                    .font(.subheadline.weight(.semibold))
-                    .foregroundStyle(EKitapligimPalette.muted)
-                    .accessibilityIdentifier("reader.previewLimit.dismiss")
+            ViewThatFits(in: .vertical) {
+                previewCard.fixedSize(horizontal: false, vertical: true)
+                ScrollView { previewCard }
+                    .scrollBounceBehavior(.basedOnSize)
             }
-            .padding(24)
-            .background(EKitapligimPalette.paper, in: RoundedRectangle(cornerRadius: 24, style: .continuous))
+            .frame(maxWidth: 480)
             .padding(.horizontal, 28)
+            .padding(.vertical, 16)
         }
         .frame(maxWidth: .infinity, maxHeight: .infinity)
         .background(EKitapligimPalette.page)
         .accessibilityElement(children: .contain)
         .accessibilityIdentifier("reader.previewLimit.overlay")
+    }
+
+    private var previewCard: some View {
+        VStack(spacing: 16) {
+            Image(systemName: "lock.fill")
+                .font(.system(size: 28, weight: .semibold))
+                .foregroundStyle(.white)
+                .frame(width: 56, height: 56)
+                .background(EKitapligimPalette.quotaPremiumGradient)
+                .clipShape(Circle())
+            Text(L10n.readerPreviewLimitTitle)
+                .font(.title3.weight(.bold))
+                .foregroundStyle(EKitapligimPalette.ink)
+                .multilineTextAlignment(.center)
+            Text(L10n.readerPreviewLimitMessage(pages: pageCount))
+                .font(.subheadline)
+                .foregroundStyle(EKitapligimPalette.muted)
+                .multilineTextAlignment(.center)
+            Button(action: onUpgrade) {
+                Text(L10n.readerPreviewLimitUpgrade)
+                    .font(.headline)
+                    .frame(maxWidth: .infinity)
+                    .fixedSize(horizontal: false, vertical: true)
+                    .padding(.vertical, 12)
+            }
+            .buttonStyle(.borderedProminent)
+            .tint(EKitapligimPalette.teal)
+            .accessibilityIdentifier("reader.previewLimit.premium")
+            Button(L10n.readerPreviewLimitDismiss, action: onDismiss)
+                .font(.subheadline.weight(.semibold))
+                .foregroundStyle(EKitapligimPalette.muted)
+                .accessibilityIdentifier("reader.previewLimit.dismiss")
+        }
+        .padding(24)
+        .background(EKitapligimPalette.paper, in: RoundedRectangle(cornerRadius: 24, style: .continuous))
     }
 }
 

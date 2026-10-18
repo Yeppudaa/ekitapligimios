@@ -378,13 +378,17 @@ struct EKStateCard: View {
 }
 
 struct EKInlineError: View {
+    @Environment(\.dynamicTypeSize) private var dynamicTypeSize
     let message: String
     var retryTitle: String? = nil
     var retry: (() -> Void)? = nil
     var showsIcon: Bool = true
 
     var body: some View {
-        HStack(alignment: .center, spacing: 10) {
+        let layout = dynamicTypeSize > .xLarge
+            ? AnyLayout(VStackLayout(alignment: .leading, spacing: 10))
+            : AnyLayout(HStackLayout(alignment: .center, spacing: 10))
+        layout {
             if showsIcon {
                 Image(systemName: "exclamationmark.triangle.fill")
                     .foregroundStyle(EKitapligimPalette.warningInk)
@@ -392,11 +396,14 @@ struct EKInlineError: View {
             Text(message)
                 .font(.caption)
                 .foregroundStyle(EKitapligimPalette.warningInk)
-            Spacer(minLength: 0)
+                .fixedSize(horizontal: false, vertical: true)
+                .frame(maxWidth: .infinity, alignment: .leading)
             if let retryTitle, let retry {
                 Button(retryTitle, action: retry)
                     .font(.caption.weight(.bold))
                     .foregroundStyle(EKitapligimPalette.warningInk)
+                    .fixedSize(horizontal: false, vertical: true)
+                    .frame(minHeight: 44)
             }
         }
         .padding(12)
@@ -468,7 +475,7 @@ extension View {
 
     /// Caps `TextEditor` so a bottom `safeAreaInset` cannot eat the thread/message list.
     func ekPinnedReplyEditor() -> some View {
-        frame(minHeight: 76, maxHeight: 128)
+        keyboardSizedReplyEditor()
     }
 
     /// Sizes the pinned reply bar to its content instead of the remaining screen.
@@ -575,17 +582,13 @@ struct EKShelfCard: View {
                         .padding(7)
                 }
             }
-            Text(title)
+            UniformCardText(title, lines: 2)
                 .font(.caption.weight(.bold))
                 .foregroundStyle(EKitapligimPalette.ink)
-                .lineLimit(2)
                 .multilineTextAlignment(.leading)
-            if !subtitle.isEmpty {
-                Text(subtitle)
-                    .font(.caption2)
-                    .foregroundStyle(EKitapligimPalette.muted)
-                    .lineLimit(1)
-            }
+            UniformCardText(subtitle, lines: 1)
+                .font(.caption2)
+                .foregroundStyle(EKitapligimPalette.muted)
         }
         .frame(width: width, alignment: .leading)
         .accessibilityElement(children: .combine)
@@ -692,6 +695,7 @@ struct EKChatPreviewMessageRow: View {
 
 /// Home-screen chat preview with a gradient header and live message snippets.
 struct EKChatHomePreviewCard: View {
+    @Environment(\.dynamicTypeSize) private var dynamicTypeSize
     let roomName: String
     let roomDescription: String
     let onlineCount: Int
@@ -733,7 +737,10 @@ struct EKChatHomePreviewCard: View {
     }
 
     private var header: some View {
-        HStack(alignment: .center, spacing: 12) {
+        let layout = dynamicTypeSize.isAccessibilitySize
+            ? AnyLayout(VStackLayout(alignment: .leading, spacing: 12))
+            : AnyLayout(HStackLayout(alignment: .center, spacing: 12))
+        return layout {
             Image(systemName: "bubble.left.and.bubble.right.fill")
                 .font(.body.weight(.semibold))
                 .foregroundStyle(.white)
@@ -751,16 +758,20 @@ struct EKChatHomePreviewCard: View {
                 Text(roomName)
                     .font(.subheadline.weight(.heavy))
                     .foregroundStyle(EKitapligimPalette.chatInk)
-                    .lineLimit(1)
+                    .lineLimit(dynamicTypeSize.isAccessibilitySize ? nil : 2)
                 Text(roomDescription)
                     .font(.caption2)
                     .foregroundStyle(EKitapligimPalette.chatMuted)
-                    .lineLimit(1)
+                    .lineLimit(dynamicTypeSize.isAccessibilitySize ? nil : 2)
             }
-
-            Spacer(minLength: 0)
+            .frame(maxWidth: .infinity, alignment: .leading)
+            .fixedSize(horizontal: false, vertical: true)
+            .layoutPriority(1)
 
             EKLiveBadge(title: L10n.chatLiveBadge, onDark: false, showsPulse: true)
+                .fixedSize()
+                // Reserve the pulse halo so it cannot change the title's available width.
+                .frame(minWidth: 72, minHeight: 28, alignment: .leading)
         }
         .padding(.horizontal, 16)
         .padding(.vertical, 14)
@@ -792,37 +803,63 @@ struct EKChatHomePreviewCard: View {
     }
 
     private var footer: some View {
-        HStack(spacing: 8) {
-            if onlineCount > 0 {
-                HStack(spacing: 5) {
-                    Circle()
-                        .fill(Color(hex: 0x1CB879))
-                        .frame(width: 6, height: 6)
-                    Text(L10n.chatOnlineCount(onlineCount))
-                        .font(.caption2.weight(.bold))
-                        .foregroundStyle(Color(hex: 0x08734E))
+        Group {
+            if dynamicTypeSize > .xLarge {
+                stackedFooter
+            } else {
+                ViewThatFits(in: .horizontal) {
+                    HStack(spacing: 8) {
+                        onlineBadge.fixedSize()
+                        Spacer(minLength: 0)
+                        actionBadge.fixedSize()
+                    }
+                    stackedFooter
                 }
-                .padding(.horizontal, 9)
-                .padding(.vertical, 5)
-                .background(Color(hex: 0xE5FAF1), in: Capsule())
             }
-
-            Spacer(minLength: 0)
-
-            HStack(spacing: 5) {
-                Text(actionTitle)
-                    .font(.caption.weight(.bold))
-                Image(systemName: "arrow.right")
-                    .font(.caption2.weight(.bold))
-            }
-            .foregroundStyle(EKitapligimPalette.chatTeal)
-            .padding(.horizontal, 12)
-            .padding(.vertical, 7)
-            .background(EKitapligimPalette.chatTealSoft, in: Capsule())
         }
         .padding(.horizontal, 14)
         .padding(.vertical, 12)
         .background(Color.white.opacity(0.72))
+    }
+
+    private var stackedFooter: some View {
+        VStack(alignment: .leading, spacing: 8) {
+            onlineBadge
+            actionBadge
+        }
+        .frame(maxWidth: .infinity, alignment: .leading)
+    }
+
+    @ViewBuilder private var onlineBadge: some View {
+        if onlineCount > 0 {
+            HStack(spacing: 5) {
+                Circle()
+                    .fill(Color(hex: 0x1CB879))
+                    .frame(width: 6, height: 6)
+                Text(L10n.chatOnlineCount(onlineCount))
+                    .font(.caption2.weight(.bold))
+                    .foregroundStyle(Color(hex: 0x08734E))
+                    .fixedSize(horizontal: false, vertical: true)
+            }
+            .padding(.horizontal, 9)
+            .padding(.vertical, 5)
+            .background(Color(hex: 0xE5FAF1), in: Capsule())
+        }
+    }
+
+    private var actionBadge: some View {
+        HStack(spacing: 5) {
+            Text(actionTitle)
+                .font(.caption.weight(.bold))
+                .fixedSize(horizontal: false, vertical: true)
+            Image(systemName: "arrow.right")
+                .font(.caption2.weight(.bold))
+                .fixedSize()
+        }
+        .foregroundStyle(EKitapligimPalette.chatTeal)
+        .padding(.horizontal, 12)
+        .padding(.vertical, 7)
+        .background(EKitapligimPalette.chatTealSoft, in: Capsule())
     }
 }
 
@@ -925,11 +962,15 @@ struct EKBookRequestStatusPill: View {
 
 /// Compact featured request row for the home preview card.
 struct EKBookRequestPreviewRow: View {
+    @Environment(\.dynamicTypeSize) private var dynamicTypeSize
     let request: BookRequestDTO
     var compact: Bool = false
 
     var body: some View {
-        HStack(alignment: .top, spacing: compact ? 10 : 12) {
+        let layout = dynamicTypeSize.isAccessibilitySize
+            ? AnyLayout(VStackLayout(alignment: .leading, spacing: 12))
+            : AnyLayout(HStackLayout(alignment: .top, spacing: compact ? 10 : 12))
+        layout {
             EKBookRequestCover(
                 title: request.title,
                 author: request.author,
@@ -967,7 +1008,10 @@ struct EKBookRequestPreviewRow: View {
                     }
                 }
 
-                HStack(spacing: 8) {
+                let badgeLayout = dynamicTypeSize > .xLarge
+                    ? AnyLayout(VStackLayout(alignment: .leading, spacing: 8))
+                    : AnyLayout(HStackLayout(spacing: 8))
+                badgeLayout {
                     EKBookRequestStatusPill(
                         status: request.status,
                         compact: true,
@@ -986,6 +1030,7 @@ struct EKBookRequestPreviewRow: View {
                 }
             }
             .frame(maxWidth: .infinity, alignment: .leading)
+            .fixedSize(horizontal: false, vertical: true)
         }
         .accessibilityElement(children: .combine)
     }
@@ -993,6 +1038,7 @@ struct EKBookRequestPreviewRow: View {
 
 /// Home-screen book request center preview with the latest community requests.
 struct EKBookRequestHomePreviewCard: View {
+    @Environment(\.dynamicTypeSize) private var dynamicTypeSize
     let requests: [BookRequestDTO]
     let title: String
     let subtitle: String
@@ -1036,7 +1082,10 @@ struct EKBookRequestHomePreviewCard: View {
     }
 
     private var header: some View {
-        HStack(alignment: .center, spacing: 12) {
+        let layout = dynamicTypeSize.isAccessibilitySize
+            ? AnyLayout(VStackLayout(alignment: .leading, spacing: 12))
+            : AnyLayout(HStackLayout(alignment: .center, spacing: 12))
+        return layout {
             Image(systemName: "heart.text.square.fill")
                 .font(.body.weight(.semibold))
                 .foregroundStyle(.white)
@@ -1054,21 +1103,23 @@ struct EKBookRequestHomePreviewCard: View {
                 Text(title)
                     .font(.subheadline.weight(.heavy))
                     .foregroundStyle(EKitapligimPalette.ink)
-                    .lineLimit(1)
+                    .lineLimit(dynamicTypeSize.isAccessibilitySize ? nil : 2)
                 Text(subtitle)
                     .font(.caption2)
                     .foregroundStyle(EKitapligimPalette.muted)
-                    .lineLimit(2)
+                    .lineLimit(dynamicTypeSize.isAccessibilitySize ? nil : 2)
                     .multilineTextAlignment(.leading)
             }
-
-            Spacer(minLength: 0)
+            .frame(maxWidth: .infinity, alignment: .leading)
+            .fixedSize(horizontal: false, vertical: true)
+            .layoutPriority(1)
 
             EKPill(
                 title: L10n.homeDiscoveryRequestsBadge,
                 foreground: accentDeep,
                 background: accent.opacity(0.12)
             )
+            .fixedSize()
         }
         .padding(.horizontal, 16)
         .padding(.vertical, 14)
@@ -1123,43 +1174,70 @@ struct EKBookRequestHomePreviewCard: View {
     }
 
     private var footer: some View {
-        HStack(spacing: 8) {
-            if !requests.isEmpty {
-                HStack(spacing: 5) {
-                    Image(systemName: "person.3.fill")
-                        .font(.caption2.weight(.semibold))
-                    Text(L10n.homeRequestCenterCommunityFeed)
-                        .font(.caption2.weight(.bold))
+        Group {
+            if dynamicTypeSize > .xLarge {
+                stackedFooter
+            } else {
+                ViewThatFits(in: .horizontal) {
+                    HStack(spacing: 8) {
+                        communityBadge.fixedSize()
+                        Spacer(minLength: 0)
+                        actionBadge.fixedSize()
+                    }
+                    stackedFooter
                 }
-                .foregroundStyle(accentDeep)
-                .padding(.horizontal, 9)
-                .padding(.vertical, 5)
-                .background(accent.opacity(0.10), in: Capsule())
             }
-
-            Spacer(minLength: 0)
-
-            HStack(spacing: 5) {
-                Text(actionTitle)
-                    .font(.caption.weight(.bold))
-                Image(systemName: "plus")
-                    .font(.caption2.weight(.bold))
-            }
-            .foregroundStyle(.white)
-            .padding(.horizontal, 12)
-            .padding(.vertical, 7)
-            .background(
-                LinearGradient(
-                    colors: [Color(hex: 0xFFA122), Color(hex: 0xE07700)],
-                    startPoint: .leading,
-                    endPoint: .trailing
-                ),
-                in: Capsule()
-            )
         }
         .padding(.horizontal, 14)
         .padding(.vertical, 12)
         .background(Color.white.opacity(0.72))
+    }
+
+    private var stackedFooter: some View {
+        VStack(alignment: .leading, spacing: 8) {
+            communityBadge
+            actionBadge
+        }
+        .frame(maxWidth: .infinity, alignment: .leading)
+    }
+
+    @ViewBuilder private var communityBadge: some View {
+        if !requests.isEmpty {
+            HStack(spacing: 5) {
+                Image(systemName: "person.3.fill")
+                    .font(.caption2.weight(.semibold))
+                    .fixedSize()
+                Text(L10n.homeRequestCenterCommunityFeed)
+                    .font(.caption2.weight(.bold))
+                    .fixedSize(horizontal: false, vertical: true)
+            }
+            .foregroundStyle(accentDeep)
+            .padding(.horizontal, 9)
+            .padding(.vertical, 5)
+            .background(accent.opacity(0.10), in: Capsule())
+        }
+    }
+
+    private var actionBadge: some View {
+        HStack(spacing: 5) {
+            Text(actionTitle)
+                .font(.caption.weight(.bold))
+                .fixedSize(horizontal: false, vertical: true)
+            Image(systemName: "plus")
+                .font(.caption2.weight(.bold))
+                .fixedSize()
+        }
+        .foregroundStyle(.white)
+        .padding(.horizontal, 12)
+        .padding(.vertical, 7)
+        .background(
+            LinearGradient(
+                colors: [Color(hex: 0xFFA122), Color(hex: 0xE07700)],
+                startPoint: .leading,
+                endPoint: .trailing
+            ),
+            in: Capsule()
+        )
     }
 }
 
@@ -1191,6 +1269,7 @@ struct EKForumMetricPill: View {
 /// Forum category card used on the community tab.
 struct EKForumListCard: View {
     let forum: ForumDTO
+    @Environment(\.dynamicTypeSize) private var dynamicTypeSize
 
     private var iconName: String {
         forum.isBookForum == true ? "books.vertical.fill" : "text.bubble.fill"
@@ -1201,7 +1280,11 @@ struct EKForumListCard: View {
     }
 
     var body: some View {
-        HStack(spacing: 14) {
+        let layout = dynamicTypeSize.isAccessibilitySize
+            ? AnyLayout(VStackLayout(alignment: .leading, spacing: 12))
+            : AnyLayout(HStackLayout(spacing: 14))
+        layout {
+            if !dynamicTypeSize.isAccessibilitySize {
             RoundedRectangle(cornerRadius: 3, style: .continuous)
                 .fill(
                     LinearGradient(
@@ -1211,6 +1294,7 @@ struct EKForumListCard: View {
                     )
                 )
                 .frame(width: 4, height: 58)
+            }
 
             Image(systemName: iconName)
                 .font(.body.weight(.semibold))
@@ -1230,14 +1314,14 @@ struct EKForumListCard: View {
                 Text(forum.title)
                     .font(.subheadline.weight(.heavy))
                     .foregroundStyle(EKitapligimPalette.forumInk)
-                    .lineLimit(2)
+                    .lineLimit(dynamicTypeSize.isAccessibilitySize ? nil : 2)
                     .multilineTextAlignment(.leading)
 
                 if !forum.description.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty {
                     Text(forum.description)
                         .font(.caption)
                         .foregroundStyle(EKitapligimPalette.forumMuted)
-                        .lineLimit(2)
+                        .lineLimit(dynamicTypeSize.isAccessibilitySize ? nil : 2)
                         .multilineTextAlignment(.leading)
                 }
 
@@ -1257,10 +1341,13 @@ struct EKForumListCard: View {
                 }
             }
             .frame(maxWidth: .infinity, alignment: .leading)
+            .fixedSize(horizontal: false, vertical: true)
 
+            if !dynamicTypeSize.isAccessibilitySize {
             Image(systemName: "chevron.right")
                 .font(.caption.weight(.bold))
                 .foregroundStyle(EKitapligimPalette.forumMuted.opacity(0.8))
+            }
         }
         .padding(14)
         .background(
@@ -1282,6 +1369,8 @@ struct EKForumListCard: View {
 /// Thread row card used in forum thread lists.
 struct EKForumThreadRow: View {
     let thread: ForumThreadDTO
+    var titleTrailingInset: CGFloat = 0
+    @Environment(\.dynamicTypeSize) private var dynamicTypeSize
 
     private var displayUsername: String {
         ForumMessageFormatting.displayUsername(thread.username)
@@ -1292,7 +1381,10 @@ struct EKForumThreadRow: View {
     }
 
     var body: some View {
-        HStack(alignment: .center, spacing: 12) {
+        let layout = dynamicTypeSize.isAccessibilitySize
+            ? AnyLayout(VStackLayout(alignment: .leading, spacing: 12))
+            : AnyLayout(HStackLayout(alignment: .center, spacing: 12))
+        layout {
             Text(initial)
                 .font(.system(.title3, design: .serif).weight(.heavy))
                 .foregroundStyle(EKitapligimPalette.forumTeal)
@@ -1324,35 +1416,45 @@ struct EKForumThreadRow: View {
                     Text(thread.title)
                         .font(.system(.headline, design: .serif).weight(.bold))
                         .foregroundStyle(EKitapligimPalette.forumInk)
-                        .lineLimit(2)
+                        .lineLimit(dynamicTypeSize.isAccessibilitySize ? nil : 2)
                         .multilineTextAlignment(.leading)
                         .frame(maxWidth: .infinity, alignment: .leading)
                 }
+                .padding(.trailing, titleTrailingInset)
+                .fixedSize(horizontal: false, vertical: true)
 
-                HStack(spacing: 6) {
+                let metadataLayout = dynamicTypeSize > .xLarge
+                    ? AnyLayout(VStackLayout(alignment: .leading, spacing: 6))
+                    : AnyLayout(HStackLayout(spacing: 6))
+                metadataLayout {
                     MemberProfileLink(memberID: thread.userId) {
                         Text(displayUsername)
                             .font(.caption.weight(.semibold))
                             .foregroundStyle(EKitapligimPalette.forumMuted)
-                            .lineLimit(1)
+                            .lineLimit(dynamicTypeSize.isAccessibilitySize ? nil : 1)
                     }
                     if thread.postDate > 0 {
-                        Text("·")
+                        if dynamicTypeSize <= .xLarge { Text("·")
                             .foregroundStyle(EKitapligimPalette.forumMuted.opacity(0.6))
+                        }
                         Text(EKitapligimFormat.relativeTime(thread.postDate))
                             .font(.caption2)
                             .foregroundStyle(EKitapligimPalette.forumMuted)
-                            .lineLimit(1)
+                            .fixedSize(horizontal: false, vertical: true)
                     }
-                    Spacer(minLength: 4)
-                    EKForumMetricPill(systemImage: "bubble.left", value: thread.replyCount, compact: true)
-                    EKForumMetricPill(systemImage: "eye", value: thread.viewCount, compact: true)
+                }
+                ViewThatFits(in: .horizontal) {
+                    HStack(spacing: 6) { metrics }.fixedSize()
+                    VStack(alignment: .leading, spacing: 6) { metrics }
                 }
             }
+            .frame(maxWidth: .infinity, alignment: .leading)
 
-            Image(systemName: "chevron.right")
-                .font(.caption.weight(.bold))
-                .foregroundStyle(EKitapligimPalette.forumMuted.opacity(0.75))
+            if !dynamicTypeSize.isAccessibilitySize {
+                Image(systemName: "chevron.right")
+                    .font(.caption.weight(.bold))
+                    .foregroundStyle(EKitapligimPalette.forumMuted.opacity(0.75))
+            }
         }
         .padding(.horizontal, 13)
         .padding(.vertical, 12)
@@ -1370,6 +1472,11 @@ struct EKForumThreadRow: View {
                 .stroke(EKitapligimPalette.forumBorder, lineWidth: 1)
         }
         .shadow(color: Color.black.opacity(0.04), radius: 8, y: 3)
+    }
+
+    @ViewBuilder private var metrics: some View {
+        EKForumMetricPill(systemImage: "bubble.left", value: thread.replyCount, compact: true)
+        EKForumMetricPill(systemImage: "eye", value: thread.viewCount, compact: true)
     }
 }
 
@@ -1427,6 +1534,7 @@ struct EKStatCell: View {
 }
 
 struct EKActionTile: View {
+    @Environment(\.dynamicTypeSize) private var dynamicTypeSize
     let title: String
     let systemImage: String
     var badgeCount: Int = 0
@@ -1445,7 +1553,8 @@ struct EKActionTile: View {
                 Text(title)
                     .font(.subheadline.weight(.semibold))
                     .foregroundStyle(EKitapligimPalette.profileInk)
-                    .lineLimit(2)
+                    .lineLimit(dynamicTypeSize.isAccessibilitySize ? nil : 2)
+                    .fixedSize(horizontal: false, vertical: true)
                     .multilineTextAlignment(.leading)
                 Spacer(minLength: 0)
                 EKUnreadBadge(count: badgeCount, background: accent)
@@ -1465,12 +1574,16 @@ struct EKActionTile: View {
 }
 
 struct EKInfoRow: View {
+    @Environment(\.dynamicTypeSize) private var dynamicTypeSize
     let label: String
     let value: String
     let systemImage: String
 
     var body: some View {
-        HStack(spacing: 12) {
+        let layout = dynamicTypeSize.isAccessibilitySize
+            ? AnyLayout(VStackLayout(alignment: .leading, spacing: 12))
+            : AnyLayout(HStackLayout(spacing: 12))
+        layout {
             Image(systemName: systemImage)
                 .font(.subheadline)
                 .foregroundStyle(Color(hex: 0x23736F))
@@ -1485,7 +1598,8 @@ struct EKInfoRow: View {
                     .font(.subheadline.weight(.semibold))
                     .foregroundStyle(EKitapligimPalette.profileInk)
             }
-            Spacer(minLength: 0)
+            .fixedSize(horizontal: false, vertical: true)
+            .frame(maxWidth: .infinity, alignment: .leading)
         }
         .padding(12)
         .background(EKitapligimPalette.profileSurface)
@@ -1496,6 +1610,7 @@ struct EKInfoRow: View {
 
 /// Daily read/download allowance card, including the unlimited admin and premium variants.
 struct EKQuotaCard: View {
+    @Environment(\.dynamicTypeSize) private var dynamicTypeSize
     let title: String
     let subtitle: String
     let systemImage: String
@@ -1506,7 +1621,10 @@ struct EKQuotaCard: View {
     let isUnlimited: Bool
 
     var body: some View {
-        HStack(alignment: .top, spacing: 12) {
+        let layout = dynamicTypeSize > .xLarge
+            ? AnyLayout(VStackLayout(alignment: .leading, spacing: 12))
+            : AnyLayout(HStackLayout(alignment: .top, spacing: 12))
+        layout {
             Image(systemName: systemImage)
                 .font(.headline)
                 .foregroundStyle(.white)
@@ -1524,9 +1642,7 @@ struct EKQuotaCard: View {
                     .fixedSize(horizontal: false, vertical: true)
             }
 
-            Spacer(minLength: 0)
-
-            VStack(alignment: .trailing, spacing: 2) {
+            VStack(alignment: dynamicTypeSize > .xLarge ? .leading : .trailing, spacing: 2) {
                 Text(trailingValue)
                     .font(.subheadline.weight(.heavy))
                     .foregroundStyle(.white)
@@ -1534,6 +1650,7 @@ struct EKQuotaCard: View {
                     .font(.system(size: 10))
                     .foregroundStyle(.white.opacity(0.82))
             }
+            .fixedSize(horizontal: false, vertical: true)
         }
         .padding(14)
         .overlay(alignment: .bottom) {

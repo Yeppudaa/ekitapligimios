@@ -263,23 +263,36 @@ struct EKitapligimSectionHeader: View {
     var action: (() -> Void)? = nil
 
     var body: some View {
-        HStack(alignment: .bottom, spacing: 10) {
-            VStack(alignment: .leading, spacing: 3) {
-                Text(title)
-                    .font(.title3.weight(.heavy))
-                    .foregroundStyle(EKitapligimPalette.ink)
-                if let subtitle {
-                    Text(subtitle)
-                        .font(.caption)
-                        .foregroundStyle(EKitapligimPalette.muted)
-                }
+        ViewThatFits(in: .horizontal) {
+            HStack(alignment: .bottom, spacing: 10) {
+                heading.fixedSize()
+                Spacer(minLength: 8)
+                actionButton.fixedSize()
             }
-            Spacer()
-            if let actionTitle, let action {
-                Button(actionTitle, action: action)
-                    .font(.caption.weight(.bold))
-                    .foregroundStyle(EKitapligimPalette.tealDark)
+            VStack(alignment: .leading, spacing: 8) {
+                heading
+                actionButton
             }
+        }
+        .multilineTextAlignment(.leading)
+    }
+
+    private var heading: some View {
+        VStack(alignment: .leading, spacing: 3) {
+            Text(title).font(.title3.weight(.heavy)).foregroundStyle(EKitapligimPalette.ink)
+            if let subtitle {
+                Text(subtitle).font(.caption).foregroundStyle(EKitapligimPalette.muted)
+            }
+        }.fixedSize(horizontal: false, vertical: true)
+    }
+
+    @ViewBuilder private var actionButton: some View {
+        if let actionTitle, let action {
+            Button(actionTitle, action: action)
+                .font(.caption.weight(.bold))
+                .foregroundStyle(EKitapligimPalette.tealDark)
+                .fixedSize(horizontal: false, vertical: true)
+                .frame(minHeight: 44)
         }
     }
 }
@@ -361,9 +374,11 @@ struct EKScrollOffsetTracker: View {
 }
 
 struct EKCollapsibleHero<Expanded: View, Collapsed: View>: View {
+    @Environment(\.dynamicTypeSize) private var dynamicTypeSize
     let progress: CGFloat
     var expandedHeight: CGFloat = EKCollapsibleHeroMetrics.expandedHeight
     var collapsedHeight: CGFloat = EKCollapsibleHeroMetrics.collapsedHeight
+    var allowsCollapse = true
     @ViewBuilder var expanded: () -> Expanded
     @ViewBuilder var collapsed: () -> Collapsed
 
@@ -372,15 +387,21 @@ struct EKCollapsibleHero<Expanded: View, Collapsed: View>: View {
         let height = expandedHeight
             - ((expandedHeight - collapsedHeight) * clamped)
 
-        ZStack(alignment: .top) {
-            expanded()
-                .opacity(1 - clamped)
-            collapsed()
-                .opacity(clamped)
+        Group {
+            if !allowsCollapse || dynamicTypeSize > .xLarge {
+                expanded().fixedSize(horizontal: false, vertical: true)
+            } else {
+                ZStack(alignment: .top) {
+                    expanded()
+                        .opacity(1 - clamped)
+                    collapsed()
+                        .opacity(clamped)
+                }
+                .frame(height: height, alignment: .top)
+                .clipped()
+                .animation(.easeOut(duration: 0.15), value: clamped)
+            }
         }
-        .frame(height: height, alignment: .top)
-        .clipped()
-        .animation(.easeOut(duration: 0.15), value: clamped)
     }
 }
 

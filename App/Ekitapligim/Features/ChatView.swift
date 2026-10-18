@@ -53,7 +53,7 @@ struct ChatView: View {
             )
             .ignoresSafeArea()
             GeometryReader { geometry in
-                let compactHeader = geometry.size.height < 540 || dynamicTypeSize.isAccessibilitySize || isComposerFocused
+                let compactHeader = geometry.size.height < 540 || dynamicTypeSize > .large || isComposerFocused
                 VStack(spacing: 0) {
                     pinnedChatHeader(compact: compactHeader, width: min(900, geometry.size.width))
                         .frame(maxWidth: .infinity)
@@ -94,6 +94,11 @@ struct ChatView: View {
                 }
                 .accessibilityLabel(L10n.chatRefresh)
             }
+            ToolbarItemGroup(placement: .keyboard) {
+                Spacer()
+                Button(L10n.commonDismiss) { isComposerFocused = false }
+                    .accessibilityIdentifier("keyboard-dismiss")
+            }
         }
         .sheet(isPresented: $showingLogin) { LoginView() }
         .sheet(item: $reactionTarget) { message in
@@ -121,6 +126,7 @@ struct ChatView: View {
             if phase == .active {
                 Task { await model.resume(visible: isVisible) }
             } else {
+                isComposerFocused = false
                 model.disconnect()
                 reactionTarget = nil
             }
@@ -129,7 +135,11 @@ struct ChatView: View {
             model.setBlockedUsers(Set(blockedIDs.map(String.init)))
         }
         .onAppear { isVisible = true }
-        .onDisappear { isVisible = false; model.disconnect() }
+        .onDisappear {
+            isComposerFocused = false
+            isVisible = false
+            model.disconnect()
+        }
     }
 
     // MARK: Hero + odalar
@@ -301,6 +311,7 @@ struct ChatView: View {
                 .padding(.horizontal, 14)
                 .padding(.vertical, 12)
             }
+            .accessibilityIdentifier("chat-transcript")
             .scrollDismissesKeyboard(.interactively)
             .onChange(of: messages.last?.id) { _, id in
                 guard isFollowingLatest, let id else { return }
@@ -557,7 +568,7 @@ struct ChatView: View {
         buttonTitle: String,
         action: @escaping () -> Void
     ) -> some View {
-        HStack(spacing: 10) {
+        (dynamicTypeSize.isAccessibilitySize ? AnyLayout(VStackLayout(alignment: .leading, spacing: 10)) : AnyLayout(HStackLayout(spacing: 10))) {
             Image(systemName: icon)
                 .font(.title3)
                 .foregroundStyle(EKitapligimPalette.chatTeal)

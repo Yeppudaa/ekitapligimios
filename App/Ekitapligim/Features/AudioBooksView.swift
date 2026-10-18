@@ -3,6 +3,7 @@ import EkitapligimCore
 
 @MainActor
 struct AudioBooksView: View {
+    @Environment(\.dynamicTypeSize) private var dynamicTypeSize
     @StateObject private var model: AudioCatalogModel
     @ObservedObject var controller: AudioPlaybackController
     let account: String?
@@ -38,7 +39,7 @@ struct AudioBooksView: View {
                 }
                 Text(AudioL10n.text("results")).font(.system(.title2, design: .serif, weight: .bold)).foregroundStyle(AudioStyle.ink)
                 if !model.loading && model.books.isEmpty && model.error == nil { AudioEmptyView() }
-                LazyVGrid(columns: [GridItem(.adaptive(minimum: 150), spacing: 12)], alignment: .leading, spacing: 14) {
+                LazyVGrid(columns: dynamicTypeSize.isAccessibilitySize ? [GridItem(.flexible())] : [GridItem(.adaptive(minimum: 150), spacing: 12)], alignment: .leading, spacing: 14) {
                     ForEach(model.books) { book in AudioCardView(book: book) { onBook(book.id) } }
                 }
                 if model.hasMore {
@@ -47,7 +48,7 @@ struct AudioBooksView: View {
             }.padding(16).padding(.bottom, 24).frame(maxWidth: 1050)
                 .frame(maxWidth: .infinity)
         }.background(AudioStyle.paper).navigationTitle(AudioL10n.text("title")).navigationBarTitleDisplayMode(.inline)
-            .toolbar { ToolbarItem(placement: .topBarTrailing) { Button(action: onLibrary) { Image(systemName: "books.vertical") }.accessibilityLabel(AudioL10n.text("library")) } }
+            .toolbar { ToolbarItem(placement: .topBarTrailing) { Button(action: onLibrary) { Image(systemName: "books.vertical") }.accessibilityLabel(AudioL10n.text("library")).accessibilityIdentifier("audio.catalog.library") } }
             .task(id: account) { await model.load() }
             .refreshable { await model.load() }
             .accessibilityIdentifier("audio.catalog")
@@ -57,21 +58,21 @@ struct AudioBooksView: View {
             Text(AudioL10n.text("heroEyebrow")).font(.caption2.weight(.bold)).tracking(1.5).foregroundStyle(AudioStyle.teal)
             Text(AudioL10n.text("heroTitle")).font(.system(.largeTitle, design: .serif, weight: .bold)).foregroundStyle(AudioStyle.ink).fixedSize(horizontal: false, vertical: true)
             Text(AudioL10n.text("heroMessage")).font(.subheadline).foregroundStyle(AudioStyle.muted).fixedSize(horizontal: false, vertical: true)
-            ViewThatFits(in: .horizontal) {
-                HStack { heroListen; Button(AudioL10n.text("library"), action: onLibrary).frame(minHeight: 44) }
-                VStack { heroListen; Button(AudioL10n.text("library"), action: onLibrary).frame(minHeight: 44) }
-            }.tint(AudioStyle.ink)
+            heroListen
+                .frame(maxWidth: .infinity, alignment: .center)
             if let book = model.hero {
                 AudioCoverView(book: book, width: 120).frame(maxWidth: .infinity).padding(.vertical, 6)
                 Button { onBook(book.id) } label: {
                     HStack(spacing: 14) {
-                        Image(systemName: "headphones").font(.title2).foregroundStyle(AudioStyle.teal)
+                        if !dynamicTypeSize.isAccessibilitySize {
+                            Image(systemName: "headphones").font(.title2).foregroundStyle(AudioStyle.teal).accessibilityHidden(true)
+                        }
                         VStack(alignment: .leading, spacing: 5) {
                             Text(AudioL10n.text("weeklyPick")).font(.caption2.weight(.semibold)).tracking(1.2).foregroundStyle(AudioStyle.teal)
-                            Text(book.title).font(.system(.title3, design: .serif, weight: .bold))
-                            Text(book.author).font(.caption).foregroundStyle(AudioStyle.muted)
+                            Text(book.title).font(.system(.title3, design: .serif, weight: .bold)).fixedSize(horizontal: false, vertical: true)
+                            Text(book.author).font(.caption).foregroundStyle(AudioStyle.muted).fixedSize(horizontal: false, vertical: true)
                         }.frame(maxWidth: .infinity, alignment: .leading)
-                        Image(systemName: "play.circle.fill").font(.title)
+                        Image(systemName: "play.circle.fill").font(.system(size: 28)).accessibilityHidden(true)
                     }.padding(16).background(.white.opacity(0.93)).clipShape(RoundedRectangle(cornerRadius: 18))
                 }.buttonStyle(.plain).foregroundStyle(AudioStyle.ink)
             }
@@ -86,14 +87,18 @@ struct AudioBooksView: View {
     private var heroListen: some View {
         AudioActionButton(title: AudioL10n.text("startListening"), icon: "headphones", prominent: true) {
             if let id = model.hero?.id { onBook(id) }
-        }.disabled(model.hero == nil)
+        }.disabled(model.hero == nil).accessibilityIdentifier("audio.catalog.start")
     }
     private var features: some View {
-        AudioCatalogFeatureLayout(spacing: 20, rowSpacing: 14) {
+        let layout = dynamicTypeSize.isAccessibilitySize
+            ? AnyLayout(VStackLayout(spacing: 14))
+            : AnyLayout(HStackLayout(alignment: .top, spacing: 20))
+        return layout {
             feature("featureAnywhere", icon: "headphones")
             feature("featureWorlds", icon: "book.pages")
             feature("featurePremium", icon: "rosette")
-        }.accessibilityElement(children: .combine)
+        }.frame(maxWidth: .infinity, alignment: .center)
+            .accessibilityElement(children: .combine)
     }
     private func feature(_ key: String, icon: String) -> some View {
         VStack(spacing: 7) {
@@ -101,6 +106,7 @@ struct AudioBooksView: View {
             Text(AudioL10n.text(key)).font(.caption2).foregroundStyle(AudioStyle.muted)
                 .multilineTextAlignment(.center).fixedSize(horizontal: false, vertical: true)
         }.padding(.horizontal, 4)
+            .frame(maxWidth: .infinity, alignment: .center)
     }
     private func categorySection(_ categories: [AudioCategoryDTO]) -> some View {
         VStack(alignment: .leading, spacing: 13) {
@@ -157,10 +163,12 @@ struct AudioBooksView: View {
         VStack(alignment: .leading, spacing: 16) {
             Button { withAnimation(.easeInOut(duration: 0.2)) { filtersExpanded.toggle() } } label: {
                 HStack(spacing: 13) {
-                    Image(systemName: "slider.horizontal.3").font(.title3).foregroundStyle(AudioStyle.teal)
+                    if !dynamicTypeSize.isAccessibilitySize {
+                        Image(systemName: "slider.horizontal.3").font(.title3).foregroundStyle(AudioStyle.teal).accessibilityHidden(true)
+                    }
                     VStack(alignment: .leading, spacing: 4) {
-                        Text(AudioL10n.text("findStory")).font(.headline)
-                        Text(AudioL10n.text("filterHint")).font(.caption).foregroundStyle(AudioStyle.muted)
+                        Text(AudioL10n.text("findStory")).font(.headline).fixedSize(horizontal: false, vertical: true)
+                        Text(AudioL10n.text("filterHint")).font(.caption).foregroundStyle(AudioStyle.muted).fixedSize(horizontal: false, vertical: true)
                     }.frame(maxWidth: .infinity, alignment: .leading)
                     Image(systemName: filtersExpanded ? "chevron.up" : "chevron.down")
                 }.frame(minHeight: 48).contentShape(Rectangle())
@@ -172,7 +180,7 @@ struct AudioBooksView: View {
                 chipRow([("0", "allDurations"), ("1800", "under30"), ("3600", "under60"), ("10800", "under180")], selected: String(model.filters.maxDuration)) { value in Task { await model.apply { $0.maxDuration = Int(value) ?? 0 } } }
                 chipRow([("", "allLanguages"), ("Türkçe", "turkish")], selected: model.filters.language) { value in Task { await model.apply { $0.language = value } } }
                 ViewThatFits(in: .horizontal) {
-                    HStack { clearButton; Spacer(); searchButton }
+                    HStack { clearButton; Spacer(); searchButton }.fixedSize(horizontal: true, vertical: false)
                     VStack { searchButton; clearButton }
                 }
             }
@@ -186,47 +194,9 @@ struct AudioBooksView: View {
         ScrollView(.horizontal, showsIndicators: false) { HStack(spacing: 8) { ForEach(values, id: \.0) { value, key in chip(AudioL10n.text(key), selected: selected == value) { onSelect(value) } } } }
     }
     private func chip(_ title: String, selected: Bool, action: @escaping () -> Void) -> some View {
-        Button(action: action) { Text(title).font(.caption.weight(.semibold)).padding(.horizontal, 14).frame(minHeight: 44)
+        Button(action: action) { Text(title).font(.caption.weight(.semibold)).fixedSize(horizontal: true, vertical: true).padding(.horizontal, 14).padding(.vertical, 6).frame(minHeight: 44)
                 .foregroundStyle(selected ? Color.white : AudioStyle.ink).background(selected ? AudioStyle.teal : .white)
                 .clipShape(Capsule()).overlay(Capsule().stroke(AudioStyle.line, lineWidth: selected ? 0 : 1)) }.buttonStyle(.plain)
             .accessibilityAddTraits(selected ? .isSelected : [])
-    }
-}
-
-private struct AudioCatalogFeatureLayout: Layout {
-    var spacing: CGFloat
-    var rowSpacing: CGFloat
-
-    func sizeThatFits(proposal: ProposedViewSize, subviews: Subviews, cache: inout ()) -> CGSize {
-        arrange(subviews, width: proposal.width).size
-    }
-
-    func placeSubviews(in bounds: CGRect, proposal: ProposedViewSize, subviews: Subviews, cache: inout ()) {
-        let arrangement = arrange(subviews, width: bounds.width)
-        for (index, frame) in arrangement.frames.enumerated() {
-            subviews[index].place(at: CGPoint(x: bounds.minX + frame.minX, y: bounds.minY + frame.minY), proposal: ProposedViewSize(frame.size))
-        }
-    }
-
-    private func arrange(_ subviews: Subviews, width: CGFloat?) -> (size: CGSize, frames: [CGRect]) {
-        let availableWidth = max(1, width ?? .greatestFiniteMagnitude)
-        var frames: [CGRect] = []
-        var x: CGFloat = 0
-        var y: CGFloat = 0
-        var rowHeight: CGFloat = 0
-        var measuredWidth: CGFloat = 0
-        for subview in subviews {
-            let size = subview.sizeThatFits(ProposedViewSize(width: availableWidth, height: nil))
-            if x > 0 && x + size.width > availableWidth {
-                x = 0
-                y += rowHeight + rowSpacing
-                rowHeight = 0
-            }
-            frames.append(CGRect(x: x, y: y, width: size.width, height: size.height))
-            measuredWidth = max(measuredWidth, x + size.width)
-            rowHeight = max(rowHeight, size.height)
-            x += size.width + spacing
-        }
-        return (CGSize(width: width ?? measuredWidth, height: y + rowHeight), frames)
     }
 }

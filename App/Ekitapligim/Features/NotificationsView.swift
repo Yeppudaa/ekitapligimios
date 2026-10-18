@@ -8,6 +8,7 @@ struct NotificationsView: View {
     @EnvironmentObject private var container: AppContainer
     @Environment(\.scenePhase) private var scenePhase
     @Environment(\.openURL) private var openURL
+    @Environment(\.dynamicTypeSize) private var dynamicTypeSize
 
     @State private var notifications: [NotificationDTO] = []
     @State private var counts: NotificationCountsDTO?
@@ -66,7 +67,7 @@ struct NotificationsView: View {
     }
 
     private var notificationBanner: some View {
-        HStack(alignment: .top, spacing: 15) {
+        (dynamicTypeSize.isAccessibilitySize ? AnyLayout(VStackLayout(alignment: .leading, spacing: 15)) : AnyLayout(HStackLayout(alignment: .top, spacing: 15))) {
             Image(systemName: "bell.badge.fill").font(.title2).foregroundStyle(Color(hex: 0xFFF3CC))
                 .frame(width: 52, height: 52).background(.white.opacity(0.12), in: RoundedRectangle(cornerRadius: 17))
                 .accessibilityHidden(true)
@@ -108,7 +109,7 @@ struct NotificationsView: View {
     }
 
     private func notificationCountsCard(_ counts: NotificationCountsDTO) -> some View {
-        LazyVGrid(columns: [GridItem(.adaptive(minimum: 130), spacing: 10)], spacing: 10) {
+        LazyVGrid(columns: dynamicTypeSize.isAccessibilitySize ? [GridItem(.flexible())] : [GridItem(.adaptive(minimum: 130), spacing: 10)], spacing: 10) {
             countTile(L10n.notificationsUnread, value: counts.unread, icon: "envelope.badge", tint: EKitapligimPalette.teal)
             countTile(L10n.notificationsNew, value: counts.unviewed ?? 0, icon: "sparkles", tint: EKitapligimPalette.amber)
         }

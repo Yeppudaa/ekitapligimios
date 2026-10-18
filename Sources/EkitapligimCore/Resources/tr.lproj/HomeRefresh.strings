@@ -36,6 +36,8 @@
 "chat.subtitle" = "Okuduklarını anlat, yeni hikâyeler keşfet.";
 "catalog.eyebrow" = "BİR SAYFA AÇ. YENİ BİR DÜNYA KEŞFET.";
 "catalog.title" = "Bir kitap aç, dünyanı genişlet.";
+"catalog.title.lead" = "Bir kitap aç,";
+"catalog.title.emphasis" = "Dünyanı genişlet.";
 "catalog.subtitle" = "Seveceğin hikâyeler, keşfedeceğin yeni fikirler… Binlerce e-kitap arasından sana iyi gelecek kitabı bul.";
 "catalog.explore" = "Kitapları keşfet";
 "catalog.help" = "Nasıl okurum?";

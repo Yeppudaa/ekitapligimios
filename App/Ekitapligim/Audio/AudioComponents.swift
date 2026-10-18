@@ -36,6 +36,7 @@ struct AudioActionButton: View {
     var body: some View {
         Button(action: action) {
             Label(title, systemImage: icon).font(.subheadline.weight(.semibold)).multilineTextAlignment(.center)
+                .fixedSize(horizontal: false, vertical: true)
                 .frame(maxWidth: .infinity, minHeight: 46).padding(.horizontal, 10).padding(.vertical, 4)
                 .foregroundStyle(prominent ? Color.white : AudioStyle.ink)
                 .background { if prominent { AudioStyle.gradient } else { Color.white.opacity(0.85) } }
@@ -54,10 +55,17 @@ struct AudioCardView: View {
                 HStack { Spacer(minLength: 0); AudioCoverView(book: book, width: 104); Spacer(minLength: 0) }
                     .padding(.vertical, 20).frame(maxWidth: .infinity).background(AudioStyle.paper).clipShape(RoundedRectangle(cornerRadius: 13))
                     .overlay(alignment: .topTrailing) { Image(systemName: "headphones").font(.caption).foregroundStyle(AudioStyle.teal).padding(8).background(.white.opacity(0.95)).clipShape(Circle()).padding(7) }
-                Text(book.title).font(.subheadline.weight(.semibold)).lineLimit(2).frame(maxWidth: .infinity, alignment: .leading)
-                Text(book.author).font(.caption).foregroundStyle(AudioStyle.muted).lineLimit(1)
-                Label(book.durationLabel.isEmpty ? AudioL10n.duration(book.duration) : book.durationLabel, systemImage: "headphones")
-                    .font(.caption2).foregroundStyle(AudioStyle.teal)
+                UniformCardText(book.title, lines: 2).font(.subheadline.weight(.semibold))
+                    .fixedSize(horizontal: false, vertical: true).frame(maxWidth: .infinity, alignment: .leading)
+                UniformCardText(book.author, lines: 1).font(.caption).foregroundStyle(AudioStyle.muted)
+                    .fixedSize(horizontal: false, vertical: true)
+                Label {
+                    UniformCardText(book.durationLabel.isEmpty ? AudioL10n.duration(book.duration) : book.durationLabel, lines: 1)
+                } icon: {
+                    Image(systemName: "headphones").accessibilityHidden(true)
+                }
+                .font(.caption2).foregroundStyle(AudioStyle.teal).fixedSize(horizontal: false, vertical: true)
+                .frame(maxWidth: .infinity, alignment: .leading)
             }.padding(12).foregroundStyle(AudioStyle.ink).background(.white).clipShape(RoundedRectangle(cornerRadius: 20))
                 .overlay(RoundedRectangle(cornerRadius: 20).stroke(AudioStyle.line.opacity(0.7), lineWidth: 1))
         }.buttonStyle(.plain)
@@ -65,6 +73,7 @@ struct AudioCardView: View {
 }
 @MainActor
 struct AudioShelfView: View {
+    @ScaledMetric(relativeTo: .subheadline) private var cardWidth: CGFloat = 162
     let title: String
     var hint = ""
     let books: [AudioBookDTO]
@@ -98,7 +107,10 @@ struct AudioShelfView: View {
         }
     }
     private var shelfCards: some View {
-        ForEach(books) { book in AudioCardView(book: book) { onBook(book.id) }.frame(width: 162) }
+        ForEach(books) { book in
+            AudioCardView(book: book) { onBook(book.id) }
+                .containerRelativeFrame(.horizontal) { length, _ in min(cardWidth, max(1, length - 16)) }
+        }
     }
 }
 @MainActor
@@ -131,19 +143,29 @@ struct AudioResumeCard: View {
         VStack(alignment: .leading, spacing: 16) {
             Label(AudioL10n.text("resume"), systemImage: "headphones").font(.system(.title3, design: .serif, weight: .bold))
             Text(AudioL10n.text("resumeHint")).font(.caption).foregroundStyle(AudioStyle.muted)
-            HStack(spacing: 16) {
-                AudioCoverView(book: book, width: 72)
-                VStack(alignment: .leading, spacing: 9) {
-                    Text(book.title).font(.headline).fixedSize(horizontal: false, vertical: true)
-                    Text(book.author).font(.caption).foregroundStyle(AudioStyle.muted)
-                    ProgressView(value: book.state.progress, total: 100).tint(AudioStyle.teal)
-                    Text(AudioL10n.format("percentListened", Int(book.state.progress))).font(.caption2).foregroundStyle(AudioStyle.teal)
+            ViewThatFits(in: .horizontal) {
+                HStack(spacing: 16) {
+                    AudioCoverView(book: book, width: 72)
+                    resumeMetadata
+                }.fixedSize(horizontal: true, vertical: false)
+                VStack(alignment: .leading, spacing: 16) {
+                    AudioCoverView(book: book, width: 72)
+                    resumeMetadata
                 }
             }
             AudioActionButton(title: AudioL10n.text("resume"), icon: "play.fill", prominent: true, action: action)
         }.padding(20).foregroundStyle(AudioStyle.ink)
             .background(LinearGradient(colors: [.white, Color(red: 0.88, green: 0.96, blue: 0.93)], startPoint: .topLeading, endPoint: .bottomTrailing))
             .clipShape(RoundedRectangle(cornerRadius: 24)).overlay(RoundedRectangle(cornerRadius: 24).stroke(AudioStyle.line, lineWidth: 1))
+    }
+    private var resumeMetadata: some View {
+        VStack(alignment: .leading, spacing: 9) {
+            Text(book.title).font(.headline).fixedSize(horizontal: false, vertical: true)
+            Text(book.author).font(.caption).foregroundStyle(AudioStyle.muted).fixedSize(horizontal: false, vertical: true)
+            ProgressView(value: book.state.progress, total: 100).tint(AudioStyle.teal)
+            Text(AudioL10n.format("percentListened", Int(book.state.progress))).font(.caption2).foregroundStyle(AudioStyle.teal)
+                .fixedSize(horizontal: false, vertical: true)
+        }.frame(maxWidth: .infinity, alignment: .leading)
     }
 }
 @MainActor

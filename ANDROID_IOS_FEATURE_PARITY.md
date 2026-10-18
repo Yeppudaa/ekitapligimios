@@ -100,7 +100,7 @@ Latest gate: **PASS=303 WARN=1 FAIL=0** (only WARN = Mac visual manifest). When 
 | Area | Android Evidence | iOS Target | Status |
 |---|---|---|---|
 | Home | `HomeScreen.kt`, stats API | Native SwiftUI home | Hero card, stats, continue reading, Keşif Merkezi, Kitap Gündemi rail, daily/newest/popular rails, chat preview, live activity card, and request center implemented |
-| Kitap Gündemi | `BookAgendaScreen.kt`, `/book-agenda` | Native feed, composer, comments, reactions | Native tabs/filters, post types, detail/comments, create/edit/delete, graceful follow-route fallback |
+| Kitap Gündemi | `BookAgendaScreen.kt`, `/book-agenda` | Native feed, composer, comments, reactions | Native tabs/filters, post types, detail/comments, create/edit/delete, detail follow action, explicit comment focus, account/query response isolation, server permission fidelity; [validation](BOOK_AGENDA_VALIDATION.md) |
 | Okur Sohbeti | `ChatScreen.kt`, `/chat/rooms` | Native room tabs and message bubbles | Native rooms, 5s poll, guest read-only mode, admin/mod badges |
 | Canlı Akış | `LiveActivityScreen.kt`, `/live-activity` | Native activity feed | Native cursor pagination and type-colored activity rows |
 | Navigation shell | `AppMobileMenu.kt`, 6-tab bottom bar | Matching menu and tabs | 6-tab bar (Ana Sayfa, Katalog, Yazarlar, İstekler, Forum, Profilim) plus 14-item drawer with unread badges |

@@ -6,6 +6,7 @@ private let turkishAlphabet = ["#", "A", "B", "C", "Ç", "D", "E", "F", "G", "Ğ
 @MainActor
 struct DirectoryView: View {
     @EnvironmentObject private var container: AppContainer
+    @Environment(\.dynamicTypeSize) private var dynamicTypeSize
     let kind: DirectoryKind
 
     @State private var items: [DirectoryItemDTO] = []
@@ -98,7 +99,9 @@ struct DirectoryView: View {
         )
     }
     private var statsRow: some View {
-        LazyVGrid(columns: [GridItem(.adaptive(minimum: 130), spacing: 10)], spacing: 10) {
+        LazyVGrid(columns: dynamicTypeSize.isAccessibilitySize
+            ? [GridItem(.flexible())]
+            : [GridItem(.adaptive(minimum: 130), spacing: 10)], spacing: 10) {
             DirectoryStatTile(title: entryStatTitle, value: EKitapligimFormat.count(totalEntries), systemImage: entryStatImage)
             DirectoryStatTile(title: L10n.directoryStatBooks, value: EKitapligimFormat.count(totalBooks), systemImage: "books.vertical.fill")
         }
@@ -197,20 +200,26 @@ struct DirectoryView: View {
 
 @MainActor
 private struct DirectoryStatTile: View {
+    @Environment(\.dynamicTypeSize) private var dynamicTypeSize
     let title: String
     let value: String
     var systemImage: String = "books.vertical.fill"
 
     var body: some View {
-        HStack(spacing: 10) {
+        let layout = dynamicTypeSize.isAccessibilitySize
+            ? AnyLayout(VStackLayout(alignment: .leading, spacing: 10))
+            : AnyLayout(HStackLayout(alignment: .center, spacing: 10))
+        layout {
             Image(systemName: systemImage)
-                .font(.caption.weight(.bold))
+                .font(.system(size: 14, weight: .bold))
                 .foregroundStyle(EKitapligimPalette.teal)
                 .frame(width: 30, height: 30)
                 .background(EKitapligimPalette.tealSoft, in: RoundedRectangle(cornerRadius: 9, style: .continuous))
             VStack(alignment: .leading, spacing: 2) {
                 Text(value).font(.headline.weight(.heavy)).foregroundStyle(EKitapligimPalette.ink)
+                    .fixedSize(horizontal: false, vertical: true)
                 Text(title).font(.caption2).foregroundStyle(EKitapligimPalette.muted)
+                    .fixedSize(horizontal: false, vertical: true)
             }
             Spacer(minLength: 0)
         }
@@ -226,6 +235,7 @@ private struct DirectoryStatTile: View {
 
 @MainActor
 private struct DirectoryCard: View {
+    @Environment(\.dynamicTypeSize) private var dynamicTypeSize
     let kind: DirectoryKind
     let item: DirectoryItemDTO
 
@@ -245,7 +255,10 @@ private struct DirectoryCard: View {
                 .frame(width: 4)
                 .padding(.vertical, 10)
 
-            HStack(spacing: 14) {
+            let layout = dynamicTypeSize.isAccessibilitySize
+                ? AnyLayout(VStackLayout(alignment: .leading, spacing: 14))
+                : AnyLayout(HStackLayout(alignment: .center, spacing: 14))
+            layout {
                 ZStack {
                     Circle()
                         .fill(
@@ -256,7 +269,7 @@ private struct DirectoryCard: View {
                             )
                         )
                     Text(directoryInitials(item.name))
-                        .font(.subheadline.weight(.heavy))
+                        .font(.system(size: 17, weight: .heavy))
                         .foregroundStyle(accent)
                 }
                 .frame(width: 50, height: 50)
@@ -265,10 +278,11 @@ private struct DirectoryCard: View {
                     Text(item.name)
                         .font(.headline.weight(.bold))
                         .foregroundStyle(EKitapligimPalette.ink)
-                        .lineLimit(2)
+                        .fixedSize(horizontal: false, vertical: true)
                     Text(L10n.directoryBookCount(item.bookCount))
                         .font(.caption)
                         .foregroundStyle(EKitapligimPalette.muted)
+                        .fixedSize(horizontal: false, vertical: true)
                 }
                 Spacer(minLength: 0)
                 Text(EKitapligimFormat.count(item.bookCount))
@@ -304,6 +318,7 @@ private struct DirectoryCard: View {
 @MainActor
 struct DirectoryBooksView: View {
     @EnvironmentObject private var container: AppContainer
+    @Environment(\.dynamicTypeSize) private var dynamicTypeSize
     let kind: DirectoryKind
     let item: DirectoryItemDTO
 
@@ -314,7 +329,11 @@ struct DirectoryBooksView: View {
     @State private var isLoading = true
     @State private var errorMessage: String?
 
-    private let columns = [GridItem(.adaptive(minimum: 140, maximum: 220), spacing: 16)]
+    private var columns: [GridItem] {
+        dynamicTypeSize.isAccessibilitySize
+            ? [GridItem(.flexible())]
+            : [GridItem(.adaptive(minimum: 140, maximum: 220), spacing: 16)]
+    }
 
     var body: some View {
         EKitapligimScreen {
@@ -393,6 +412,7 @@ struct DirectoryBooksView: View {
 
 @MainActor
 private struct DirectoryBookGridCard: View {
+    @Environment(\.dynamicTypeSize) private var dynamicTypeSize
     let book: BookDTO
     let kind: DirectoryKind
 
@@ -405,11 +425,13 @@ private struct DirectoryBookGridCard: View {
             Text(book.title)
                 .font(.subheadline.weight(.semibold))
                 .foregroundStyle(EKitapligimPalette.ink)
-                .lineLimit(2)
+                .lineLimit(dynamicTypeSize.isAccessibilitySize ? nil : 2)
+                .fixedSize(horizontal: false, vertical: true)
             Text(kind == .author ? book.publisher : book.author)
                 .font(.caption)
                 .foregroundStyle(EKitapligimPalette.muted)
-                .lineLimit(1)
+                .lineLimit(dynamicTypeSize.isAccessibilitySize ? nil : 1)
+                .fixedSize(horizontal: false, vertical: true)
             if let rating = book.rating, rating > 0 {
                 Label(rating.formatted(.number.precision(.fractionLength(1))), systemImage: "star.fill")
                     .font(.caption2.weight(.bold))

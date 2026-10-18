@@ -127,33 +127,38 @@ struct LibraryView: View {
     }
 
     private var guestPrompt: some View {
-        VStack(spacing: 18) {
-            Image(systemName: "books.vertical.fill")
-                .font(.system(size: 42, weight: .semibold))
-                .foregroundStyle(EKitapligimPalette.profileTeal)
-                .frame(width: 88, height: 88)
-                .background(EKitapligimPalette.profileTealSoft, in: Circle())
-            Text(L10n.libraryGuestTitle)
-                .font(.title3.weight(.heavy))
-                .foregroundStyle(EKitapligimPalette.profileInk)
-            Text(L10n.libraryGuestSubtitle)
-                .font(.subheadline)
-                .foregroundStyle(EKitapligimPalette.profileMuted)
-                .multilineTextAlignment(.center)
-            Button {
-                showingLogin = true
-            } label: {
-                Text(L10n.commonLogin)
-                    .font(.subheadline.weight(.bold))
-                    .foregroundStyle(.white)
-                    .padding(.horizontal, 22)
-                    .padding(.vertical, 12)
-                    .background(EKitapligimPalette.teal, in: Capsule())
+        ScrollView {
+            VStack(spacing: 18) {
+                Image(systemName: "books.vertical.fill")
+                    .font(.system(size: 42, weight: .semibold))
+                    .foregroundStyle(EKitapligimPalette.profileTeal)
+                    .frame(width: 88, height: 88)
+                    .background(EKitapligimPalette.profileTealSoft, in: Circle())
+                Text(L10n.libraryGuestTitle)
+                    .font(.title3.weight(.heavy))
+                    .foregroundStyle(EKitapligimPalette.profileInk)
+                    .multilineTextAlignment(.center)
+                    .fixedSize(horizontal: false, vertical: true)
+                Text(L10n.libraryGuestSubtitle)
+                    .font(.subheadline)
+                    .foregroundStyle(EKitapligimPalette.profileMuted)
+                    .multilineTextAlignment(.center)
+                    .fixedSize(horizontal: false, vertical: true)
+                Button {
+                    showingLogin = true
+                } label: {
+                    Text(L10n.commonLogin)
+                        .font(.subheadline.weight(.bold))
+                        .foregroundStyle(.white)
+                        .padding(.horizontal, 22)
+                        .padding(.vertical, 12)
+                        .background(EKitapligimPalette.teal, in: Capsule())
+                }
+                .buttonStyle(.plain)
             }
-            .buttonStyle(.plain)
+            .padding(28)
+            .frame(maxWidth: .infinity)
         }
-        .padding(28)
-        .frame(maxWidth: .infinity, maxHeight: .infinity)
     }
 
     private var selectedShelfSummary: some View {
@@ -424,26 +429,23 @@ private struct LibraryBookCard: View {
                 .shadow(color: EKitapligimPalette.ink.opacity(0.14), radius: 10, y: 5)
 
             VStack(alignment: .leading, spacing: 5) {
-                Text(item.title.isEmpty ? L10n.commonBookNumber(item.bookId) : item.title)
+                UniformCardText(item.title.isEmpty ? L10n.commonBookNumber(item.bookId) : item.title, lines: 2)
                     .font(.headline.weight(.semibold))
                     .foregroundStyle(EKitapligimPalette.profileInk)
-                    .lineLimit(dynamicTypeSize.isAccessibilitySize ? nil : 2)
-                    .fixedSize(horizontal: false, vertical: true)
-                Text(item.author.isEmpty ? L10n.libraryAuthorMissing : item.author)
+                UniformCardText(item.author.isEmpty ? L10n.libraryAuthorMissing : item.author, lines: 1)
                     .font(.subheadline)
                     .foregroundStyle(EKitapligimPalette.profileMuted)
-                    .lineLimit(dynamicTypeSize.isAccessibilitySize ? nil : 1)
-                    .fixedSize(horizontal: false, vertical: true)
 
-                if !metaText.isEmpty {
-                    EKPill(
-                        title: metaText,
-                        systemImage: metaIcon,
-                        foreground: EKitapligimPalette.profileTealDeep,
-                        background: EKitapligimPalette.profileTealSoft
-                    )
-                    .padding(.top, 4)
-                }
+                EKPill(
+                    title: metaText,
+                    systemImage: metaIcon,
+                    foreground: EKitapligimPalette.profileTealDeep,
+                    background: EKitapligimPalette.profileTealSoft
+                )
+                .lineLimit(dynamicTypeSize.isAccessibilitySize ? nil : 1)
+                .opacity(metaText.isEmpty ? 0 : 1)
+                .accessibilityHidden(metaText.isEmpty)
+                .padding(.top, 4)
 
                 HStack(spacing: 10) {
                     LibraryReadingProgressBar(progress: item.displayProgressPercent)
@@ -455,6 +457,7 @@ private struct LibraryBookCard: View {
                 }
                 .padding(.top, 6)
             }
+            .frame(maxWidth: .infinity, alignment: .leading)
 
             Image(systemName: "chevron.right")
                 .font(.caption)

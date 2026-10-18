@@ -14,6 +14,7 @@ struct ModernSideMenu: View {
 
     private var currentRoute: AppRoute {
         if let route = container.presentedRoute { return route }
+        if let route = container.audioPageRoute { return route }
         if container.isForumPresented { return .forum }
         switch container.selectedTab {
         case .home: return .home
@@ -54,11 +55,13 @@ struct ModernSideMenu: View {
     private func header(compact: Bool, width: CGFloat) -> some View {
         VStack(alignment: .leading, spacing: 17) {
             HStack(spacing: 10) {
-                Image("menu_logo").resizable().scaledToFit().padding(5)
+                if !dynamicTypeSize.isAccessibilitySize {
+                    Image("menu_logo").resizable().scaledToFit().padding(5)
                     .frame(width: compact ? 38 : 48, height: compact ? 38 : 48)
                     .background(Color(hex: 0x082D34), in: RoundedRectangle(cornerRadius: 14))
                     .overlay { RoundedRectangle(cornerRadius: 14).stroke(gold.opacity(0.65)) }
                     .accessibilityHidden(true)
+                }
                 VStack(alignment: .leading, spacing: 4) {
                     Text(L10n.menuBrandTitle).font(.headline).foregroundStyle(.white)
                     if !compact {
@@ -69,7 +72,7 @@ struct ModernSideMenu: View {
                 .fixedSize(horizontal: false, vertical: true)
                 .frame(maxWidth: .infinity, alignment: .leading)
                 Button(action: onClose) {
-                    Image(systemName: "xmark").font(.headline).foregroundStyle(.white)
+                    Image(systemName: "xmark").font(.system(size: 19, weight: .semibold)).foregroundStyle(.white)
                         .frame(width: 48, height: 48)
                         .background(.white.opacity(0.13), in: Circle())
                 }
@@ -113,25 +116,27 @@ struct ModernSideMenu: View {
         let selected = ShellMenuSelection.matches(item: item.route, current: currentRoute)
         return Button { onSelect(item.route) } label: {
             HStack(alignment: .center, spacing: 11) {
-                Image(systemName: item.icon).font(.body.weight(.semibold)).foregroundStyle(selected ? .white : item.tint)
+                Image(systemName: item.icon).font(.system(size: 17, weight: .semibold)).foregroundStyle(selected ? .white : item.tint)
                     .frame(width: 40, height: 40)
                     .background(selected ? item.tint : item.tint.opacity(0.10), in: RoundedRectangle(cornerRadius: 13))
                     .accessibilityHidden(true)
                 VStack(alignment: .leading, spacing: 4) {
                     Text(item.title).font(.subheadline.weight(.semibold)).foregroundStyle(ink)
                     Text(item.subtitle).font(.caption).foregroundStyle(muted)
+                    if dynamicTypeSize.isAccessibilitySize, let badge = ShellMenuSelection.badge(item.badge) {
+                        menuBadge(badge)
+                    }
                 }
                 .frame(maxWidth: .infinity, alignment: .leading)
                 .fixedSize(horizontal: false, vertical: true)
-                if let badge = ShellMenuSelection.badge(item.badge) {
-                    Text(badge).font(.caption.weight(.bold)).foregroundStyle(.white)
-                        .padding(.horizontal, 7).padding(.vertical, 4)
-                        .background(Color(hex: 0xD69229), in: Capsule())
-                        .accessibilityHidden(true)
+                if !dynamicTypeSize.isAccessibilitySize, let badge = ShellMenuSelection.badge(item.badge) {
+                    menuBadge(badge)
                 }
-                Image(systemName: "chevron.right").font(.caption2.weight(.bold))
+                if !dynamicTypeSize.isAccessibilitySize {
+                    Image(systemName: "chevron.right").font(.caption2.weight(.bold))
                     .foregroundStyle(selected ? EKitapligimPalette.teal : muted.opacity(0.65))
                     .accessibilityHidden(true)
+                }
             }
             .padding(.horizontal, 10).padding(.vertical, 10)
             .frame(maxWidth: .infinity, minHeight: 60, alignment: .leading)
@@ -140,9 +145,17 @@ struct ModernSideMenu: View {
             .contentShape(RoundedRectangle(cornerRadius: 17))
         }
         .buttonStyle(.plain)
+        .multilineTextAlignment(.leading)
         .accessibilityLabel(item.badge > 0 ? "\(item.title), \(L10n.unreadCountAccessibility(item.badge))" : item.title)
         .accessibilityValue(selected ? ShellRefreshL10n.text("selected") : "")
         .accessibilityIdentifier("modern-menu-\(item.route.nativeRoute)")
+    }
+
+    private func menuBadge(_ badge: String) -> some View {
+        Text(badge).font(.caption.weight(.bold)).foregroundStyle(.white)
+            .padding(.horizontal, 7).padding(.vertical, 4)
+            .background(Color(hex: 0xD69229), in: Capsule())
+            .accessibilityHidden(true)
     }
 
     private func premiumCard(compact: Bool) -> some View {

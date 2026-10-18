@@ -18,6 +18,14 @@
 "requests.step2Body" = "Aynı kitabı arayan okurlar isteğine destek versin.";
 "requests.step3" = "Rafa uzanan yolu takip et.";
 "requests.step3Body" = "İsteğin durumunu bu sayfadan kontrol et.";
+"requests.form.title" = "Aklındaki kitabı paylaş.";
+"requests.form.subtitle" = "Kitabın adını ve yazarını ekle; aynı hikâyeyi merak eden okurlar isteğine destek olsun.";
+"requests.form.titlePlaceholder" = "Örn. Küçük Prens";
+"requests.form.authorPlaceholder" = "Örn. Antoine de Saint-Exupéry";
+"requests.form.isbn" = "ISBN · İsteğe bağlı";
+"requests.form.isbnPlaceholder" = "Biliyorsan ISBN numarasını ekle";
+"requests.form.required" = "Kitap adı ve yazar zorunludur. ISBN alanını boş bırakabilirsin.";
+"requests.form.submit" = "Kitap isteğini gönder";
 "forum.eyebrow" = "EKİTAPLIĞIM OKUR TOPLULUĞU";
 "forum.title" = "Bir kitapla başlar,";
 "forum.emphasis" = "sohbetle büyür.";
@@ -87,3 +95,20 @@
 "notifications.settingsAction" = "Bildirim ayarları";
 "notifications.permissionFailed" = "Bildirim izni güncellenemedi. iOS ayarlarından tercihlerini kontrol edebilirsin.";
 "notifications.readState" = "Okundu";
+
+"composer.typeTitle" = "Paylaşım türü";
+"composer.bookHint" = "Paylaşımına bir kitap ekle.";
+"composer.changeBook" = "Kitabı değiştir";
+"composer.noteTitle" = "Okuma notun";
+"composer.bookTitle" = "Kitap hakkında";
+"composer.quotationTitle" = "Aklında kalan satırlar";
+"composer.reviewTitle" = "Kitap sende nasıl bir iz bıraktı?";
+"composer.progressTitle" = "Okuma yolculuğun";
+"composer.pageHint" = "Alıntının bulunduğu sayfa (isteğe bağlı)";
+"composer.ratingTitle" = "Kitaba puanın";
+"composer.progressDetails" = "Kaçıncı sayfadasın?";
+"composer.characterCount" = "%d / 5.000";
+"composer.characterCountAccessibility" = "%d / 5.000 karakter";
+"composer.numberPlaceholder" = "0";
+"agenda.commentsLoadFailed" = "Yorumlar yüklenemedi. Yeniden deneyebilirsin.";
+"agenda.commentPermission" = "Bu gönderiye yorum yapma iznin bulunmuyor.";

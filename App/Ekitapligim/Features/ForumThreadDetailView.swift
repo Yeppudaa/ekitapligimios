@@ -4,12 +4,15 @@ import EkitapligimCore
 @MainActor
 struct ForumThreadDetailView: View {
     @EnvironmentObject private var container: AppContainer
+    @Environment(\.dynamicTypeSize) private var dynamicTypeSize
+    @Environment(\.replyViewportHeight) private var replyViewportHeight
     let thread: ForumThreadDTO
 
     @State private var canReply: Bool
     @State private var posts: [ForumPostDTO] = []
     @State private var replyText = ""
     @FocusState private var isReplyFocused: Bool
+    @FocusState private var isEditFocused: Bool
     @State private var isLoading = true
     @State private var isReplySending = false
     @State private var errorMessage: String?
@@ -82,6 +85,8 @@ struct ForumThreadDetailView: View {
                 .padding(.horizontal, 18)
                 .padding(.vertical, 12)
             }
+            .accessibilityIdentifier("forum-thread-scroll")
+            .scrollDismissesKeyboard(.interactively)
             .ekCollapsibleScrollTracking { heroCollapseProgress = $0 }
             .safeAreaInset(edge: .bottom, spacing: 0) {
                 if showsPinnedReply {
@@ -102,6 +107,10 @@ struct ForumThreadDetailView: View {
         .navigationTitle(thread.title)
         .navigationBarTitleDisplayMode(.inline)
         .task { await load() }
+        .onDisappear {
+            isReplyFocused = false
+            isEditFocused = false
+        }
         .sheet(isPresented: $showingTerms) {
             TermsAcceptanceView()
         }
@@ -125,46 +134,60 @@ struct ForumThreadDetailView: View {
         }
         .sheet(item: $editingPost) { post in
             NavigationStack {
-                VStack(alignment: .leading, spacing: 12) {
-                    TextEditor(text: $editText)
-                        .accessibilityLabel(L10n.forumThreadEditTitle)
-                        .frame(minHeight: 160)
-                        .padding(8)
-                        .background(Color(hex: 0xF7F2EA), in: RoundedRectangle(cornerRadius: 14, style: .continuous))
-                    HStack {
-                        Text("\(editText.count)")
-                            .font(.caption)
-                            .foregroundStyle(EKitapligimPalette.muted)
-                        Spacer()
-                        Button {
-                            Task { await saveEdit(post) }
-                        } label: {
-                            if isEditing {
-                                ProgressView()
-                            } else {
-                                Text(L10n.commonSave)
-                                    .font(.subheadline.weight(.bold))
+                ScrollView {
+                    VStack(alignment: .leading, spacing: 12) {
+                        TextEditor(text: $editText)
+                            .focused($isEditFocused)
+                            .accessibilityLabel(L10n.forumThreadEditTitle)
+                            .accessibilityIdentifier("forum-edit-input")
+                            .frame(minHeight: 160, maxHeight: 240)
+                            .padding(8)
+                            .background(Color(hex: 0xF7F2EA), in: RoundedRectangle(cornerRadius: 14, style: .continuous))
+                        HStack {
+                            Text("\(editText.count)")
+                                .font(.caption)
+                                .foregroundStyle(EKitapligimPalette.muted)
+                            Spacer()
+                            Button {
+                                Task { await saveEdit(post) }
+                            } label: {
+                                if isEditing {
+                                    ProgressView()
+                                } else {
+                                    Text(L10n.commonSave)
+                                        .font(.subheadline.weight(.bold))
+                                }
                             }
+                            .disabled(isEditing || editText.trimmingCharacters(in: .whitespacesAndNewlines).count < 2)
                         }
-                        .disabled(isEditing || editText.trimmingCharacters(in: .whitespacesAndNewlines).count < 2)
                     }
+                    .padding(16)
                 }
-                .padding(16)
+                .scrollDismissesKeyboard(.interactively)
                 .navigationTitle(L10n.forumThreadEditTitle)
                 .toolbar {
                     ToolbarItem(placement: .cancellationAction) {
                         Button(L10n.commonCancel) { editingPost = nil }
                     }
+                    ToolbarItemGroup(placement: .keyboard) {
+                        Spacer()
+                        Button(L10n.commonDismiss) { isEditFocused = false }
+                            .accessibilityIdentifier("keyboard-dismiss")
+                    }
                 }
             }
             .presentationDetents([.medium, .large])
-            .onAppear { editText = post.message }
+            .onAppear {
+                isReplyFocused = false
+                editText = post.message
+            }
+            .onDisappear { isEditFocused = false }
         }
     }
 
     private var threadHero: some View {
-        EKCollapsibleHero(progress: heroCollapseProgress) {
-            HStack(alignment: .center, spacing: 16) {
+        EKCollapsibleHero(progress: heroCollapseProgress, allowsCollapse: false) {
+            (dynamicTypeSize.isAccessibilitySize ? AnyLayout(VStackLayout(alignment: .leading, spacing: 16)) : AnyLayout(HStackLayout(alignment: .top, spacing: 16))) {
                 Image(systemName: "bubble.left.and.bubble.right.fill")
                     .font(.system(size: 34, weight: .semibold))
                     .foregroundStyle(.white)
@@ -183,7 +206,7 @@ struct ForumThreadDetailView: View {
                         .font(.system(.title3, design: .serif).weight(.heavy))
                         .foregroundStyle(Color(hex: 0x0E1B2B))
                         .multilineTextAlignment(.leading)
-                        .lineLimit(3)
+                        .fixedSize(horizontal: false, vertical: true)
                     Text(L10n.forumThreadDetailMeta(max(thread.replyCount + 1, posts.count)))
                         .font(.subheadline)
                         .foregroundStyle(Color(hex: 0x687385))
@@ -239,7 +262,7 @@ struct ForumThreadDetailView: View {
     }
 
     private var guestReplyPrompt: some View {
-        HStack(spacing: 12) {
+        (dynamicTypeSize.isAccessibilitySize ? AnyLayout(VStackLayout(alignment: .leading, spacing: 12)) : AnyLayout(HStackLayout(spacing: 12))) {
             Image(systemName: "person.badge.plus")
                 .font(.body.weight(.semibold))
                 .foregroundStyle(EKitapligimPalette.forumTeal)
@@ -291,6 +314,8 @@ struct ForumThreadDetailView: View {
         .onTapGesture { showingLogin = true }
     }
 
+    private var usesCompactReply: Bool { replyViewportHeight < 300 }
+
     private var replyCard: some View {
         VStack(alignment: .leading, spacing: 10) {
             // Android keeps the composer enabled and re-checks permission on submit.
@@ -298,70 +323,105 @@ struct ForumThreadDetailView: View {
                 Text(L10n.forumThreadReplyPermissionHint)
                     .font(.caption)
                     .foregroundStyle(EKitapligimPalette.muted)
+                    .lineLimit(usesCompactReply ? 1 : nil)
             }
-            TextEditor(text: $replyText)
-                .focused($isReplyFocused)
-                .accessibilityLabel(L10n.forumThreadReplyPlaceholder)
-                .ekPinnedReplyEditor()
-                .padding(12)
-                .background(.white, in: RoundedRectangle(cornerRadius: 16, style: .continuous))
-                .overlay {
-                    RoundedRectangle(cornerRadius: 16, style: .continuous)
-                        .stroke(
-                            isReplyFocused ? EKitapligimPalette.forumTeal : EKitapligimPalette.forumBorder,
-                            lineWidth: isReplyFocused ? 1.5 : 1
-                        )
-                }
-                .overlay(alignment: .topLeading) {
-                    if replyText.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty {
-                        Text(L10n.forumThreadReplyPlaceholder)
-                            .font(.body)
-                            .foregroundStyle(EKitapligimPalette.muted)
-                            .padding(.horizontal, 14)
-                            .padding(.vertical, 18)
-                            .allowsHitTesting(false)
-                    }
-                }
-                .accessibilityLabel(L10n.forumThreadReplyTextLabel)
-            HStack(alignment: .center) {
-                Text("\(replyText.count)")
-                    .font(.caption2.weight(.semibold))
+            if !usesCompactReply && dynamicTypeSize.isAccessibilitySize && replyText.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty {
+                Text(L10n.forumThreadReplyPlaceholder)
+                    .font(.body)
                     .foregroundStyle(EKitapligimPalette.muted)
-                Spacer(minLength: 0)
-                Button {
-                    Task { await reply() }
-                } label: {
-                    Group {
-                        if isReplySending {
-                            ProgressView().tint(.white)
-                        } else {
-                            Label(L10n.forumThreadSubmitReply, systemImage: "paperplane.fill")
-                        }
+                    .fixedSize(horizontal: false, vertical: true)
+                    .accessibilityHidden(true)
+            }
+            // Keep the same editor identity as the keyboard changes available height.
+            (usesCompactReply
+                ? AnyLayout(HStackLayout(alignment: .bottom, spacing: 8))
+                : AnyLayout(VStackLayout(alignment: .leading, spacing: 10))) {
+                replyEditor
+                HStack(alignment: .center) {
+                    if !usesCompactReply {
+                        Text("\(replyText.count)")
+                            .font(.caption2.weight(.semibold))
+                            .foregroundStyle(EKitapligimPalette.muted)
+                        Spacer(minLength: 0)
                     }
-                    .font(.subheadline.weight(.bold))
-                    .foregroundStyle(.white)
-                    .padding(.horizontal, 16)
-                    .padding(.vertical, 10)
+                    replySendButton
                 }
-                .background(
-                    (isReplySending || replyText.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty)
-                        ? AnyShapeStyle(EKitapligimPalette.forumTeal.opacity(0.45))
-                        : AnyShapeStyle(LinearGradient(
-                            colors: [EKitapligimPalette.forumTeal, EKitapligimPalette.forumTealDeep],
-                            startPoint: .leading,
-                            endPoint: .trailing
-                        )),
-                    in: RoundedRectangle(cornerRadius: 14, style: .continuous)
-                )
-                .disabled(isReplySending || replyText.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty)
+                .fixedSize(horizontal: usesCompactReply, vertical: true)
             }
         }
         .toolbar {
             ToolbarItemGroup(placement: .keyboard) {
                 Spacer()
                 Button(L10n.commonDismiss) { isReplyFocused = false }
+                    .accessibilityIdentifier("keyboard-dismiss")
             }
         }
+    }
+
+    private var replyEditor: some View {
+        TextEditor(text: $replyText)
+            .focused($isReplyFocused)
+            .accessibilityLabel(L10n.forumThreadReplyPlaceholder)
+            .accessibilityIdentifier("forum-reply-input")
+            .ekPinnedReplyEditor()
+            .padding(usesCompactReply ? 4 : 12)
+            .background(.white, in: RoundedRectangle(cornerRadius: 16, style: .continuous))
+            .overlay {
+                RoundedRectangle(cornerRadius: 16, style: .continuous)
+                    .stroke(
+                        isReplyFocused ? EKitapligimPalette.forumTeal : EKitapligimPalette.forumBorder,
+                        lineWidth: isReplyFocused ? 1.5 : 1
+                    )
+            }
+            .overlay(alignment: .topLeading) {
+                if !usesCompactReply && !dynamicTypeSize.isAccessibilitySize && replyText.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty {
+                    Text(L10n.forumThreadReplyPlaceholder)
+                        .font(.body)
+                        .foregroundStyle(EKitapligimPalette.muted)
+                        .padding(.horizontal, 14)
+                        .padding(.vertical, 18)
+                        .allowsHitTesting(false)
+                        .accessibilityHidden(true)
+                }
+            }
+            .accessibilityLabel(L10n.forumThreadReplyTextLabel)
+            .frame(maxWidth: .infinity)
+    }
+
+    private var replySendButton: some View {
+        Button {
+            Task { await reply() }
+        } label: {
+            Group {
+                if isReplySending {
+                    ProgressView().tint(.white)
+                } else if usesCompactReply {
+                    Image(systemName: "paperplane.fill")
+                        .font(.system(size: 17, weight: .bold))
+                        .accessibilityHidden(true)
+                } else {
+                    Label(L10n.forumThreadSubmitReply, systemImage: "paperplane.fill")
+                }
+            }
+            .font(.subheadline.weight(.bold))
+            .foregroundStyle(.white)
+            .padding(.horizontal, usesCompactReply ? 0 : 16)
+            .padding(.vertical, usesCompactReply ? 0 : 10)
+            .frame(minWidth: 44, minHeight: 44)
+        }
+        .background(
+            (isReplySending || replyText.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty)
+                ? AnyShapeStyle(EKitapligimPalette.forumTeal.opacity(0.45))
+                : AnyShapeStyle(LinearGradient(
+                    colors: [EKitapligimPalette.forumTeal, EKitapligimPalette.forumTealDeep],
+                    startPoint: .leading,
+                    endPoint: .trailing
+                )),
+            in: RoundedRectangle(cornerRadius: 14, style: .continuous)
+        )
+        .disabled(isReplySending || replyText.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty)
+        .accessibilityLabel(L10n.forumThreadSubmitReply)
+        .accessibilityIdentifier("forum-reply-send")
     }
 
     private func postCard(_ post: ForumPostDTO) -> some View {
@@ -422,11 +482,11 @@ struct ForumThreadDetailView: View {
                     .stroke(EKitapligimPalette.forumBorder, lineWidth: 0.75)
             }
             VStack(alignment: .leading, spacing: 4) {
-                HStack(spacing: 6) {
+                (dynamicTypeSize.isAccessibilitySize ? AnyLayout(VStackLayout(alignment: .leading, spacing: 6)) : AnyLayout(HStackLayout(spacing: 6))) {
                     Text(ForumMessageFormatting.displayUsername(post.username))
                         .font(.subheadline.weight(.heavy))
                         .foregroundStyle(EKitapligimPalette.forumInk)
-                        .lineLimit(1)
+                        .lineLimit(dynamicTypeSize.isAccessibilitySize ? nil : 2)
                     if post.isAdmin == true {
                         EKPill(title: L10n.chatRoleAdmin, foreground: .white, background: EKitapligimPalette.danger)
                     } else if post.isModerator == true {
@@ -457,7 +517,7 @@ struct ForumThreadDetailView: View {
         let canEdit = post.canEdit
         let canDelete = post.canDelete
         if canEdit || canDelete {
-            HStack(spacing: 10) {
+            (dynamicTypeSize.isAccessibilitySize ? AnyLayout(VStackLayout(alignment: .leading, spacing: 10)) : AnyLayout(HStackLayout(spacing: 10))) {
                 if canEdit {
                     Button {
                         editingPost = post

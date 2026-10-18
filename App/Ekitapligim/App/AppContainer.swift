@@ -26,9 +26,14 @@ final class AppContainer: ObservableObject {
     private var isRestoringSession = false
     var sessionRevision: UUID { sessionGeneration }
     @Published var selectedTab: AppTab = .home {
-        didSet { isForumPresented = false }
+        didSet {
+            isForumPresented = false
+            audioPageRoute = nil
+        }
     }
     @Published var presentedRoute: AppRoute?
+    /// Audio browsing uses the active page's navigation stack; the expanded player remains modal.
+    @Published var audioPageRoute: AppRoute?
     /// Forum opens as main content (not a sheet) when chosen from the menu or discovery.
     @Published var isForumPresented = false
     /// Shelf index for library deep links (`library/{tab}`) presented from profile or sheets.
@@ -659,6 +664,14 @@ final class AppContainer: ObservableObject {
     }
 
     func open(route: AppRoute) {
+        switch route {
+        case .audiobooks, .audiobook, .audioLibrary:
+            presentedRoute = nil
+            audioPageRoute = route
+            return
+        default:
+            break
+        }
         if case .library(let tab) = route {
             libraryShelfTab = tab
             pendingProfileLibraryTab = LibraryTab(index: tab)
@@ -673,6 +686,7 @@ final class AppContainer: ObservableObject {
         }
         if route == .forum {
             presentedRoute = nil
+            audioPageRoute = nil
             isForumPresented = true
             return
         }

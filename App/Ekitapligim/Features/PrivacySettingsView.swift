@@ -28,11 +28,17 @@ struct PrivacySettingsView: View {
     }
 
     private func privacyRow(title: String, value: String) -> some View {
-        HStack {
-            Text(title)
-            Spacer()
-            Text(value)
-                .foregroundStyle(.secondary)
+        ViewThatFits(in: .horizontal) {
+            HStack(alignment: .firstTextBaseline) {
+                Text(title).fixedSize()
+                Spacer(minLength: 12)
+                Text(value).foregroundStyle(.secondary).fixedSize()
+            }
+            VStack(alignment: .leading, spacing: 6) {
+                Text(title)
+                Text(value).foregroundStyle(.secondary)
+            }
+            .fixedSize(horizontal: false, vertical: true)
         }
     }
 }

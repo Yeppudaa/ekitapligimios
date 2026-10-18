@@ -166,7 +166,17 @@ xcodebuild test -scheme Ekitapligim -destination 'platform=iOS Simulator,name=iP
 - The macOS CI job explicitly selects Xcode 16.4, resolves packages once, verifies Readium is exactly `3.9.0` in `Package.resolved`, disables automatic resolution during test/build, executes both unit and UI test targets, performs a clean Production build, and uploads XCTest/package-resolution evidence.
 - Privacy manifest validation now checks no-tracking declaration, App Store data type coverage, and required-reason API entries for UserDefaults and file timestamps.
 
+## Keyboard layout regression
+
+Run `Scripts/keyboard-layout-macos.sh` on macOS for the real RootView fixture, not only standalone screens. `KeyboardLayoutUITests` covers forum reply, private messages, chat, book and agenda comments, keyboard dismissal/reopening, navigation, sheets, large text, rotation and iPad windows. The runner requires exact test result counts and records missing simulator coverage. Window resizing, floating/split/hardware/third-party keyboards and physical-device foreground recovery still need manual verification; see [evidence and limits](KEYBOARD_LAYOUT_VALIDATION.md). The 16 `KeyboardLayoutMetricsTests` validate portable geometry and editor sizing, not native keyboard rendering.
+
 ## AI Assistant
+
+## Keyboard layout regression
+
+Run `Scripts/keyboard-layout-macos.sh` on macOS for the real RootView fixture, not only standalone screens. `KeyboardLayoutUITests` covers forum reply, private messages, chat, book and agenda comments, keyboard dismissal/reopening, navigation, sheets, large text, rotation and iPad windows. The runner requires exact test result counts and records missing simulator coverage. Window resizing, floating/split/hardware/third-party keyboards and physical-device foreground recovery still need manual verification; see [evidence and limits](KEYBOARD_LAYOUT_VALIDATION.md). The 16 `KeyboardLayoutMetricsTests` validate portable geometry and editor sizing, not native keyboard rendering.
+
+## AI Assistant execution
 
 Run the new core `AIAssistantTests` and `AITransportTests`, app `AIAssistantModelTests`, and `AIAssistantUITests` alongside existing regression suites. UI fixtures are compiled only in DEBUG and opened exclusively by `-ai-ui-fixture`; Production never selects fake services. Attachments cover welcome, keyboard, answer, exhausted quota, connection failure and accessibility text sizing.
 

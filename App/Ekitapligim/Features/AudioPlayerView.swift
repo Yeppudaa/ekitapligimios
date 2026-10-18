@@ -4,6 +4,7 @@ import EkitapligimCore
 
 @MainActor
 struct AudioMiniPlayerView: View {
+    @Environment(\.dynamicTypeSize) private var dynamicTypeSize
     @ObservedObject var controller: AudioPlaybackController
     var onExpand: () -> Void
     var body: some View {
@@ -14,20 +15,23 @@ struct AudioMiniPlayerView: View {
                 HStack(spacing: 10) {
                     Button(action: onExpand) {
                         HStack(spacing: 12) {
-                            if let book = controller.book { AudioCoverView(book: book, width: 33) }
-                            else { Image(systemName: "headphones").font(.title2).frame(width: 33) }
+                            if !dynamicTypeSize.isAccessibilitySize {
+                                if let book = controller.book { AudioCoverView(book: book, width: 33) }
+                                else { Image(systemName: "headphones").font(.title2).frame(width: 33) }
+                            }
                             VStack(alignment: .leading, spacing: 4) {
-                                Text(controller.book?.title ?? AudioL10n.text("title")).font(.subheadline.weight(.semibold)).lineLimit(1)
+                                Text(controller.book?.title ?? AudioL10n.text("title")).font(.subheadline.weight(.semibold)).lineLimit(dynamicTypeSize.isAccessibilitySize ? 2 : 1)
+                                    .fixedSize(horizontal: false, vertical: true)
                                 Text(controller.book?.author ?? AudioL10n.text("nowListening")).font(.caption).foregroundStyle(AudioStyle.muted).lineLimit(1)
                             }.frame(maxWidth: .infinity, alignment: .leading)
                         }.contentShape(Rectangle())
                     }.buttonStyle(.plain).accessibilityLabel(AudioL10n.text("expand"))
                     if controller.loading { ProgressView().frame(width: 44, height: 44).tint(AudioStyle.teal) }
                     else {
-                        Button { controller.toggle() } label: { Image(systemName: controller.playing ? "pause.fill" : "play.fill").font(.title3).frame(width: 44, height: 44) }
+                        Button { controller.toggle() } label: { Image(systemName: controller.playing ? "pause.fill" : "play.fill").font(.system(size: 20)).frame(width: 44, height: 44) }
                             .accessibilityLabel(AudioL10n.text(controller.playing ? "pause" : "play")).buttonStyle(.plain)
                     }
-                    Button { controller.close() } label: { Image(systemName: "xmark").font(.body.weight(.semibold)).frame(width: 44, height: 44) }
+                    Button { controller.close() } label: { Image(systemName: "xmark").font(.system(size: 17, weight: .semibold)).frame(width: 44, height: 44) }
                         .buttonStyle(.plain).accessibilityLabel(AudioL10n.text("stopClose")).accessibilityIdentifier("audio.mini.close")
                 }.padding(.horizontal, 12).padding(.vertical, 9)
             }.foregroundStyle(AudioStyle.ink).background(.ultraThinMaterial)
@@ -48,6 +52,7 @@ private struct AudioAnnotationAnchor: Identifiable {
 
 @MainActor
 struct AudioPlayerView: View {
+    @Environment(\.dynamicTypeSize) private var dynamicTypeSize
     @ObservedObject var controller: AudioPlaybackController
     var onBook: (Int) -> Void
     var onPremium: () -> Void
@@ -63,7 +68,7 @@ struct AudioPlayerView: View {
     var body: some View {
         GeometryReader { geometry in
             ScrollView {
-                if geometry.size.width >= 820 {
+                if geometry.size.width >= 820 && !dynamicTypeSize.isAccessibilitySize {
                     HStack(alignment: .top, spacing: 18) {
                         playerColumn.frame(maxWidth: .infinity)
                         chaptersPanel.frame(maxWidth: .infinity)
@@ -95,8 +100,11 @@ struct AudioPlayerView: View {
             artwork
             if let book = controller.book {
                 Text(book.title).font(.system(.largeTitle, design: .serif, weight: .bold)).multilineTextAlignment(.center).fixedSize(horizontal: false, vertical: true)
-                Text(book.author).font(.title3).foregroundStyle(AudioStyle.muted)
-                if !book.description.isEmpty { Text(book.description).font(.caption).foregroundStyle(AudioStyle.muted).multilineTextAlignment(.center).lineLimit(3) }
+                Text(book.author).font(.title3).foregroundStyle(AudioStyle.muted).multilineTextAlignment(.center).fixedSize(horizontal: false, vertical: true)
+            }
+            artworkActionBar
+            if let book = controller.book, !book.description.isEmpty {
+                Text(book.description).font(.caption).foregroundStyle(AudioStyle.muted).multilineTextAlignment(.center).lineLimit(3)
             }
             if let error = controller.error {
                 VStack(spacing: 10) {
@@ -108,8 +116,9 @@ struct AudioPlayerView: View {
             progress
             controls
             ViewThatFits(in: .horizontal) {
-                HStack { settingsButton; bookmarkButton; noteButton }
-                VStack { settingsButton; HStack { bookmarkButton; noteButton } }
+                HStack { settingsButton; bookmarkButton; noteButton }.fixedSize(horizontal: true, vertical: false)
+                VStack { settingsButton; HStack { bookmarkButton; noteButton }.fixedSize(horizontal: true, vertical: false) }
+                VStack { settingsButton; bookmarkButton; noteButton }
             }
             VStack(alignment: .leading, spacing: 4) {
                 Text(AudioL10n.text("volume")).font(.caption)
@@ -133,24 +142,66 @@ struct AudioPlayerView: View {
     private var artwork: some View {
         VStack(spacing: 15) {
             Label(AudioL10n.text("nowListening"), systemImage: "headphones").font(.caption.weight(.semibold)).tracking(1)
+                .fixedSize(horizontal: false, vertical: true).multilineTextAlignment(.center)
                 .padding(.horizontal, 16).padding(.vertical, 10).foregroundStyle(AudioStyle.cream).background(AudioStyle.ink.opacity(0.85)).clipShape(Capsule())
-            ViewThatFits(in: .horizontal) {
-                HStack(spacing: 18) { cover; VStack(spacing: 12) { artworkActions } }
-                VStack(spacing: 16) { cover; HStack(spacing: 12) { artworkActions } }
-            }.padding(.vertical, 8)
+            cover
+                .frame(maxWidth: .infinity, alignment: .center)
+                .padding(.vertical, 8)
         }
     }
     @ViewBuilder private var cover: some View {
         if let book = controller.book { AudioCoverView(book: book, width: 166) }
         else { ProgressView().frame(width: 166, height: 240).tint(AudioStyle.ink) }
     }
-    @ViewBuilder private var artworkActions: some View {
-        Button { Task { await controller.toggleFavorite() } } label: { Image(systemName: controller.favorite ? "heart.fill" : "heart").font(.title3).frame(width: 44, height: 44).background(AudioStyle.ink.opacity(0.7)).clipShape(Circle()) }
-            .foregroundStyle(AudioStyle.cream).accessibilityLabel(AudioL10n.text(controller.favorite ? "favorited" : "favorite"))
-        if let url = URL(string: controller.book?.url ?? ""), url.scheme == "https", url.user == nil, url.password == nil {
-            ShareLink(item: url) { Image(systemName: "square.and.arrow.up").font(.title3).frame(width: 44, height: 44).background(AudioStyle.ink.opacity(0.7)).clipShape(Circle()) }
-                .foregroundStyle(AudioStyle.cream).accessibilityLabel(AudioL10n.text("share"))
+    private var artworkActionBar: some View {
+        Group {
+            if dynamicTypeSize.isAccessibilitySize {
+                VStack(spacing: 10) { artworkActions }
+            } else {
+                ViewThatFits(in: .horizontal) {
+                    HStack(spacing: 10) { artworkActions }
+                        .fixedSize(horizontal: true, vertical: false)
+                    VStack(spacing: 10) { artworkActions }
+                }
+            }
         }
+        .frame(maxWidth: .infinity, alignment: .center)
+        .accessibilityElement(children: .contain)
+        .accessibilityIdentifier("audio.player.bookActions")
+    }
+    @ViewBuilder private var artworkActions: some View {
+        Button { Task { await controller.toggleFavorite() } } label: {
+            artworkActionLabel(AudioL10n.text(controller.favorite ? "favorited" : "favorite"),
+                               icon: controller.favorite ? "heart.fill" : "heart", selected: controller.favorite)
+        }
+        .buttonStyle(.plain)
+        .accessibilityLabel(AudioL10n.text(controller.favorite ? "favorited" : "favorite"))
+        .accessibilityIdentifier("audio.player.favorite")
+        if let url = URL(string: controller.book?.url ?? ""), url.scheme == "https", url.user == nil, url.password == nil {
+            ShareLink(item: url) {
+                artworkActionLabel(AudioL10n.text("share"), icon: "square.and.arrow.up")
+            }
+            .buttonStyle(.plain)
+            .accessibilityLabel(AudioL10n.text("share"))
+            .accessibilityIdentifier("audio.player.share")
+        }
+    }
+    private func artworkActionLabel(_ title: String, icon: String, selected: Bool = false) -> some View {
+        HStack(spacing: 8) {
+            Image(systemName: icon).fixedSize().accessibilityHidden(true)
+            Text(title).fixedSize(horizontal: false, vertical: true)
+        }
+        .font(.caption.weight(.semibold))
+        .multilineTextAlignment(.center)
+        .foregroundStyle(selected ? AudioStyle.teal : AudioStyle.ink)
+        .padding(.horizontal, 16)
+        .padding(.vertical, 10)
+        .frame(minHeight: 44)
+        .background(selected ? AudioStyle.paper : Color.white.opacity(0.8), in: Capsule())
+        .overlay {
+            Capsule().strokeBorder(selected ? AudioStyle.teal.opacity(0.35) : AudioStyle.line)
+        }
+        .contentShape(Capsule())
     }
     private var progress: some View {
         VStack(spacing: 8) {
@@ -160,18 +211,23 @@ struct AudioPlayerView: View {
                 if editing { seekPosition = controller.position } else { controller.seek(to: seekPosition) }
             }).tint(AudioStyle.gold).disabled(controller.loading || controller.chapter == nil).accessibilityLabel(AudioL10n.text("progress"))
                 .accessibilityValue(AudioPolicy.time(controller.position))
-            HStack(alignment: .top) {
-                Text(AudioPolicy.time(seeking ? seekPosition : controller.position))
-                Spacer(minLength: 10)
-                Text(controller.chapter?.title ?? "").fontWeight(.semibold).multilineTextAlignment(.center)
-                Spacer(minLength: 10)
-                Text("−" + AudioPolicy.time(max(0, controller.duration - controller.position)))
-            }.font(.caption2).monospacedDigit()
+            ViewThatFits(in: .horizontal) {
+                HStack {
+                    elapsedTime
+                    Spacer(minLength: 10)
+                    remainingTime
+                }
+                VStack(spacing: 6) { elapsedTime; remainingTime }
+            }.font(.caption2).monospacedDigit().frame(maxWidth: .infinity)
+            Text(controller.chapter?.title ?? "").font(.caption2.weight(.semibold)).multilineTextAlignment(.center)
+                .fixedSize(horizontal: false, vertical: true)
         }
     }
+    private var elapsedTime: some View { Text(AudioPolicy.time(seeking ? seekPosition : controller.position)).fixedSize() }
+    private var remainingTime: some View { Text("−" + AudioPolicy.time(max(0, controller.duration - controller.position))).fixedSize() }
     private var controls: some View {
         ViewThatFits(in: .horizontal) {
-            HStack(spacing: 5) { previousControl; rewindControl; playControl; forwardControl; nextControl }
+            HStack(spacing: 5) { previousControl; rewindControl; playControl; forwardControl; nextControl }.fixedSize(horizontal: true, vertical: false)
             VStack(spacing: 8) { HStack(spacing: 12) { rewindControl; playControl; forwardControl }; HStack(spacing: 30) { previousControl; nextControl } }
         }.frame(maxWidth: .infinity).foregroundStyle(AudioStyle.ink)
     }
@@ -201,7 +257,7 @@ struct AudioPlayerView: View {
                 HStack(spacing: 8) {
                     ForEach(Array(["chapters", "notes", "quotes"].enumerated()), id: \.offset) { index, key in
                         Button { tab = index } label: {
-                            Text(AudioL10n.text(key)).font(.subheadline.weight(.semibold)).padding(.horizontal, 16).frame(minHeight: 46)
+                            Text(AudioL10n.text(key)).font(.subheadline.weight(.semibold)).fixedSize(horizontal: true, vertical: true).padding(.horizontal, 16).padding(.vertical, 6).frame(minHeight: 46)
                                 .foregroundStyle(tab == index ? Color.white : AudioStyle.ink).background(tab == index ? AudioStyle.ink : Color.white)
                                 .clipShape(RoundedRectangle(cornerRadius: 14))
                         }.buttonStyle(.plain).accessibilityAddTraits(tab == index ? .isSelected : [])
@@ -214,8 +270,11 @@ struct AudioPlayerView: View {
                     Button { controller.selectChapter(index) } label: {
                         HStack(spacing: 10) {
                             Image(systemName: index == controller.chapterIndex ? "waveform" : "play.circle.fill").foregroundStyle(AudioStyle.teal)
-                            Text(chapter.title).font(.subheadline.weight(.semibold)).frame(maxWidth: .infinity, alignment: .leading)
-                            Text(AudioPolicy.time(chapter.duration)).font(.caption).foregroundStyle(AudioStyle.muted)
+                            VStack(alignment: .leading, spacing: 6) {
+                                Text(chapter.title).font(.subheadline.weight(.semibold)).fixedSize(horizontal: false, vertical: true).frame(maxWidth: .infinity, alignment: .leading)
+                                if dynamicTypeSize.isAccessibilitySize { chapterDuration(chapter.duration) }
+                            }.frame(maxWidth: .infinity, alignment: .leading)
+                            if !dynamicTypeSize.isAccessibilitySize { chapterDuration(chapter.duration) }
                         }.padding(14).frame(minHeight: 52).background(index == controller.chapterIndex ? AudioStyle.teal.opacity(0.1) : .white.opacity(0.6)).clipShape(RoundedRectangle(cornerRadius: 14))
                     }.buttonStyle(.plain).accessibilityAddTraits(index == controller.chapterIndex ? .isSelected : [])
                 }
@@ -232,11 +291,10 @@ struct AudioPlayerView: View {
                                 Text(bookmark.displayText.isEmpty ? AudioL10n.text("bookmarkTitle") : bookmark.displayText).font(.body).multilineTextAlignment(.leading).foregroundStyle(AudioStyle.ink)
                             }.frame(maxWidth: .infinity, alignment: .leading)
                         }.buttonStyle(.plain)
-                        HStack {
-                            ShareLink(item: bookmark.displayText) { Label(AudioL10n.text("share"), systemImage: "square.and.arrow.up") }
-                            Spacer()
-                            Button(role: .destructive) { Task { await controller.deleteBookmark(bookmark) } } label: { Label(AudioL10n.text("delete"), systemImage: "trash") }
-                        }.font(.caption).frame(minHeight: 44)
+                        ViewThatFits(in: .horizontal) {
+                            HStack { annotationShare(bookmark); Spacer(); annotationDelete(bookmark) }.fixedSize(horizontal: true, vertical: false)
+                            VStack(alignment: .leading) { annotationShare(bookmark); annotationDelete(bookmark) }
+                        }.font(.caption)
                     }.padding(15).background(.white).clipShape(RoundedRectangle(cornerRadius: 16))
                 }
             }
@@ -246,6 +304,17 @@ struct AudioPlayerView: View {
             }
         }.padding(20).foregroundStyle(AudioStyle.ink).frame(maxWidth: .infinity, alignment: .leading).background(.white.opacity(0.8))
             .clipShape(RoundedRectangle(cornerRadius: 25)).overlay(RoundedRectangle(cornerRadius: 25).stroke(AudioStyle.gold.opacity(0.18), lineWidth: 1))
+    }
+    private func chapterDuration(_ duration: Double) -> some View {
+        Text(AudioPolicy.time(duration)).font(.caption).foregroundStyle(AudioStyle.muted).fixedSize()
+    }
+    private func annotationShare(_ bookmark: AudioBookmarkDTO) -> some View {
+        ShareLink(item: bookmark.displayText) { Label(AudioL10n.text("share"), systemImage: "square.and.arrow.up").fixedSize(horizontal: false, vertical: true).frame(minHeight: 44) }
+    }
+    private func annotationDelete(_ bookmark: AudioBookmarkDTO) -> some View {
+        Button(role: .destructive) { Task { await controller.deleteBookmark(bookmark) } } label: {
+            Label(AudioL10n.text("delete"), systemImage: "trash").fixedSize(horizontal: false, vertical: true).frame(minHeight: 44)
+        }
     }
     private var settings: some View {
         NavigationStack {
@@ -268,23 +337,25 @@ struct AudioPlayerView: View {
     }
     private func annotationEditor(_ anchor: AudioAnnotationAnchor) -> some View {
         NavigationStack {
-            VStack(alignment: .leading, spacing: 18) {
-                Text(AudioL10n.text("annotationHint")).font(.subheadline).foregroundStyle(AudioStyle.muted)
-                Text(AudioPolicy.time(anchor.position)).font(.caption.weight(.semibold)).foregroundStyle(AudioStyle.teal)
-                TextEditor(text: $editorText).foregroundStyle(AudioStyle.ink).tint(AudioStyle.teal).scrollContentBackground(.hidden)
-                    .padding(12).frame(minHeight: 180).background(Color.white).clipShape(RoundedRectangle(cornerRadius: 16))
-                    .overlay(RoundedRectangle(cornerRadius: 16).stroke(AudioStyle.line, lineWidth: 1))
-                    .accessibilityLabel(AudioL10n.text(anchor.kind == .quote ? "quoteText" : "noteText")).accessibilityIdentifier("audio.annotation.text")
-                    .onChange(of: editorText) { _, value in if value.count > 230 { editorText = String(value.prefix(230)) } }
-                if let error = controller.annotationError { Text(error).font(.caption).foregroundStyle(.red) }
-                Spacer()
-            }.padding(22).background(AudioStyle.paper).foregroundStyle(AudioStyle.ink)
+            ScrollView {
+                VStack(alignment: .leading, spacing: 18) {
+                    Text(AudioL10n.text("annotationHint")).font(.subheadline).foregroundStyle(AudioStyle.muted).fixedSize(horizontal: false, vertical: true)
+                    Text(AudioPolicy.time(anchor.position)).font(.caption.weight(.semibold)).foregroundStyle(AudioStyle.teal)
+                    TextEditor(text: $editorText).foregroundStyle(AudioStyle.ink).tint(AudioStyle.teal).scrollContentBackground(.hidden)
+                        .padding(12).frame(minHeight: 180).background(Color.white).clipShape(RoundedRectangle(cornerRadius: 16))
+                        .overlay(RoundedRectangle(cornerRadius: 16).stroke(AudioStyle.line, lineWidth: 1))
+                        .accessibilityLabel(AudioL10n.text(anchor.kind == .quote ? "quoteText" : "noteText")).accessibilityIdentifier("audio.annotation.text")
+                        .onChange(of: editorText) { _, value in if value.count > 230 { editorText = String(value.prefix(230)) } }
+                    if let error = controller.annotationError { Text(error).font(.caption).foregroundStyle(.red).fixedSize(horizontal: false, vertical: true) }
+                }.padding(22)
+            }.background(AudioStyle.paper).foregroundStyle(AudioStyle.ink)
                 .navigationTitle(AudioL10n.text(anchor.kind == .quote ? "addQuote" : "addNote"))
                 .navigationBarTitleDisplayMode(.inline)
                 .toolbar {
                     ToolbarItem(placement: .principal) {
                         Text(AudioL10n.text(anchor.kind == .quote ? "addQuote" : "addNote"))
                             .font(.headline).foregroundStyle(AudioStyle.ink)
+                            .lineLimit(1).minimumScaleFactor(0.8)
                             .accessibilityAddTraits(.isHeader)
                     }
                     ToolbarItem(placement: .cancellationAction) { Button(AudioL10n.text("cancel")) { annotation = nil; editorText = "" } }

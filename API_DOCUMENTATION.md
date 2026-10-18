@@ -1,5 +1,11 @@
 # iOS API Documentation
 
+## Book agenda permission and comment handling (2026-10-18, source patch)
+
+`GET /book-agenda`, `/book-agenda/{id}` and `/book-agenda/{id}/comments` preserve the shared XenForo serializer's actual `can_create`, `can_comment`, `can_react`, `can_edit` and `can_delete` decisions. The iOS adapter mirrors snake/camel aliases without granting rights based on authentication or content ownership. Missing permissions remain denied. Every write continues through the existing server permission and UGC policy checks. Deploy the updated `Api/Controller/UgcControllerTrait.php` with the next IosApi rollout; this source patch has not been deployed.
+
+The native detail screen fetches the dedicated comment list, exposes read errors with retry, preserves the draft after write failures, and increments/decrements the server's comment total independently of the number of loaded or blocked comments. Feed query revisions and account revisions discard stale responses. There are no new routes, request fields, data collection, entitlements or purchase behavior. See [Book agenda validation](BOOK_AGENDA_VALIDATION.md) for executed and pending checks.
+
 ## Native audiobook addition (2026-10-17)
 
 `AudioRepository` uses the same first-party origin under `/mobile-api/v1/` independently of the unchanged `/ios-api/v1/` client. GET: `audio-books` (search/order/duration/language/category/author/page), `audio-books/{id}`, `audio-library?tab=...`; POST: `audio-books/{id}/manifest`, `/progress`, `/shelf`, `/bookmark`; authenticated HEAD/GET Range: `/stream?chapter_id=...`. See `AudioRepository.swift` and `AudioFilters.queryItems` for exact parameter encoding. The existing Keychain mobile session is accepted by the shared server session table; 401 coordinates with existing refresh and does not introduce a second login implementation.
@@ -109,6 +115,8 @@ Response: site totals for books, authors, publishers, categories, downloadable b
 Auth: optional.
 Query: `page`, `per_page`, `q`, `category`, `author`, `publisher`, `isbn`, `order` (`latest`, `popular`, `rated`), and `premium_only` (`0` or `1`). If the installed BookThreads schema has no premium-book field, `premium_only=1` fails closed with an empty result instead of returning non-premium books.
 Response: paged books.
+
+Native genre discovery uses the Android-compatible catalog taxonomy (IDs `6`–`30` and `32`–`38`) for `category` destinations. The Home showcase displays the first eight in Android order and does not require `GET /forums` to succeed. Optional live forum metadata enriches known entries; missing counts remain unknown. This client taxonomy does not grant access: `GET /books?category={id}` continues to enforce server visibility and XenForo permissions.
 
 ### GET `/book-detail/{thread_id}`
 Auth: optional.

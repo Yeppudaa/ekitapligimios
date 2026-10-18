@@ -5,6 +5,7 @@ import EkitapligimCore
 @MainActor
 struct StatsView: View {
     @EnvironmentObject private var container: AppContainer
+    @Environment(\.dynamicTypeSize) private var dynamicTypeSize
 
     @State private var goalMinutes: Double = 45
     @State private var isSavingGoal = false
@@ -53,7 +54,10 @@ struct StatsView: View {
     }
 
     private var todayCard: some View {
-        HStack(spacing: 16) {
+        let layout = dynamicTypeSize.isAccessibilitySize
+            ? AnyLayout(VStackLayout(alignment: .leading, spacing: 16))
+            : AnyLayout(HStackLayout(spacing: 16))
+        return layout {
             EKProgressRing(progress: Double(stats.goalProgressPercent) / 100, size: 84, lineWidth: 8)
             VStack(alignment: .leading, spacing: 5) {
                 Text(L10n.statsTodayTitle)
@@ -66,7 +70,7 @@ struct StatsView: View {
                     .font(.caption)
                     .foregroundStyle(EKitapligimPalette.profileMuted)
             }
-            Spacer(minLength: 0)
+            .fixedSize(horizontal: false, vertical: true)
         }
         .padding(16)
         .frame(maxWidth: .infinity, alignment: .leading)
@@ -75,14 +79,16 @@ struct StatsView: View {
 
     private var goalCard: some View {
         VStack(alignment: .leading, spacing: 10) {
-            HStack {
-                Text(L10n.statsGoalSectionTitle)
-                    .font(.subheadline.weight(.heavy))
-                    .foregroundStyle(EKitapligimPalette.profileInk)
-                Spacer(minLength: 0)
-                Text(L10n.statsGoalMinutes(Int(goalMinutes)))
-                    .font(.subheadline.weight(.heavy))
-                    .foregroundStyle(EKitapligimPalette.profileTealDeep)
+            ViewThatFits(in: .horizontal) {
+                HStack {
+                    goalHeading.fixedSize()
+                    Spacer(minLength: 8)
+                    goalValue.fixedSize()
+                }
+                VStack(alignment: .leading, spacing: 6) {
+                    goalHeading
+                    goalValue
+                }
             }
 
             Slider(value: $goalMinutes, in: 10...240, step: 5) {
@@ -106,8 +112,22 @@ struct StatsView: View {
         .ekitapligimCard()
     }
 
+    private var goalHeading: some View {
+        Text(L10n.statsGoalSectionTitle)
+            .font(.subheadline.weight(.heavy))
+            .foregroundStyle(EKitapligimPalette.profileInk)
+            .fixedSize(horizontal: false, vertical: true)
+    }
+
+    private var goalValue: some View {
+        Text(L10n.statsGoalMinutes(Int(goalMinutes)))
+            .font(.subheadline.weight(.heavy))
+            .foregroundStyle(EKitapligimPalette.profileTealDeep)
+            .fixedSize(horizontal: false, vertical: true)
+    }
+
     private var totalsGrid: some View {
-        LazyVGrid(columns: [GridItem(.flexible(), spacing: 10), GridItem(.flexible(), spacing: 10)], spacing: 10) {
+        LazyVGrid(columns: Array(repeating: GridItem(.flexible(), spacing: 10), count: dynamicTypeSize > .xLarge ? 1 : 2), spacing: 10) {
             totalCell(L10n.statsTotalPages, value: EKitapligimFormat.count(stats.totalPages), systemImage: "doc.text.fill")
             totalCell(L10n.statsTotalDuration, value: EKitapligimFormat.readingMinutes(stats.totalMinutes), systemImage: "hourglass")
             totalCell(L10n.statsStreak, value: L10n.readingGoalDayCount(stats.streakCount), systemImage: "flame.fill")
@@ -126,8 +146,9 @@ struct StatsView: View {
             Text(label)
                 .font(.caption)
                 .foregroundStyle(EKitapligimPalette.profileMuted)
-                .lineLimit(1)
+                .fixedSize(horizontal: false, vertical: true)
         }
+        .fixedSize(horizontal: false, vertical: true)
         .frame(maxWidth: .infinity, alignment: .leading)
         .padding(14)
         .ekitapligimCard(radius: 15)

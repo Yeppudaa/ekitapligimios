@@ -1,4 +1,4 @@
-"""Require the reviewed app and preserve the provenance of the actual executed tests."""
+"""Preserve reviewed app provenance and allow only the bounded audio metadata correction."""
 from pathlib import Path
 import hashlib
 import json
@@ -9,6 +9,14 @@ REVIEW = "5e8a245faf70dd977458f9fefc498b61d1f38f54"
 ALLOWED = {
     "codemagic.yaml", "Scripts/testflight-reviewed-evidence.json",
     "Scripts/testflight-reviewed-gate.py", "Scripts/verify-testflight-ipa.py",
+    "Sources/EkitapligimCore/AudioPolicy.swift",
+    "Sources/EkitapligimCore/AudioRepository.swift",
+    "Sources/EkitapligimCore/AudioBoundedMediaTransport.swift",
+    "Tests/EkitapligimCoreTests/AudioMetadataCompatibilityTests.swift",
+    "Tests/EkitapligimCoreTests/AudioBoundedMediaTransportTests.swift",
+    "App/EkitapligimTests/AudioPlaybackRuntimeTests.swift",
+    "Scripts/testflight-audio-metadata-regression.sh",
+    "Scripts/testflight-audio-core-regression.sh",
 }
 
 
@@ -20,7 +28,7 @@ def main():
     subprocess.run(["git", "merge-base", "--is-ancestor", REVIEW, "HEAD"], cwd=ROOT, check=True)
     changed = set(git("diff", "--name-only", REVIEW, "HEAD").splitlines())
     if changed - ALLOWED:
-        raise SystemExit("App changes since reviewed source require fresh native validation: " + ", ".join(sorted(changed - ALLOWED)))
+        raise SystemExit("Changes outside the reviewed app and scoped audio metadata correction: " + ", ".join(sorted(changed - ALLOWED)))
     evidence = json.loads((ROOT / "Scripts/testflight-reviewed-evidence.json").read_text(encoding="utf-8"))
     assert evidence["reviewedSource"] == REVIEW
     assert evidence["evidenceArchiveSHA256"] == "f589e2724f291413f4350277e134aebfe7d0010eadf543531255945f19a8b189"
@@ -41,13 +49,19 @@ def main():
     current = (ROOT / entitlements).read_bytes().replace(b"\r\n", b"\n")
     assert current == expected.replace(b"\r\n", b"\n")
     report = {"reviewedSource": REVIEW, "buildSource": git("rev-parse", "HEAD"),
-              "appSourceUnchanged": True, "previousEvidence": evidence,
+              "nativeAppPresentationUnchanged": True, "previousEvidence": evidence,
+              "audioMetadataCompatibilityFix": {
+                  "files": sorted(path for path in changed if path.startswith(("Sources/", "Tests/"))),
+                  "validation": "Fresh complete Core suite and two native AVFoundation asset tests must pass before uploading.",
+                  "scope": "Authenticated HEAD metadata and bounded one-byte range discovery only."
+              },
               "productionEntitlementsSHA256": hashlib.sha256(expected).hexdigest(),
               "scope": "Signed TestFlight upload only; no App Store review or production release."}
     out = ROOT / "build/testflight-reviewed"
     out.mkdir(parents=True, exist_ok=True)
     (out / "source-gate.json").write_text(json.dumps(report, indent=2), encoding="utf-8")
-    print("Reviewed app source unchanged:", REVIEW)
+    print("Reviewed native presentation and protected app source preserved:", REVIEW)
+    print("Only the scoped audio metadata correction is permitted; fresh complete Core tests are required.")
     print("Existing native evidence: Core416/416; native143/143; scoped UI and recovered premium assertion recorded.")
 
 

@@ -199,6 +199,38 @@ final class AudioPlaybackRuntimeTests: XCTestCase {
         XCTAssertFalse(fixture.controller.visible)
     }
 
+    func testAssetDurationWithMissingHeadMetadataUsesOneByteProbe() async throws {
+        let fixture = try AudioRuntimeFixture(omitHeadMetadata: true)
+        defer { fixture.cleanUp() }
+        let manifest = try await fixture.repository.manifest(bookID: AudioRuntimeOrigin.bookID, account: "runtime-reader")
+        let chapter = try XCTUnwrap(manifest.chapters.first)
+        let loader = AudioAssetResourceLoader(repository: fixture.repository, bookID: AudioRuntimeOrigin.bookID,
+                                              chapter: chapter, account: "runtime-reader")
+        let asset = try loader.asset()
+        var duration: CMTime?
+        var loadingError: Error?
+        let task = Task { @MainActor in
+            do { duration = try await asset.load(.duration) }
+            catch { loadingError = error }
+        }
+        defer { asset.cancelLoading(); task.cancel(); loader.stop() }
+        try await waitUntil("Native asset parses WAV despite missing HEAD size and ranges", controller: fixture.controller,
+                            diagnostics: { loader.debugSnapshot }) {
+            duration != nil || loadingError != nil
+        }
+        if let loadingError { throw loadingError }
+        XCTAssertEqual(try XCTUnwrap(duration).seconds, 20, accuracy: 0.15)
+        XCTAssertGreaterThan(fixture.origin.snapshot.headRequests, 0)
+        XCTAssertGreaterThan(fixture.origin.snapshot.metadataProbeRequests, 0)
+        XCTAssertEqual(fixture.origin.snapshot.metadataProbeBytes, fixture.origin.snapshot.metadataProbeRequests,
+                       "Every metadata probe must return exactly one authenticated byte")
+        XCTAssertGreaterThan(fixture.origin.snapshot.rangeRequests, fixture.origin.snapshot.metadataProbeRequests,
+                             "AVFoundation must parse actual WAV data beyond the metadata probe")
+        XCTAssertEqual(fixture.origin.snapshot.unexpectedRequests, [])
+        XCTAssertFalse(fixture.controller.playing)
+        XCTAssertFalse(fixture.controller.visible)
+    }
+
     func testGeneratedWavePlaysThroughNativeRangesAndSupportsPauseResumeAndFifteenSecondSkips() async throws {
         let fixture = try AudioRuntimeFixture()
         defer { fixture.cleanUp() }
@@ -381,8 +413,9 @@ private final class AudioRuntimeFixture {
     let session: URLSession
     let repository: AudioRepository
     let controller: AudioPlaybackController
-    init(manifestStatus: Int = 200, holdMetadata: Bool = false, initialPosition: Double = 0) throws {
-        let origin = try AudioRuntimeOrigin(manifestStatus: manifestStatus, holdMetadata: holdMetadata, initialPosition: initialPosition)
+    init(manifestStatus: Int = 200, holdMetadata: Bool = false, initialPosition: Double = 0, omitHeadMetadata: Bool = false) throws {
+        let origin = try AudioRuntimeOrigin(manifestStatus: manifestStatus, holdMetadata: holdMetadata, initialPosition: initialPosition,
+                                          omitHeadMetadata: omitHeadMetadata)
         self.origin = origin
         let tokens = AudioRuntimeTokens()
         self.tokens = tokens
@@ -430,6 +463,7 @@ private final class AudioRuntimeOrigin: @unchecked Sendable {
     private let wave: Data
     private let manifestStatus: Int
     private let holdsMetadata: Bool
+    private let omitHeadMetadata: Bool
     private let initialPosition: Double
     private let lock = NSLock()
     private let metadataDeliveryQueue = DispatchQueue(label: "ekitapligim.native-audio-test.metadata")
@@ -440,6 +474,8 @@ private final class AudioRuntimeOrigin: @unchecked Sendable {
         var manifestRequests = 0
         var headRequests = 0
         var rangeRequests = 0
+        var metadataProbeRequests = 0
+        var metadataProbeBytes = 0
         var mediaBearers: [String] = []
         var progressPositions: [Double] = []
         var progressSequences: [Int] = []
@@ -450,11 +486,12 @@ private final class AudioRuntimeOrigin: @unchecked Sendable {
         var metadataDeliveryAttempts = 0
     }
     var snapshot: Snapshot { lock.lock(); defer { lock.unlock() }; return log }
-    init(manifestStatus: Int, holdMetadata: Bool, initialPosition: Double) throws {
+    init(manifestStatus: Int, holdMetadata: Bool, initialPosition: Double, omitHeadMetadata: Bool) throws {
         let identifier = "audio-runtime-" + UUID().uuidString.lowercased()
         self.identifier = identifier
         guard let url = URL(string: "https://ekitapligim.com/\(identifier)/") else { throw AudioRuntimeFailure.malformedFixture }
         webBaseURL = url; self.manifestStatus = manifestStatus; holdsMetadata = holdMetadata; self.initialPosition = initialPosition
+        self.omitHeadMetadata = omitHeadMetadata
         wave = Self.silentWave(seconds: 20)
     }
     /// A pending HEAD is retained as a callback, never as a sleeping/blocking URLProtocol thread.
@@ -539,6 +576,7 @@ private final class AudioRuntimeOrigin: @unchecked Sendable {
             }
             if method == "HEAD" {
                 log.headRequests += 1
+                if omitHeadMetadata { return (200, ["Content-Type": "audio/wav"], Data()) }
                 return (200, ["Content-Type": "audio/wav", "Content-Length": String(wave.count), "Accept-Ranges": "bytes"], Data())
             }
             if method == "GET", let header = request.value(forHTTPHeaderField: "Range"), header.hasPrefix("bytes=") {
@@ -550,6 +588,7 @@ private final class AudioRuntimeOrigin: @unchecked Sendable {
                 }
                 log.rangeRequests += 1
                 let last = min(end, wave.count - 1)
+                if start == 0, end == 0 { log.metadataProbeRequests += 1; log.metadataProbeBytes += last - start + 1 }
                 return (206, ["Content-Type": "audio/wav", "Content-Length": String(last - start + 1),
                     "Accept-Ranges": "bytes", "Content-Range": "bytes \(start)-\(last)/\(wave.count)"], wave.subdata(in: start..<(last + 1)))
             }

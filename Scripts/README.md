@@ -62,6 +62,19 @@ Checks reviewed 1.0.33 through 1.0.35 ZIPs against the fixed 1.0.32 baseline, ex
 
 `php Tests/Backend/ApnsTransportContractTest.php` requires a PHP runtime with OpenSSL and cURL constants (Windows example: `C:\xampp\php\php.exe`). It verifies the actual JWT signature and transport construction/response parsing using a temporary generated test key and mocked cURL functions; no APNs requests occur. The preferred PATH PHP in this workspace lacks cURL, so use the installed XAMPP PHP for this particular check.
 
+## Keyboard layout validation
+
+`keyboard-layout-macos.sh` runs the offline `KeyboardLayoutUITests` through the actual root shell on small/older/current iPhones and iPad, plus iOS 17 baseline coverage. Missing devices/runtime or missing software keyboard fail validation. It saves XCTest bundles, result counts and failure screenshots. See [keyboard layout validation](../KEYBOARD_LAYOUT_VALIDATION.md); this script has only had its Bash syntax checked on Windows.
+
+## `agenda-state-test-windows.ps1`
+
+`agenda-state-test-windows.ps1` compiles the actual `BookAgendaFeedModel` and `BookAgendaDetailModel` with their XCTest cases. It covers filter/pagination races, account changes, duplicate submissions, drafts, comment counts and error recovery. Like the chat harness, its Combine shim validates storage and concurrency only. `BookAgendaUITests` requires macOS/Xcode for real SwiftUI focus and software-keyboard checks; use a simulator with its hardware keyboard disconnected.
+
+```powershell
+.\Scripts\agenda-state-test-windows.ps1
+php Tests/Backend/BookAgendaViewerPermissionsTest.php
+```
+
 ## `chat-state-test-windows.ps1`
 
 `chat-state-test-windows.ps1` additionally compiles the actual `ChatModel` and its XCTest cases against the core package. Its temporary Combine module provides only property storage, so it validates request/state concurrency on Windows; Apple Combine publication, SwiftUI layout and device behavior still require the native macOS tests. It does not connect to production.

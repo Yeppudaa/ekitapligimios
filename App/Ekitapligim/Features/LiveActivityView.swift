@@ -48,6 +48,7 @@ struct LiveActivityView: View {
                 Button { Task { await load(reset: true) } } label: {
                     Image(systemName: "arrow.clockwise").frame(minWidth: 44, minHeight: 44)
                 }.disabled(isLoading).accessibilityLabel(L10n.commonRefresh)
+                    .accessibilityIdentifier("live.refresh")
             }
         }
         .task(id: scenePhase) {
@@ -171,6 +172,7 @@ enum LiveActivityRowStyle {
 
 struct LiveActivityRow: View {
     @EnvironmentObject private var container: AppContainer
+    @Environment(\.dynamicTypeSize) private var dynamicTypeSize
     let item: LiveActivityItemDTO
     var style: LiveActivityRowStyle = .standard
     var showsChevron: Bool = true
@@ -270,9 +272,9 @@ struct LiveActivityRow: View {
 
     private var activityBody: some View {
         VStack(alignment: .leading, spacing: 4) {
-            HStack(spacing: 6) {
+            (dynamicTypeSize.isAccessibilitySize ? AnyLayout(VStackLayout(alignment: .leading, spacing: 6)) : AnyLayout(HStackLayout(spacing: 6))) {
                 Text(kind.title)
-                    .font(.system(size: 9, weight: .heavy))
+                    .font(.caption2.weight(.heavy))
                     .foregroundStyle(kind.tint)
                     .padding(.horizontal, 7)
                     .padding(.vertical, 3)
@@ -298,12 +300,12 @@ struct LiveActivityRow: View {
                         Text(book.title)
                             .font(.caption2.weight(.bold))
                             .foregroundStyle(EKitapligimPalette.ink)
-                            .lineLimit(1)
+                            .lineLimit(dynamicTypeSize.isAccessibilitySize ? nil : 2)
                         if !book.author.isEmpty {
                             Text(book.author)
-                                .font(.system(size: 10))
+                                .font(.caption2)
                                 .foregroundStyle(EKitapligimPalette.muted)
-                                .lineLimit(1)
+                                .lineLimit(dynamicTypeSize.isAccessibilitySize ? nil : 2)
                         }
                     }
                     Spacer(minLength: 0)

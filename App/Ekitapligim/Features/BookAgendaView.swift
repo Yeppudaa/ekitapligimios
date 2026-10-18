@@ -1,4 +1,5 @@
 import SwiftUI
+import UIKit
 import EkitapligimCore
 
 // MARK: - Sekme ve filtre modelleri
@@ -56,16 +57,10 @@ extension BookAgendaTab {
 struct BookAgendaView: View {
     @EnvironmentObject private var container: AppContainer
 
-    @State private var posts: [BookAgendaPostDTO] = []
+    @StateObject private var model = BookAgendaFeedModel()
     @State private var tab: BookAgendaTab
     @State private var filter: BookAgendaFilter = .all
-    @State private var page = 1
-    @State private var hasMore = false
-    @State private var canCreate = false
-    @State private var isLoading = false
-    @State private var isLoadingMore = false
-    @State private var errorMessage: String?
-    @State private var actionMessage: String?
+    @State private var selectedInitialTab = false
     @State private var showingComposer = false
     @State private var showingLogin = false
     @State private var selectedPostID: String?
@@ -86,7 +81,7 @@ struct BookAgendaView: View {
                     tabStrip
                     composerPrompt
                     filterStrip
-                    if let actionMessage {
+                    if let actionMessage = model.actionMessage {
                         EKInlineError(message: actionMessage)
                     }
                     feed
@@ -102,30 +97,36 @@ struct BookAgendaView: View {
             ToolbarItem(placement: .topBarTrailing) {
                 Button { Task { await load(reset: true) } } label: {
                     Image(systemName: "arrow.clockwise").frame(minWidth: 44, minHeight: 44)
-                }.disabled(isLoading).accessibilityLabel(L10n.agendaRefresh)
+                }.disabled(model.isLoading).accessibilityLabel(L10n.agendaRefresh)
+                    .accessibilityIdentifier("agenda.refresh")
             }
         }
         .task {
-            if container.isSignedIn, tab == .agenda {
-                tab = .personal
+            configureModel()
+            if !selectedInitialTab {
+                tab = container.isSignedIn ? .personal : .agenda
+                selectedInitialTab = true
             }
             await load(reset: true)
         }
-        .onChange(of: container.isSignedIn) { _, signedIn in
-            if signedIn, tab == .agenda {
-                tab = .personal
-                Task { await load(reset: true) }
-            }
+        .onChange(of: container.sessionRevision) { _, _ in
+            configureModel()
+            tab = container.isSignedIn ? .personal : .agenda
+            if !container.isSignedIn { filter = .all }
+            selectedPostID = nil
+            editingPost = nil
+            pendingDeletion = nil
+            showingComposer = false
+            Task { await load(reset: true) }
+        }
+        .onChange(of: container.blockedUserIDs) { _, ids in
+            model.setBlockedActors(Set(ids.map { String($0) }))
         }
         .navigationDestination(item: $selectedPostID) { id in
-            BookAgendaDetailView(postID: id) { updated in
-                replace(updated)
-            }
+            BookAgendaDetailView(postID: id, onPostUpdated: { model.replace($0) }, onPostDeleted: { model.remove(postID: $0) })
         }
         .sheet(isPresented: $showingComposer) {
-            BookAgendaComposerView { created in
-                posts.insert(created, at: 0)
-            }
+            BookAgendaComposerView { _ in Task { await load(reset: true) } }
             .presentationDetents([.large, .fraction(0.92)])
             .presentationDragIndicator(.visible)
         }
@@ -165,8 +166,8 @@ struct BookAgendaView: View {
                 actionTitle: CommunityRefreshL10n.text(container.isSignedIn ? "agenda.join" : "agenda.guestJoin")
             ) {
                 if !container.isSignedIn { showingLogin = true }
-                else if canCreate { showingComposer = true }
-                else { actionMessage = L10n.forumThreadReplyPermissionHint }
+                else if model.canCreate { showingComposer = true }
+                else { model.actionMessage = L10n.forumThreadReplyPermissionHint }
             }
             Button {
                 filter = .quotation
@@ -268,7 +269,7 @@ struct BookAgendaView: View {
         Button {
             if !container.isSignedIn {
                 showingLogin = true
-            } else if canCreate {
+            } else if model.canCreate {
                 showingComposer = true
             }
         } label: {
@@ -285,12 +286,12 @@ struct BookAgendaView: View {
                         .foregroundStyle(EKitapligimPalette.agendaInk)
                     Text(
                         container.isSignedIn
-                            ? (canCreate ? L10n.agendaComposerPromptSubtitle : L10n.forumThreadReplyPermissionHint)
+                            ? (model.canCreate ? L10n.agendaComposerPromptSubtitle : L10n.forumThreadReplyPermissionHint)
                             : L10n.agendaComposerGuestSubtitle
                     )
                         .font(.caption)
                         .foregroundStyle(EKitapligimPalette.agendaMuted)
-                        .lineLimit(1)
+                        .fixedSize(horizontal: false, vertical: true)
                 }
                 Spacer(minLength: 0)
                 Image(systemName: "arrow.forward")
@@ -301,16 +302,17 @@ struct BookAgendaView: View {
             .ekitapligimCard()
         }
         .buttonStyle(.plain)
-        .disabled(container.isSignedIn && !canCreate)
+        .disabled(container.isSignedIn && !model.canCreate)
+        .accessibilityIdentifier("agenda.composer.open")
     }
 
     // MARK: Akış içeriği
 
     @ViewBuilder private var feed: some View {
-        if isLoading && posts.isEmpty {
+        if model.isLoading && model.posts.isEmpty {
             EKSkeletonCard(height: 168)
             EKSkeletonCard(height: 168)
-        } else if let errorMessage, posts.isEmpty {
+        } else if let errorMessage = model.errorMessage, model.posts.isEmpty {
             EKStateCard(
                 title: L10n.agendaFeedErrorTitle,
                 message: errorMessage,
@@ -318,10 +320,10 @@ struct BookAgendaView: View {
                 retry: { Task { await load(reset: true) } },
                 systemImage: "books.vertical.fill"
             )
-        } else if posts.isEmpty {
+        } else if model.posts.isEmpty {
             EKStateCard(title: L10n.agendaFeedEmptyTitle, message: L10n.agendaFeedEmptySubtitle, systemImage: "books.vertical.fill")
         } else {
-            ForEach(posts.filter { post in
+            ForEach(model.posts.filter { post in
                 guard let userID = Int(post.actor.id) else { return true }
                 return !container.blockedUserIDs.contains(userID)
             }) { post in
@@ -337,13 +339,14 @@ struct BookAgendaView: View {
                     onRequireLogin: { showingLogin = true },
                     onBlocked: {
                         let actorID = post.actor.id
-                        posts.removeAll { $0.actor.id == actorID }
+                        model.removeBlockedActor(actorID)
                     },
                     isSignedIn: container.isSignedIn,
-                    currentUserID: container.profileState?.id
+                    currentUserID: container.profileState?.id,
+                    isBusy: model.isMutating(postID: post.id)
                 )
             }
-            if let errorMessage, !posts.isEmpty {
+            if let errorMessage = model.errorMessage, !model.posts.isEmpty {
                 EKInlineError(
                     message: errorMessage,
                     retryTitle: L10n.commonRetryAgain,
@@ -351,9 +354,9 @@ struct BookAgendaView: View {
                     showsIcon: false
                 )
             }
-            if hasMore {
+            if model.hasMore {
                 EKLoadMoreButton(
-                    isLoading: isLoadingMore,
+                    isLoading: model.isLoadingMore,
                     title: L10n.commonLoadMoreItems,
                     tint: EKitapligimPalette.agendaPurple
                 ) {
@@ -365,110 +368,50 @@ struct BookAgendaView: View {
 
     // MARK: Veri
 
+    private func configureModel() {
+        model.configure(dependencies: .init(repository: container.bookAgenda), signedIn: container.isSignedIn,
+                        sessionID: container.sessionRevision.uuidString)
+        model.setBlockedActors(Set(container.blockedUserIDs.map { String($0) }))
+    }
+
     private func load(reset: Bool) async {
-        if reset {
-            guard !isLoading else { return }
-            isLoading = true
-        } else {
-            guard !isLoadingMore, hasMore else { return }
-            isLoadingMore = true
-        }
-        defer {
-            isLoading = false
-            isLoadingMore = false
-        }
-
-        errorMessage = nil
-        let targetPage = reset ? 1 : page + 1
-        do {
-            let response = try await container.bookAgenda.feed(
-                tab: tab,
-                filter: filter.rawValue.isEmpty ? nil : filter.rawValue,
-                page: targetPage,
-                perPage: 15
-            )
-            posts = reset ? response.items : posts + response.items
-            page = targetPage
-            hasMore = response.hasMore
-            canCreate = response.canCreate
-        } catch {
-            errorMessage = L10n.agendaFeedLoadFailed
-            if reset { posts = [] }
-        }
+        configureModel()
+        await model.load(tab: tab, filter: filter.rawValue.isEmpty ? nil : filter.rawValue, reset: reset)
     }
 
-    private func replace(_ post: BookAgendaPostDTO) {
-        guard let index = posts.firstIndex(where: { $0.id == post.id }) else { return }
-        posts[index] = post
-    }
+    private func replace(_ post: BookAgendaPostDTO) { model.replace(post) }
 
     private func react(_ post: BookAgendaPostDTO) async {
         guard container.isSignedIn else { showingLogin = true; return }
-        do {
-            _ = try await container.bookAgenda.toggleReaction(postID: post.id)
-            await reloadPost(post.id)
-        } catch {
-            actionMessage = L10n.agendaActionFailed
-        }
+        await model.react(post)
     }
 
     private func bookmark(_ post: BookAgendaPostDTO) async {
         guard container.isSignedIn else { showingLogin = true; return }
-        do {
-            _ = try await container.bookAgenda.toggleBookmark(postID: post.id)
-            await reloadPost(post.id)
-        } catch {
-            actionMessage = L10n.agendaActionFailed
-        }
+        await model.bookmark(post)
     }
 
     private func repost(_ post: BookAgendaPostDTO) async {
         guard container.isSignedIn else { showingLogin = true; return }
-        do {
-            _ = try await container.bookAgenda.toggleRepost(postID: post.id)
-            await reloadPost(post.id)
-        } catch {
-            actionMessage = L10n.agendaActionFailed
-        }
+        await model.repost(post)
     }
 
     private func toggleFollow(_ post: BookAgendaPostDTO) async {
         guard container.isSignedIn else { showingLogin = true; return }
-        do {
-            let result = try await container.bookAgenda.setFollow(
-                userID: post.actor.id,
-                follow: !post.viewer.followingActor
-            )
-            if result == nil {
-                actionMessage = L10n.agendaFollowUnavailable
-            } else {
-                await load(reset: true)
-            }
-        } catch {
-            actionMessage = L10n.agendaFollowFailed
-        }
+        await model.toggleFollow(post)
     }
 
     private func delete(_ post: BookAgendaPostDTO) async {
         pendingDeletion = nil
-        do {
-            try await container.bookAgenda.deletePost(id: post.id)
-            posts.removeAll { $0.id == post.id }
-        } catch {
-            actionMessage = L10n.agendaPostDeleteFailed
-        }
-    }
-
-    private func reloadPost(_ id: String) async {
-        guard let refreshed = try? await container.bookAgenda.post(id: id) else { return }
-        replace(refreshed)
-        actionMessage = nil
+        await model.delete(post)
     }
 }
 
 // MARK: - Gönderi kartı
 
 struct BookAgendaPostCard: View {
+    @Environment(\.dynamicTypeSize) private var dynamicTypeSize
+    @ScaledMetric(relativeTo: .caption) private var actionColumnWidth = 72.0
     let post: BookAgendaPostDTO
     var onOpen: () -> Void = {}
     var onReact: () -> Void = {}
@@ -482,9 +425,10 @@ struct BookAgendaPostCard: View {
     var isSignedIn: Bool = false
     var currentUserID: String? = nil
     var showsCommentAction: Bool = true
+    var isBusy: Bool = false
 
     private var canManagePost: Bool {
-        post.viewer.canEdit || post.viewer.canDelete || isOwnPost
+        isSignedIn && (post.viewer.canEdit || post.viewer.canDelete)
     }
 
     private var isOwnPost: Bool {
@@ -512,7 +456,8 @@ struct BookAgendaPostCard: View {
             }
             .contentShape(Rectangle())
             .onTapGesture(perform: onOpen)
-            actionsRow
+            .accessibilityIdentifier("agenda.post.\(post.id)")
+            actionsRow.disabled(isBusy)
         }
         .padding(15)
         .frame(maxWidth: .infinity, alignment: .leading)
@@ -525,7 +470,7 @@ struct BookAgendaPostCard: View {
     }
 
     private var header: some View {
-        HStack(spacing: 11) {
+        (dynamicTypeSize.isAccessibilitySize ? AnyLayout(VStackLayout(alignment: .leading, spacing: 11)) : AnyLayout(HStackLayout(spacing: 11))) {
             NavigationLink {
                 MemberProfileView(memberID: post.actor.id)
             } label: {
@@ -536,7 +481,7 @@ struct BookAgendaPostCard: View {
                     Text(post.actor.username)
                         .font(.subheadline.weight(.bold))
                         .foregroundStyle(EKitapligimPalette.agendaInk)
-                        .lineLimit(1)
+                        .lineLimit(dynamicTypeSize.isAccessibilitySize ? nil : 2)
                     if post.actor.isVerified {
                         Image(systemName: "checkmark.seal.fill")
                             .font(.caption2)
@@ -547,7 +492,7 @@ struct BookAgendaPostCard: View {
                 Text("@\(post.actor.username) · \(EKitapligimFormat.relativeTime(post.createdAt))")
                     .font(.caption2)
                     .foregroundStyle(EKitapligimPalette.agendaMuted)
-                    .lineLimit(1)
+                    .lineLimit(dynamicTypeSize.isAccessibilitySize ? nil : 2)
             }
             }
             .frame(minHeight: 44, alignment: .leading)
@@ -573,6 +518,7 @@ struct BookAgendaPostCard: View {
                             }
                     }
                     .buttonStyle(.plain)
+                    .disabled(isBusy)
                 }
 
                 if canManagePost || (!isOwnPost && Int(post.id) != nil) {
@@ -582,14 +528,14 @@ struct BookAgendaPostCard: View {
                             contentID: contentID,
                             userID: isOwnPost ? nil : Int(post.actor.id),
                             onBlocked: onBlocked,
-                            onEdit: (post.viewer.canEdit || isOwnPost) ? onEdit : nil,
-                            onDelete: (post.viewer.canDelete || isOwnPost) ? onDelete : nil,
+                            onEdit: (post.viewer.canEdit) ? onEdit : nil,
+                            onDelete: (post.viewer.canDelete) ? onDelete : nil,
                             includeSafetyActions: !isOwnPost
                         )
                     } else if canManagePost {
                         Menu {
-                            if post.viewer.canEdit || isOwnPost { Button(L10n.commonEdit, action: onEdit) }
-                            if post.viewer.canDelete || isOwnPost { Button(L10n.commonDelete, role: .destructive, action: onDelete) }
+                            if post.viewer.canEdit { Button(L10n.commonEdit, action: onEdit) }
+                            if post.viewer.canDelete { Button(L10n.commonDelete, role: .destructive, action: onDelete) }
                         } label: {
                             Image(systemName: "ellipsis")
                                 .foregroundStyle(EKitapligimPalette.agendaMuted)
@@ -603,19 +549,24 @@ struct BookAgendaPostCard: View {
     }
 
     private var typeBadges: some View {
-        HStack(spacing: 6) {
-            EKPill(
-                title: typeTitle,
-                foreground: typeAccent,
-                background: typeAccent.opacity(0.10)
-            )
-            if post.isPinned {
-                EKPill(title: L10n.agendaPinned, systemImage: "pin.fill", foreground: EKitapligimPalette.agendaGold, background: EKitapligimPalette.amberSoft)
-            }
-            if post.isFeatured {
-                EKPill(title: L10n.agendaFeatured, systemImage: "sparkles", foreground: EKitapligimPalette.agendaGreen, background: EKitapligimPalette.successSoft)
-            }
-            Spacer(minLength: 0)
+        ViewThatFits(in: .horizontal) {
+            HStack(spacing: 6) { typeBadgeItems }
+                .fixedSize(horizontal: true, vertical: false)
+            VStack(alignment: .leading, spacing: 6) { typeBadgeItems }
+        }
+    }
+
+    @ViewBuilder private var typeBadgeItems: some View {
+        EKPill(
+            title: typeTitle,
+            foreground: typeAccent,
+            background: typeAccent.opacity(0.10)
+        )
+        if post.isPinned {
+            EKPill(title: L10n.agendaPinned, systemImage: "pin.fill", foreground: EKitapligimPalette.agendaGold, background: EKitapligimPalette.amberSoft)
+        }
+        if post.isFeatured {
+            EKPill(title: L10n.agendaFeatured, systemImage: "sparkles", foreground: EKitapligimPalette.agendaGreen, background: EKitapligimPalette.successSoft)
         }
     }
 
@@ -791,13 +742,14 @@ struct BookAgendaPostCard: View {
     }
 
     private var actionsRow: some View {
-        HStack(spacing: 4) {
+        LazyVGrid(columns: [GridItem(.adaptive(minimum: min(actionColumnWidth, 180)), spacing: 4)], alignment: .leading, spacing: 4) {
             actionButton(
                 systemImage: post.viewer.reacted ? "heart.fill" : "heart",
                 count: post.reactionScore,
                 tint: post.viewer.reacted ? EKitapligimPalette.agendaPurple : EKitapligimPalette.agendaMuted,
                 label: L10n.agendaReact,
-                action: post.viewer.canReact || isSignedIn ? onReact : onRequireLogin
+                action: isSignedIn ? onReact : onRequireLogin,
+                isEnabled: !isSignedIn || post.viewer.canReact
             )
             if showsCommentAction {
                 actionButton(
@@ -815,7 +767,6 @@ struct BookAgendaPostCard: View {
                 label: L10n.agendaRepost,
                 action: isSignedIn ? onRepost : onRequireLogin
             )
-            Spacer(minLength: 0)
             actionButton(
                 systemImage: post.viewer.bookmarked ? "bookmark.fill" : "bookmark",
                 count: nil,
@@ -830,7 +781,7 @@ struct BookAgendaPostCard: View {
                 }
                 .font(.caption2.weight(.semibold))
                 .foregroundStyle(EKitapligimPalette.agendaMuted)
-                .padding(.horizontal, 8)
+                .frame(maxWidth: .infinity, minHeight: 44)
                 .accessibilityLabel(EKitapligimFormat.count(post.viewCount))
             }
         }
@@ -841,7 +792,8 @@ struct BookAgendaPostCard: View {
         count: Int?,
         tint: Color,
         label: String,
-        action: @escaping () -> Void
+        action: @escaping () -> Void,
+        isEnabled: Bool = true
     ) -> some View {
         Button(action: action) {
             HStack(spacing: 5) {
@@ -853,18 +805,21 @@ struct BookAgendaPostCard: View {
             .foregroundStyle(tint)
             .padding(.horizontal, 10)
             .padding(.vertical, 7)
+            .frame(maxWidth: .infinity, minHeight: 44)
             .contentShape(Rectangle())
         }
         .buttonStyle(.plain)
+        .disabled(!isEnabled)
         .accessibilityLabel(count.map { "\(label), \($0)" } ?? label)
     }
 }
 
 struct BookAgendaBookChip: View {
+    @Environment(\.dynamicTypeSize) private var dynamicTypeSize
     let book: BookAgendaBookDTO
 
     var body: some View {
-        HStack(spacing: 10) {
+        (dynamicTypeSize.isAccessibilitySize ? AnyLayout(VStackLayout(alignment: .leading, spacing: 10)) : AnyLayout(HStackLayout(spacing: 10))) {
             EKitapligimRemoteCover(urlString: book.coverUrl ?? "", title: book.title, author: book.author)
                 .frame(width: 46, height: 66)
                 .background(Color(hex: 0xE6EBEF))
@@ -873,13 +828,13 @@ struct BookAgendaBookChip: View {
                 Text(book.title)
                     .font(.caption.weight(.bold))
                     .foregroundStyle(EKitapligimPalette.agendaInk)
-                    .lineLimit(2)
+                    .lineLimit(dynamicTypeSize.isAccessibilitySize ? nil : 2)
                     .multilineTextAlignment(.leading)
                 if !book.author.isEmpty {
                     Text(book.author)
                         .font(.caption2)
                         .foregroundStyle(EKitapligimPalette.agendaMuted)
-                        .lineLimit(1)
+                        .lineLimit(dynamicTypeSize.isAccessibilitySize ? nil : 2)
                 }
             }
             Spacer(minLength: 0)
@@ -906,16 +861,14 @@ struct BookAgendaBookChip: View {
 @MainActor
 struct BookAgendaDetailView: View {
     @EnvironmentObject private var container: AppContainer
+    @Environment(\.dismiss) private var dismiss
+    @Environment(\.replyViewportHeight) private var replyViewportHeight
     let postID: String
     var onPostUpdated: ((BookAgendaPostDTO) -> Void)? = nil
+    var onPostDeleted: ((String) -> Void)? = nil
 
-    @State private var post: BookAgendaPostDTO?
-    @State private var comments: [BookAgendaCommentDTO] = []
-    @State private var draft = ""
-    @State private var isLoading = false
-    @State private var isSubmitting = false
-    @State private var errorMessage: String?
-    @State private var actionMessage: String?
+    @StateObject private var model = BookAgendaDetailModel()
+    @FocusState private var commentFocused: Bool
     @State private var showingLogin = false
     @State private var editingPost: BookAgendaPostDTO?
     @State private var pendingDeletion: BookAgendaPostDTO?
@@ -923,13 +876,12 @@ struct BookAgendaDetailView: View {
     @State private var pendingCommentDeletion: BookAgendaCommentDTO?
 
     var body: some View {
-        ZStack {
-            EKitapligimPageBackground()
+        ScrollViewReader { proxy in
             ScrollView {
-                LazyVStack(alignment: .leading, spacing: 14) {
-                    if isLoading && post == nil {
+                VStack(alignment: .leading, spacing: 14) {
+                    if model.isLoading && model.post == nil {
                         EKSkeletonCard(height: 180)
-                    } else if let post {
+                    } else if let post = model.post {
                         BookAgendaPostCard(
                             post: post,
                             onReact: { Task { await react() } },
@@ -937,23 +889,27 @@ struct BookAgendaDetailView: View {
                             onRepost: { Task { await repost() } },
                             onEdit: { editingPost = post },
                             onDelete: { pendingDeletion = post },
+                            onFollow: { Task { await toggleFollow(post) } },
                             onRequireLogin: { showingLogin = true },
                             onBlocked: {
                                 if let userID = Int(post.actor.id) { container.rememberBlockedUser(userID) }
-                                self.post = nil
+                                model.invalidate()
+                                dismiss()
                             },
                             isSignedIn: container.isSignedIn,
                             currentUserID: container.profileState?.id,
-                            showsCommentAction: false
+                            showsCommentAction: false,
+                            isBusy: model.isPerformingAction || model.isSubmitting
                         )
-                        if let actionMessage {
-                            EKInlineError(message: actionMessage)
+                        if let errorMessage = model.errorMessage {
+                            EKInlineError(message: errorMessage, retryTitle: L10n.commonRetry,
+                                          retry: { Task { await load() } })
                         }
                         commentsSection(post: post)
                     } else {
                         EKStateCard(
                             title: L10n.agendaDetailErrorTitle,
-                            message: errorMessage ?? L10n.agendaDetailErrorMessage,
+                            message: model.errorMessage ?? L10n.agendaDetailErrorMessage,
                             retryTitle: L10n.commonRetry,
                             retry: { Task { await load() } },
                             systemImage: "books.vertical.fill"
@@ -963,24 +919,46 @@ struct BookAgendaDetailView: View {
                 .padding(.horizontal, 18)
                 .padding(.vertical, 12)
             }
+            .scrollDismissesKeyboard(.interactively)
+            .accessibilityIdentifier("agenda.detail.scroll")
+            .onChange(of: commentFocused) { _, focused in
+                if focused {
+                    withAnimation { proxy.scrollTo("agenda.comment.composer", anchor: .bottom) }
+                }
+            }
+            .task(id: replyViewportHeight) {
+                guard commentFocused else { return }
+                await Task.yield()
+                guard !Task.isCancelled, commentFocused else { return }
+                proxy.scrollTo("agenda.comment.composer", anchor: .bottom)
+            }
         }
+        .background { EKitapligimPageBackground() }
+        // The floating assistant otherwise covers the comment submit button on small screens.
+        .preference(key: AILauncherHiddenKey.self, value: true)
         .navigationTitle(L10n.agendaTitle)
         .navigationBarTitleDisplayMode(.inline)
+        .toolbar {
+            ToolbarItemGroup(placement: .keyboard) {
+                Spacer()
+                Button(L10n.commonClose) { commentFocused = false }
+                    .accessibilityIdentifier("agenda.comment.keyboard.close")
+            }
+        }
         .sheet(isPresented: $showingLogin) { LoginView() }
         .sheet(item: $editingPost) { item in
             NavigationStack {
                 BookAgendaEditView(post: item) { updated in
-                    post = updated
-                    onPostUpdated?(updated)
+                    model.updatePost(updated)
+                    publishPostUpdate()
                 }
             }
         }
         .sheet(item: $editingComment) { comment in
             NavigationStack {
                 BookAgendaCommentEditView(comment: comment) { updated in
-                    if let index = comments.firstIndex(where: { $0.id == updated.id }) {
-                        comments[index] = updated
-                    }
+                    model.updateComment(updated)
+                    publishPostUpdate()
                 }
             }
         }
@@ -989,18 +967,24 @@ struct BookAgendaDetailView: View {
             Button(L10n.commonDelete, role: .destructive) {
                 if let item = pendingDeletion { Task { await deletePost(item) } }
             }
-        } message: {
-            Text(L10n.agendaPostDeleteMessage)
-        }
+        } message: { Text(L10n.agendaPostDeleteMessage) }
         .alert(L10n.agendaCommentDeleteTitle, isPresented: commentDeletionBinding) {
             Button(L10n.commonDismiss, role: .cancel) { pendingCommentDeletion = nil }
             Button(L10n.commonDelete, role: .destructive) {
                 if let comment = pendingCommentDeletion { Task { await deleteComment(comment) } }
             }
-        } message: {
-            Text(L10n.agendaCommentDeleteMessage)
-        }
+        } message: { Text(L10n.agendaCommentDeleteMessage) }
         .task { await load() }
+        .onChange(of: container.sessionRevision) { _, _ in
+            model.invalidate()
+            commentFocused = false
+            editingPost = nil
+            editingComment = nil
+            pendingDeletion = nil
+            pendingCommentDeletion = nil
+            Task { await load() }
+        }
+        .onDisappear { commentFocused = false; model.invalidate(clear: false) }
     }
 
     private var postDeletionBinding: Binding<Bool> {
@@ -1011,200 +995,213 @@ struct BookAgendaDetailView: View {
         Binding(get: { pendingCommentDeletion != nil }, set: { if !$0 { pendingCommentDeletion = nil } })
     }
 
-    private func commentsSection(post: BookAgendaPostDTO) -> some View {
-        VStack(alignment: .leading, spacing: 11) {
-            Text(L10n.agendaCommentsHeader(comments.count))
-                .font(.headline)
-                .foregroundStyle(EKitapligimPalette.agendaInk)
-
-            if comments.isEmpty {
-                EKStateCard(title: L10n.agendaCommentsEmptyTitle, message: L10n.agendaCommentsEmptySubtitle, systemImage: "books.vertical.fill")
-            } else {
-                ForEach(comments.filter { comment in
-                    guard let userID = Int(comment.actor.id) else { return true }
-                    return !container.blockedUserIDs.contains(userID)
-                }) { comment in
-                    BookAgendaCommentRow(
-                        comment: comment,
-                        currentUserID: container.profileState?.id,
-                        onEdit: { editingComment = comment },
-                        onDelete: { pendingCommentDeletion = comment },
-                        onBlocked: {
-                            let actorID = comment.actor.id
-                            comments.removeAll { $0.actor.id == actorID }
-                        }
-                    )
-                }
-            }
-
-            composer(post: post)
+    private var visibleComments: [BookAgendaCommentDTO] {
+        model.comments.filter { comment in
+            guard let userID = Int(comment.actor.id) else { return true }
+            return !container.blockedUserIDs.contains(userID)
         }
     }
 
+    private func commentsSection(post: BookAgendaPostDTO) -> some View {
+        VStack(alignment: .leading, spacing: 11) {
+            Text(L10n.agendaCommentsHeader(post.commentCount))
+                .font(.headline)
+                .foregroundStyle(EKitapligimPalette.agendaInk)
+                .accessibilityIdentifier("agenda.comments.count")
+            if let commentsError = model.commentsError {
+                EKInlineError(message: commentsError, retryTitle: L10n.commonRetry) {
+                    Task {
+                        let repository = container.bookAgenda
+                        await model.loadComments { try await repository.comments(postID: postID) }
+                    }
+                }
+                .accessibilityIdentifier("agenda.comments.error")
+            }
+            if model.isLoadingComments && visibleComments.isEmpty {
+                ProgressView().frame(maxWidth: .infinity, minHeight: 60)
+            } else if visibleComments.isEmpty && model.commentsError == nil {
+                EKStateCard(title: L10n.agendaCommentsEmptyTitle, message: L10n.agendaCommentsEmptySubtitle, systemImage: "books.vertical.fill")
+            }
+            ForEach(visibleComments) { comment in
+                BookAgendaCommentRow(
+                    comment: comment,
+                    currentUserID: container.profileState?.id,
+                    onEdit: { editingComment = comment },
+                    onDelete: { pendingCommentDeletion = comment },
+                    onBlocked: { model.removeComments(actorID: comment.actor.id) }
+                )
+                .disabled(model.isPerformingAction)
+            }
+            composer(post: post).id("agenda.comment.composer")
+        }
+    }
+
+    private var usesCompactCommentComposer: Bool { replyViewportHeight < 300 }
+
     private func composer(post: BookAgendaPostDTO) -> some View {
         VStack(alignment: .leading, spacing: 9) {
-            Text(container.isSignedIn ? L10n.agendaCommentComposerTitle : L10n.agendaCommentGuestTitle)
-                .font(.subheadline.weight(.bold))
-                .foregroundStyle(EKitapligimPalette.agendaInk)
-
-            if container.isSignedIn {
-                TextField(L10n.agendaCommentPlaceholder, text: $draft, axis: .vertical)
-                    .lineLimit(2...6)
-                    .padding(11)
-                    .background(.white)
+            if container.isSignedIn && post.viewer.canComment {
+                if !usesCompactCommentComposer {
+                    Button { commentFocused = true } label: {
+                        Text(L10n.agendaCommentComposerTitle)
+                            .font(.subheadline.weight(.bold))
+                            .frame(maxWidth: .infinity, minHeight: 44, alignment: .leading)
+                            .contentShape(Rectangle())
+                    }
+                    .buttonStyle(.plain)
+                    .accessibilityIdentifier("agenda.comment.focus")
+                }
+                (usesCompactCommentComposer
+                    ? AnyLayout(HStackLayout(alignment: .bottom, spacing: 8))
+                    : AnyLayout(VStackLayout(alignment: .leading, spacing: 9))) {
+                TextField(L10n.agendaCommentPlaceholder, text: $model.draft, axis: .vertical)
+                    .lineLimit(usesCompactCommentComposer ? 1...1 : 2...6)
+                    .focused($commentFocused)
+                    .padding(usesCompactCommentComposer ? 6 : 11)
+                    .frame(maxWidth: .infinity, minHeight: usesCompactCommentComposer ? 44 : 72, alignment: .topLeading)
+                    .background(Color(uiColor: .secondarySystemGroupedBackground))
                     .clipShape(RoundedRectangle(cornerRadius: 12, style: .continuous))
                     .overlay {
                         RoundedRectangle(cornerRadius: 12, style: .continuous)
-                            .stroke(EKitapligimPalette.agendaBorder, lineWidth: 1)
+                            .stroke(commentFocused ? EKitapligimPalette.agendaPurple : EKitapligimPalette.agendaBorder, lineWidth: 1)
+                            .allowsHitTesting(false)
                     }
-                    .onChange(of: draft) { _, newValue in
-                        if newValue.count > 2_000 {
-                            draft = String(newValue.prefix(2_000))
-                        }
+                    .contentShape(Rectangle())
+                    .simultaneousGesture(TapGesture().onEnded { commentFocused = true })
+                    .onChange(of: model.draft) { _, value in
+                        if value.count > 2_000 { model.draft = String(value.prefix(2_000)) }
                     }
+                    .accessibilityLabel(L10n.agendaCommentComposerTitle)
+                    .accessibilityIdentifier("agenda.comment.message")
 
-                HStack {
-                    Spacer(minLength: 0)
-                    Button {
-                        Task { await submitComment(post: post) }
-                    } label: {
-                        HStack(spacing: 6) {
-                            if isSubmitting {
-                                ProgressView().tint(.white)
-                            } else {
-                                Image(systemName: "arrowshape.turn.up.left")
-                                    .font(.subheadline.weight(.semibold))
-                                    .accessibilityHidden(true)
-                            }
-                            Text(isSubmitting ? L10n.agendaCommentSubmitting : L10n.agendaCommentSubmit)
+                Button {
+                    Task { await submitComment() }
+                } label: {
+                    HStack(spacing: 6) {
+                        if model.isSubmitting { ProgressView().tint(.white) }
+                        else {
+                            Image(systemName: "arrowshape.turn.up.left")
+                                .font(.system(size: 17, weight: .semibold))
+                                .accessibilityHidden(true)
+                        }
+                        if !usesCompactCommentComposer {
+                            Text(model.isSubmitting ? L10n.agendaCommentSubmitting : L10n.agendaCommentSubmit)
                                 .font(.subheadline.weight(.bold))
                         }
-                        .foregroundStyle(.white)
-                        .padding(.horizontal, 14)
-                        .padding(.vertical, 10)
-                        .background(EKitapligimPalette.agendaPurple, in: RoundedRectangle(cornerRadius: 12, style: .continuous))
                     }
-                    .accessibilityLabel(L10n.agendaCommentSubmit)
-                    .buttonStyle(.plain)
-                    .disabled(isSubmitting || draft.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty)
-                }
-            } else {
-                Button(L10n.commonLogin) { showingLogin = true }
-                    .font(.subheadline.weight(.bold))
                     .foregroundStyle(.white)
-                    .padding(.horizontal, 16)
+                    .padding(.horizontal, 14)
                     .padding(.vertical, 10)
-                    .background(EKitapligimPalette.agendaTeal, in: RoundedRectangle(cornerRadius: 12, style: .continuous))
+                    .frame(minWidth: 44, maxWidth: usesCompactCommentComposer ? 44 : .infinity, minHeight: 44)
+                    .background(EKitapligimPalette.agendaPurple, in: RoundedRectangle(cornerRadius: 12, style: .continuous))
+                }
+                .buttonStyle(.plain)
+                .disabled(model.isSubmitting || model.isPerformingAction || model.draft.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty)
+                .accessibilityLabel(model.isSubmitting ? L10n.agendaCommentSubmitting : L10n.agendaCommentSubmit)
+                .accessibilityIdentifier("agenda.comment.submit")
+                }
+            } else if container.isSignedIn {
+                Text(CommunityRefreshL10n.text("agenda.commentPermission"))
+                    .font(.subheadline)
+                    .accessibilityIdentifier("agenda.comment.permission")
+            } else {
+                Text(L10n.agendaCommentGuestTitle).font(.subheadline.weight(.bold))
+                Button(L10n.commonLogin) { showingLogin = true }
+                    .buttonStyle(.borderedProminent)
+                    .frame(minHeight: 44)
+                    .accessibilityIdentifier("agenda.comment.login")
+            }
+            if let actionMessage = model.actionMessage {
+                EKInlineError(message: actionMessage).accessibilityIdentifier("agenda.comment.error")
             }
         }
+        .foregroundStyle(EKitapligimPalette.agendaInk)
         .padding(14)
         .frame(maxWidth: .infinity, alignment: .leading)
-        .background(.white)
-        .clipShape(RoundedRectangle(cornerRadius: 16, style: .continuous))
+        .background(Color(uiColor: .secondarySystemGroupedBackground), in: RoundedRectangle(cornerRadius: 16, style: .continuous))
         .overlay {
             RoundedRectangle(cornerRadius: 16, style: .continuous)
                 .stroke(EKitapligimPalette.agendaBorder, lineWidth: 1)
+                .allowsHitTesting(false)
         }
     }
 
     private func publishPostUpdate() {
-        guard let post else { return }
-        onPostUpdated?(post)
+        if let post = model.post { onPostUpdated?(post) }
     }
 
     private func load() async {
-        isLoading = true
-        errorMessage = nil
-        defer { isLoading = false }
-        do {
-            let loaded = try await container.bookAgenda.post(id: postID)
-            post = loaded
-            comments = loaded.comments.isEmpty
-                ? ((try? await container.bookAgenda.comments(postID: postID)) ?? [])
-                : loaded.comments
-        } catch {
-            errorMessage = L10n.agendaDetailErrorMessage
-        }
+        let repository = container.bookAgenda
+        await model.load(fetchPost: { try await repository.post(id: postID) },
+                         fetchComments: { try await repository.comments(postID: postID) })
     }
 
     private func react() async {
         guard container.isSignedIn else { showingLogin = true; return }
-        do {
-            _ = try await container.bookAgenda.toggleReaction(postID: postID)
-            post = try? await container.bookAgenda.post(id: postID)
-            publishPostUpdate()
-        } catch {
-            actionMessage = L10n.agendaActionFailed
-        }
+        let repository = container.bookAgenda
+        await model.performAction(mutate: {
+            guard try await repository.toggleReaction(postID: postID).success else { throw APIClientError.invalidResponse }
+        },
+                                  refresh: { try await repository.post(id: postID) })
+        publishPostUpdate()
     }
 
     private func bookmark() async {
         guard container.isSignedIn else { showingLogin = true; return }
-        do {
-            _ = try await container.bookAgenda.toggleBookmark(postID: postID)
-            post = try? await container.bookAgenda.post(id: postID)
-            publishPostUpdate()
-        } catch {
-            actionMessage = L10n.agendaActionFailed
-        }
+        let repository = container.bookAgenda
+        await model.performAction(mutate: {
+            guard try await repository.toggleBookmark(postID: postID).success else { throw APIClientError.invalidResponse }
+        },
+                                  refresh: { try await repository.post(id: postID) })
+        publishPostUpdate()
     }
 
     private func repost() async {
         guard container.isSignedIn else { showingLogin = true; return }
-        do {
-            _ = try await container.bookAgenda.toggleRepost(postID: postID)
-            post = try? await container.bookAgenda.post(id: postID)
-            publishPostUpdate()
-        } catch {
-            actionMessage = L10n.agendaActionFailed
-        }
+        let repository = container.bookAgenda
+        await model.performAction(mutate: {
+            guard try await repository.toggleRepost(postID: postID).success else { throw APIClientError.invalidResponse }
+        },
+                                  refresh: { try await repository.post(id: postID) })
+        publishPostUpdate()
     }
 
-    private func submitComment(post: BookAgendaPostDTO) async {
-        let message = draft.trimmingCharacters(in: .whitespacesAndNewlines)
-        guard container.isSignedIn, !message.isEmpty else { return }
-        isSubmitting = true
-        defer { isSubmitting = false }
-        do {
-            let created = try await container.bookAgenda.createComment(postID: post.id, message: message)
-            comments.append(created)
-            self.post = post.updating(commentCount: comments.count, comments: comments)
-            publishPostUpdate()
-            draft = ""
-            actionMessage = nil
-        } catch {
-            actionMessage = L10n.agendaCommentFailed
-        }
+    private func toggleFollow(_ post: BookAgendaPostDTO) async {
+        guard container.isSignedIn else { showingLogin = true; return }
+        let repository = container.bookAgenda
+        await model.performAction(mutate: {
+            guard let response = try await repository.setFollow(userID: post.actor.id, follow: !post.viewer.followingActor), response.success else {
+                throw URLError(.unsupportedURL)
+            }
+        }, refresh: { try await repository.post(id: postID) })
+        publishPostUpdate()
+    }
+
+    private func submitComment() async {
+        guard container.isSignedIn else { showingLogin = true; return }
+        let repository = container.bookAgenda
+        let submitted = await model.submitComment { try await repository.createComment(postID: postID, message: $0) }
+        if submitted { commentFocused = false; publishPostUpdate() }
     }
 
     private func deletePost(_ item: BookAgendaPostDTO) async {
         pendingDeletion = nil
-        do {
-            try await container.bookAgenda.deletePost(id: item.id)
-            post = nil
-            actionMessage = nil
-        } catch {
-            actionMessage = L10n.agendaPostDeleteFailed
+        let repository = container.bookAgenda
+        if await model.deletePost(delete: { try await repository.deletePost(id: item.id) }) {
+            onPostDeleted?(item.id)
+            dismiss()
         }
     }
 
     private func deleteComment(_ comment: BookAgendaCommentDTO) async {
         pendingCommentDeletion = nil
-        do {
-            try await container.bookAgenda.deleteComment(commentID: comment.id)
-            comments.removeAll { $0.id == comment.id }
-            if var current = post {
-                current = current.updating(commentCount: comments.count, comments: comments)
-                post = current
-            }
-            publishPostUpdate()
-        } catch {
-            actionMessage = L10n.agendaCommentDeleteFailed
-        }
+        let repository = container.bookAgenda
+        await model.deleteComment(comment, delete: { try await repository.deleteComment(commentID: comment.id) })
+        publishPostUpdate()
     }
 }
-
 private struct BookAgendaCommentRow: View {
+    @Environment(\.dynamicTypeSize) private var dynamicTypeSize
     let comment: BookAgendaCommentDTO
     var currentUserID: String? = nil
     let onEdit: () -> Void
@@ -1222,7 +1219,7 @@ private struct BookAgendaCommentRow: View {
                 EKAvatar(urlString: comment.actor.avatarUrl, username: comment.actor.username, size: 38, cornerRadius: 13, background: Color(hex: 0xE7F7F7))
             }
             VStack(alignment: .leading, spacing: 4) {
-                HStack {
+                (dynamicTypeSize.isAccessibilitySize ? AnyLayout(VStackLayout(alignment: .leading, spacing: 6)) : AnyLayout(HStackLayout(spacing: 6))) {
                     MemberProfileLink(memberID: comment.actor.id) {
                         Text(comment.actor.username)
                             .font(.subheadline.weight(.bold))
@@ -1232,21 +1229,21 @@ private struct BookAgendaCommentRow: View {
                     Text(EKitapligimFormat.relativeTime(comment.createdAt))
                         .font(.system(size: 10))
                         .foregroundStyle(EKitapligimPalette.agendaMuted)
-                    if comment.viewer.canEdit || comment.viewer.canDelete || isOwn || Int(comment.id) != nil {
+                    if comment.viewer.canEdit || comment.viewer.canDelete || Int(comment.id) != nil {
                         if let contentID = Int(comment.id) {
                             UGCSafetyMenu(
                                 type: .agendaComment,
                                 contentID: contentID,
                                 userID: isOwn ? nil : Int(comment.actor.id),
                                 onBlocked: onBlocked,
-                                onEdit: (comment.viewer.canEdit || isOwn) ? onEdit : nil,
-                                onDelete: (comment.viewer.canDelete || isOwn) ? onDelete : nil,
+                                onEdit: (comment.viewer.canEdit) ? onEdit : nil,
+                                onDelete: (comment.viewer.canDelete) ? onDelete : nil,
                                 includeSafetyActions: !isOwn
                             )
                         } else {
                             Menu {
-                                if comment.viewer.canEdit || isOwn { Button(L10n.commonEdit, action: onEdit) }
-                                if comment.viewer.canDelete || isOwn { Button(L10n.commonDelete, role: .destructive, action: onDelete) }
+                                if comment.viewer.canEdit { Button(L10n.commonEdit, action: onEdit) }
+                                if comment.viewer.canDelete { Button(L10n.commonDelete, role: .destructive, action: onDelete) }
                             } label: {
                                 Image(systemName: "ellipsis")
                                     .font(.caption)
@@ -1285,6 +1282,8 @@ private struct BookAgendaCommentRow: View {
 struct BookAgendaComposerView: View {
     @EnvironmentObject private var container: AppContainer
     @Environment(\.dismiss) private var dismiss
+    @Environment(\.dynamicTypeSize) private var dynamicTypeSize
+    @Environment(\.colorScheme) private var colorScheme
     let onCreated: (BookAgendaPostDTO) -> Void
 
     @State private var type: BookAgendaPostType = .standard
@@ -1297,8 +1296,26 @@ struct BookAgendaComposerView: View {
     @State private var showingBookPicker = false
     @State private var isSubmitting = false
     @State private var errorMessage: String?
+    @FocusState private var focusedField: ComposerField?
+
+    private enum ComposerField: String, Hashable {
+        case message, page, current, total
+    }
 
     private var requiresBook: Bool { type == .book || type == .quotation || type == .review || type == .progress }
+    private var palette: AgendaComposerPalette { AgendaComposerPalette(colorScheme: colorScheme) }
+
+    private var writingTitle: String {
+        let key: String
+        switch type {
+        case .standard: key = "composer.noteTitle"
+        case .book: key = "composer.bookTitle"
+        case .quotation: key = "composer.quotationTitle"
+        case .review: key = "composer.reviewTitle"
+        case .progress: key = "composer.progressTitle"
+        }
+        return CommunityRefreshL10n.text(key)
+    }
 
     private var composerTypeOptions: [(BookAgendaPostType, String)] {
         [
@@ -1311,143 +1328,376 @@ struct BookAgendaComposerView: View {
     }
 
     var body: some View {
-        ScrollView {
-            VStack(alignment: .leading, spacing: 13) {
-                Text(L10n.agendaComposerTitle)
-                    .font(.system(size: 22, weight: .heavy))
-                    .foregroundStyle(EKitapligimPalette.agendaInk)
-                Text(L10n.agendaComposerSubtitle)
-                    .foregroundStyle(EKitapligimPalette.agendaMuted)
-
-                ScrollView(.horizontal, showsIndicators: false) {
-                    HStack(spacing: 8) {
-                        ForEach(composerTypeOptions, id: \.0) { option in
-                            EKChip(
-                                title: option.1,
-                                isSelected: type == option.0,
-                                selectedBackground: EKitapligimPalette.agendaPurple
-                            ) {
-                                type = option.0
-                            }
-                        }
+        NavigationStack {
+            ScrollView {
+                VStack(alignment: .leading, spacing: 22) {
+                    composerHeader
+                    VStack(alignment: .leading, spacing: 18) {
+                        typePicker
+                        if requiresBook { bookSelection }
+                        writingCard
+                        if type == .quotation { quotationDetails }
+                        if type == .review { reviewDetails }
+                        if type == .progress { progressDetails }
+                    }
+                    .disabled(isSubmitting)
+                }
+                .padding(.horizontal, 20)
+                .padding(.top, 28)
+                .padding(.bottom, 24)
+                .frame(maxWidth: 600)
+                .frame(maxWidth: .infinity, alignment: .top)
+            }
+            .scrollDismissesKeyboard(.interactively)
+            .accessibilityIdentifier("agenda.composer.scroll")
+            .background(palette.page)
+            .safeAreaInset(edge: .bottom, spacing: 0) { submitBar }
+            .toolbar(.hidden, for: .navigationBar)
+            .toolbar {
+                ToolbarItemGroup(placement: .keyboard) {
+                    Spacer()
+                    Button(L10n.commonClose) { focusedField = nil }
+                        .tint(palette.accent)
+                        .accessibilityIdentifier("agenda.composer.keyboard.close")
+                }
+            }
+            .sheet(isPresented: $showingBookPicker) {
+                NavigationStack {
+                    BookAgendaBookPicker { book in
+                        selectedBook = book
+                        showingBookPicker = false
                     }
                 }
+            }
+        }
+        .presentationBackground(palette.page)
+        .presentationCornerRadius(30)
+        .interactiveDismissDisabled(isSubmitting)
+        .accessibilityIdentifier("agenda.composer")
+    }
 
-                if requiresBook {
-                    Button {
-                        showingBookPicker = true
-                    } label: {
-                        HStack(spacing: 8) {
-                            Image(systemName: "book.fill")
-                                .accessibilityHidden(true)
-                            Text(selectedBook.map { "\($0.title) · \($0.author)" } ?? L10n.agendaComposerSelectBook)
-                                .lineLimit(2)
-                                .multilineTextAlignment(.leading)
-                            Spacer(minLength: 0)
-                        }
-                        .foregroundStyle(EKitapligimPalette.agendaInk)
-                        .padding(.horizontal, 14)
-                        .padding(.vertical, 12)
-                        .frame(maxWidth: .infinity, alignment: .leading)
-                        .overlay {
-                            RoundedRectangle(cornerRadius: 12, style: .continuous)
-                                .stroke(EKitapligimPalette.agendaBorder, lineWidth: 1)
-                        }
-                    }
-                    .buttonStyle(.plain)
-                    .accessibilityLabel(L10n.agendaComposerSelectBook)
+    private var composerHeader: some View {
+        VStack(alignment: .leading, spacing: 12) {
+            HStack(alignment: .top, spacing: 12) {
+                VStack(alignment: .leading, spacing: 8) {
+                    Label(L10n.menuBookAgenda, systemImage: "square.and.pencil")
+                        .font(.caption2.weight(.semibold))
+                        .foregroundStyle(palette.accent)
+                    Text(L10n.agendaComposerTitle)
+                        .font(.system(.title2, design: .serif, weight: .semibold))
+                        .foregroundStyle(palette.ink)
+                        .fixedSize(horizontal: false, vertical: true)
+                        .accessibilityAddTraits(.isHeader)
                 }
-
-                TextField(
-                    type == .quotation ? L10n.agendaComposerQuotePlaceholder : L10n.agendaComposerPlaceholder,
-                    text: $message,
-                    axis: .vertical
-                )
-                .lineLimit(4...12)
-                .padding(12)
-                .overlay {
-                    RoundedRectangle(cornerRadius: 14, style: .continuous)
-                        .stroke(EKitapligimPalette.agendaBorder, lineWidth: 1)
-                }
-                .onChange(of: message) { _, value in message = String(value.prefix(5_000)) }
-
-                if type == .quotation {
-                    TextField(L10n.agendaComposerPageNumber, text: $pageNumber)
-                        .keyboardType(.numberPad)
-                        .padding(12)
-                        .overlay {
-                            RoundedRectangle(cornerRadius: 12, style: .continuous)
-                                .stroke(EKitapligimPalette.agendaBorder, lineWidth: 1)
-                        }
-                        .onChange(of: pageNumber) { _, value in pageNumber = digits(value) }
-                }
-
-                if type == .review {
-                    Text(L10n.agendaComposerRating(rating))
-                        .font(.subheadline.weight(.bold))
-                        .foregroundStyle(EKitapligimPalette.agendaInk)
-                    Slider(
-                        value: Binding(
-                            get: { Double(rating) },
-                            set: { rating = Int($0.rounded()) }
-                        ),
-                        in: 1...5,
-                        step: 1
-                    )
-                    .tint(EKitapligimPalette.agendaPurple)
-                    .accessibilityLabel(L10n.agendaComposerRating(rating))
-                }
-
-                if type == .progress {
-                    HStack(spacing: 10) {
-                        TextField(L10n.agendaComposerProgressCurrent, text: $progressCurrent)
-                            .keyboardType(.numberPad)
-                            .onChange(of: progressCurrent) { _, value in progressCurrent = digits(value) }
-                        TextField(L10n.agendaComposerProgressTotal, text: $progressTotal)
-                            .keyboardType(.numberPad)
-                            .onChange(of: progressTotal) { _, value in progressTotal = digits(value) }
-                    }
-                }
-
-                if let errorMessage {
-                    Text(errorMessage)
-                        .font(.caption)
-                        .foregroundStyle(EKitapligimPalette.danger)
-                }
-
+                Spacer(minLength: 0)
                 Button {
-                    Task { await submit() }
+                    dismiss()
                 } label: {
-                    HStack(spacing: 8) {
-                        if isSubmitting {
-                            ProgressView().tint(.white)
-                        } else {
-                            Image(systemName: "paperplane.fill")
-                                .accessibilityHidden(true)
-                        }
-                        Text(isSubmitting ? L10n.agendaComposerSubmitting : L10n.agendaComposerSubmit)
-                            .font(.subheadline.weight(.bold))
-                    }
-                    .foregroundStyle(.white)
-                    .frame(maxWidth: .infinity)
-                    .padding(.vertical, 14)
-                    .background(EKitapligimPalette.agendaPurple, in: RoundedRectangle(cornerRadius: 14, style: .continuous))
+                    Image(systemName: "xmark")
+                        .font(.subheadline.weight(.semibold))
+                        .foregroundStyle(palette.muted)
+                        .frame(width: 44, height: 44)
+                        .background(palette.surface, in: Circle())
+                        .overlay { Circle().strokeBorder(palette.border, lineWidth: 1) }
                 }
                 .buttonStyle(.plain)
                 .disabled(isSubmitting)
-                .accessibilityLabel(L10n.agendaComposerSubmit)
+                .accessibilityLabel(L10n.commonClose)
+                .accessibilityIdentifier("agenda.composer.close")
             }
-            .padding(.horizontal, 18)
-            .padding(.bottom, 28)
+            Text(L10n.agendaComposerSubtitle)
+                .font(.subheadline)
+                .foregroundStyle(palette.muted)
+                .fixedSize(horizontal: false, vertical: true)
         }
-        .background(.white)
-        .sheet(isPresented: $showingBookPicker) {
-            NavigationStack {
-                BookAgendaBookPicker { book in
-                    selectedBook = book
-                    showingBookPicker = false
+    }
+
+    private var typePicker: some View {
+        VStack(alignment: .leading, spacing: 10) {
+            Text(CommunityRefreshL10n.text("composer.typeTitle"))
+                .font(.caption.weight(.semibold))
+                .foregroundStyle(palette.muted)
+                .accessibilityAddTraits(.isHeader)
+            LazyVGrid(columns: [GridItem(.adaptive(minimum: dynamicTypeSize.isAccessibilitySize ? 140 : 90), spacing: 8)], spacing: 8) {
+                ForEach(composerTypeOptions, id: \.0) { option in
+                    typeOption(option.0, title: option.1)
                 }
             }
+        }
+    }
+
+    private func typeOption(_ option: BookAgendaPostType, title: String) -> some View {
+        let selected = type == option
+        return Button {
+            type = option
+        } label: {
+            VStack(spacing: 8) {
+                Image(systemName: typeIcon(option))
+                    .font(.body.weight(.medium))
+                    .accessibilityHidden(true)
+                Text(title)
+                    .font(.caption.weight(.semibold))
+                    .fixedSize(horizontal: false, vertical: true)
+            }
+            .multilineTextAlignment(.center)
+            .foregroundStyle(selected ? .white : palette.ink)
+            .padding(.horizontal, 8)
+            .padding(.vertical, 12)
+            .frame(maxWidth: .infinity, minHeight: 68)
+            .background {
+                RoundedRectangle(cornerRadius: 16, style: .continuous)
+                    .fill(selected ? palette.selection : LinearGradient(colors: [palette.surface], startPoint: .top, endPoint: .bottom))
+            }
+            .overlay {
+                RoundedRectangle(cornerRadius: 16, style: .continuous)
+                    .strokeBorder(selected ? .clear : palette.border, lineWidth: 1)
+            }
+        }
+        .buttonStyle(.plain)
+        .accessibilityLabel(title)
+        .accessibilityAddTraits(selected ? [.isSelected] : [])
+        .accessibilityIdentifier("agenda.composer.type.\(option.rawValue)")
+    }
+
+    private func typeIcon(_ type: BookAgendaPostType) -> String {
+        switch type {
+        case .standard: "square.and.pencil"
+        case .book: "book.closed"
+        case .quotation: "quote.opening"
+        case .review: "star.bubble"
+        case .progress: "bookmark"
+        }
+    }
+
+    private var bookSelection: some View {
+        Button {
+            focusedField = nil
+            showingBookPicker = true
+        } label: {
+            (dynamicTypeSize.isAccessibilitySize ? AnyLayout(VStackLayout(alignment: .leading, spacing: 14)) : AnyLayout(HStackLayout(spacing: 14))) {
+                if let book = selectedBook {
+                    EKitapligimRemoteCover(urlString: book.coverUrl, title: book.title, author: book.author)
+                        .frame(width: 42, height: 62)
+                        .clipShape(RoundedRectangle(cornerRadius: 6, style: .continuous))
+                        .accessibilityHidden(true)
+                } else {
+                    Image(systemName: "book.closed")
+                        .font(.title3.weight(.medium))
+                        .foregroundStyle(palette.accent)
+                        .frame(width: 44, height: 56)
+                        .background(palette.tintedSurface, in: RoundedRectangle(cornerRadius: 10))
+                        .accessibilityHidden(true)
+                }
+                VStack(alignment: .leading, spacing: 5) {
+                    if let book = selectedBook {
+                        Text(L10n.agendaTypeBook)
+                            .font(.caption2.weight(.medium))
+                            .foregroundStyle(palette.accent)
+                        Text(book.title)
+                            .font(.subheadline.weight(.semibold))
+                            .foregroundStyle(palette.ink)
+                            .lineLimit(dynamicTypeSize.isAccessibilitySize ? nil : 2)
+                        if !book.author.isEmpty {
+                            Text(book.author)
+                                .font(.caption)
+                                .foregroundStyle(palette.muted)
+                                .lineLimit(dynamicTypeSize.isAccessibilitySize ? nil : 2)
+                        }
+                    } else {
+                        Text(L10n.agendaComposerSelectBook)
+                            .font(.subheadline.weight(.semibold))
+                            .foregroundStyle(palette.ink)
+                        Text(CommunityRefreshL10n.text("composer.bookHint"))
+                            .font(.caption)
+                            .foregroundStyle(palette.muted)
+                    }
+                }
+                .frame(maxWidth: .infinity, alignment: .leading)
+                .fixedSize(horizontal: false, vertical: true)
+                Image(systemName: selectedBook == nil ? "plus" : "chevron.right")
+                    .font(.caption.weight(.semibold))
+                    .foregroundStyle(palette.accent)
+                    .accessibilityHidden(true)
+            }
+            .padding(14)
+            .background(palette.surface, in: RoundedRectangle(cornerRadius: 20, style: .continuous))
+            .overlay { RoundedRectangle(cornerRadius: 20).strokeBorder(palette.border, lineWidth: 1) }
+        }
+        .buttonStyle(.plain)
+        .accessibilityLabel(L10n.agendaComposerSelectBook)
+        .accessibilityValue(selectedBook.map { "\($0.title) · \($0.author)" } ?? CommunityRefreshL10n.text("composer.bookHint"))
+        .accessibilityHint(selectedBook == nil ? L10n.agendaComposerSelectBook : CommunityRefreshL10n.text("composer.changeBook"))
+        .accessibilityIdentifier("agenda.composer.book")
+    }
+
+    private var writingCard: some View {
+        VStack(alignment: .leading, spacing: 16) {
+            Label(writingTitle, systemImage: typeIcon(type))
+                .font(.subheadline.weight(.semibold))
+                .foregroundStyle(palette.ink)
+                .fixedSize(horizontal: false, vertical: true)
+            Rectangle().fill(palette.border).frame(height: 1).accessibilityHidden(true)
+            TextField(
+                type == .quotation ? L10n.agendaComposerQuotePlaceholder : L10n.agendaComposerPlaceholder,
+                text: $message,
+                axis: .vertical
+            )
+            .font(type == .quotation ? .system(.body, design: .serif) : .body)
+            .foregroundStyle(palette.ink)
+            .tint(palette.accent)
+            .lineSpacing(4)
+            .lineLimit(6...14)
+            .focused($focusedField, equals: .message)
+            .onChange(of: message) { _, value in message = String(value.prefix(5_000)) }
+            .accessibilityLabel(writingTitle)
+            .accessibilityIdentifier("agenda.composer.message")
+            Text(CommunityRefreshL10n.count("composer.characterCount", message.count))
+                .font(.caption2.monospacedDigit())
+                .foregroundStyle(palette.muted)
+                .frame(maxWidth: .infinity, alignment: .trailing)
+                .accessibilityLabel(CommunityRefreshL10n.count("composer.characterCountAccessibility", message.count))
+        }
+        .padding(18)
+        .background(palette.surface, in: RoundedRectangle(cornerRadius: 22, style: .continuous))
+        .overlay {
+            RoundedRectangle(cornerRadius: 22, style: .continuous)
+                .strokeBorder(focusedField == .message ? palette.accent.opacity(0.65) : palette.border, lineWidth: 1)
+        }
+        .shadow(color: palette.accent.opacity(0.04), radius: 12, y: 4)
+    }
+
+    private var quotationDetails: some View {
+        VStack(alignment: .leading, spacing: 8) {
+            numericField(L10n.agendaComposerPageNumber, text: $pageNumber, field: .page)
+            Text(CommunityRefreshL10n.text("composer.pageHint"))
+                .font(.caption)
+                .foregroundStyle(palette.muted)
+                .fixedSize(horizontal: false, vertical: true)
+                .padding(.horizontal, 4)
+        }
+    }
+
+    private var reviewDetails: some View {
+        VStack(alignment: .leading, spacing: 14) {
+            Text(CommunityRefreshL10n.text("composer.ratingTitle"))
+                .font(.subheadline.weight(.semibold))
+                .foregroundStyle(palette.ink)
+            HStack(spacing: 7) {
+                ForEach(1...5, id: \.self) { value in
+                    Image(systemName: value <= rating ? "star.fill" : "star")
+                        .font(.title3)
+                        .foregroundStyle(palette.accent)
+                }
+            }
+            .dynamicTypeSize(...DynamicTypeSize.xxxLarge)
+            .accessibilityHidden(true)
+            Text(L10n.agendaComposerRating(rating))
+                .font(.caption.weight(.medium))
+                .foregroundStyle(palette.muted)
+            Slider(
+                value: Binding(get: { Double(rating) }, set: { rating = Int($0.rounded()) }),
+                in: 1...5,
+                step: 1
+            )
+            .tint(palette.accent)
+            .accessibilityLabel(L10n.agendaComposerRating(rating))
+            .accessibilityIdentifier("agenda.composer.rating")
+        }
+        .padding(18)
+        .frame(maxWidth: .infinity, alignment: .leading)
+        .background(palette.surface, in: RoundedRectangle(cornerRadius: 20, style: .continuous))
+        .overlay { RoundedRectangle(cornerRadius: 20).strokeBorder(palette.border, lineWidth: 1) }
+    }
+
+    private var progressDetails: some View {
+        VStack(alignment: .leading, spacing: 10) {
+            Text(CommunityRefreshL10n.text("composer.progressDetails"))
+                .font(.subheadline.weight(.semibold))
+                .foregroundStyle(palette.ink)
+            if dynamicTypeSize.isAccessibilitySize {
+                VStack(spacing: 10) { progressFields }
+            } else {
+                HStack(alignment: .top, spacing: 10) { progressFields }
+            }
+        }
+    }
+
+    @ViewBuilder private var progressFields: some View {
+        numericField(L10n.agendaComposerProgressCurrent, text: $progressCurrent, field: .current)
+        numericField(L10n.agendaComposerProgressTotal, text: $progressTotal, field: .total)
+    }
+
+    private func numericField(_ title: String, text: Binding<String>, field: ComposerField) -> some View {
+        VStack(alignment: .leading, spacing: 8) {
+            Text(title)
+                .font(.caption.weight(.medium))
+                .foregroundStyle(palette.muted)
+                .fixedSize(horizontal: false, vertical: true)
+            TextField(CommunityRefreshL10n.text("composer.numberPlaceholder"), text: text)
+                .font(.body.monospacedDigit())
+                .foregroundStyle(palette.ink)
+                .tint(palette.accent)
+                .keyboardType(.numberPad)
+                .frame(minHeight: 44)
+                .focused($focusedField, equals: field)
+                .onChange(of: text.wrappedValue) { _, value in text.wrappedValue = digits(value) }
+                .accessibilityLabel(title)
+                .accessibilityIdentifier("agenda.composer.\(field.rawValue)")
+        }
+        .padding(14)
+        .frame(maxWidth: .infinity, minHeight: 76, alignment: .leading)
+        .background(palette.surface, in: RoundedRectangle(cornerRadius: 16, style: .continuous))
+        .overlay { RoundedRectangle(cornerRadius: 16).strokeBorder(palette.border, lineWidth: 1) }
+    }
+
+    private var submitBar: some View {
+        VStack(alignment: .leading, spacing: 12) {
+            if let errorMessage {
+                Label(errorMessage, systemImage: "exclamationmark.circle")
+                    .font(.caption)
+                    .foregroundStyle(palette.error)
+                    .fixedSize(horizontal: false, vertical: true)
+                    .accessibilityIdentifier("agenda.composer.error")
+            }
+            Label(L10n.agendaVisibilityPublic, systemImage: "globe.europe.africa")
+                .font(.caption2.weight(.medium))
+                .foregroundStyle(palette.muted)
+                .accessibilityLabel("\(L10n.agendaPostVisibilityTitle) \(L10n.agendaVisibilityPublic)")
+            Button {
+                focusedField = nil
+                Task { await submit() }
+            } label: {
+                HStack(spacing: 10) {
+                    if isSubmitting {
+                        ProgressView().tint(.white)
+                    } else {
+                        Image(systemName: "paperplane.fill")
+                            .accessibilityHidden(true)
+                    }
+                    Text(isSubmitting ? L10n.agendaComposerSubmitting : L10n.agendaComposerSubmit)
+                        .font(.subheadline.weight(.semibold))
+                }
+                .foregroundStyle(.white)
+                .padding(.horizontal, 20)
+                .padding(.vertical, 16)
+                .frame(maxWidth: .infinity, minHeight: 52)
+                .background(palette.selection, in: RoundedRectangle(cornerRadius: 18, style: .continuous))
+                .shadow(color: palette.accent.opacity(0.15), radius: 10, y: 4)
+            }
+            .buttonStyle(.plain)
+            .disabled(isSubmitting)
+            .accessibilityLabel(isSubmitting ? L10n.agendaComposerSubmitting : L10n.agendaComposerSubmit)
+            .accessibilityIdentifier("agenda.composer.submit")
+        }
+        .padding(.horizontal, 20)
+        .padding(.top, 14)
+        .padding(.bottom, 12)
+        .frame(maxWidth: 600)
+        .frame(maxWidth: .infinity)
+        .background {
+            palette.surface
+                .ignoresSafeArea(edges: .bottom)
+                .overlay(alignment: .top) { Rectangle().fill(palette.border).frame(height: 1) }
         }
     }
 
@@ -1456,6 +1706,8 @@ struct BookAgendaComposerView: View {
     }
 
     private func submit() async {
+        guard container.isSignedIn, !isSubmitting else { return }
+        let sessionRevision = container.sessionRevision
         let trimmed = message.trimmingCharacters(in: .whitespacesAndNewlines)
         guard !trimmed.isEmpty else {
             errorMessage = L10n.agendaComposerEmptyMessage
@@ -1486,6 +1738,7 @@ struct BookAgendaComposerView: View {
                 progressCurrent: type == .progress ? Int(progressCurrent) : nil,
                 progressTotal: type == .progress ? Int(progressTotal) : nil
             )
+            guard sessionRevision == container.sessionRevision, !Task.isCancelled else { return }
             onCreated(created)
             dismiss()
         } catch {
@@ -1494,8 +1747,25 @@ struct BookAgendaComposerView: View {
     }
 }
 
+private struct AgendaComposerPalette {
+    let colorScheme: ColorScheme
+    private var isDark: Bool { colorScheme == .dark }
+    var page: Color { Color(hex: isDark ? 0x18161E : 0xF7F5FA) }
+    var surface: Color { Color(hex: isDark ? 0x24212D : 0xFFFFFF) }
+    var tintedSurface: Color { Color(hex: isDark ? 0x352C49 : 0xF0EBF8) }
+    var ink: Color { Color(hex: isDark ? 0xF2EEF8 : 0x27213A) }
+    var muted: Color { Color(hex: isDark ? 0xBCB6C8 : 0x6A6577) }
+    var accent: Color { Color(hex: isDark ? 0xC7B8F1 : 0x6851A6) }
+    var border: Color { Color(hex: isDark ? 0x443D53 : 0xE8E2F0) }
+    var error: Color { Color(hex: isDark ? 0xFFB4AB : 0xB3261E) }
+    var selection: LinearGradient {
+        LinearGradient(colors: [Color(hex: 0x735AB4), Color(hex: 0x59428F)], startPoint: .topLeading, endPoint: .bottomTrailing)
+    }
+}
+
 @MainActor
 private struct BookAgendaBookPicker: View {
+    @Environment(\.dynamicTypeSize) private var dynamicTypeSize
     @EnvironmentObject private var container: AppContainer
     @Environment(\.dismiss) private var dismiss
     let onSelect: (BookDTO) -> Void
@@ -1540,13 +1810,13 @@ private struct BookAgendaBookPicker: View {
                         VStack(alignment: .leading, spacing: 3) {
                             Text(book.title)
                                 .font(.subheadline.weight(.semibold))
-                                .foregroundStyle(EKitapligimPalette.ink)
-                                .lineLimit(2)
+                                .foregroundStyle(.primary)
+                                .lineLimit(dynamicTypeSize.isAccessibilitySize ? nil : 2)
                             if !book.author.isEmpty {
                                 Text(book.author)
                                     .font(.caption)
-                                    .foregroundStyle(EKitapligimPalette.muted)
-                                    .lineLimit(1)
+                                    .foregroundStyle(.secondary)
+                                    .lineLimit(dynamicTypeSize.isAccessibilitySize ? nil : 2)
                             }
                         }
                     }
@@ -1563,9 +1833,7 @@ private struct BookAgendaBookPicker: View {
             }
         }
         .task { await loadCatalog() }
-        .onChange(of: query) { _, value in
-            Task { await searchRemoteIfNeeded(value) }
-        }
+        .task(id: query) { await searchRemoteIfNeeded(query) }
     }
 
     private func loadCatalog() async {
@@ -1581,7 +1849,15 @@ private struct BookAgendaBookPicker: View {
             searchResults = nil
             return
         }
-        searchResults = (try? await container.books.books(page: 1, query: trimmed).books) ?? []
+        do {
+            try await Task.sleep(for: .milliseconds(250))
+            let books = try await container.books.books(page: 1, query: trimmed).books
+            guard !Task.isCancelled, query.trimmingCharacters(in: .whitespacesAndNewlines) == trimmed else { return }
+            searchResults = books
+        } catch {
+            guard !Task.isCancelled, query.trimmingCharacters(in: .whitespacesAndNewlines) == trimmed else { return }
+            searchResults = []
+        }
     }
 }
 
@@ -1624,6 +1900,9 @@ struct BookAgendaEditView: View {
                 Section { Text(errorMessage).foregroundStyle(EKitapligimPalette.danger) }
             }
         }
+        .disabled(isSaving)
+        .interactiveDismissDisabled(isSaving)
+        .onChange(of: container.sessionRevision) { _, _ in dismiss() }
         .navigationTitle(L10n.agendaPostEditTitle)
         .navigationBarTitleDisplayMode(.inline)
         .toolbar {
@@ -1639,6 +1918,8 @@ struct BookAgendaEditView: View {
     }
 
     private func save() async {
+        guard container.isSignedIn, !isSaving else { return }
+        let sessionRevision = container.sessionRevision
         let trimmed = message.trimmingCharacters(in: .whitespacesAndNewlines)
         guard !trimmed.isEmpty else {
             errorMessage = L10n.agendaComposerEmptyMessage
@@ -1649,6 +1930,7 @@ struct BookAgendaEditView: View {
         defer { isSaving = false }
         do {
             let updated = try await container.bookAgenda.updatePost(id: post.id, message: trimmed, visibility: visibility)
+            guard sessionRevision == container.sessionRevision, !Task.isCancelled else { return }
             onUpdated(updated)
             dismiss()
         } catch {
@@ -1685,6 +1967,9 @@ private struct BookAgendaCommentEditView: View {
                 Section { Text(errorMessage).foregroundStyle(EKitapligimPalette.danger) }
             }
         }
+        .disabled(isSaving)
+        .interactiveDismissDisabled(isSaving)
+        .onChange(of: container.sessionRevision) { _, _ in dismiss() }
         .navigationTitle(L10n.agendaCommentEditTitle)
         .navigationBarTitleDisplayMode(.inline)
         .toolbar {
@@ -1700,6 +1985,8 @@ private struct BookAgendaCommentEditView: View {
     }
 
     private func save() async {
+        guard container.isSignedIn, !isSaving else { return }
+        let sessionRevision = container.sessionRevision
         let trimmed = message.trimmingCharacters(in: .whitespacesAndNewlines)
         guard !trimmed.isEmpty else { return }
         isSaving = true
@@ -1707,6 +1994,7 @@ private struct BookAgendaCommentEditView: View {
         defer { isSaving = false }
         do {
             let updated = try await container.bookAgenda.updateComment(commentID: comment.id, message: trimmed)
+            guard sessionRevision == container.sessionRevision, !Task.isCancelled else { return }
             onUpdated(updated)
             dismiss()
         } catch {

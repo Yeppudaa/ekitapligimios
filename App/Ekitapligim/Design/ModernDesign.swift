@@ -33,7 +33,10 @@ struct ModernHeroView: View {
                     Button(action: action) {
                         HStack(spacing: 10) {
                             Text(actionTitle).font(.subheadline.weight(.bold))
-                            Image(systemName: "arrow.right").accessibilityHidden(true)
+                                .fixedSize(horizontal: false, vertical: true)
+                            if !dynamicTypeSize.isAccessibilitySize {
+                                Image(systemName: "arrow.right").fixedSize().accessibilityHidden(true)
+                            }
                         }
                         .foregroundStyle(.white)
                         .padding(.horizontal, 19)
@@ -69,6 +72,7 @@ struct ModernHeroView: View {
             .accessibilityHidden(true)
         }
         .clipShape(RoundedRectangle(cornerRadius: 24, style: .continuous))
+        .multilineTextAlignment(.leading)
         .overlay { RoundedRectangle(cornerRadius: 24).stroke(Color(hex: 0xDCE5DF)) }
         .accessibilityElement(children: .contain)
     }
@@ -82,9 +86,10 @@ struct ModernSectionHeading: View {
 
     var body: some View {
         ViewThatFits(in: .horizontal) {
-            HStack(alignment: .center, spacing: 12) { heading; Spacer(minLength: 0); actionButton }
+            HStack(alignment: .center, spacing: 12) { heading.fixedSize(); Spacer(minLength: 0); actionButton.fixedSize() }
             VStack(alignment: .leading, spacing: 8) { heading; actionButton }
         }
+        .multilineTextAlignment(.leading)
     }
 
     private var heading: some View {
@@ -100,6 +105,7 @@ struct ModernSectionHeading: View {
         if let actionTitle, let action {
             Button(action: action) {
                 Label(actionTitle, systemImage: "arrow.right").font(.caption.weight(.semibold))
+                    .fixedSize(horizontal: false, vertical: true)
                     .foregroundStyle(EKitapligimPalette.tealDark).padding(.vertical, 10)
             }
             .buttonStyle(.plain).frame(minHeight: 44)
@@ -108,6 +114,7 @@ struct ModernSectionHeading: View {
 }
 
 struct ModernShelfTile: View {
+    @Environment(\.dynamicTypeSize) private var dynamicTypeSize
     let title: String
     let value: String
     let icon: String
@@ -117,15 +124,16 @@ struct ModernShelfTile: View {
     var body: some View {
         Button(action: action) {
             VStack(alignment: .leading, spacing: 14) {
-                Label {
-                    Text(title).font(.subheadline).foregroundStyle(EKitapligimPalette.ink)
-                        .fixedSize(horizontal: false, vertical: true)
-                } icon: {
-                    Image(systemName: icon).foregroundStyle(tint).frame(width: 31, height: 31)
+                let layout = dynamicTypeSize > .xLarge
+                    ? AnyLayout(VStackLayout(alignment: .leading, spacing: 8))
+                    : AnyLayout(HStackLayout(alignment: .top, spacing: 8))
+                layout {
+                    Image(systemName: icon).font(.system(size: 18)).foregroundStyle(tint).frame(width: 31, height: 31)
                         .background(tint.opacity(0.10), in: RoundedRectangle(cornerRadius: 10))
                         .accessibilityHidden(true)
+                    UniformCardText(title, lines: 2).font(.subheadline).foregroundStyle(EKitapligimPalette.ink)
                 }
-                Text(value).font(.title3.weight(.bold)).foregroundStyle(tint)
+                UniformCardText(value, lines: 1).font(.title3.weight(.bold)).foregroundStyle(tint)
             }
             .padding(15)
             .frame(maxWidth: .infinity, minHeight: 104, alignment: .topLeading)

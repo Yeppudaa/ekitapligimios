@@ -16,6 +16,7 @@ struct ModernParityUITestHost: View {
     private let guest: Bool
     private let largeText: Bool
     private let dark: Bool
+    private let shellNavigation: Bool
     @State private var prepared = false
     @State private var audioID: Int?
     @State private var audioLibrary = false
@@ -27,6 +28,7 @@ struct ModernParityUITestHost: View {
         guest = environment["MODERN_PARITY_GUEST"] == "1"
         largeText = environment["MODERN_PARITY_LARGE_TEXT"] == "1"
         dark = environment["MODERN_PARITY_DARK"] == "1"
+        shellNavigation = environment["MODERN_PARITY_SHELL_NAVIGATION"] == "1"
         URLProtocol.registerClass(ModernParityProtocol.self)
         let configuration = URLSessionConfiguration.ephemeral
         configuration.protocolClasses = [ModernParityProtocol.self]
@@ -69,6 +71,25 @@ struct ModernParityUITestHost: View {
             }
             if screen == "catalog" { fixtureContainer.selectedTab = .catalog }
             if screen == "profile" { fixtureContainer.selectedTab = .profile }
+            if screen == "keyboard-shell" {
+                switch ProcessInfo.processInfo.environment["MODERN_PARITY_KEYBOARD_DESTINATION"] {
+                case "forum": fixtureContainer.open(route: .forum)
+                case "agenda": fixtureContainer.open(route: .bookAgenda)
+                case "conversation": fixtureContainer.open(route: .conversation(980001))
+                case "chat": fixtureContainer.open(route: .chatRoom(4))
+                case "book-detail": fixtureContainer.open(route: .bookDetail(900042))
+                default: break
+                }
+            }
+            if shellNavigation {
+                switch screen {
+                case "requests": fixtureContainer.open(route: .requests)
+                case "agenda": fixtureContainer.open(route: .bookAgenda)
+                case "live": fixtureContainer.open(route: .liveActivity)
+                case "forum": fixtureContainer.open(route: .forum)
+                default: break
+                }
+            }
             if ModernParityAudioFixture.enabled, let audioController {
                 audioController.activate(account: ModernParityTokenStore.username)
                 audioController.setVolume(0)
@@ -80,8 +101,16 @@ struct ModernParityUITestHost: View {
     }
 
     @ViewBuilder private var content: some View {
+        if shellNavigation && ["requests", "agenda", "live", "forum"].contains(screen) {
+            RootView().environment(\.scenePhase, .inactive)
+        } else {
+            standaloneContent
+        }
+    }
+
+    @ViewBuilder private var standaloneContent: some View {
         switch screen {
-        case "home", "menu", "catalog", "profile": RootView().environment(\.scenePhase, .inactive)
+        case "home", "menu", "catalog", "profile", "keyboard-shell": RootView().environment(\.scenePhase, .inactive)
         case "library": NavigationStack { LibraryView() }
         case "requests": NavigationStack { BookRequestsView() }
         case "forum": CommunityView()
@@ -89,6 +118,7 @@ struct ModernParityUITestHost: View {
         case "authors": NavigationStack { DirectoryView(kind: .author) }
         case "publishers": NavigationStack { DirectoryView(kind: .publisher) }
         case "agenda": NavigationStack { BookAgendaView() }
+        case "agenda-detail": NavigationStack { BookAgendaDetailView(postID: "940001") }
         case "live": NavigationStack { LiveActivityView() }
         case "notifications": NavigationStack { NotificationsView() }
         case "chat": NavigationStack { ChatView(initialRoomID: "4") }
@@ -157,6 +187,24 @@ private final class ModernParityProtocol: URLProtocol, @unchecked Sendable {
             return
         }
         let readOnly = request.httpMethod == nil || request.httpMethod == "GET" || request.httpMethod == "HEAD"
+        if readOnly, url.path.hasSuffix("/ios-api/v1/forums") {
+            let categoryForums = ProcessInfo.processInfo.environment["MODERN_PARITY_CATEGORY_FORUMS"] ?? "normal"
+            let response: (status: Int, payload: [String: Any])?
+            switch categoryForums {
+            case "empty": response = (200, ["forums": []])
+            case "failure": response = (503, ["errors": ["Deliberate offline category forum failure"]])
+            case "unrelated": response = (200, ["forums": [["id": "900", "title": "Genel Sohbet", "is_book_forum": false]]])
+            default: response = nil
+            }
+            if let response {
+                guard let data = try? JSONSerialization.data(withJSONObject: response.payload) else {
+                    client?.urlProtocol(self, didFailWithError: URLError(.cannotDecodeContentData)); return
+                }
+                deliver(url: url, status: response.status,
+                        headers: ["Content-Type": "application/json", "Cache-Control": "no-store"], data: data)
+                return
+            }
+        }
         if readOnly, ProcessInfo.processInfo.environment["MODERN_PARITY_CATALOG_FAILURE"] == "1", url.path.hasSuffix("/books") {
             let filtered = URLComponents(url: url, resolvingAgainstBaseURL: false)?.queryItems?.contains(where: { $0.name == "category" && !($0.value ?? "").isEmpty }) == true
             NSLog("MODERN_CATALOG_FIXTURE books-request filtered=%d failurePath=%d", filtered ? 1 : 0, url.path.hasSuffix("/ios-api/v1/books") ? 1 : 0)
@@ -183,6 +231,12 @@ private final class ModernParityProtocol: URLProtocol, @unchecked Sendable {
                 "<article class='xcuBktCatalog-card'><div class='xcuBktCatalog-bookTitle'><a href='/konular/offline-book.\(900040 + value)/'>Okurların seçtiği hikâye \(value)</a></div><div class='xcuBktCatalog-author'>Örnek Yazar</div><span class='xcuBktCatalog-tag'>Roman</span></article>"
             }.joined()
             deliver(url: url, status: 200, headers: ["Content-Type": "text/html; charset=utf-8"], data: Data(cards.utf8))
+            return
+        }
+        if readOnly, url.path.hasSuffix("/book-agenda/940001/comments"),
+           ProcessInfo.processInfo.environment["MODERN_PARITY_AGENDA_COMMENTS_FAILURE"] == "1" {
+            deliver(url: url, status: 503, headers: ["Content-Type": "application/json"],
+                    data: Data(#"{"errors":["Offline comment failure"]}"#.utf8))
             return
         }
         let payload: [String: Any] = readOnly ? ModernParityPayload.response(for: url) : ["success": false, "errors": ["Offline UI fixtures reject all mutations."]]
@@ -241,7 +295,15 @@ private enum ModernParityPayload {
         return item
     }
     static func book(_ value: Int) -> [String: Any] {
-        ["id": String(900040 + value), "title": ["Varoluş Yolunda Sayılı Yıllar", "Sonsuzluğun Büyüsü", "Beyaz Zambaklar Ülkesinde", "Küçük Prens"][value % 4], "author": value == 3 ? "Grigori Petrov" : "Örnek Yazar", "publisher": "Örnek Yayınevi", "isbn": "", "category": "Roman", "language": "Türkçe", "publish_year": "2024", "description": "Her sayfada yeni bir dünya. Okuma yolculuğunda sana eşlik edecek bir hikâye.", "cover_url": "", "pdf_url": "", "page_count": 200, "is_premium_only": false, "view_count": 320, "download_count": 18, "rating": 4.5, "file_type": "PDF"]
+        var item: [String: Any] = ["id": String(900040 + value), "title": ["Varoluş Yolunda Sayılı Yıllar", "Sonsuzluğun Büyüsü", "Beyaz Zambaklar Ülkesinde", "Küçük Prens"][value % 4], "author": value == 3 ? "Grigori Petrov" : "Örnek Yazar", "publisher": "Örnek Yayınevi", "isbn": "", "category": "Roman", "language": "Türkçe", "publish_year": "2024", "description": "Her sayfada yeni bir dünya. Okuma yolculuğunda sana eşlik edecek bir hikâye.", "cover_url": "", "pdf_url": "", "page_count": 200, "is_premium_only": false, "view_count": 320, "download_count": 18, "rating": 4.5, "file_type": "PDF"]
+        if value == 2, ProcessInfo.processInfo.environment["MODERN_PARITY_CARD_SIZING"] == "1" {
+            item["title"] = "Birlikte Keşfettiğimiz Hikâyelerin İzinde Uzun Bir Okuma Yolculuğunun Unutulmaz Sayfaları"
+            item["author"] = ""
+            item["category"] = ""
+            item["page_count"] = 0
+            item.removeValue(forKey: "rating")
+        }
+        return item
     }
     static func audioBook(_ value: Int) -> [String: Any] {
         if ModernParityAudioFixture.enabled { return ModernParityAudioFixture.book(value) }
@@ -306,6 +368,12 @@ private enum ModernParityPayload {
             let pagination: [String: Any] = ["page": 1, "has_more": false]
             return ["items": items, "capabilities": capabilities, "pagination": pagination]
         }
+        if path.hasSuffix("/book-agenda/940001") {
+            return ["post": agendaItem(1)]
+        }
+        if path.hasSuffix("/book-agenda/940001/comments") {
+            return ["comments": []]
+        }
         if path.hasSuffix("/authors") || path.hasSuffix("/publishers") {
             let author = path.hasSuffix("/authors")
             let names = author ? ["Ahmet Hamdi Tanpınar", "Grigori Petrov", "Sabahattin Ali", "Stefan Zweig", "Zygmunt Bauman"] : ["Can Yayınları", "İletişim Yayınları", "Türkiye İş Bankası Kültür Yayınları", "Yapı Kredi Yayınları"]
@@ -326,6 +394,27 @@ private enum ModernParityPayload {
             let threads: [[String: Any]] = (1...6).map(forumThreadItem)
             let pagination: [String: Any] = ["page": 1, "pages": 1]
             return ["threads": threads, "pagination": pagination]
+        }
+        if path.hasSuffix("/threads/960001/posts") {
+            let posts: [[String: Any]] = (1...6).map { value in
+                ["id": String(960100 + value), "thread_id": "960001", "user_id": 900002,
+                 "username": "Ada", "message": "Kitap hakkında çevrimdışı deneme mesajı \(value).",
+                 "post_date": timestamp + value, "can_reply": true, "can_edit": false, "can_delete": false]
+            }
+            return ["posts": posts, "can_reply": true, "pagination": ["page": 1, "pages": 1]]
+        }
+        if path.hasSuffix("/conversation-detail/980001") {
+            let conversation: [String: Any] = ["id": "980001", "title": "Okuma önerileri",
+                "starter_username": "Ada", "can_reply": true, "reply_count": 3]
+            let messages: [[String: Any]] = (1...4).map { value in
+                ["id": String(980100 + value), "conversation_id": 980001, "user_id": 900002,
+                 "username": "Ada", "message": "Çevrimdışı özel mesaj \(value).",
+                 "message_date": timestamp + value, "avatar_url": "", "is_mine": false]
+            }
+            return ["conversation": conversation, "messages": messages]
+        }
+        if path.hasSuffix("/books/900042/comments") {
+            return ["comments": [], "pagination": ["page": 1, "pages": 1, "total": 0]]
         }
         if path.hasSuffix("/books") {
             let books: [[String: Any]] = (1...8).map(book)
@@ -373,7 +462,8 @@ private enum ModernParityPayload {
 
     private static func agendaItem(_ value: Int) -> [String: Any] {
         let referencedBook: [String: Any] = ["id": "900042", "title": "Yeni Bir Hikâye", "author": "Örnek Yazar", "cover_url": ""]
-        let viewer: [String: Any] = ["can_react": true, "can_bookmark": true]
+        let viewer: [String: Any] = ["can_react": true, "can_bookmark": true,
+            "can_comment": ProcessInfo.processInfo.environment["MODERN_PARITY_AGENDA_READ_ONLY"] != "1"]
         var item: [String: Any] = [:]
         item["id"] = String(940000 + value)
         item["type"] = value == 1 ? "quotation" : "standard"

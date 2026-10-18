@@ -25,6 +25,7 @@ struct BookDetailDestination: View {
 struct BookDetailView: View {
     @EnvironmentObject private var container: AppContainer
     @Environment(\.dismiss) private var dismiss
+    @Environment(\.dynamicTypeSize) private var dynamicTypeSize
     let bookID: Int
 
     @StateObject private var loading = BookDetailLoadingModel()
@@ -99,11 +100,21 @@ struct BookDetailView: View {
             )
         }
         .toolbar(.hidden, for: .navigationBar)
+        .toolbar {
+            ToolbarItemGroup(placement: .keyboard) {
+                Spacer()
+                Button(L10n.commonDismiss) { isCommentFocused = false }
+                    .accessibilityIdentifier("keyboard-dismiss")
+            }
+        }
         .safeAreaInset(edge: .top, spacing: 0) {
             androidBookTopBar
         }
         .task(id: bookID) { await load() }
-        .onDisappear { loading.cancel() }
+        .onDisappear {
+            isCommentFocused = false
+            loading.cancel()
+        }
         .onChange(of: loading.book?.id) { _, _ in syncShelfFromLibrary() }
         .fullScreenCover(isPresented: $showingReader, onDismiss: {
             if readerRequestedPremium {
@@ -169,10 +180,12 @@ struct BookDetailView: View {
             .padding(.horizontal, 18)
             .padding(.vertical, 12)
         }
+        .accessibilityIdentifier("book-detail-scroll")
+        .scrollDismissesKeyboard(.interactively)
     }
 
     private var isCompactHero: Bool { heroCardWidth < 380 }
-    private var isStackedHero: Bool { heroCardWidth < 260 }
+    private var isStackedHero: Bool { heroCardWidth < 330 || dynamicTypeSize.isAccessibilitySize }
 
     /// Android `BookDetailScreen` similar-card widths: 106 / 116 / 128.
     private var similarCardWidth: CGFloat {
@@ -231,44 +244,46 @@ struct BookDetailView: View {
                 book.publisher.isEmpty ? L10n.bookDetailUnspecified : book.publisher,
                 Color(hex: 0x7D8A8F)
             )
-            HStack(spacing: 8) {
-                Image(systemName: "star.fill")
-                    .font(.title3)
-                    .foregroundStyle(Color(hex: 0xD08A27))
-                    .frame(width: 27, height: 27)
-                Text(String(format: "%.1f", book.rating ?? 0))
-                    .font(.title3.weight(.semibold))
-                    .foregroundStyle(Color(hex: 0x12252C))
-                Rectangle()
-                    .fill(Color(hex: 0xE7D8C5))
-                    .frame(width: 1, height: 24)
-                Text(L10n.bookDetailDownloadCount(book.displayedDownloadCount))
-                    .font(.body)
-                    .foregroundStyle(Color(hex: 0x7D8A8F))
-                    .lineLimit(1)
-                if book.isPremiumOnly {
-                    Text(L10n.premiumTitle)
-                        .font(.system(size: 10, weight: .heavy))
-                        .foregroundStyle(EKitapligimPalette.profileGoldDeep)
-                        .padding(.horizontal, 8)
-                        .padding(.vertical, 4)
-                        .background(EKitapligimPalette.amberSoft, in: Capsule())
-                }
+            ViewThatFits(in: .horizontal) {
+                HStack(spacing: 8) { heroStatistics(book) }
+                    .fixedSize(horizontal: true, vertical: false)
+                VStack(alignment: centered ? .center : .leading, spacing: 8) { heroStatistics(book) }
             }
         }
         .frame(maxWidth: .infinity, alignment: centered ? .center : .leading)
     }
 
+    @ViewBuilder private func heroStatistics(_ book: BookDTO) -> some View {
+        Label {
+            Text(String(format: "%.1f", book.rating ?? 0))
+                .foregroundStyle(Color(hex: 0x12252C))
+        } icon: {
+            Image(systemName: "star.fill").foregroundStyle(Color(hex: 0xD08A27))
+        }
+        .font(.title3.weight(.semibold))
+        Text(L10n.bookDetailDownloadCount(book.displayedDownloadCount))
+            .font(.body).foregroundStyle(Color(hex: 0x7D8A8F))
+            .fixedSize(horizontal: false, vertical: true)
+        if book.isPremiumOnly {
+            Text(L10n.premiumTitle)
+                .font(.caption2.weight(.heavy))
+                .foregroundStyle(EKitapligimPalette.profileGoldDeep)
+                .fixedSize(horizontal: false, vertical: true)
+                .padding(.horizontal, 8).padding(.vertical, 4)
+                .background(EKitapligimPalette.amberSoft, in: Capsule())
+        }
+    }
+
     private func heroMetaLine(_ icon: String, _ text: String, _ color: Color) -> some View {
         HStack(spacing: 9) {
             Image(systemName: icon)
-                .font(.subheadline)
+                .font(.system(size: 17))
                 .foregroundStyle(color.opacity(0.82))
                 .frame(width: 17, height: 17)
             Text(text)
                 .font(.body.weight(.semibold))
                 .foregroundStyle(color)
-                .lineLimit(1)
+                .fixedSize(horizontal: false, vertical: true)
         }
     }
 
@@ -297,7 +312,7 @@ struct BookDetailView: View {
                     Task { await download(book) }
                 } label: {
                     Image(systemName: "arrow.down.circle.fill")
-                        .font(.title3.weight(.bold))
+                        .font(.system(size: 24, weight: .bold))
                         .accessibilityLabel(L10n.bookDetailOfflineDownload)
                         .foregroundStyle(access?.canDownload == true ? Color(hex: 0x087A80) : Color(hex: 0x20363D))
                         .frame(width: 56, height: 56)
@@ -321,8 +336,12 @@ struct BookDetailView: View {
                     Label(shelfActionTitle, systemImage: "bookmark.fill")
                         .font(.system(.subheadline, design: .serif).weight(.bold))
                         .foregroundStyle(.white)
+                        .fixedSize(horizontal: false, vertical: true)
+                        .multilineTextAlignment(.center)
+                        .padding(.horizontal, 12)
+                        .padding(.vertical, 14)
                         .frame(maxWidth: .infinity)
-                        .frame(height: 56)
+                        .frame(minHeight: 56)
                         .background(
                             LinearGradient(
                                 colors: [Color(hex: 0xD9A24A), Color(hex: 0xC48728), Color(hex: 0xB97718)],
@@ -343,7 +362,7 @@ struct BookDetailView: View {
                     Task { await toggleFavorite() }
                 } label: {
                     Image(systemName: isFavorite ? "heart.fill" : "heart")
-                        .font(.title3.weight(.bold))
+                        .font(.system(size: 24, weight: .bold))
                         .foregroundStyle(isFavorite ? Color(hex: 0xC58A32) : Color(hex: 0x20363D))
                         .frame(width: 56, height: 56)
                         .background(
@@ -363,8 +382,12 @@ struct BookDetailView: View {
         Label(access?.canReadOnline == true ? L10n.bookDetailRead : L10n.bookDetailCheckReading, systemImage: "book.fill")
             .font(.system(.subheadline, design: .serif).weight(.bold))
             .foregroundStyle(.white)
+            .fixedSize(horizontal: false, vertical: true)
+            .multilineTextAlignment(.center)
+            .padding(.horizontal, 12)
+            .padding(.vertical, 14)
             .frame(maxWidth: .infinity)
-            .frame(height: 56)
+            .frame(minHeight: 56)
             .background(
                 LinearGradient(
                     colors: [Color(hex: 0x0A3B43), Color(hex: 0x0E5660), Color(hex: 0x08323A)],
@@ -411,15 +434,13 @@ struct BookDetailView: View {
     private func infoCard(_ book: BookDTO) -> some View {
         VStack(alignment: .leading, spacing: 10) {
             sectionHeading(L10n.bookDetailInfoTitle)
-            HStack(spacing: 10) {
+            LazyVGrid(columns: dynamicTypeSize.isAccessibilitySize
+                ? [GridItem(.flexible())]
+                : [GridItem(.adaptive(minimum: 140), spacing: 10)], spacing: 10) {
                 infoCell("tag.fill", L10n.bookDetailInfoCategory, book.category, accent: Color(hex: 0xE75D8F))
                 infoCell("globe", L10n.bookDetailInfoLanguage, book.language)
-            }
-            HStack(spacing: 10) {
                 infoCell("book.closed.fill", L10n.bookDetailInfoPages, String(book.pageCount))
                 infoCell("calendar", L10n.bookDetailInfoYear, book.publishYear)
-            }
-            HStack(spacing: 10) {
                 infoCell("barcode", L10n.bookDetailInfoISBN, book.isbn)
                 infoCell("doc.text", L10n.bookDetailInfoFormat, book.displayedFormat)
             }
@@ -438,6 +459,7 @@ struct BookDetailView: View {
             Text(title)
                 .font(.system(.title3, design: .serif).weight(.heavy))
                 .foregroundStyle(Color(hex: 0x0D3037))
+                .fixedSize(horizontal: false, vertical: true)
             Rectangle()
                 .fill(Color(hex: 0xD5A65A))
                 .frame(width: 46, height: 1)
@@ -448,17 +470,18 @@ struct BookDetailView: View {
     private func infoCell(_ icon: String, _ label: String, _ value: String, accent: Color = Color(hex: 0x42646A)) -> some View {
         HStack(spacing: 12) {
             Image(systemName: icon)
-                .font(.title3)
+                .font(.system(size: 24))
                 .foregroundStyle(accent)
                 .frame(width: 24, height: 24)
             VStack(alignment: .leading, spacing: 2) {
                 Text(label)
                     .font(.caption.weight(.medium))
                     .foregroundStyle(Color(hex: 0x8C8175))
+                    .fixedSize(horizontal: false, vertical: true)
                 Text(value.isEmpty ? L10n.bookDetailUnspecified : value)
                     .font(.system(.subheadline, design: .serif).weight(.bold))
                     .foregroundStyle(label == L10n.bookDetailInfoCategory ? Color(hex: 0xE75D8F) : Color(hex: 0x18252B))
-                    .lineLimit(1)
+                    .fixedSize(horizontal: false, vertical: true)
             }
             Spacer(minLength: 0)
         }
@@ -589,7 +612,9 @@ struct BookDetailView: View {
                 }
                 Spacer(minLength: 0)
             }
-            HStack(spacing: 8) {
+            LazyVGrid(columns: dynamicTypeSize.isAccessibilitySize
+                ? [GridItem(.flexible())]
+                : [GridItem(.adaptive(minimum: 110), spacing: 8)], spacing: 8) {
                 issueChip(L10n.bookDetailIssueBrokenLink, icon: "link", type: "broken_link")
                 issueChip(L10n.bookDetailIssueMissingCover, icon: "photo", type: "missing_cover")
                 issueChip(L10n.bookDetailIssueCopyright, icon: "c.circle", type: "copyright")
@@ -635,11 +660,13 @@ struct BookDetailView: View {
                     .accessibilityHidden(true)
                 Text(title)
                     .font(.caption2.weight(.bold))
-                    .lineLimit(1)
+                    .fixedSize(horizontal: false, vertical: true)
             }
             .foregroundStyle(Color(hex: 0x244C73))
+            .padding(.horizontal, 10)
+            .padding(.vertical, 10)
             .frame(maxWidth: .infinity)
-            .frame(height: 42)
+            .frame(minHeight: 44)
             .background(.white, in: RoundedRectangle(cornerRadius: 12, style: .continuous))
             .overlay {
                 RoundedRectangle(cornerRadius: 12, style: .continuous)
@@ -716,22 +743,25 @@ struct BookDetailView: View {
     }
 
     private var commentsSectionHeader: some View {
-        HStack(alignment: .center, spacing: 14) {
-            Image(systemName: "text.bubble.fill")
-                .font(.title3)
-                .foregroundStyle(Color(hex: 0x153F45))
-                .frame(width: 46, height: 46)
-                .background(Color(hex: 0xE8EFEA), in: RoundedRectangle(cornerRadius: 14, style: .continuous))
-            VStack(alignment: .leading, spacing: 2) {
-                Text(L10n.bookCommentsTitleCount(comments.count))
-                    .font(.system(.title3, design: .serif).weight(.heavy))
-                    .foregroundStyle(Color(hex: 0x0D3037))
-                Text(isSignedIn ? L10n.bookCommentsSignedInSubtitle : L10n.bookCommentsGuestSubtitle)
-                    .font(.caption)
-                    .foregroundStyle(Color(hex: 0x56666C))
-                    .multilineTextAlignment(.leading)
+        VStack(alignment: .leading, spacing: 12) {
+            HStack(alignment: .top, spacing: 14) {
+                Image(systemName: "text.bubble.fill")
+                    .font(.system(size: 22))
+                    .foregroundStyle(Color(hex: 0x153F45))
+                    .frame(width: 46, height: 46)
+                    .background(Color(hex: 0xE8EFEA), in: RoundedRectangle(cornerRadius: 14, style: .continuous))
+                VStack(alignment: .leading, spacing: 2) {
+                    Text(L10n.bookCommentsTitleCount(comments.count))
+                        .font(.system(.title3, design: .serif).weight(.heavy))
+                        .foregroundStyle(Color(hex: 0x0D3037))
+                        .fixedSize(horizontal: false, vertical: true)
+                    Text(isSignedIn ? L10n.bookCommentsSignedInSubtitle : L10n.bookCommentsGuestSubtitle)
+                        .font(.caption)
+                        .foregroundStyle(Color(hex: 0x56666C))
+                        .multilineTextAlignment(.leading)
+                        .fixedSize(horizontal: false, vertical: true)
+                }
             }
-            Spacer(minLength: 0)
             if !isSignedIn {
                 Button(L10n.bookCommentsLoginToComment) { showingCommentLoginAlert = true }
                     .font(.caption.weight(.bold))
@@ -745,23 +775,27 @@ struct BookDetailView: View {
 
     private var commentsComposer: some View {
         VStack(alignment: .leading, spacing: 10) {
-            HStack(spacing: 6) {
+            VStack(alignment: .leading, spacing: 6) {
                 Text(L10n.bookCommentsYourRating)
                     .font(.subheadline)
                     .foregroundStyle(Color(hex: 0x56666C))
-                ForEach(1...5, id: \.self) { value in
-                    Button { commentRating = value } label: {
-                        Image(systemName: value <= commentRating ? "star.fill" : "star")
-                            .font(.body)
-                            .foregroundStyle(Color(hex: 0xD08A27))
-                            .frame(width: 30, height: 30)
+                    .fixedSize(horizontal: false, vertical: true)
+                HStack(spacing: 6) {
+                    ForEach(1...5, id: \.self) { value in
+                        Button { commentRating = value } label: {
+                            Image(systemName: value <= commentRating ? "star.fill" : "star")
+                                .font(.system(size: 24))
+                                .foregroundStyle(Color(hex: 0xD08A27))
+                                .frame(width: 44, height: 44)
+                        }
+                        .buttonStyle(.plain)
+                        .accessibilityLabel(L10n.bookCommentsRating(value))
                     }
-                    .buttonStyle(.plain)
-                    .accessibilityLabel(L10n.bookCommentsRating(value))
                 }
             }
             TextField(L10n.bookCommentsPlaceholder, text: $commentText, axis: .vertical)
                 .focused($isCommentFocused)
+                .accessibilityIdentifier("book-comments-input")
                 .lineLimit(2...5)
                 .frame(minHeight: 84, alignment: .top)
                 .padding(10)
@@ -781,6 +815,7 @@ struct BookDetailView: View {
                     .disabled(isSubmittingComment)
             }
         }
+        .accessibilityIdentifier("book-comments-composer")
     }
 
     @ViewBuilder
@@ -1070,7 +1105,8 @@ struct BookDetailView: View {
                 .font(.system(.headline, design: .serif).weight(.heavy))
                 .foregroundStyle(Color(hex: 0x0D3037))
                 .multilineTextAlignment(.center)
-                .lineLimit(1)
+                .lineLimit(dynamicTypeSize.isAccessibilitySize ? 2 : 1)
+                .fixedSize(horizontal: false, vertical: true)
                 .frame(maxWidth: .infinity)
 
             Group {
@@ -1082,6 +1118,7 @@ struct BookDetailView: View {
                         androidRoundToolbarIcon("square.and.arrow.up")
                     }
                     .accessibilityLabel(L10n.commonShare)
+                    .accessibilityIdentifier("book.detail.share")
                 } else {
                     androidRoundToolbarIcon("square.and.arrow.up")
                         .opacity(0.35)
@@ -1089,8 +1126,7 @@ struct BookDetailView: View {
                 }
             }
         }
-        .padding(.leading, 20)
-        .padding(.trailing, 78)
+        .padding(.horizontal, 20)
         .padding(.vertical, 12)
         .background {
             Rectangle()
@@ -1106,7 +1142,7 @@ struct BookDetailView: View {
 
     private func androidRoundToolbarIcon(_ systemName: String) -> some View {
         Image(systemName: systemName)
-            .font(.body.weight(.semibold))
+            .font(.system(size: 22, weight: .semibold))
             .foregroundStyle(Color(hex: 0x153F45))
             .frame(width: 48, height: 48)
             .background(Color.white.opacity(0.96), in: Circle())
@@ -1152,17 +1188,22 @@ private struct SimilarBookCard: View {
 
 @MainActor
 private struct BookCommentRow: View {
+    @Environment(\.dynamicTypeSize) private var dynamicTypeSize
     let comment: BookCommentDTO
     let onBlocked: () -> Void
 
     var body: some View {
         VStack(alignment: .leading, spacing: 6) {
-            HStack(alignment: .center, spacing: 8) {
+            let headerLayout = dynamicTypeSize.isAccessibilitySize
+                ? AnyLayout(VStackLayout(alignment: .leading, spacing: 8))
+                : AnyLayout(HStackLayout(alignment: .center, spacing: 8))
+            headerLayout {
                 MemberProfileLink(memberID: comment.userId) {
                     Text(comment.username)
                         .font(.subheadline.weight(.bold))
                         .foregroundStyle(Color(hex: 0x0D3037))
-                        .lineLimit(1)
+                        .lineLimit(dynamicTypeSize.isAccessibilitySize ? nil : 1)
+                        .fixedSize(horizontal: false, vertical: true)
                 }
                 Spacer(minLength: 0)
                 HStack(spacing: 2) {

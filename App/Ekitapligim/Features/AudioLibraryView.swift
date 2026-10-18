@@ -3,6 +3,7 @@ import EkitapligimCore
 
 @MainActor
 struct AudioLibraryView: View {
+    @Environment(\.dynamicTypeSize) private var dynamicTypeSize
     @StateObject private var model: AudioLibraryModel
     @ObservedObject var controller: AudioPlaybackController
     let account: String?
@@ -29,7 +30,7 @@ struct AudioLibraryView: View {
                     if !model.loading, model.library?.books.isEmpty == true {
                         AudioEmptyView(); AudioActionButton(title: AudioL10n.text("profileDiscover"), icon: "headphones", prominent: true, action: onBrowse)
                     }
-                    LazyVGrid(columns: [GridItem(.adaptive(minimum: 150), spacing: 12)], alignment: .leading, spacing: 14) {
+                    LazyVGrid(columns: dynamicTypeSize.isAccessibilitySize ? [GridItem(.flexible())] : [GridItem(.adaptive(minimum: 150), spacing: 12)], alignment: .leading, spacing: 14) {
                         ForEach(model.library?.books ?? []) { book in AudioCardView(book: book) { onBook(book.id) } }
                     }
                 }
@@ -45,7 +46,7 @@ struct AudioLibraryView: View {
                 ForEach(AudioLibraryTab.allCases, id: \.rawValue) { tab in
                     Button { model.tab = tab; Task { await model.load(account: account) } } label: {
                         Text("\(tab.localizedTitle) (\(model.library.map { String($0.counts[tab.rawValue] ?? 0) } ?? "—"))").font(.caption.weight(.semibold))
-                            .padding(.horizontal, 14).frame(minHeight: 44).foregroundStyle(model.tab == tab ? Color.white : AudioStyle.ink)
+                            .fixedSize(horizontal: true, vertical: true).padding(.horizontal, 14).padding(.vertical, 6).frame(minHeight: 44).foregroundStyle(model.tab == tab ? Color.white : AudioStyle.ink)
                             .background(model.tab == tab ? AudioStyle.teal : Color.white).clipShape(Capsule())
                             .overlay(Capsule().stroke(AudioStyle.line, lineWidth: model.tab == tab ? 0 : 1))
                     }.buttonStyle(.plain).accessibilityAddTraits(model.tab == tab ? .isSelected : [])
@@ -73,11 +74,12 @@ struct AudioLibraryHeroView: View {
 }
 @MainActor
 struct AudioJourneyView: View {
+    @Environment(\.dynamicTypeSize) private var dynamicTypeSize
     let library: AudioLibraryDTO?
     var body: some View {
         VStack(alignment: .leading, spacing: 12) {
             Text(AudioL10n.text("journey")).font(.system(.title2, design: .serif, weight: .bold)).foregroundStyle(AudioStyle.ink)
-            LazyVGrid(columns: [GridItem(.adaptive(minimum: 140), spacing: 10)], alignment: .leading, spacing: 10) {
+            LazyVGrid(columns: dynamicTypeSize.isAccessibilitySize ? [GridItem(.flexible())] : [GridItem(.adaptive(minimum: 140), spacing: 10)], alignment: .leading, spacing: 10) {
                 stat("totalTime", value: AudioPresentationPolicy.serverDuration(library?.stats["total"]))
                 stat("monthTime", value: AudioPresentationPolicy.serverDuration(library?.stats["month"]))
                 stat("completed", value: String(library?.counts["completed"] ?? 0))
@@ -86,7 +88,7 @@ struct AudioJourneyView: View {
         }
     }
     private func stat(_ key: String, value: String) -> some View {
-        VStack(alignment: .leading, spacing: 10) { Text(value).font(.title3.weight(.bold)).foregroundStyle(AudioStyle.teal); Text(AudioL10n.text(key)).font(.caption).foregroundStyle(AudioStyle.muted) }
+        VStack(alignment: .leading, spacing: 10) { Text(value).font(.title3.weight(.bold)).foregroundStyle(AudioStyle.teal).fixedSize(horizontal: false, vertical: true); Text(AudioL10n.text(key)).font(.caption).foregroundStyle(AudioStyle.muted).fixedSize(horizontal: false, vertical: true) }
             .padding(16).frame(maxWidth: .infinity, minHeight: 84, alignment: .leading).background(.white).clipShape(RoundedRectangle(cornerRadius: 18))
             .overlay(RoundedRectangle(cornerRadius: 18).stroke(AudioStyle.line, lineWidth: 1))
     }
@@ -117,6 +119,7 @@ struct AudioHomePreviewView: View {
 
 @MainActor
 struct AudioProfileSectionView: View {
+    @Environment(\.dynamicTypeSize) private var dynamicTypeSize
     @StateObject private var model: AudioLibraryModel
     @ObservedObject var controller: AudioPlaybackController
     let account: String?
@@ -134,19 +137,21 @@ struct AudioProfileSectionView: View {
     var body: some View {
         VStack(alignment: .leading, spacing: 20) {
             HStack(spacing: 12) {
-                Image(systemName: "headphones").font(.title2).foregroundStyle(AudioStyle.teal).padding(13).background(.white).clipShape(RoundedRectangle(cornerRadius: 14))
+                if !dynamicTypeSize.isAccessibilitySize {
+                    Image(systemName: "headphones").font(.title2).foregroundStyle(AudioStyle.teal).padding(13).background(.white).clipShape(RoundedRectangle(cornerRadius: 14)).accessibilityHidden(true)
+                }
                 VStack(alignment: .leading, spacing: 4) {
-                    Text(AudioL10n.text("profileEyebrow")).font(.caption2).tracking(0.8).foregroundStyle(AudioStyle.muted)
-                    Text(AudioL10n.text("profileTitle")).font(.headline)
+                    Text(AudioL10n.text("profileEyebrow")).font(.caption2).tracking(0.8).foregroundStyle(AudioStyle.muted).fixedSize(horizontal: false, vertical: true)
+                    Text(AudioL10n.text("profileTitle")).font(.headline).fixedSize(horizontal: false, vertical: true)
                 }.frame(maxWidth: .infinity, alignment: .leading)
-                Button(action: onLibrary) { Image(systemName: "arrow.up.right").frame(width: 44, height: 44).background(.white).clipShape(Circle()) }
+                Button(action: onLibrary) { Image(systemName: "arrow.up.right").font(.system(size: 18)).frame(width: 44, height: 44).background(.white).clipShape(Circle()) }
                     .accessibilityLabel(AudioL10n.text("libraryTitle"))
             }
             if let error = model.error { AudioErrorView(message: error) { Task { await model.load(account: account) } } }
             if let book = model.library?.resumeBook { AudioResumeCard(book: book) { onBook(book.id) } }
             else { AudioDiscoverPreview(action: onBrowse) }
             Text(AudioL10n.text("profileLibrary")).font(.headline)
-            LazyVGrid(columns: [GridItem(.adaptive(minimum: 140), spacing: 10)], alignment: .leading, spacing: 10) {
+            LazyVGrid(columns: dynamicTypeSize.isAccessibilitySize ? [GridItem(.flexible())] : [GridItem(.adaptive(minimum: 140), spacing: 10)], alignment: .leading, spacing: 10) {
                 shelf(.favorite, icon: "heart", key: "favoriteTab")
                 shelf(.later, icon: "bookmark", key: "later")
                 shelf(.listening, icon: "headphones", key: "active")

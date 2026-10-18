@@ -87,12 +87,40 @@ public struct AudioMediaMetadata: Equatable, Sendable {
     public let mimeType: String
     public let supportsRanges: Bool
     public init(response: HTTPURLResponse) throws {
-        guard response.statusCode == 200, let lengthString = response.value(forHTTPHeaderField: "Content-Length"),
+        guard try !Self.requiresRangeProbe(response: response),
+              let lengthString = response.value(forHTTPHeaderField: "Content-Length")?.trimmingCharacters(in: .whitespacesAndNewlines),
               let length = Int64(lengthString), length > 0 else { throw AudioError.invalidRange }
-        let type = response.value(forHTTPHeaderField: "Content-Type")?.lowercased().components(separatedBy: ";").first ?? ""
+        self.length = length; mimeType = try Self.validatedMIME(response: response); supportsRanges = true
+    }
+    /// A proxy may omit HEAD length/range advertisement. A real bounded 206 proves those values.
+    /// Missing headers are recoverable; contradictory or malformed supplied values are not.
+    static func requiresRangeProbe(response: HTTPURLResponse) throws -> Bool {
+        guard response.statusCode == 200 else { throw AudioError.invalidRange }
+        _ = try validatedMIME(response: response)
+        let length = response.value(forHTTPHeaderField: "Content-Length")
+        if let length {
+            guard let value = Int64(length.trimmingCharacters(in: .whitespacesAndNewlines)), value > 0 else { throw AudioError.invalidRange }
+        }
+        let ranges = response.value(forHTTPHeaderField: "Accept-Ranges")
+        if let ranges {
+            guard ranges.trimmingCharacters(in: .whitespacesAndNewlines).lowercased() == "bytes" else { throw AudioError.invalidRange }
+        }
+        return length == nil || ranges == nil
+    }
+    init(probeResponse response: HTTPURLResponse, dataCount: Int) throws {
+        try AudioRangePolicy.validate(response: response, dataCount: dataCount, start: 0, end: 0)
+        let type = try Self.validatedMIME(response: response)
+        guard let header = response.value(forHTTPHeaderField: "Content-Range"),
+              let total = header.split(separator: "/").last.flatMap({ Int64($0) }), total > 0 else { throw AudioError.invalidRange }
+        length = total; mimeType = type; supportsRanges = true
+    }
+    private static func validatedMIME(response: HTTPURLResponse) throws -> String {
+        let type = response.value(forHTTPHeaderField: "Content-Type")?.lowercased().components(separatedBy: ";").first?.trimmingCharacters(in: .whitespacesAndNewlines) ?? ""
         guard type.hasPrefix("audio/") || type == "application/octet-stream" else { throw AudioError.invalidResponse }
-        self.length = length; mimeType = type; supportsRanges = response.value(forHTTPHeaderField: "Accept-Ranges")?.lowercased() == "bytes"
-        guard supportsRanges else { throw AudioError.invalidRange }
+        if let encoding = response.value(forHTTPHeaderField: "Content-Encoding") {
+            guard encoding.trimmingCharacters(in: .whitespacesAndNewlines).lowercased() == "identity" else { throw AudioError.invalidRange }
+        }
+        return type
     }
 }
 public enum AudioRangePolicy {
