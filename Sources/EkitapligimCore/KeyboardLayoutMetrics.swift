@@ -1,4 +1,7 @@
 import Foundation
+#if canImport(CoreGraphics)
+import CoreGraphics
+#endif
 
 /// Pure layout policy for a keyboard guide measured in its owning view's coordinates.
 /// A guide that is hidden or floating must not reserve a keyboard-sized blank region.
