@@ -93,7 +93,7 @@ final class ResponsiveComponentLayoutTests: XCTestCase {
             ("readerProgress", AnyView(ReaderEPUBProgress(percent: 37, detail: longText,
                                                          syncLabel: "Okuma ilerlemesi eşitleniyor", syncFailed: false, theme: .sepia))),
             ("collapsibleHero", AnyView(EKCollapsibleHero(progress: 0) {
-                Text(longText).font(.title).padding(16)
+                Text(self.longText).font(.title).padding(16)
             } collapsed: {
                 Text("Kitap").font(.headline)
             }))
