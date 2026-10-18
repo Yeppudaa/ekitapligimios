@@ -1,0 +1,11 @@
+{
+  "source": "dc7e93abaf10fa730837ad8fb1f1332086c97f95",
+  "buildUrl": "https://codemagic.io/app/6a5221a644ecae83eeea61ec/build/6ad491e97550aed8108fc9d7",
+  "evidence": "Observed in the completed Codemagic steps and their VALIDATION SUMMARY logs; UI summary screenshot saved in the local delivery audit.",
+  "results": {
+    "core": {"passed": 450, "failed": 0},
+    "native": {"passed": 31, "failed": 0, "skipped": 0},
+    "ui": {"passed": 10, "failed": 0, "skipped": 0}
+  },
+  "archiveOutcome": "The following IPA archive command exited 65 before upload; successful tests remain valid only for identical app and test sources."
+}
