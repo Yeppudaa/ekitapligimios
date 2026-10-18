@@ -293,7 +293,7 @@
     "App/EkitapligimTests/BookAgendaFeedModelTests.swift": "48cf36cff0cc2f5359ffb15a48de38f0d45e97437c36ccfcb74ccf502076b6d5",
     "App/EkitapligimTests/BookDetailLoadingModelTests.swift": "4e2d79df999df7990083f306b0732c51bd0045e2788fbdb8afdb008693a966f3",
     "App/EkitapligimTests/BookFileDeviceExportTests.swift": "7a2938c9b02aec4a7cb3ab935cf2b54855c8f7d200573d178ba067a5a4de04c9",
-    "App/EkitapligimTests/BookLibraryMutationTests.swift": "730b6570a96fa165b66cf8ea1b02f2b5a40e034d4db3a0463e57c5e5bbd67a39",
+    "App/EkitapligimTests/BookLibraryMutationTests.swift": "7b52d1ba2ac2960e8a3d43a1197638070677d62c9abd8ecfad5c86c969d431a5",
     "App/EkitapligimTests/ChatModelTests.swift": "06176d7b1e58bc2c1599a777c7234e807a81f701672c0c9367c10263787470a0",
     "App/EkitapligimTests/DownloadManagerTests.swift": "bc20852853c2fca3b3256cd82dfefe820e4aa965633721bee720df08b7cb1889",
     "App/EkitapligimTests/EPUBReaderPositionTests.swift": "184df782b2aa50584f1bd757cfb4c9097a96d52f224286befd84eb7510465c90",

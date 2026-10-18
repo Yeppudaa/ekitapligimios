@@ -9,8 +9,8 @@ import EkitapligimCore
 @MainActor
 final class BookLibraryMutationTests: XCTestCase {
     func testFavoriteForANewBookCreatesItsLibraryItemWithBookMetadata() async throws {
-        let fixture = try makeFixture()
-        defer { fixture.close() }
+        let fixture = try await makeFixture()
+        addTeardownBlock { await fixture.close() }
         let notifications = LibraryActivityCounter()
         defer { notifications.stop() }
         let book = try book()
@@ -35,8 +35,8 @@ final class BookLibraryMutationTests: XCTestCase {
     }
 
     func testFavoriteAdditionAndRemovalPreserveReadingShelfAndPosition() async throws {
-        let fixture = try makeFixture(item: item())
-        defer { fixture.close() }
+        let fixture = try await makeFixture(item: item())
+        addTeardownBlock { await fixture.close() }
         let notifications = LibraryActivityCounter()
         defer { notifications.stop() }
         let book = try book()
@@ -58,8 +58,8 @@ final class BookLibraryMutationTests: XCTestCase {
     }
 
     func testFavoriteToggleKeepsExplicitNoneShelfWithExistingReaderProgress() async throws {
-        let fixture = try makeFixture(item: item(state: "NONE", percent: 37, page: 14))
-        defer { fixture.close() }
+        let fixture = try await makeFixture(item: item(state: "NONE", percent: 37, page: 14))
+        addTeardownBlock { await fixture.close() }
 
         for value in [true, false] {
             try await fixture.container.setBookFavorite(book: book(), isFavorite: value)
@@ -68,8 +68,8 @@ final class BookLibraryMutationTests: XCTestCase {
     }
 
     func testReadingShelfChangesPreserveIndependentFavoriteAndProgress() async throws {
-        let fixture = try makeFixture(item: item(favorite: true))
-        defer { fixture.close() }
+        let fixture = try await makeFixture(item: item(favorite: true))
+        addTeardownBlock { await fixture.close() }
         for state in ["OKUYACAGIM", "OKUDUM", "NONE", "OKUYORUM"] {
             try await fixture.container.updateBookShelf(book: book(), state: state)
             assertItem(fixture.container, state: state, favorite: true, percent: 42, page: 17)
@@ -86,20 +86,20 @@ final class BookLibraryMutationTests: XCTestCase {
     func testAuthorizedReadingPromotesLegacyFavoriteAndWantToReadWithoutLosingFavorite() async throws {
         for (state, favorite) in [("FAVORI", true), ("OKUYACAGIM", false), ("NONE", false)] {
             // Legacy FAVORI responses can omit the independent flag; shelf membership still counts.
-            let fixture = try makeFixture(item: item(state: state, percent: 0, page: 0))
+            let fixture = try await makeFixture(item: item(state: state, percent: 0, page: 0))
             let opened = await fixture.container.markBookReading(book: try book())
             XCTAssertTrue(opened)
             assertItem(fixture.container, state: "OKUYORUM", favorite: favorite, percent: 0, page: 0)
             XCTAssertGreaterThan(fixture.container.libraryItems.first?.lastReadAt ?? 0, 123)
             let requests = await fixture.server.requests
             XCTAssertEqual(requests.map { $0.form["shelf_state"] }, ["OKUYORUM"])
-            fixture.close()
+            await fixture.close()
         }
     }
 
     func testOpeningAnAlreadyReadingOrFinishedBookDoesNotOverwriteItsShelf() async throws {
         for state in ["OKUYORUM", "OKUDUM"] {
-            let fixture = try makeFixture(item: item(state: state, favorite: true))
+            let fixture = try await makeFixture(item: item(state: state, favorite: true))
             let notifications = LibraryActivityCounter()
             let opened = await fixture.container.markBookReading(book: try book())
             XCTAssertTrue(opened)
@@ -108,14 +108,14 @@ final class BookLibraryMutationTests: XCTestCase {
             XCTAssertTrue(requests.isEmpty, "Opening an existing shelf must not reset shared library state.")
             XCTAssertEqual(notifications.count, 1, "Actual reader opens still invalidate the server-backed activity feed.")
             notifications.stop()
-            fixture.close()
+            await fixture.close()
         }
     }
 
     func testRejectedWritesKeepExistingLibraryAndDoNotNotifyTheActivityFeed() async throws {
         let original = item()
-        let fixture = try makeFixture(item: original, rejectWrites: true)
-        defer { fixture.close() }
+        let fixture = try await makeFixture(item: original, rejectWrites: true)
+        addTeardownBlock { await fixture.close() }
         let notifications = LibraryActivityCounter()
         defer { notifications.stop() }
         for favoriteWrite in [true, false] {
@@ -137,8 +137,8 @@ final class BookLibraryMutationTests: XCTestCase {
     func testAccountChangeDiscardsAnOldResponseWithoutMutatingTheNextLibrary() async throws {
         let started = expectation(description: "Old account favorite request suspended")
         let gate = LibraryMutationGate(started: started)
-        let fixture = try makeFixture(item: item(), gates: [1: gate])
-        defer { fixture.close() }
+        let fixture = try await makeFixture(item: item(), gates: [1: gate])
+        addTeardownBlock { await fixture.close() }
         let notifications = LibraryActivityCounter()
         defer { notifications.stop() }
         let mutation = Task { try await fixture.container.setBookFavorite(book: book(), isFavorite: true) }
@@ -162,8 +162,8 @@ final class BookLibraryMutationTests: XCTestCase {
         let newStarted = expectation(description: "New account request suspended")
         let oldGate = LibraryMutationGate(started: oldStarted)
         let newGate = LibraryMutationGate(started: newStarted)
-        let fixture = try makeFixture(item: item(), gates: [1: oldGate, 2: newGate])
-        defer { fixture.close() }
+        let fixture = try await makeFixture(item: item(), gates: [1: oldGate, 2: newGate])
+        addTeardownBlock { await fixture.close() }
         let notifications = LibraryActivityCounter()
         defer { notifications.stop() }
         let oldMutation = Task { try await fixture.container.setBookFavorite(book: book(), isFavorite: true) }
@@ -191,8 +191,8 @@ final class BookLibraryMutationTests: XCTestCase {
     func testFavoriteAcknowledgementRebasesOntoReaderProgressChangedDuringTheRequest() async throws {
         let started = expectation(description: "Favorite request suspended while reader moves")
         let gate = LibraryMutationGate(started: started)
-        let fixture = try makeFixture(item: item(), gates: [1: gate])
-        defer { fixture.close() }
+        let fixture = try await makeFixture(item: item(), gates: [1: gate])
+        addTeardownBlock { await fixture.close() }
         let mutation = Task { try await fixture.container.setBookFavorite(book: book(), isFavorite: true) }
         await fulfillment(of: [started], timeout: 3)
         fixture.container.patchLibraryItem("101") {
@@ -209,8 +209,8 @@ final class BookLibraryMutationTests: XCTestCase {
     func testShelfAcknowledgementRebasesOntoReaderProgressChangedDuringTheRequest() async throws {
         let started = expectation(description: "Shelf request suspended while reader moves")
         let gate = LibraryMutationGate(started: started)
-        let fixture = try makeFixture(item: item(favorite: true), gates: [1: gate])
-        defer { fixture.close() }
+        let fixture = try await makeFixture(item: item(favorite: true), gates: [1: gate])
+        addTeardownBlock { await fixture.close() }
         let mutation = Task { try await fixture.container.updateBookShelf(book: book(), state: "OKUDUM") }
         await fulfillment(of: [started], timeout: 3)
         fixture.container.patchLibraryItem("101") {
@@ -226,8 +226,8 @@ final class BookLibraryMutationTests: XCTestCase {
     func testQueuedShelfWriteReadsPositionAfterThePrecedingReaderWriteFinishes() async throws {
         let started = expectation(description: "Preceding reader operation suspended")
         let gate = LibraryMutationGate(started: started)
-        let fixture = try makeFixture(item: item(favorite: true))
-        defer { fixture.close() }
+        let fixture = try await makeFixture(item: item(favorite: true))
+        addTeardownBlock { await fixture.close() }
         fixture.container.readerWrites.enqueue {
             await gate.wait()
             fixture.container.patchLibraryItem("101") { $0.updating(progressPercent: 74, lastReadPage: 41) }
@@ -274,7 +274,7 @@ final class BookLibraryMutationTests: XCTestCase {
     }
 
     private func makeFixture(item: LibraryItemDTO? = nil, rejectWrites: Bool = false,
-        gates: [Int: LibraryMutationGate] = [:]) throws -> LibraryMutationContext {
+        gates: [Int: LibraryMutationGate] = [:]) async throws -> LibraryMutationContext {
         let server = LibraryMutationServer(rejectWrites: rejectWrites, gates: gates)
         let fixtureID = UUID().uuidString
         LibraryMutationProtocolRegistry.install(server, id: fixtureID)
@@ -288,6 +288,7 @@ final class BookLibraryMutationTests: XCTestCase {
         container.authState = .signedIn(session)
         #if canImport(StoreKit)
         container.storeKit.stopObservingTransactions()
+        await container.assistantModel.waitUntilIdle()
         #endif
         if let item { container.upsertLibraryItem(item) }
         return LibraryMutationContext(container: container, server: server, tokens: tokens,
@@ -304,17 +305,28 @@ private struct LibraryMutationContext {
     let fixtureID: String
 
     func switchAccount() async {
+        #if canImport(StoreKit)
+        await container.assistantModel.waitUntilIdle()
+        #endif
         let next = Session(accessToken: "library_mutation_fixture_b_\(fixtureID)", refreshToken: nil,
             username: "LibraryMutationNextFixture_\(fixtureID)", userID: "next_\(fixtureID)")
         await tokens.save(session: next)
         container.authState = .signedIn(next)
         #if canImport(StoreKit)
         container.storeKit.stopObservingTransactions()
+        await container.assistantModel.waitUntilIdle()
         #endif
     }
 
-    func close() {
+    func close() async {
+        #if canImport(StoreKit)
+        await container.assistantModel.waitUntilIdle()
+        #endif
         container.authState = .signedOut
+        #if canImport(StoreKit)
+        // Sign-out starts the guest bootstrap; drain it before invalidating the session.
+        await container.assistantModel.waitUntilIdle()
+        #endif
         urlSession.invalidateAndCancel()
         LibraryMutationProtocolRegistry.remove(id: fixtureID)
     }
@@ -361,7 +373,8 @@ private actor LibraryMutationServer {
         // Signing in also refreshes the independent assistant model in the native host.
         // Keep that bootstrap local without counting it as a library write.
         if request.httpMethod == "GET", request.url?.path == "/mobile-api/v1/ai/bootstrap" {
-            return Data(#"{"enabled":false,"authenticated":true}"#.utf8)
+            let signedIn = request.value(forHTTPHeaderField: "Authorization") != nil
+            return Data((signedIn ? #"{"enabled":false,"authenticated":true}"# : #"{"enabled":false,"authenticated":false}"#).utf8)
         }
         guard request.httpMethod == "PUT", request.url?.path.hasSuffix("/me/library/101") == true else {
             XCTFail("Unexpected request in library mutation test: \(request.httpMethod ?? "") \(request.url?.path ?? "")")
