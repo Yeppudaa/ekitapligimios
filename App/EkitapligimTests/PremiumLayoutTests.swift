@@ -73,31 +73,8 @@ final class PremiumLayoutTests: XCTestCase {
                 continue
             }
             let bounds = CGRect(origin: .zero, size: CGSize(width: width, height: ceil(fitted.height)))
-            let window = UIWindow(frame: bounds)
-            window.overrideUserInterfaceStyle = darkAndDisabled ? .dark : .light
-            window.rootViewController = host
-            window.makeKeyAndVisible()
-            defer { window.isHidden = true; window.rootViewController = nil }
-            host.view.frame = bounds
-            host.view.setNeedsLayout()
-            host.view.layoutIfNeeded()
-            // Give SwiftUI/UIKit a main-run-loop turn to commit the newly attached hierarchy.
-            await Task.yield()
-            try await Task.sleep(for: .milliseconds(150))
-            host.view.layoutIfNeeded()
-            let format = UIGraphicsImageRendererFormat()
-            format.scale = 1
-            let renderer = UIGraphicsImageRenderer(bounds: bounds, format: format)
-            var rendered = false
-            let image = renderer.image { _ in
-                rendered = host.view.drawHierarchy(in: bounds, afterScreenUpdates: true)
-            }
-            XCTAssertTrue(rendered, "UIKit did not finish rendering Premium \(width)pt / \(size), height \(bounds.height)")
-            XCTAssertEqual(image.size.width, width, accuracy: 0.5)
-            let attachment = XCTAttachment(image: image)
-            attachment.name = "Premium-\(Int(width))pt-\(size)-\(darkAndDisabled ? "dark-disabled" : "light")"
-            attachment.lifetime = .keepAlways
-            add(attachment)
+            try await LayoutReviewCapture.record(host: host, size: bounds.size,
+                name: "Premium-\(Int(width))pt-\(size)-\(darkAndDisabled ? "dark-disabled" : "light")", test: self)
         }
     }
 
