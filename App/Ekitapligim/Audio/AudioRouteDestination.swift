@@ -21,6 +21,7 @@ struct AudioRouteDestination: View {
                     AudioBookDetailView(bookID: id, repository: repository, controller: controller, account: container.audioAccount,
                         onBook: openBook, onLogin: login, onPremium: premium,
                         onPlayer: { childRoute = .audioPlayer }, onFilterCatalog: openFilteredCatalog)
+                        .id(id)
                 case .audioLibrary(let tab):
                     AudioLibraryView(repository: repository, controller: controller, account: container.audioAccount,
                         initialTab: AudioLibraryTab(rawValue: tab) ?? .saved,
@@ -35,7 +36,10 @@ struct AudioRouteDestination: View {
             }
         }
         .toolbar(.visible, for: .navigationBar)
-        .navigationDestination(item: $childRoute) { route in AudioRouteDestination(route: route, initialFilters: route == .audiobooks ? childFilters : nil) }
+        .navigationDestination(item: $childRoute) { route in
+            AudioRouteDestination(route: route, initialFilters: route == .audiobooks ? childFilters : nil)
+                .id(route.id)
+        }
         .onAppear { container.audioPlayback?.activate(account: container.audioAccount) }
         .onChange(of: container.sessionRevision) { _, _ in
             container.audioPlayback?.activate(account: container.audioAccount)

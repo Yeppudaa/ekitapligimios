@@ -65,6 +65,7 @@ struct LibraryView: View {
                     .padding(.vertical, 12)
                 }
                 .refreshable { await load() }
+                .accessibilityIdentifier("library.scroll")
             } else {
                 guestPrompt
             }

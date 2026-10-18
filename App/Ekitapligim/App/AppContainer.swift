@@ -13,6 +13,11 @@ final class AppContainer: ObservableObject {
             if previousAccount != currentAccount || (currentAccount == nil && oldValue != authState) {
                 sessionGeneration = UUID()
                 isRefreshingSession = false
+                libraryWriteOperations = [:]
+                libraryUpdatingBookIDs = []
+                libraryMutationErrors = [:]
+                libraryItems = []
+                libraryGeneration = UUID()
                 if previousAccount != nil { notificationReadSync.clear() }
                 storeKit.activateAccount(currentAccount)
             }
@@ -45,6 +50,9 @@ final class AppContainer: ObservableObject {
     @Published private(set) var subscription: SubscriptionDTO?
     @Published private(set) var readingStats: ReadingStatsDTO?
     @Published private(set) var libraryItems: [LibraryItemDTO] = []
+    @Published private(set) var libraryUpdatingBookIDs: Set<Int> = []
+    @Published private(set) var libraryMutationErrors: [Int: String] = [:]
+    private var libraryWriteOperations: [Int: Set<UUID>] = [:]
     @Published private(set) var readerSyncStates: [Int: ReaderProgressSyncState] = [:]
     private var libraryGeneration = UUID()
     private var activeReaderAccount: String?
@@ -134,6 +142,7 @@ final class AppContainer: ObservableObject {
     lazy var homeEditorial: HomeEditorialRepository = {
         HomeEditorialRepository(webBaseURL: config.webBaseURL, session: audioURLSession ?? .shared)
     }()
+    lazy var homeNovels = HomeNovelRepository(catalog: books)
     lazy var profileVisitRecorder: ProfileVisitRecorder? = {
         try? ProfileVisitRecorder(webBaseURL: config.webBaseURL, tokens: tokenStore, session: audioURLSession)
     }()
@@ -431,6 +440,94 @@ final class AppContainer: ObservableObject {
     func upsertLibraryItem(_ item: LibraryItemDTO) {
         libraryItems.removeAll { $0.bookId == item.bookId }
         libraryItems.insert(item, at: 0)
+    }
+
+    func updateBookShelf(book: BookDTO, state: String) async throws {
+        guard ["OKUYORUM", "OKUYACAGIM", "OKUDUM", "NONE"].contains(state) else { throw APIClientError.invalidResponse }
+        try await changeBookLibrary(book: book, change: .shelf(state))
+    }
+
+    func setBookFavorite(book: BookDTO, isFavorite: Bool) async throws {
+        try await changeBookLibrary(book: book, change: .favorite(isFavorite))
+    }
+
+    /// Called after authorized reader content is displayed, never by a download or preview tap.
+    func markBookReading(book: BookDTO) async -> Bool {
+        do {
+            try await changeBookLibrary(book: book, change: .readingStarted)
+            return true
+        } catch { return false }
+    }
+
+    private enum BookLibraryChange: Sendable { case shelf(String), favorite(Bool), readingStarted }
+
+    private func changeBookLibrary(book: BookDTO, change: BookLibraryChange) async throws {
+        guard isSignedIn, let bookID = Int(book.id), bookID > 0 else { throw APIClientError.invalidResponse }
+        let accountRevision = sessionGeneration
+        let operationID = UUID()
+        libraryWriteOperations[bookID, default: []].insert(operationID)
+        libraryUpdatingBookIDs.insert(bookID)
+        libraryMutationErrors[bookID] = nil
+        libraryGeneration = UUID()
+        defer {
+            libraryWriteOperations[bookID]?.remove(operationID)
+            if libraryWriteOperations[bookID]?.isEmpty != false {
+                libraryWriteOperations[bookID] = nil
+                libraryUpdatingBookIDs.remove(bookID)
+            }
+        }
+
+        // Share the reader's queue: a shelf request must read progress after preceding writes finish.
+        try await withCheckedThrowingContinuation { (continuation: CheckedContinuation<Void, Error>) in
+            readerWrites.enqueue { [self] in
+                do {
+                    guard accountRevision == sessionGeneration, isSignedIn else { throw CancellationError() }
+                    let existing = libraryItems.first { $0.bookId == book.id }
+                    let item = existing ?? LibraryItemDTO(bookId: book.id, shelfState: "NONE", progressPercent: 0,
+                        lastReadPage: 0, isDownloaded: downloadManager.localFile(for: book.id) != nil,
+                        isFavorite: false, title: book.title, author: book.author, coverUrl: book.coverUrl, pageCount: book.pageCount)
+                    let progress = item.readingProgressForShelfUpdate
+                    let updated: LibraryItemDTO
+                    switch change {
+                    case .favorite(let value):
+                        try await books.setLibraryFavorite(bookID: bookID, isFavorite: value)
+                        // Old servers represented a favorite as a shelf. Remove that legacy marker,
+                        // retaining any independently inferred reading state and the exact position.
+                        let current = libraryItems.first { $0.bookId == book.id } ?? item
+                        let isLegacyFavorite = ["FAVORI", "FAVORITE", "FAV"].contains(current.normalizedShelfState)
+                        let shelf = isLegacyFavorite ? current.displayShelfStateForMenu : current.shelfState
+                        updated = current.updating(shelfState: shelf.isEmpty ? "NONE" : shelf, isFavorite: value)
+                    case .shelf(let state):
+                        try await books.updateLibraryItem(bookID: bookID, shelfState: state,
+                            progressPercent: progress.percent, lastReadPage: progress.page)
+                        let current = libraryItems.first { $0.bookId == book.id } ?? item
+                        updated = current.updating(shelfState: state, isFavorite: item.isFavoriteItem)
+                    case .readingStarted:
+                        if item.isOnFinishedShelf || item.normalizedShelfState == "OKUYORUM" || item.normalizedShelfState == "READING" {
+                            NotificationCenter.default.post(name: .libraryActivityChanged, object: nil)
+                            continuation.resume()
+                            return
+                        }
+                        try await books.updateLibraryItem(bookID: bookID, shelfState: "OKUYORUM",
+                            progressPercent: progress.percent, lastReadPage: progress.page)
+                        let current = libraryItems.first { $0.bookId == book.id } ?? item
+                        updated = current.updating(shelfState: "OKUYORUM", isFavorite: item.isFavoriteItem,
+                            lastReadAt: Int(Date().timeIntervalSince1970))
+                    }
+                    guard accountRevision == sessionGeneration, isSignedIn else { throw CancellationError() }
+                    // Reject any library GET that began before this acknowledged write.
+                    libraryGeneration = UUID()
+                    upsertLibraryItem(updated)
+                    NotificationCenter.default.post(name: .libraryActivityChanged, object: nil)
+                    continuation.resume()
+                } catch {
+                    if accountRevision == sessionGeneration, !(error is CancellationError) {
+                        libraryMutationErrors[bookID] = L10n.libraryUpdateFailed
+                    }
+                    continuation.resume(throwing: error)
+                }
+            }
+        }
     }
 
     func updateProfile(_ updated: ProfileDTO) {

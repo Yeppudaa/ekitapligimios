@@ -123,15 +123,15 @@ struct AudioProfileSectionView: View {
     @StateObject private var model: AudioLibraryModel
     @ObservedObject var controller: AudioPlaybackController
     let account: String?
-    let commentsURL: URL?
+    var onComments: () -> Void
     var onBook: (Int) -> Void
     var onBrowse: () -> Void
     var onLibrary: () -> Void
     var onTab: (AudioLibraryTab) -> Void
-    init(repository: AudioRepository, controller: AudioPlaybackController, account: String?, commentsURL: URL? = nil, onBook: @escaping (Int) -> Void,
+    init(repository: AudioRepository, controller: AudioPlaybackController, account: String?, onComments: @escaping () -> Void, onBook: @escaping (Int) -> Void,
          onBrowse: @escaping () -> Void, onLibrary: @escaping () -> Void, onTab: @escaping (AudioLibraryTab) -> Void) {
         _model = StateObject(wrappedValue: AudioLibraryModel(repository: repository)); self.controller = controller; self.account = account
-        self.commentsURL = commentsURL
+        self.onComments = onComments
         self.onBook = onBook; self.onBrowse = onBrowse; self.onLibrary = onLibrary; self.onTab = onTab
     }
     var body: some View {
@@ -157,12 +157,8 @@ struct AudioProfileSectionView: View {
                 shelf(.listening, icon: "headphones", key: "active")
                 shelf(.completed, icon: "checkmark.circle", key: "completedTab")
                 shelf(.history, icon: "clock.arrow.circlepath", key: "historyTab")
-                if let commentsURL {
-                    Link(destination: commentsURL) { commentsTile }.buttonStyle(.plain)
-                        .accessibilityIdentifier("profile.audio.comments")
-                } else {
-                    commentsTile.opacity(0.6)
-                }
+                Button(action: onComments) { commentsTile }.buttonStyle(.plain)
+                    .accessibilityIdentifier("profile.audio.comments")
             }
             Button(action: onLibrary) { HStack { Text(AudioL10n.text("journey")); Spacer(); Image(systemName: "arrow.right") }.font(.caption.weight(.semibold)).frame(minHeight: 44) }
         }.padding(18).foregroundStyle(AudioStyle.ink)

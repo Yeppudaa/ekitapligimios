@@ -69,7 +69,7 @@ PY
 while IFS=$'\t' read -r label device; do
   test_status=0
   scheme=Ekitapligim
-  arguments=(-only-testing:EkitapligimUITests/ModernParityUITests)
+  arguments=(-only-testing:EkitapligimUITests/ModernParityUITests -only-testing:EkitapligimUITests/BookLibraryUITests)
   # Unit tests use a blank app host and never share a launch environment with UI tests.
   if [ "$label" = "native-unit" ]; then
     scheme=EkitapligimModernUnit

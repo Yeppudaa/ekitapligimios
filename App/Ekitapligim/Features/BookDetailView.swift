@@ -38,9 +38,14 @@ struct BookDetailView: View {
     @State private var exportFileURL: URL?
     @State private var isPreparingDownload = false
     @State private var shelfStatusMessage: String?
-    @State private var currentShelfState = ""
-    @State private var isFavorite = false
-    @State private var isUpdatingShelf = false
+    @State private var shelfUpdateFailed = false
+    @State private var showingShelfPicker = false
+    private var currentShelfState: String {
+        guard let item = libraryItem, !["NONE", ""].contains(item.normalizedShelfState) else { return "" }
+        return item.displayShelfStateForMenu
+    }
+    private var isFavorite: Bool { libraryItem?.isFavoriteItem ?? false }
+    private var isUpdatingShelf: Bool { container.libraryUpdatingBookIDs.contains(bookID) }
     private var comments: [BookCommentDTO] { loading.comments }
     private var commentsPage: Int { loading.commentsPage }
     private var commentsLastPage: Int { loading.commentsLastPage }
@@ -52,6 +57,7 @@ struct BookDetailView: View {
     @State private var showingCommentLoginAlert = false
     @State private var showingDownloadPremiumAlert = false
     @State private var showingReaderLoginAlert = false
+    @State private var showingLibraryLoginAlert = false
     @State private var showingReport = false
     @State private var showingReader = false
     @State private var readerRequestedPremium = false
@@ -115,7 +121,6 @@ struct BookDetailView: View {
             isCommentFocused = false
             loading.cancel()
         }
-        .onChange(of: loading.book?.id) { _, _ in syncShelfFromLibrary() }
         .fullScreenCover(isPresented: $showingReader, onDismiss: {
             if readerRequestedPremium {
                 readerRequestedPremium = false
@@ -150,14 +155,17 @@ struct BookDetailView: View {
         } message: {
             Text(L10n.bookDetailLoginRequiredMessage)
         }
+        .alert(L10n.bookCommentsLoginRequiredTitle, isPresented: $showingLibraryLoginAlert) {
+            Button(L10n.bookRequestsGoToLogin) { container.selectedTab = .profile }
+            Button(L10n.commonCancel, role: .cancel) {}
+        } message: {
+            Text(LibraryDetailL10n.text("loginMessage"))
+        }
         .alert(L10n.quotaDownloadPremiumTitle, isPresented: $showingDownloadPremiumAlert) {
             Button(L10n.readerPreviewLimitUpgrade) { container.open(route: .premium) }
             Button(L10n.commonCancel, role: .cancel) {}
         } message: {
             Text(L10n.quotaDownloadPremiumRequired)
-        }
-        .onChange(of: container.libraryItems) { _, _ in
-            syncShelfFromLibrary()
         }
         .background {
             BookFileDeviceExportPresenter(fileURL: $exportFileURL)
@@ -169,8 +177,8 @@ struct BookDetailView: View {
             LazyVStack(alignment: .leading, spacing: 16) {
                 heroSection(book)
                 actionsSection(book)
-                AIBookEntry(model: container.assistantModel, book: book)
                 statusBanners
+                AIBookEntry(model: container.assistantModel, book: book)
                 infoCard(book)
                 synopsisCard(book)
                 reportSection
@@ -326,55 +334,8 @@ struct BookDetailView: View {
                 .disabled(isPreparingDownload)
             }
 
-            HStack(spacing: 10) {
-                Menu {
-                    Button(L10n.libraryShelfLater) { Task { await updateShelf("OKUYACAGIM") } }
-                    Button(L10n.libraryShelfReading) { Task { await updateShelf("OKUYORUM") } }
-                    Button(L10n.libraryShelfFinished) { Task { await updateShelf("OKUDUM") } }
-                    Button(L10n.libraryShelfRemove, role: .destructive) { Task { await updateShelf("NONE") } }
-                } label: {
-                    Label(shelfActionTitle, systemImage: "bookmark.fill")
-                        .font(.system(.subheadline, design: .serif).weight(.bold))
-                        .foregroundStyle(.white)
-                        .fixedSize(horizontal: false, vertical: true)
-                        .multilineTextAlignment(.center)
-                        .padding(.horizontal, 12)
-                        .padding(.vertical, 14)
-                        .frame(maxWidth: .infinity)
-                        .frame(minHeight: 56)
-                        .background(
-                            LinearGradient(
-                                colors: [Color(hex: 0xD9A24A), Color(hex: 0xC48728), Color(hex: 0xB97718)],
-                                startPoint: .top,
-                                endPoint: .bottom
-                            ),
-                            in: RoundedRectangle(cornerRadius: 10, style: .continuous)
-                        )
-                        .overlay {
-                            RoundedRectangle(cornerRadius: 10)
-                                .stroke(Color(hex: 0xE0B567), lineWidth: 1)
-                        }
-                }
-                .disabled(!isSignedIn || isUpdatingShelf)
-                .accessibilityLabel(L10n.libraryShelfPicker)
-
-                Button {
-                    Task { await toggleFavorite() }
-                } label: {
-                    Image(systemName: isFavorite ? "heart.fill" : "heart")
-                        .font(.system(size: 24, weight: .bold))
-                        .foregroundStyle(isFavorite ? Color(hex: 0xC58A32) : Color(hex: 0x20363D))
-                        .frame(width: 56, height: 56)
-                        .background(
-                            LinearGradient(colors: [.white, Color(hex: 0xFFFBF4)], startPoint: .top, endPoint: .bottom),
-                            in: RoundedRectangle(cornerRadius: 10, style: .continuous)
-                        )
-                        .overlay { RoundedRectangle(cornerRadius: 10).stroke(Color(hex: 0xE7D8C5)) }
-                }
-                .disabled(!isSignedIn || isUpdatingShelf)
-                .accessibilityLabel(L10n.bookDetailAddToFavorites)
-
-            }
+            shelfButton
+            favoriteButton
         }
     }
 
@@ -402,13 +363,75 @@ struct BookDetailView: View {
             }
     }
 
-    private var shelfActionTitle: String {
-        switch currentShelfState.uppercased() {
-        case "OKUYACAGIM", "WANT_TO_READ": L10n.libraryShelfLaterShort
-        case "OKUYORUM", "READING": L10n.libraryShelfReading
-        case "OKUDUM", "READ", "FINISHED": L10n.libraryShelfFinished
-        default: L10n.libraryShelfAdd
+    private var shelfButton: some View {
+        Button {
+            guard isSignedIn else { showingLibraryLoginAlert = true; return }
+            showingShelfPicker = true
+        } label: {
+            HStack(spacing: 14) {
+                Image(systemName: "books.vertical.fill")
+                    .font(.system(size: 21, weight: .semibold))
+                    .foregroundStyle(Color(hex: 0xA66A20))
+                    .frame(width: 46, height: 46)
+                    .background(Color(hex: 0xF8ECD7), in: RoundedRectangle(cornerRadius: 14))
+                    .accessibilityHidden(true)
+                VStack(alignment: .leading, spacing: 5) {
+                    Text(L10n.libraryShelfAdd)
+                        .font(.headline.weight(.semibold)).foregroundStyle(Color(hex: 0x163E43))
+                    Text(isUpdatingShelf ? LibraryDetailL10n.text("updating") : shelfDescription)
+                        .font(.caption).foregroundStyle(Color(hex: 0x6E7167))
+                }.fixedSize(horizontal: false, vertical: true)
+                    .frame(maxWidth: .infinity, alignment: .leading)
+                if isUpdatingShelf { ProgressView().tint(Color(hex: 0xA66A20)).accessibilityHidden(true) }
+                else { Image(systemName: "chevron.down").font(.subheadline.weight(.semibold)).foregroundStyle(Color(hex: 0xA66A20)).accessibilityHidden(true) }
+            }
+            .padding(15).frame(maxWidth: .infinity, minHeight: 78)
+            .background(LinearGradient(colors: [.white, Color(hex: 0xFFFAEF)], startPoint: .topLeading, endPoint: .bottomTrailing),
+                        in: RoundedRectangle(cornerRadius: 19, style: .continuous))
+            .overlay { RoundedRectangle(cornerRadius: 19).stroke(Color(hex: 0xEAD8B8), lineWidth: 1) }
+            .shadow(color: Color(hex: 0x9B742A).opacity(0.07), radius: 10, x: 0, y: 4)
         }
+        .buttonStyle(.plain).disabled(isUpdatingShelf)
+        .accessibilityLabel(L10n.libraryShelfAdd).accessibilityValue(shelfDescription)
+        .accessibilityIdentifier("book.library.shelf")
+        .confirmationDialog(L10n.libraryShelfPicker, isPresented: $showingShelfPicker, titleVisibility: .visible) {
+            Button(L10n.libraryShelfLater) { Task { await updateShelf("OKUYACAGIM") } }
+            Button(L10n.libraryShelfReading) { Task { await updateShelf("OKUYORUM") } }
+            Button(L10n.libraryShelfFinished) { Task { await updateShelf("OKUDUM") } }
+            if !currentShelfState.isEmpty {
+                Button(L10n.libraryShelfRemove, role: .destructive) { Task { await updateShelf("NONE") } }
+            }
+            Button(L10n.commonCancel, role: .cancel) {}
+        }
+    }
+
+    private var favoriteButton: some View {
+        Button {
+            guard isSignedIn else { showingLibraryLoginAlert = true; return }
+            Task { await toggleFavorite() }
+        } label: {
+            HStack(spacing: 10) {
+                Image(systemName: isFavorite ? "heart.fill" : "heart")
+                    .font(.system(size: 19, weight: .semibold)).accessibilityHidden(true)
+                Text(isFavorite ? LibraryDetailL10n.text("favoriteAdded") : L10n.bookDetailAddToFavorites)
+                    .font(.subheadline.weight(.semibold)).fixedSize(horizontal: false, vertical: true)
+                Spacer(minLength: 0)
+                if isFavorite { Image(systemName: "checkmark.circle.fill").accessibilityHidden(true) }
+            }
+            .foregroundStyle(isFavorite ? Color(hex: 0x865314) : Color(hex: 0x36545A))
+            .padding(.horizontal, 18).padding(.vertical, 14).frame(maxWidth: .infinity, minHeight: 50)
+            .background(isFavorite ? Color(hex: 0xFBF1DE) : .white.opacity(0.8), in: RoundedRectangle(cornerRadius: 16))
+            .overlay { RoundedRectangle(cornerRadius: 16).stroke(isFavorite ? Color(hex: 0xE5C790) : Color(hex: 0xE1E8E4)) }
+        }
+        .buttonStyle(.plain).disabled(isUpdatingShelf)
+        .accessibilityLabel(isFavorite ? LibraryDetailL10n.text("removeFavorite") : L10n.bookDetailAddToFavorites)
+        .accessibilityValue(isFavorite ? LibraryDetailL10n.text("favoriteAdded") : "")
+        .accessibilityAddTraits(isFavorite ? .isSelected : [])
+        .accessibilityIdentifier("book.library.favorite")
+    }
+
+    private var shelfDescription: String {
+        currentShelfState.isEmpty ? LibraryDetailL10n.text("shelfHint") : LibraryDetailL10n.currentShelf(shelfLabel(for: currentShelfState))
     }
 
     @ViewBuilder
@@ -417,7 +440,7 @@ struct BookDetailView: View {
             statusBanner(downloadStatusMessage, icon: "arrow.down.circle.fill", tint: EKitapligimPalette.teal)
         }
         if let shelfStatusMessage {
-            statusBanner(shelfStatusMessage, icon: "books.vertical.fill", tint: EKitapligimPalette.success)
+            statusBanner(shelfStatusMessage, icon: shelfUpdateFailed ? "exclamationmark.circle.fill" : "checkmark.circle.fill", tint: shelfUpdateFailed ? EKitapligimPalette.danger : EKitapligimPalette.success)
         }
     }
 
@@ -839,107 +862,35 @@ struct BookDetailView: View {
         )
     }
 
-    private func syncShelfFromLibrary() {
-        guard let item = libraryItem else {
-            currentShelfState = ""
-            isFavorite = false
-            return
-        }
-        currentShelfState = item.displayShelfStateForMenu
-        isFavorite = item.isFavoriteItem
-    }
-
     private var libraryItem: LibraryItemDTO? {
         container.libraryItems.first(where: { $0.bookId == String(bookID) })
     }
 
-    private func preservedReadingProgress() -> (percent: Int, page: Int) {
-        libraryItem?.readingProgressForShelfUpdate ?? (0, 0)
-    }
-
-    private func applyOptimisticShelfUpdate(shelfState: String, isFavorite favoriteOverride: Bool? = nil) {
-        let bookIDString = String(bookID)
-        let progress = preservedReadingProgress()
-        let favorite = favoriteOverride ?? (shelfState == "FAVORI")
-
-        if let existing = libraryItem {
-            container.patchLibraryItem(bookIDString) { item in
-                item.updating(
-                    shelfState: shelfState,
-                    progressPercent: progress.percent,
-                    lastReadPage: progress.page,
-                    isFavorite: favorite
-                )
-            }
-        } else if let book {
-            container.upsertLibraryItem(
-                LibraryItemDTO(
-                    bookId: bookIDString,
-                    shelfState: shelfState,
-                    progressPercent: progress.percent,
-                    lastReadPage: progress.page,
-                    isDownloaded: false,
-                    isFavorite: favorite,
-                    title: book.title,
-                    author: book.author,
-                    coverUrl: book.coverUrl,
-                    pageCount: book.pageCount
-                )
-            )
-        }
-
-        if favoriteOverride != nil {
-            isFavorite = favoriteOverride ?? isFavorite
-        }
-        if !shelfState.isEmpty, shelfState != "FAVORI", shelfState != "NONE" {
-            currentShelfState = shelfState
-        }
-    }
-
     private func updateShelf(_ state: String) async {
-        guard isSignedIn, !isUpdatingShelf else { return }
-        isUpdatingShelf = true
+        guard isSignedIn, !isUpdatingShelf, let book else { return }
         shelfStatusMessage = nil
-        defer { isUpdatingShelf = false }
-        let progress = preservedReadingProgress()
         do {
-            try await container.books.updateLibraryItem(
-                bookID: bookID,
-                shelfState: state,
-                progressPercent: progress.percent,
-                lastReadPage: progress.page
-            )
-            applyOptimisticShelfUpdate(shelfState: state)
+            try await container.updateBookShelf(book: book, state: state)
+            shelfUpdateFailed = false
             shelfStatusMessage = shelfLabel(for: state)
-            Task { await container.refreshSessionData() }
-            syncShelfFromLibrary()
-        } catch {
+        } catch is CancellationError { }
+        catch {
+            shelfUpdateFailed = true
             shelfStatusMessage = L10n.libraryUpdateFailed
         }
     }
 
     private func toggleFavorite() async {
-        guard isSignedIn, !isUpdatingShelf else { return }
-        isUpdatingShelf = true
-        defer { isUpdatingShelf = false }
-        // Android toggles favorite via shelf_state FAVORI <-> NONE while preserving reading shelf metadata.
-        let nextState = isFavorite ? "NONE" : "FAVORI"
-        let progress = preservedReadingProgress()
+        guard isSignedIn, !isUpdatingShelf, let book else { return }
+        let nextFavorite = !isFavorite
+        shelfStatusMessage = nil
         do {
-            try await container.books.updateLibraryItem(
-                bookID: bookID,
-                shelfState: nextState,
-                progressPercent: progress.percent,
-                lastReadPage: progress.page
-            )
-            applyOptimisticShelfUpdate(
-                shelfState: nextState,
-                isFavorite: nextState == "FAVORI"
-            )
-            Task { await container.refreshSessionData() }
-            syncShelfFromLibrary()
-            shelfStatusMessage = isFavorite ? L10n.libraryShelfFavorites : L10n.libraryShelfRemove
-        } catch {
+            try await container.setBookFavorite(book: book, isFavorite: nextFavorite)
+            shelfUpdateFailed = false
+            shelfStatusMessage = LibraryDetailL10n.text(nextFavorite ? "favoriteAdded" : "favoriteRemoved")
+        } catch is CancellationError { }
+        catch {
+            shelfUpdateFailed = true
             shelfStatusMessage = L10n.libraryUpdateFailed
         }
     }

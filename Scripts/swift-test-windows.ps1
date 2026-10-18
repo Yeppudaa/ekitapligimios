@@ -1,5 +1,5 @@
 [CmdletBinding()]
-param([switch]$Clean, [switch]$Release, [string]$PackagePath = "")
+param([switch]$Clean, [switch]$Release, [string]$PackagePath = "", [ValidateRange(0, 256)][int]$Jobs = 0)
 
 $ErrorActionPreference = "Stop"
 $root = Resolve-Path (Join-Path $PSScriptRoot "..")
@@ -62,6 +62,7 @@ if (-not (Test-Path -LiteralPath $runtimeBin)) {
 
 $vsDevCmd = Find-VsDevCmd
 $command = '"{0}" -arch=amd64 -host_arch=amd64 && set "PATH={1};{2};!PATH!" && set "SDKROOT={3}" && swift test --parallel' -f $vsDevCmd, $swiftBin, $runtimeBin, $sdkRoot
+if ($Jobs -gt 0) { $command = $command.Replace('swift test --parallel', "swift test --parallel --jobs $Jobs") }
 if ($Clean) { $command = $command.Replace('&& swift test', '&& swift package clean && swift test') }
 if ($Release) { $command = $command.Replace('swift test --parallel', 'swift test --configuration release --parallel') }
 

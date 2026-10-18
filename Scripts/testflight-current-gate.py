@@ -24,7 +24,7 @@ def main():
         'previousTestFlightSource': manifest['previousTestFlightSource'],
         'validationRequired': 'Fresh full Core suite, native audio/model/layout tests, targeted current UI tests and signed IPA checks.',
         'distribution': 'TestFlight only; no public App Store release or backend deployment.',
-        'historicalEvidence': 'Previous build45 tests are historical and do not validate the current changed views.'
+        'historicalEvidence': 'Previous build46 tests are historical and do not validate the latest changed views.'
     }
     out=ROOT/'build/testflight-reviewed'
     out.mkdir(parents=True,exist_ok=True)

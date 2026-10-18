@@ -4,7 +4,7 @@ import Foundation
 import EkitapligimCore
 
 /// Offline harness for the shipping SwiftUI screens. All transports are intercepted, including
-/// unexpected requests; mutations receive 405 except the explicit, local audio playback fixture.
+/// unexpected requests; mutations receive 405 except explicit local audio and library fixtures.
 /// No bootstrap runs and no request or mutation can leave the simulator.
 @MainActor
 struct ModernParityUITestHost: View {
@@ -29,6 +29,7 @@ struct ModernParityUITestHost: View {
         largeText = environment["MODERN_PARITY_LARGE_TEXT"] == "1"
         dark = environment["MODERN_PARITY_DARK"] == "1"
         shellNavigation = environment["MODERN_PARITY_SHELL_NAVIGATION"] == "1"
+        ModernParityLibraryFixture.seed(book: ModernParityPayload.book(2), library: ModernParityPayload.library)
         URLProtocol.registerClass(ModernParityProtocol.self)
         let configuration = URLSessionConfiguration.ephemeral
         configuration.protocolClasses = [ModernParityProtocol.self]
@@ -102,7 +103,7 @@ struct ModernParityUITestHost: View {
 
     @ViewBuilder private var content: some View {
         if shellNavigation && ["requests", "agenda", "live", "forum"].contains(screen) {
-            RootView().environment(\.scenePhase, .inactive)
+            RootView().environment(\.scenePhase, ModernParityLibraryFixture.enabled ? .active : .inactive)
         } else {
             standaloneContent
         }
@@ -110,7 +111,8 @@ struct ModernParityUITestHost: View {
 
     @ViewBuilder private var standaloneContent: some View {
         switch screen {
-        case "home", "menu", "catalog", "profile", "keyboard-shell": RootView().environment(\.scenePhase, .inactive)
+        case "home", "menu", "catalog", "profile", "keyboard-shell":
+            RootView().environment(\.scenePhase, ModernParityLibraryFixture.enabled ? .active : .inactive)
         case "library": NavigationStack { LibraryView() }
         case "requests": NavigationStack { BookRequestsView() }
         case "forum": CommunityView()
@@ -176,12 +178,26 @@ private actor ModernParityTokenStore: TokenStore {
 }
 
 private final class ModernParityProtocol: URLProtocol, @unchecked Sendable {
+    private var homeCoverWork: DispatchWorkItem?
     private static let catalogFailureLock = NSLock()
     private static var didFailFilteredCatalog = false
     override class func canInit(with request: URLRequest) -> Bool { true }
     override class func canonicalRequest(for request: URLRequest) -> URLRequest { request }
     override func startLoading() {
         guard let url = request.url else { client?.urlProtocol(self, didFailWithError: URLError(.badURL)); return }
+        if let cover = ModernParityHomeCoverFixture.response(for: url) {
+            let work = DispatchWorkItem { [weak self] in
+                self?.deliver(url: url, status: cover.status,
+                              headers: ["Content-Type": "image/png", "Cache-Control": "no-store"], data: cover.data)
+            }
+            homeCoverWork = work
+            DispatchQueue.main.asyncAfter(deadline: .now() + cover.delay, execute: work)
+            return
+        }
+        if let result = ModernParityLibraryFixture.response(for: request) {
+            deliver(url: url, status: result.status, headers: result.headers, data: result.data)
+            return
+        }
         if let result = ModernParityAudioFixture.response(for: request) {
             deliver(url: url, status: result.status, headers: result.headers, data: result.data)
             return
@@ -239,6 +255,12 @@ private final class ModernParityProtocol: URLProtocol, @unchecked Sendable {
                     data: Data(#"{"errors":["Offline comment failure"]}"#.utf8))
             return
         }
+        if readOnly, url.path.hasSuffix("/me/audio-comments"),
+           ProcessInfo.processInfo.environment["MODERN_PARITY_AUDIO_COMMENTS"] == "unavailable" {
+            deliver(url: url, status: 503, headers: ["Content-Type": "application/json", "Cache-Control": "no-store"],
+                    data: Data(#"{"errors":[{"code":"audio_unavailable","message":"Offline audiobook comments unavailable"}]}"#.utf8))
+            return
+        }
         let payload: [String: Any] = readOnly ? ModernParityPayload.response(for: url) : ["success": false, "errors": ["Offline UI fixtures reject all mutations."]]
         guard let data = try? JSONSerialization.data(withJSONObject: payload) else {
             client?.urlProtocol(self, didFailWithError: URLError(.cannotDecodeContentData)); return
@@ -257,7 +279,7 @@ private final class ModernParityProtocol: URLProtocol, @unchecked Sendable {
         }
         client?.urlProtocolDidFinishLoading(self)
     }
-    override func stopLoading() {}
+    override func stopLoading() { homeCoverWork?.cancel() }
 }
 
 /// Synthetic books and accounts are purposefully distinct from production IDs and credentials.
@@ -296,6 +318,7 @@ private enum ModernParityPayload {
     }
     static func book(_ value: Int) -> [String: Any] {
         var item: [String: Any] = ["id": String(900040 + value), "title": ["Varoluş Yolunda Sayılı Yıllar", "Sonsuzluğun Büyüsü", "Beyaz Zambaklar Ülkesinde", "Küçük Prens"][value % 4], "author": value == 3 ? "Grigori Petrov" : "Örnek Yazar", "publisher": "Örnek Yayınevi", "isbn": "", "category": "Roman", "language": "Türkçe", "publish_year": "2024", "description": "Her sayfada yeni bir dünya. Okuma yolculuğunda sana eşlik edecek bir hikâye.", "cover_url": "", "pdf_url": "", "page_count": 200, "is_premium_only": false, "view_count": 320, "download_count": 18, "rating": 4.5, "file_type": "PDF"]
+        if let cover = ModernParityHomeCoverFixture.url(for: value) { item["cover_url"] = cover }
         if value == 2, ProcessInfo.processInfo.environment["MODERN_PARITY_CARD_SIZING"] == "1" {
             item["title"] = "Birlikte Keşfettiğimiz Hikâyelerin İzinde Uzun Bir Okuma Yolculuğunun Unutulmaz Sayfaları"
             item["author"] = ""
@@ -313,6 +336,21 @@ private enum ModernParityPayload {
         let path = url.path
         let query = URLComponents(url: url, resolvingAgainstBaseURL: false)?.queryItems ?? []
         let search = query.first { $0.name == "q" }?.value ?? ""
+        if path.hasSuffix("/me/audio-comments") {
+            let empty = ProcessInfo.processInfo.environment["MODERN_PARITY_AUDIO_COMMENTS"] == "empty"
+            let comments: [[String: Any]] = empty ? [] : [
+                ["id": "980001", "post_id": 980001, "thread_id": 101,
+                 "thread_title": "Beyaz Zambaklar Ülkesinde", "user_id": 900001, "username": "parity-fixture",
+                 "message": "Seslendirme çok akıcı. Hikâyenin duygusunu koruyan anlatımı sayesinde dinlerken her bölümde yeni ayrıntılar keşfettim.",
+                 "post_date": timestamp, "can_edit": true, "can_delete": false, "can_reply": true],
+                ["id": "980002", "post_id": 980002, "thread_id": 102,
+                 "thread_title": "Küçük Prens", "user_id": 900001, "username": "parity-fixture",
+                 "message": "Küçük Prens'i yeniden dinlemek çok güzeldi. Seslendirenin sakin anlatımı ve bölüm geçişleri hikâyeye odaklanmamı kolaylaştırdı.",
+                 "post_date": timestamp - 300, "can_edit": false, "can_delete": false, "can_reply": true]
+            ]
+            return ["scope": "audio", "comments": comments, "items": comments,
+                    "pagination": ["page": 1, "per_page": 30, "pages": 1, "total": comments.count]]
+        }
         if path.hasSuffix("/audio-library") {
             return ["api_version": 1, "books": [audioBook(101), audioBook(102)], "counts": ["saved": 2, "listening": 1, "completed": 0, "favorite": 1, "later": 1, "history": 2], "resume_book": audioBook(101), "stats": ["total": "1 sa 12 dk", "month": "42 dk", "completed": "0", "active": "1"]]
         }
@@ -320,7 +358,11 @@ private enum ModernParityPayload {
             let books = search.isEmpty ? [audioBook(101), audioBook(102)] : [audioBook(101)]
             return ["api_version": 1, "available": true, "books": books, "hero": audioBook(101), "categories": [["id": 1, "title": "Roman", "count": 2]], "pagination": ["page": 1, "pages": 1, "total": books.count], "sections": [["title": "Yeni eklenenler", "hint": "Dinleyeceğin yeni hikâyeler", "books": books]]]
         }
-        if path.contains("/audio-books/") { return ["api_version": 1, "book": audioBook(Int(url.lastPathComponent) ?? 101), "related": [audioBook(102)], "same_author": []] }
+        if path.contains("/audio-books/") {
+            let bookID = Int(url.lastPathComponent) ?? 101
+            let relatedID = ModernParityAudioFixture.enabled && bookID == 102 ? 101 : 102
+            return ["api_version": 1, "book": audioBook(bookID), "related": [audioBook(relatedID)], "same_author": []]
+        }
         if path.hasSuffix("/book-stats") { return ["total_books": 35818, "total_authors": 13656, "total_publishers": 2000, "total_categories": 32] }
         if path.hasSuffix("/me/subscription") {
             let premium = ProcessInfo.processInfo.environment["MODERN_PARITY_STANDARD_MEMBER"] != "1"

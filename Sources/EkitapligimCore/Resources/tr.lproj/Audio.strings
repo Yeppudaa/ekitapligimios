@@ -145,3 +145,9 @@
 "categoryBookCount" = "%d sesli kitap";
 "removePersonFilter" = "Yazar / seslendiren filtresini kaldır";
 "myAudioComments" = "Sesli kitap yorumlarım";
+"commentsLoading" = "Sesli kitap yorumların yükleniyor…";
+"commentsEmptyTitle" = "Henüz sesli kitap yorumun yok";
+"commentsEmptyMessage" = "Sesli kitaplar için paylaştığın yorumları burada bulabilirsin.";
+"commentsHint" = "Yorumuna dokunarak ilgili sesli kitabı açabilirsin.";
+"commentsUnavailable" = "Sesli kitap yorumları şu anda kullanılamıyor. Lütfen daha sonra tekrar dene.";
+"commentsLoadError" = "Yorumlar yüklenemedi. Bağlantını kontrol edip tekrar dene.";

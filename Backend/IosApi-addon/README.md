@@ -1,5 +1,19 @@
 # Ekitapligim iOS API XenForo Add-on
 
+## 1.0.38 — native personal audiobook comments (2026-10-18)
+
+`GET /ios-api/v1/me/audio-comments?page=1&per_page=30` returns the authenticated visitor's replies on published, permitted audiobooks. It uses the AudioBooks add-on's canonical `ProfileLibrary::comments` repository and rechecks ownership, reply position, post/thread visibility and XenForo permissions before sorting, counting and pagination. Requires `user:read`; missing or inactive AudioBooks dependencies return `503 audio_unavailable`. Other forum replies are excluded. No writes are accepted.
+
+The native iOS profile action now opens a SwiftUI list and its rows open native audio details. Install 1.0.38 through the normal XenForo add-on upgrade before distributing the matching app. No schema migration is added. The local archive is a review candidate; it has not been installed on a live server. See [validation](../../AUDIO_COMMENTS_VALIDATION.md).
+
+## 1.0.37 — independent favorites and reading shelves (2026-10-18)
+
+`PUT /ios-api/v1/me/library/{thread_id}/` accepts `is_favorite=1/0` independently of `shelf_state`. Reading shelf changes preserve favorites and all PDF/EPUB progress. The legacy `FAVORI` request adds a favorite without removing the reading shelf. UTF-8 form bodies with a charset parameter are accepted on XenForo versions that leave those PUT forms unparsed.
+
+Mutations enforce the BookThreads permissions, use its native entities and counters, serialize the account's requests, and verify storage before returning `success: true` with a canonical `item`. Invalid input returns 400, permission denial 403, and failed storage/readback 503. Retried additions preserve their original row/date. The shared website activity feed reads those real shelf/favorite rows and `create_date`; no synthetic client event or separate event table is added.
+
+Upgrade through XenForo's normal add-on archive installer before distributing the matching iOS update. Requires the existing BookThreads/MobileApi dependencies, adds no database migration, and does not edit Android code. Back up the current server/add-on before the administrator upgrades. The local ZIP is a review candidate; this task has not installed or deployed it.
+
 ## 1.0.35 — backwards-compatible purchase duration repair (2026-10-12)
 
 Also fixes the reported `MeDeviceToken` POST/DELETE TypeError: missing input returns HTTP 400 with the existing error code. DELETE accepts shipped clients' form bodies with charset parameters that some XenForo versions leave unparsed. Fallback is bounded and accepts only form MIME and string tokens. Valid registration and user-scoped deletion are unchanged; an empty request cannot remove all tokens.

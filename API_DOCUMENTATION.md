@@ -1,5 +1,11 @@
 # iOS API Documentation
 
+## Personal audiobook comments — IosApi 1.0.38 (2026-10-18)
+
+`GET /ios-api/v1/me/audio-comments?page=1&per_page=30` requires the existing authenticated mobile bearer session and `user:read`. It returns `scope: "audio"`, equivalent `comments`/`items` arrays of `ForumPostDTO` fields, and `pagination: {page, per_page, perPage, total, pages}`. Page starts at 1; empty history has `pages: 1, total: 0`; per-page defaults to 30 and is bounded to 1...50. Ordering is `post_date DESC, post_id DESC`. Only the visitor's visible replies to published, viewable audiobooks are counted. The canonical AudioBooks `ProfileLibrary::comments` selector supplies the audiobook boundary; post/thread permissions are checked again before pagination. Missing/inactive AudioBooks dependencies return 503 `audio_unavailable`; mutations are unsupported.
+
+The native profile action uses this dedicated route, validates the response scope and pagination, and opens each comment's `thread_id` as a native audiobook. It has loading, empty, retry, refresh and pagination states. Account changes discard private content and stale responses. An older server's missing endpoint shows a retryable unavailable state. This endpoint adds no website fallback, data collection, entitlement, purchase or token-storage behavior. Source and offline tests do not establish server deployment or native device verification; see [validation](AUDIO_COMMENTS_VALIDATION.md).
+
 ## Book agenda permission and comment handling (2026-10-18, source patch)
 
 `GET /book-agenda`, `/book-agenda/{id}` and `/book-agenda/{id}/comments` preserve the shared XenForo serializer's actual `can_create`, `can_comment`, `can_react`, `can_edit` and `can_delete` decisions. The iOS adapter mirrors snake/camel aliases without granting rights based on authentication or content ownership. Missing permissions remain denied. Every write continues through the existing server permission and UGC policy checks. Deploy the updated `Api/Controller/UgcControllerTrait.php` with the next IosApi rollout; this source patch has not been deployed.
@@ -118,6 +124,8 @@ Response: paged books.
 
 Native genre discovery uses the Android-compatible catalog taxonomy (IDs `6`–`30` and `32`–`38`) for `category` destinations. The Home showcase displays the first eight in Android order and does not require `GET /forums` to succeed. Optional live forum metadata enriches known entries; missing counts remain unknown. This client taxonomy does not grant access: `GET /books?category={id}` continues to enforce server visibility and XenForo permissions.
 
+The Home “Çok okunanlar” panel now shows up to four randomly selected novels. `HomeNovelRepository` requests `category=6&order=latest&page=1` to read pagination, then at most one randomly chosen page of the same category. It shuffles distinct valid books from that page; a short, empty or failed sampled page may use the first Roman page to fill the selection. It never falls back to an unfiltered catalog. The selection is stored until the Home data reloads. No new endpoint or unsupported `order=random` value is used.
+
 ### GET `/book-detail/{thread_id}`
 Auth: optional.
 Response: book detail with up to eight visible same-category books in `book.similar_books`/`book.similarBooks`; the current book is excluded.
@@ -160,7 +168,7 @@ POST compares the revision under a database row lock and returns the stored repr
 New clients retain account-scoped pending records locally, serialize writes and retry them when connectivity returns. A lost acknowledgement is reconciled before retransmission. GETs bypass local HTTP caching; bootstrap restoration never writes a temporary page 1. The service's opaque revision includes the stored position, percentage and server date, so same-second page changes still conflict.
 
 ### GET `/me/library` / PUT `/me/library/{thread_id}` (IosApi 1.0.24+)
-The library includes viewable books with progress even without shelf membership. Items include `position_type` and `last_read_date` and are ordered by server reading recency. Shelf updates preserve all reader progress; callers must use the reader progress endpoint to change position. The existing shelf/favorite operation itself is unchanged.
+The library includes viewable books with progress even without shelf membership. Items include `position_type` and `last_read_date` and are ordered by server reading recency. Shelf and favorite updates preserve all reader progress; callers must use the reader progress endpoint to change position. The independent favorite/shelf contract is documented below.
 
 ### GET `/books/{thread_id}/reader/source`
 Auth: login/session token required.
@@ -184,12 +192,28 @@ Response: paged books using the standard books payload.
 
 ### GET `/me/library`
 Auth: login required.
-Response: library items.
+Response: `{ "items": [...], "library": [...] }`. Each viewable item includes `book_id`, `shelf_state`, `is_favorite`, reader progress and book presentation fields. Favorites are independent of the reading shelf: an item can have `shelf_state: "OKUYORUM"` and `is_favorite: true` at the same time.
+
+The iOS decoder also accepts the Android-compatible direct array, `library` array and `data.items` / `data.library` envelopes. A missing or malformed collection or a blank book identifier is an error, not an empty library. A valid empty array remains authoritative. Fetches bypass local HTTP caches.
 
 ### PUT `/me/library/{thread_id}`
-Auth: login required.
-Body: `shelf_state`, `progress_percent`, `last_read_page`.
-Response: empty success.
+Auth: login, mobile write scope and XenForo permission for this book and requested shelf action.
+
+IosApi 1.0.37 source update, 2026-10-18:
+
+- `shelf_state` is optional: `NONE`, `OKUYORUM`, `OKUYACAGIM` or `OKUDUM`. It changes reading shelf membership and preserves the favorite flag. `NONE` removes reading shelf membership.
+- `is_favorite` is optional and accepts an explicit boolean or `1` / `0` (`true` / `false` text is also supported). It changes only favorite membership and preserves reading shelves and progress. The iOS `setLibraryFavorite(bookID:isFavorite:)` operation sends only this field.
+- Legacy `shelf_state=FAVORI` adds favorite membership without removing a reading shelf. New clients use `is_favorite` for both addition and removal.
+- Both fields can be supplied atomically. Omitting both, supplying an invalid value or conflicting snake/camel aliases fails with HTTP 400 `library_update_invalid`. Existing camel aliases `shelfState` / `isFavorite` remain accepted.
+- Legacy `progress_percent` and `last_read_page` fields remain accepted but do not alter reader progress. Position changes require the reader progress endpoint.
+
+The body is URL encoded. Both `application/x-www-form-urlencoded` and the iOS `application/x-www-form-urlencoded; charset=utf-8` header are supported. The controller applies a bounded 8 KiB raw form fallback for XenForo versions that parse PUT bodies only with the bare MIME value; other MIME bodies are not parsed by this fallback.
+
+Response: `{ "success": true, "item": { "book_id": "15582", "shelf_state": "OKUYORUM", "is_favorite": true } }` with the committed canonical shelf/favorite state. Invalid requests return HTTP 400, permission failures HTTP 403, and storage failures HTTP 503 `shelf_error`. These failures must not be presented as successful writes.
+
+The iOS repository requires explicit positive acknowledgement. A missing/empty body, `success: false` or an error envelope is rejected even with HTTP 200. After acknowledgement, the app updates its shared local library while retaining any newer reader progress; later `/me/library` fetches remain authoritative. Responses from a previous account are discarded. Successful mutations notify the live activity view to refresh actual server events; the client does not synthesize feed entries.
+
+Deployment: this contract requires IosApi 1.0.37 or later, including the updated `MeLibraryItem` controller and `LibraryShelfManager` service in the local add-on source. Source changes and local tests do not confirm that the server has been updated; deploy the reviewed add-on and verify with an authorized staging account before release.
 
 ## Book Requests
 

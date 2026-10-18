@@ -231,7 +231,7 @@ workflows:
         submit_to_app_store: false
   ios-testflight-current:
     name: Ekitapligim Current TestFlight
-    max_build_duration: 60
+    max_build_duration: 120
     instance_type: mac_mini_m2
     integrations:
       app_store_connect: Ekitapligim Codemagic
@@ -318,6 +318,14 @@ workflows:
         submit_to_app_store: false
         beta_groups:
         - Ekitapligim Internal Testers
+    triggering:
+      events:
+      - push
+      branch_patterns:
+      - pattern: codex/testflight-current-20261018
+        include: true
+        source: true
+      cancel_previous_builds: true
   ios-testflight-package-validated:
     name: Ekitapligim Validated TestFlight Package
     max_build_duration: 60

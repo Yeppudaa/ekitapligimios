@@ -122,6 +122,10 @@ if ($phpPath) {
     }
     & $phpPath (Join-Path $repoRoot "Tests\Backend\ReaderProgressControllerTest.php")
     if ($LASTEXITCODE -ne 0) { throw "Reader progress controller tests failed." }
+    & $phpPath (Join-Path $repoRoot "Tests\Backend\LibraryShelfManagerTest.php")
+    if ($LASTEXITCODE -ne 0) { throw "Library shelf and favorite tests failed." }
+    & $phpPath (Join-Path $repoRoot "Tests\Backend\MeAudioCommentsTest.php")
+    if ($LASTEXITCODE -ne 0) { throw "Personal audio comments tests failed." }
     foreach ($test in @('AppStoreEntitlementPolicyTest', 'AppStoreTransactionStoreTest', 'AppStoreControllerTest', 'AppStoreSignatureTest', 'AppStoreMembershipTest', 'AppStoreTermScheduleTest', 'AppStoreLegacyContractTest', 'AppStoreRenewableCatalogTest', 'PublicBearerIsolationTest', 'AccountDeletionRequestTest', 'AlertPrivacyTest')) {
         & $phpPath (Join-Path $repoRoot "Tests/Backend/$test.php")
         if ($LASTEXITCODE -ne 0) { throw "$test failed." }
@@ -144,6 +148,7 @@ $requiredFiles = @(
     "Job\SendConversationPush.php",
     "Service\ApnsPush.php",
     "Service\NotificationCounts.php",
+    "Service\LibraryShelfManager.php",
     "XF\Service\Conversation\Notifier.php",
     "Cli\Command\PushTest.php",
     "_data\code_event_listeners.xml",
@@ -152,8 +157,8 @@ $requiredFiles = @(
 )
 foreach ($relative in $requiredFiles) { Assert-Path (Join-Path $addonRoot $relative) }
 $addonManifest = Get-Content -Raw -LiteralPath (Join-Path $addonRoot "addon.json") | ConvertFrom-Json
-if ([int]$addonManifest.version_id -ne 1000036 -or $addonManifest.version_string -ne "1.0.36") {
-    throw "IosApi package must be exactly 1.0.36 / 1000036 for this release."
+if ([int]$addonManifest.version_id -ne 1000038 -or $addonManifest.version_string -ne "1.0.38") {
+    throw "IosApi package must be exactly 1.0.38 / 1000038 for this release."
 }
 foreach ($relative in @('Api/Controller/ChatReactions.php', 'Pub/Controller/ChatReactions.php',
     'Service/ChatInteraction.php', 'Service/ChatPushProducer.php', 'Service/ChatSerializer.php',

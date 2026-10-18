@@ -1,6 +1,16 @@
 # Uygulama genelinde dar ekran ve metin yerleşimi incelemesi
 
+Ana sayfa kitaplarının dikey uzaması için ek düzeltme ve test kapsamı: [HOME_BOOK_CARDS_VALIDATION.md](HOME_BOOK_CARDS_VALIDATION.md). Yeni kapak alanı görsel fazlarından bağımsız ölçülür; eski sınırsız yükseklik kaldırılmıştır. Güncel `layout-audit-macos.sh`, menü opaklık testleri dahil cihaz başına 11 bileşen ve 11 UI testi ister; aşağıdaki önceki sayı ve sonuçlar tarihsel kapsamı anlatır. Yeni native testler Windows üzerinde çalıştırılmadı.
+
 Tarih: 18 Ekim 2026.
+
+## iOS 26 menü düğmesindeki iç içe zemin — ek düzeltme
+
+Profil ve Kitap Gündemi kullanıcı görüntüleri, özel menü karesinin iOS 26'nın paylaşılan cam araç çubuğu zeminine yerleştirildiğini gösteriyor. Yenileme gibi yan eylemler aynı kapsülde gruplanabiliyordu. [Apple'ın ToolbarContent belgesine](https://developer.apple.com/documentation/swiftui/toolbarcontent/sharedbackgroundvisibility(_:)) uygun olarak ortak `EKitapligimMenuToolbarItem` bu zemini yalnız menü öğesinde gizler ve menüyü ayrı gruba alır. Katalogun doğrudan ToolbarItem kullanımı da bu ortak bileşene taşındı. iOS 26 çalışma zamanı ve Swift 6.2 derleyici koşulları, iOS 17 hedefini ve eski Xcode/SDK derlemesini korur.
+
+Ana sayfa, Kitaplar, Kitap Gündemi, Canlı Akış, İstekler, Profil ve Forum aynı 44×44 pt menü yüzünü kullanır. Yüz tamamen opak beyazdır; dış çerçeve/gölge katmanı yoktur, köşeler 14 pt'dir. Bildirim noktası yüzün içinde kalır ve okunmamış sayı erişilebilirlik değeriyle bildirilir. Ana sayfanın özel başlığı ve diğer sayfaların native gezinme yerleşimi korunur.
+
+Mevcut dört `ShellMenuLayoutUITests` senaryosu güçlendirildi: yedi kök sayfada tek menü, 44–48 pt sınır, komşu eylemlerden ayrı dokunma alanı ve çekmece öncesi/sonrası görseller denetlenir. İki yeni `MenuButtonAppearanceTests` testi gerçek ortak yüzü kırmızı/mavi zemin üstünde çizer; opak iç yüzeyi ve dışa taşan halka/gölge/bildirim noktası olmamasını denetler, sekiz inceleme görseli ekler. Native toolbar camını ancak gerçek shell UI görüntüleri doğrular. Bu testler Windows'ta çalıştırılmadı; özellikle iOS 26 native cam zemininin kalktığı simülatör/cihaz görüntüsüyle doğrulanmalıdır. Swift sözdizimi ve statik erişilebilirlik/Swift denetimleri geçti; bu kontroller native görünüm kanıtı değildir.
 
 ## Menü ile sayfa eylemlerinin çakışması — ek düzeltme
 
@@ -20,7 +30,7 @@ Ana ekranlar, bu ekranların kartları, ortak tasarım bileşenleri, okuyucu, oy
 
 | Alan | Bulunan risk ve yapılan düzenleme |
 | --- | --- |
-| Ana sayfa | Sabit arama yüksekliği minimum yüksekliğe dönüştürüldü. Gündem önizlemeleri metinle büyüyebiliyor. Büyük yazıda kapak/metin bölümleri dikeyleşiyor. Görsellerin ve dekoratif ikonların sınırları korunuyor. |
+| Ana sayfa | Sabit arama yüksekliği minimum yüksekliğe dönüştürüldü. Gündem kartları üç satırlık kompakt önizleme gösterir; tam içerik mevcut detayda açılır. Büyük yazıda kapak/metin bölümleri dikeyleşiyor. Görsellerin ve dekoratif ikonların sınırları korunuyor. |
 | Katalog | Küçük üst etiket büyütüldü. Sıralama seçenekleri sıkışan segmented görünümden inline seçeneklere alındı. Liste kartlarında normal yazıda kategori/sayfa bilgisi tek satırda eşit alan kullanıyor; erişilebilirlik yazısında alt alta geçiyor. |
 | Kitap detayı | Dar alanda kapak ve bilgi bölümü dikeyleşiyor. Puan/indirme/premium satırları, yazar/yayınevi, ISBN/kategori, yorum başlıkları ve rapor düğmeleri tam yüksekliğe büyüyebiliyor. Metin düğmelerindeki sabit yükseklik sınırları kaldırıldı. |
 | Kitaplık ve profil | Misafir ekranı kaydırılabiliyor. Raf/aksiyon ızgaraları büyük yazıda tek sütuna geçiyor. İç içe kartların gerçek dar genişliği dikkate alınıyor. Devam edilen kitap, kota, başarı, üyelik ve bilgi satırları gerektiğinde dikeyleşiyor. |
@@ -45,7 +55,7 @@ Alt gezinme çubuğu, sabit boyutlu kapak/ikon alanları, ilerleme çizgileri, k
 
 ## Kart ölçülerinin eşitlenmesi — 18 Ekim 2026
 
-`UniformCardText`, aynı gruptaki kartlar için belirlenen metin satırlarının alanını kısa veya eksik bilgilerde de ayırır. Büyük erişilebilirlik yazılarında satır sınırı uygulanmaz. Ana sayfanın kitap, kategori, keşif, kompakt okuma, editoryal ve öneri kartları ile sesli kitap kartları bu ortak davranışı kullanır. Gündem rayındaki dört kart en uzun içeriğin doğal yüksekliğini paylaşır; sabit yüksekliğe kırpılmaz.
+`UniformCardText`, aynı gruptaki kartlar için belirlenen metin satırlarının alanını kısa veya eksik bilgilerde de ayırır. Büyük erişilebilirlik yazılarında satır sınırı uygulanmaz. Ana sayfanın kitap, kategori, keşif, kompakt okuma, editoryal ve öneri kartları ile sesli kitap kartları bu ortak davranışı kullanır. Kullanıcının sonraki tasarım isteğiyle Gündem rayı ayrı bir kısa önizleme düzenine geçirildi: normal yazıda 300 pt ortak yükseklik (yazı tercihiyle ölçeklenir), üç satır metin, tek başlıkta kullanıcı/tür ve kompakt kitap/sayaç alanı. Erişilebilirlik yazılarında kartın yüksekliği doğaldır; üç satır önizleme, tam VoiceOver içeriği ve detay bağlantısı korunur. Bu son değişiklik için derleme/native test çalıştırılmadı.
 
 Son kontrolde katalog liste kartları da tamamlandı: başlık, yazar, kategori/sayfa ve puan alanları normal yazıda aynı sayıda satır kaplar; eksik bilgi görünür bir değer üretmeden yerini korur. Kitaplık satırlarındaki metin alanı kalan genişliği doldurarak yön oklarını hizalar. Farklı işlevlerdeki büyük tanıtım alanları ve küçük kitap kartları kendi gruplarının ölçülerini korur.
 

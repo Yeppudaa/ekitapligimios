@@ -43,6 +43,9 @@
 - Verify home statistics load, pull-to-refresh, compact number formatting and retry state.
 - Search.
 - Open book detail.
+- Shelf/favorite persistence: favorites preserve reading state and position, shelf changes preserve favorites, failed acknowledgements leave state unchanged, old-account responses are rejected, and in-flight reader progress survives a favorite write. Run the actual method harness in `Scripts/library-mutation-state-test-windows.ps1` and native `BookLibraryMutationTests`; the portable harness does not verify SwiftUI publication.
+- Live activity invalidation: run `Scripts/live-activity-state-test-windows.ps1` / native `LiveActivityModelTests` for queued refresh, pagination, cancellation and account changes. Execute `BookLibraryUITests` on iOS for visible shelf selection, favorite persistence through profile/feed navigation, failure and guest flows. Install the matching IosApi 1.0.37 backend on staging before integration tests; local mocks do not establish live-server success.
+- Audiobook recommendation navigation: run `ModernParityUITests/testMiniPlayerRecommendationShowsBookAndReturnsToProfileWithoutChangingPlayback` and `ModernParityUITests/testNativePlayerRecommendationsAlternateBooksAndPreserveCatalogBackNavigation` on iOS. Both use the actual RootView with offline audio, verify the selected book's detail/title, preserved playback, unchanged origin tab and native Back through the player. Windows syntax/static checks and six routing-state tests passed on 18 October 2026; these two native UI cases remain unexecuted locally.
 - Read PDF.
 - Open representative reflowable and fixed-layout EPUB files, navigate across chapters, rotate the device, background/foreground the app, and verify XenForo progress updates.
 - Reject an HTML/error response disguised as EPUB, an invalid ZIP, an HTTP source URL, and an unsupported reader-session file type.

@@ -41,6 +41,7 @@ struct AudioBookDetailView: View {
                     else if let error = model.error { AudioErrorView(message: error) { Task { await model.load() } } }
                 }.padding(14).padding(.bottom, 28).frame(maxWidth: 900).frame(maxWidth: .infinity)
             }.background(AudioStyle.paper).accessibilityIdentifier("audio.detail")
+                .accessibilityValue(String(model.bookID))
         }.navigationTitle(AudioL10n.text("detailTitle")).navigationBarTitleDisplayMode(.inline)
             .task(id: account) {
                 traceDetail("task.enter")
@@ -105,6 +106,7 @@ struct AudioBookDetailView: View {
             }
             VStack(alignment: .leading, spacing: 16) {
                 Text(book.title).font(.system(.largeTitle, design: .serif, weight: .bold)).foregroundStyle(.white).fixedSize(horizontal: false, vertical: true)
+                    .accessibilityIdentifier("audio.detail.title")
                 if let onFilterCatalog, !book.author.isEmpty {
                     Button { onFilterCatalog("author", book.author) } label: { Label(book.author, systemImage: "pencil").font(.subheadline).fixedSize(horizontal: false, vertical: true).frame(minHeight: 44) }.buttonStyle(.plain).foregroundStyle(AudioStyle.cream.opacity(0.9))
                 } else { Text(book.author).font(.subheadline).foregroundStyle(AudioStyle.cream.opacity(0.9)).fixedSize(horizontal: false, vertical: true) }

@@ -50,6 +50,8 @@ while IFS=$'\t' read -r name device; do
         -parallel-testing-enabled NO -test-timeouts-enabled YES \
         -only-testing:EkitapligimTests/ResponsiveComponentLayoutTests \
         -only-testing:EkitapligimTests/PremiumLayoutTests \
+        -only-testing:EkitapligimTests/HomeBookCardLayoutTests \
+        -only-testing:EkitapligimTests/MenuButtonAppearanceTests \
         -resultBundlePath "$EVIDENCE/$label-components.xcresult" \
         -clonedSourcePackagesDirPath .build/xcode-packages -disableAutomaticPackageResolution \
         CODE_SIGNING_ALLOWED=YES CODE_SIGN_IDENTITY=- CODE_SIGN_STYLE=Manual \
@@ -58,7 +60,7 @@ while IFS=$'\t' read -r name device; do
     printf '%s\n' "$native_status" > "$EVIDENCE/$label-components-exit.txt"
     if [ "$native_status" -ne 0 ]; then result=1; fi
     if [ -d "$EVIDENCE/$label-components.xcresult" ]; then
-        verify_summary "$EVIDENCE/$label-components.xcresult" 5 "$EVIDENCE/$label-components-summary.json" || result=1
+        verify_summary "$EVIDENCE/$label-components.xcresult" 11 "$EVIDENCE/$label-components-summary.json" || result=1
         xcrun xcresulttool export attachments --path "$EVIDENCE/$label-components.xcresult" \
             --output-path "$EVIDENCE/$label-components-screenshots" || result=1
     else
@@ -70,6 +72,7 @@ while IFS=$'\t' read -r name device; do
         -parallel-testing-enabled NO -test-timeouts-enabled YES \
         -only-testing:EkitapligimUITests/LayoutAuditUITests \
         -only-testing:EkitapligimUITests/ShellMenuLayoutUITests \
+        -only-testing:EkitapligimUITests/HomeBookRailUITests \
         -resultBundlePath "$EVIDENCE/$label.xcresult" \
         -clonedSourcePackagesDirPath .build/xcode-packages -disableAutomaticPackageResolution \
         CODE_SIGNING_ALLOWED=YES CODE_SIGN_IDENTITY=- CODE_SIGN_STYLE=Manual \
@@ -78,7 +81,7 @@ while IFS=$'\t' read -r name device; do
     printf '%s\n' "$status" > "$EVIDENCE/$label-exit.txt"
     if [ "$status" -ne 0 ]; then result=1; fi
     if [ -d "$EVIDENCE/$label.xcresult" ]; then
-        verify_summary "$EVIDENCE/$label.xcresult" 8 "$EVIDENCE/$label-summary.json" || result=1
+        verify_summary "$EVIDENCE/$label.xcresult" 11 "$EVIDENCE/$label-summary.json" || result=1
         xcrun xcresulttool export attachments --path "$EVIDENCE/$label.xcresult" \
             --output-path "$EVIDENCE/$label-screenshots" || result=1
     else

@@ -81,6 +81,7 @@ foreach ($route in @($source.routes.route | Where-Object { $_.route_type -eq "pu
 }
 
 foreach ($customRoute in @(
+    @{ sub_name = "me-audio-comments"; format = "v1/me/audio-comments"; controller = "Ekitapligim\IosApi:MeAudioComments" },
     @{ sub_name = "legal-terms"; format = "v1/legal/terms"; controller = "Ekitapligim\IosApi:LegalTerms" },
     @{ sub_name = "chat-message-detail"; format = "v1/chat/rooms/:+int<room_id>/messages/:+int<message_id>"; controller = "Ekitapligim\IosApi:ChatMessages" },
     @{ sub_name = "chat-message-reactions"; format = "v1/chat/rooms/:+int<room_id>/messages/:+int<message_id>/reactions"; controller = "Ekitapligim\IosApi:ChatReactions" },

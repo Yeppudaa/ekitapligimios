@@ -1,5 +1,9 @@
 # Android To iOS Feature Parity
 
+## Native personal audiobook comments (2026-10-18)
+
+Profile's audiobook-comments action now opens a native SwiftUI personal list and native audiobook detail pages. The server selector matches the website's `filter=comments&audio=1` semantics through AudioBooks `ProfileLibrary::comments`; generic forum history is not substituted. Requires IosApi 1.0.38 deployment. Core/controller/model tests run offline; iOS navigation and narrow-device UI checks remain pending. See [validation](AUDIO_COMMENTS_VALIDATION.md).
+
 ## Modern native design and audiobooks (2026-10-17)
 
 Current scope, protected purchase/authentication areas, native audiobook contracts and executed/pending validation are tracked in [MODERN_ANDROID_IOS_PARITY.md](MODERN_ANDROID_IOS_PARITY.md). Historical pass counts below do not validate this update. The new test-only Codemagic workflow captures real iPhone/iPad SwiftUI evidence without publishing.

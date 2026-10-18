@@ -22,11 +22,14 @@ final class ShellMenuLayoutUITests: XCTestCase {
         let app = launch("live")
         let menu = app.buttons["shell.menu"]
         let refresh = app.buttons["live.refresh"]
+        assertSingleCompactMenu(in: app)
         assertSeparated(menu, refresh, in: app)
+        capture(app, "live-before-refresh-and-drawer")
         refresh.tap()
         let scroll = app.scrollViews.firstMatch
         XCTAssertTrue(scroll.waitForExistence(timeout: 8))
         scroll.swipeUp()
+        assertSingleCompactMenu(in: app)
         assertSeparated(menu, refresh, in: app)
         XCTAssertTrue(app.navigationBars.firstMatch.buttons["shell.menu"].exists,
                       "The menu must be measured by the bar, not floating over page content")
@@ -36,6 +39,7 @@ final class ShellMenuLayoutUITests: XCTestCase {
         XCTAssertTrue(close.isHittable)
         close.tap()
         XCTAssertTrue(menu.waitForExistence(timeout: 5))
+        assertSingleCompactMenu(in: app)
         assertSeparated(menu, refresh, in: app)
         refresh.tap()
         capture(app, "live-refresh-after-scroll-and-drawer")
@@ -90,8 +94,7 @@ final class ShellMenuLayoutUITests: XCTestCase {
         for (screen, actionIDs) in screens {
             let app = launch(screen, largeText: largeText)
             let menu = app.buttons["shell.menu"]
-            XCTAssertTrue(menu.waitForExistence(timeout: 8))
-            assertContainedAndHittable(menu, in: app)
+            assertSingleCompactMenu(in: app)
             if screen != "home" {
                 XCTAssertTrue(app.navigationBars.firstMatch.buttons["shell.menu"].exists,
                               "\(screen) must place its menu inside the native navigation bar")
@@ -100,12 +103,16 @@ final class ShellMenuLayoutUITests: XCTestCase {
             if screen == "catalog" {
                 assertSeparated(app.buttons["catalog.displayMode"], app.buttons["catalog.filters"], in: app)
             }
+            // Keep the initial title, badge and adjacent actions visible for glass/background review.
+            // Opening and closing the drawer may otherwise change native large-title presentation.
+            capture(app, "\(screen)-before-drawer-largeText-\(largeText)")
             menu.tap()
             let close = app.buttons["modern-menu-close"]
             XCTAssertTrue(close.waitForExistence(timeout: 5))
             assertContainedAndHittable(close, in: app)
             close.tap()
             XCTAssertTrue(menu.waitForExistence(timeout: 5))
+            assertSingleCompactMenu(in: app)
             for id in actionIDs { assertSeparated(menu, app.buttons[id], in: app) }
             capture(app, "\(screen)-largeText-\(largeText)")
             app.terminate()
@@ -140,6 +147,22 @@ final class ShellMenuLayoutUITests: XCTestCase {
         XCTAssertTrue(overlap.isNull || overlap.width * overlap.height < 1,
                       "Action hit areas overlap: \(first.identifier) \(first.frame), \(second.identifier) \(second.frame)",
                       file: file, line: line)
+    }
+
+    private func assertSingleCompactMenu(in app: XCUIApplication,
+                                         file: StaticString = #filePath, line: UInt = #line) {
+        let menus = app.buttons.matching(identifier: "shell.menu")
+        XCTAssertTrue(menus.firstMatch.waitForExistence(timeout: 8), file: file, line: line)
+        XCTAssertEqual(menus.count, 1,
+                       "A root page must expose one menu button without a duplicate overlay",
+                       file: file, line: line)
+        let menu = menus.firstMatch
+        assertContainedAndHittable(menu, in: app, file: file, line: line)
+        // Keep the full recommended touch target while rejecting an expanding toolbar pill.
+        XCTAssertGreaterThanOrEqual(menu.frame.width, 44 - 0.5, file: file, line: line)
+        XCTAssertGreaterThanOrEqual(menu.frame.height, 44 - 0.5, file: file, line: line)
+        XCTAssertLessThanOrEqual(menu.frame.width, 48, file: file, line: line)
+        XCTAssertLessThanOrEqual(menu.frame.height, 48, file: file, line: line)
     }
 
     private func assertContainedAndHittable(_ element: XCUIElement, in app: XCUIApplication,

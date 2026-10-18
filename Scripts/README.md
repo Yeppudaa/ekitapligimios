@@ -1,5 +1,7 @@
 # Scripts
 
+Library/favorite checks: `Scripts/library-mutation-state-test-windows.ps1` executes the current AppContainer mutation methods against local test transports; `Scripts/live-activity-state-test-windows.ps1` executes the feed model's asynchronous state cases. These portable harnesses do not validate native SwiftUI/Combine, Keychain or iOS rendering. The macOS parity runner includes `BookLibraryUITests` alongside `ModernParityUITests`. See [library/activity evidence and the required backend upgrade](../LIBRARY_ACTIVITY_VALIDATION.md).
+
 Offline chat integration checks can load a local XenForo/Siropu source tree without bootstrapping its configured app or connecting to its database. Set `CHAT_SYNC_XF_SOURCE_ROOT` if the tree is not at `C:/xampp/htdocs/ekitapligim/src`, then run `php Tests/Integration/ChatReactionSyncTest.php` and `php Tests/Integration/ChatRouteTest.php`. These checks exercise the real reaction repository, entity, web action logger and route sorter against in-memory storage. They require the proprietary source tree and are separate from the portable backend unit tests.
 
 ## `validate-workspace.ps1`

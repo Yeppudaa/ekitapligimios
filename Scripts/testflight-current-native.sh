@@ -29,7 +29,7 @@ COMMON=(-project Ekitapligim.xcodeproj -configuration Development -destination "
 native_status=0
 ui_status=0
 if [ "$PHASE" != ui ]; then
-NATIVE=(AudioPageRoutingTests BookAgendaFeedModelTests BookAgendaDetailModelTests PremiumLayoutTests ResponsiveComponentLayoutTests)
+NATIVE=(AudioPageRoutingTests BookAgendaFeedModelTests BookAgendaDetailModelTests PremiumLayoutTests ResponsiveComponentLayoutTests BookLibraryMutationTests LiveActivityModelTests MyAudioCommentsModelTests MenuButtonAppearanceTests HomeBookCardLayoutTests)
 SELECT=()
 for suite in "${NATIVE[@]}"; do SELECT+=("-only-testing:EkitapligimTests/$suite"); done
 SELECT+=(
@@ -42,7 +42,7 @@ xcrun xcresulttool get test-results summary --path "$EVIDENCE/current-native.xcr
 python3 - "$EVIDENCE/current-native-summary.json" <<'PY' || native_status=1
 from pathlib import Path
 import json,re,sys
-suites=('AudioPageRoutingTests','BookAgendaFeedModelTests','BookAgendaDetailModelTests','PremiumLayoutTests','ResponsiveComponentLayoutTests')
+suites=('AudioPageRoutingTests','BookAgendaFeedModelTests','BookAgendaDetailModelTests','PremiumLayoutTests','ResponsiveComponentLayoutTests','BookLibraryMutationTests','LiveActivityModelTests','MyAudioCommentsModelTests','MenuButtonAppearanceTests','HomeBookCardLayoutTests')
 expected=2+sum(len(re.findall(r'func test\w+\(',Path('App/EkitapligimTests',s+'.swift').read_text())) for s in suites)
 s=json.load(open(sys.argv[1])); assert s['passedTests']==expected and s['failedTests']==0 and s.get('skippedTests',0)==0,(expected,s)
 print('Current native tests passed:',expected)
@@ -59,7 +59,18 @@ UI=(
   KeyboardLayoutUITests/testAgendaCommentKeyboardRestoresRootShellAtAccessibilityTextSize
   ModernParityUITests/testHomeNewArrivalCardsRemainVisibleAndOpenNativeBookDetails
   ModernParityUITests/testHomeAgendaRailKeepsDifferentContentAtEqualCardDimensions
-  ModernParityUITests/testAudiobookCatalogDetailAndLibraryKeepNativeBackNavigation)
+  ModernParityUITests/testAudiobookCatalogDetailAndLibraryKeepNativeBackNavigation
+  ShellMenuLayoutUITests/testHomeGenreCatalogAndBookDetailDoNotReceiveAFloatingMenu
+  BookLibraryUITests/testReadingShelfAndFavoritePersistIntoProfileAndLiveActivity
+  BookLibraryUITests/testRejectedFavoriteKeepsReadingShelfAndShowsFailureWithoutPublishingAnEvent
+  BookLibraryUITests/testLargeTextGuestCanFindShelfActionAndReceivesSignInPrompt
+  MyAudioCommentsUITests/testProfileCommentsOpenNativeAudioDetailsAndBackRetainsProfileTab
+  MyAudioCommentsUITests/testLargeTextCommentsRemainWithinTheScreenAndBothRowsAreReachable
+  MyAudioCommentsUITests/testEmptyAudioHistoryShowsAnHonestNativeEmptyState
+  MyAudioCommentsUITests/testUnavailableAudioEndpointShowsAnErrorWithoutOpeningTheWebsite
+  HomeBookRailUITests/testNormalCardsKeepCoverRatioAndCompactMetadataWhileScrolling
+  HomeBookRailUITests/testFailedAndDelayedCoversKeepTheirCardGeometry
+  HomeBookRailUITests/testAccessibilityCardsGrowForTextWithoutStretchingTheCover)
 SELECT=()
 for test in "${UI[@]}"; do SELECT+=("-only-testing:EkitapligimUITests/$test"); done
 ui_status=0

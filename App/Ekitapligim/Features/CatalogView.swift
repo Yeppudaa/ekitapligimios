@@ -105,9 +105,7 @@ struct CatalogView: View {
                     .accessibilityIdentifier("catalog.filters")
                 }
                 if let onOpenMenu {
-                    ToolbarItem(placement: .topBarTrailing) {
-                        EKitapligimMenuButton(action: onOpenMenu)
-                    }
+                    EKitapligimMenuToolbarItem(action: onOpenMenu)
                 }
             }
             .navigationDestination(for: String.self) { id in

@@ -302,14 +302,20 @@ struct EKitapligimRemoteCover: View {
     var title: String? = nil
     var author: String = ""
     var accessibilityTitle: String? = nil
+    var contentMode: ContentMode = .fill
 
     var body: some View {
         Group {
             if let url = secureURL {
                 AsyncImage(url: url) { phase in
                     switch phase {
-                    case .success(let image): image.resizable().scaledToFill()
-                    case .empty: ProgressView().tint(EKitapligimPalette.teal)
+                    case .success(let image): image.resizable().aspectRatio(contentMode: contentMode)
+                    case .empty:
+                        placeholder.overlay {
+                            ProgressView().tint(EKitapligimPalette.teal)
+                                .padding(8)
+                                .background(.regularMaterial, in: Circle())
+                        }
                     default: placeholder
                     }
                 }

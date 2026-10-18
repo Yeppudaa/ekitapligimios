@@ -26,6 +26,8 @@ struct AudioMiniPlayerView: View {
                             }.frame(maxWidth: .infinity, alignment: .leading)
                         }.contentShape(Rectangle())
                     }.buttonStyle(.plain).accessibilityLabel(AudioL10n.text("expand"))
+                        .accessibilityIdentifier("audio.mini.expand")
+                        .accessibilityValue(controller.book?.title ?? "")
                     if controller.loading { ProgressView().frame(width: 44, height: 44).tint(AudioStyle.teal) }
                     else {
                         Button { controller.toggle() } label: { Image(systemName: controller.playing ? "pause.fill" : "play.fill").font(.system(size: 20)).frame(width: 44, height: 44) }
@@ -76,12 +78,14 @@ struct AudioPlayerView: View {
                 } else {
                     VStack(spacing: 20) { playerColumn; chaptersPanel }.padding(16)
                 }
-            }.background(AudioStyle.cream)
+            }.background(AudioStyle.cream).accessibilityIdentifier("audio.player")
         }.navigationTitle(AudioL10n.text("nowListening")).navigationBarTitleDisplayMode(.inline)
             .navigationBarBackButtonHidden(true)
             .toolbar {
-                ToolbarItem(placement: .topBarLeading) { Button { dismiss() } label: { Image(systemName: "chevron.down").frame(width: 44, height: 44) }.accessibilityLabel(AudioL10n.text("minimize")) }
-                ToolbarItem(placement: .topBarTrailing) { Button { controller.close(); dismiss() } label: { Image(systemName: "xmark").frame(width: 44, height: 44) }.accessibilityLabel(AudioL10n.text("stopClose")) }
+                ToolbarItem(placement: .topBarLeading) { Button { dismiss() } label: { Image(systemName: "chevron.down").frame(width: 44, height: 44) }.accessibilityLabel(AudioL10n.text("minimize"))
+                    .accessibilityIdentifier("audio.player.minimize") }
+                ToolbarItem(placement: .topBarTrailing) { Button { controller.close(); dismiss() } label: { Image(systemName: "xmark").frame(width: 44, height: 44) }.accessibilityLabel(AudioL10n.text("stopClose"))
+                    .accessibilityIdentifier("audio.player.close") }
             }
             .tint(AudioStyle.ink)
             .sheet(isPresented: $settingsPresented) { settings }
@@ -93,13 +97,13 @@ struct AudioPlayerView: View {
             .onChange(of: controller.loading) { _, _ in handlePendingNote() }
             .onChange(of: controller.noteRequested) { _, _ in handlePendingNote() }
             .onChange(of: controller.book?.id) { _, _ in annotation = nil; editorText = ""; tab = 0; handlePendingNote() }
-            .accessibilityIdentifier("audio.player")
     }
     private var playerColumn: some View {
         VStack(spacing: 20) {
             artwork
             if let book = controller.book {
                 Text(book.title).font(.system(.largeTitle, design: .serif, weight: .bold)).multilineTextAlignment(.center).fixedSize(horizontal: false, vertical: true)
+                    .accessibilityIdentifier("audio.player.title")
                 Text(book.author).font(.title3).foregroundStyle(AudioStyle.muted).multilineTextAlignment(.center).fixedSize(horizontal: false, vertical: true)
             }
             artworkActionBar
@@ -300,7 +304,10 @@ struct AudioPlayerView: View {
             }
             if let related = controller.manifest?.recommendations, !related.isEmpty {
                 Divider().padding(.vertical, 10)
-                AudioShelfView(title: AudioL10n.text("similar"), books: related) { id in dismiss(); onBook(id) }
+                // Keep this navigation owner alive while its selected book is pushed above it.
+                AudioShelfView(title: AudioL10n.text("similar"), books: related, onBook: onBook)
+                    .accessibilityElement(children: .contain)
+                    .accessibilityIdentifier("audio.player.related")
             }
         }.padding(20).foregroundStyle(AudioStyle.ink).frame(maxWidth: .infinity, alignment: .leading).background(.white.opacity(0.8))
             .clipShape(RoundedRectangle(cornerRadius: 25)).overlay(RoundedRectangle(cornerRadius: 25).stroke(AudioStyle.gold.opacity(0.18), lineWidth: 1))

@@ -71,6 +71,7 @@ struct PrimaryTabBar: View {
         .contentShape(Rectangle())
         .accessibilityIdentifier(tab.accessibilityIdentifier)
         .accessibilityLabel(accessibilityTitle)
+        .accessibilityAddTraits(isSelected ? .isSelected : [])
     }
 }
 

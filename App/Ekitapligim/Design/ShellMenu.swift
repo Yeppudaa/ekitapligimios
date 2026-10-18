@@ -9,29 +9,62 @@ struct EKitapligimMenuButton: View {
 
     var body: some View {
         Button(action: action) {
-            Image(systemName: "line.3.horizontal")
-                .font(.system(size: 19, weight: .semibold))
-                .foregroundStyle(EKitapligimPalette.ink)
-                .frame(width: 44, height: 44)
-                .background(.white.opacity(0.96), in: RoundedRectangle(cornerRadius: 8, style: .continuous))
-                .overlay {
-                    RoundedRectangle(cornerRadius: 8, style: .continuous)
-                        .strokeBorder(EKitapligimPalette.border)
-                }
-                .overlay(alignment: .topTrailing) {
-                    if container.totalUnread > 0 {
-                        Circle()
-                            .fill(EKitapligimPalette.amber)
-                            .frame(width: 8, height: 8)
-                            .padding(3)
-                            .accessibilityHidden(true)
-                    }
-                }
-                .contentShape(RoundedRectangle(cornerRadius: 8, style: .continuous))
+            EKitapligimMenuButtonFace(hasUnread: container.totalUnread > 0)
         }
         .buttonStyle(.plain)
         .accessibilityLabel(L10n.menuTitle)
+        .accessibilityValue(container.totalUnread > 0 ? L10n.unreadCountAccessibility(container.totalUnread) : "")
         .accessibilityIdentifier("shell.menu")
+    }
+}
+
+/// One opaque surface for both the custom Home header and native toolbar placements.
+@MainActor
+struct EKitapligimMenuButtonFace: View {
+    let hasUnread: Bool
+
+    var body: some View {
+        Image(systemName: "line.3.horizontal")
+            .font(.system(size: 18, weight: .semibold))
+            .foregroundStyle(EKitapligimPalette.ink)
+            .frame(width: 44, height: 44)
+            .background(.white, in: RoundedRectangle(cornerRadius: 14, style: .continuous))
+            .overlay(alignment: .topTrailing) {
+                if hasUnread {
+                    Circle()
+                        .fill(EKitapligimPalette.amber)
+                        .frame(width: 6, height: 6)
+                        .padding(6)
+                        .accessibilityHidden(true)
+                }
+            }
+            .clipShape(RoundedRectangle(cornerRadius: 14, style: .continuous))
+            .contentShape(RoundedRectangle(cornerRadius: 14, style: .continuous))
+    }
+}
+
+/// iOS 26 otherwise wraps custom toolbar content in a second, shared glass capsule.
+@MainActor
+struct EKitapligimMenuToolbarItem: ToolbarContent {
+    let action: () -> Void
+
+    @ToolbarContentBuilder
+    var body: some ToolbarContent {
+        #if compiler(>=6.2)
+        if #available(iOS 26.0, *) {
+            menuItem.sharedBackgroundVisibility(.hidden)
+        } else {
+            menuItem
+        }
+        #else
+        menuItem
+        #endif
+    }
+
+    private var menuItem: some ToolbarContent {
+        ToolbarItem(placement: .topBarTrailing) {
+            EKitapligimMenuButton(action: action)
+        }
     }
 }
 
@@ -42,9 +75,7 @@ extension View {
     func shellMenu(action: (() -> Void)?) -> some View {
         toolbar {
             if let action {
-                ToolbarItem(placement: .topBarTrailing) {
-                    EKitapligimMenuButton(action: action)
-                }
+                EKitapligimMenuToolbarItem(action: action)
             }
         }
     }

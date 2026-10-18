@@ -299,6 +299,11 @@ public extension APIEndpoint {
     }
 
     static let library = APIEndpoint(method: .get, path: "me/library", requiresAuthentication: true)
+    static func myAudioComments(page: Int = 1) -> APIEndpoint {
+        APIEndpoint(method: .get, path: "me/audio-comments",
+                    queryItems: [URLQueryItem(name: "page", value: String(max(1, page)))],
+                    requiresAuthentication: true)
+    }
     static func myComments(page: Int = 1) -> APIEndpoint {
         APIEndpoint(
             method: .get,
@@ -372,6 +377,16 @@ public extension APIEndpoint {
                 "progress_percent": String(progressPercent),
                 "last_read_page": String(lastReadPage)
             ]),
+            requiresAuthentication: true
+        )
+    }
+
+    /// Favorites are independent of reading shelves and reader progress.
+    static func setLibraryFavorite(bookID: Int, isFavorite: Bool) -> APIEndpoint {
+        APIEndpoint(
+            method: .put,
+            path: "me/library/\(bookID)",
+            body: .form(["is_favorite": isFavorite ? "1" : "0"]),
             requiresAuthentication: true
         )
     }

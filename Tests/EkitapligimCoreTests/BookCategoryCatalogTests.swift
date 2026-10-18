@@ -16,7 +16,9 @@ final class BookCategoryCatalogTests: XCTestCase {
 
         XCTAssertEqual(categories, BookCategoryCatalog.defaults)
         XCTAssertEqual(categories.map(\.id), expectedCategories.map(\.id))
-        let expectedTitles = Bundle.module.preferredLocalizations.first == "en"
+        // This test bundle has different resources from the Core bundle that owns these strings.
+        // Select the language from the catalog, then verify the complete localized mapping.
+        let expectedTitles = categories.first?.title == expectedEnglishTitles.first
             ? expectedEnglishTitles : expectedCategories.map(\.title)
         XCTAssertEqual(categories.map(\.title), expectedTitles)
         XCTAssertEqual(categories.count, 32)

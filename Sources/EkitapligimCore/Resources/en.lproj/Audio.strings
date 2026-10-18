@@ -145,3 +145,9 @@
 "categoryBookCount" = "%d audiobooks";
 "removePersonFilter" = "Remove the author / narrator filter";
 "myAudioComments" = "My audiobook comments";
+"commentsLoading" = "Loading your audiobook comments…";
+"commentsEmptyTitle" = "No audiobook comments yet";
+"commentsEmptyMessage" = "Your comments on audiobooks will appear here.";
+"commentsHint" = "Tap a comment to open its audiobook.";
+"commentsUnavailable" = "Audiobook comments are currently unavailable. Please try again later.";
+"commentsLoadError" = "Comments could not be loaded. Check your connection and try again.";

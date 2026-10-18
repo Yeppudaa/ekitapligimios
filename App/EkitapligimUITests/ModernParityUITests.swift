@@ -223,6 +223,81 @@ final class ModernParityUITests: XCTestCase {
         XCTAssertNotEqual(back.identifier, "audio.catalog.library", "The library action cannot substitute for native Back", file: file, line: line)
     }
 
+    private func revealAudioElement(_ element: XCUIElement, in viewport: XCUIElement, app: XCUIApplication, towardStart: Bool = false) {
+        guard viewport.waitForExistence(timeout: 8) else {
+            attachFailureDiagnostics(app, name: "audio-navigation-missing-viewport")
+            XCTFail("The active audio viewport must exist before scrolling")
+            return
+        }
+        // A modal player can leave its originating profile/home scroll view in the AX tree.
+        // Send every gesture to the explicitly selected audio page, never that underlying page.
+        for _ in 0..<18 {
+            if element.isHittable { return }
+            let bounds = viewport.frame.intersection(app.frame)
+            guard bounds.width > 0, bounds.height > 0 else { break }
+            let frame = element.exists ? element.frame : .zero
+            let hasFrame = !frame.isEmpty && !frame.isNull && !frame.isInfinite
+            let needsDown = hasFrame ? frame.maxY <= bounds.minY : towardStart
+            let origin = app.coordinate(withNormalizedOffset: .zero)
+            let x = bounds.minX - app.frame.minX + bounds.width * 0.88
+            let upper = origin.withOffset(CGVector(dx: x, dy: bounds.minY - app.frame.minY + bounds.height * 0.20))
+            let lower = origin.withOffset(CGVector(dx: x, dy: bounds.minY - app.frame.minY + bounds.height * 0.80))
+            if needsDown { upper.press(forDuration: 0.05, thenDragTo: lower) }
+            else { lower.press(forDuration: 0.05, thenDragTo: upper) }
+        }
+        if !element.isHittable { attachFailureDiagnostics(app, name: "audio-navigation-unreachable-element") }
+    }
+
+    private func assertAudioDetail(_ bookID: Int, title: String, in app: XCUIApplication, file: StaticString = #filePath, line: UInt = #line) {
+        let detail = app.scrollViews["audio.detail"].firstMatch
+        XCTAssertTrue(detail.waitForExistence(timeout: 8), "Opening a related book must render its detail page", file: file, line: line)
+        let identity = XCTNSPredicateExpectation(predicate: NSPredicate(format: "value == %@", String(bookID)), object: detail)
+        XCTAssertEqual(XCTWaiter.wait(for: [identity], timeout: 8), .completed, "The detail model must belong to the selected book", file: file, line: line)
+        let heading = detail.staticTexts["audio.detail.title"].firstMatch
+        revealAudioElement(heading, in: detail, app: app, towardStart: true)
+        XCTAssertTrue(heading.isHittable, "A detail page must show its book content instead of an empty screen", file: file, line: line)
+        XCTAssertEqual(heading.label, title, file: file, line: line)
+    }
+
+    private func assertPlayerListening(to title: String, in app: XCUIApplication, file: StaticString = #filePath, line: UInt = #line) {
+        let player = app.scrollViews["audio.player"].firstMatch
+        XCTAssertTrue(player.waitForExistence(timeout: 8), file: file, line: line)
+        let heading = player.staticTexts["audio.player.title"].firstMatch
+        revealAudioElement(heading, in: player, app: app, towardStart: true)
+        let identity = XCTNSPredicateExpectation(predicate: NSPredicate(format: "label == %@", title), object: heading)
+        XCTAssertEqual(XCTWaiter.wait(for: [identity], timeout: 15), .completed, "Browsing recommendations must preserve the playing book until Listen is tapped", file: file, line: line)
+        XCTAssertTrue(heading.isHittable, file: file, line: line)
+        let pause = player.buttons["Duraklat"].firstMatch
+        revealAudioElement(pause, in: player, app: app)
+        XCTAssertTrue(pause.waitForExistence(timeout: 15), "Local playback must remain active across navigation", file: file, line: line)
+    }
+
+    private func openPlayerRecommendation(_ bookID: Int, in app: XCUIApplication) {
+        let player = app.scrollViews["audio.player"].firstMatch
+        let shelf = player.descendants(matching: .any)["audio.player.related"].firstMatch
+        let card = shelf.buttons["audio.card.\(bookID)"].firstMatch
+        revealAudioElement(card, in: player, app: app)
+        XCTAssertTrue(card.isHittable, "The related book must be tapped inside the active player's shelf")
+        card.tap()
+    }
+
+    private func listenToAudioDetail(in app: XCUIApplication) {
+        let detail = app.scrollViews["audio.detail"].firstMatch
+        let listen = detail.buttons["audio.detail.listen"].firstMatch
+        revealAudioElement(listen, in: detail, app: app)
+        XCTAssertTrue(listen.isHittable)
+        listen.tap()
+    }
+
+    private func assertMiniPlayerListening(to title: String, in app: XCUIApplication, file: StaticString = #filePath, line: UInt = #line) {
+        let mini = app.descendants(matching: .any)["audio.mini"].firstMatch
+        let expand = mini.buttons["audio.mini.expand"].firstMatch
+        XCTAssertTrue(expand.waitForExistence(timeout: 8), file: file, line: line)
+        let identity = XCTNSPredicateExpectation(predicate: NSPredicate(format: "value == %@", title), object: expand)
+        XCTAssertEqual(XCTWaiter.wait(for: [identity], timeout: 5), .completed, "Browsing recommendations must preserve the playing book", file: file, line: line)
+        XCTAssertTrue(mini.buttons["Duraklat"].waitForExistence(timeout: 5), file: file, line: line)
+    }
+
     func testA00AudioDetailAppSwipeReachesItsChapterWithoutPlayback() {
         executionTimeAllowance = 90
         checkAudioDetailScroll(reproduceAppSwipe: true)
@@ -393,13 +468,20 @@ final class ModernParityUITests: XCTestCase {
         XCTAssertTrue(firstCard.exists)
         let secondCard = app.descendants(matching: .any)["home.agenda.940002"].firstMatch
         XCTAssertTrue(secondCard.waitForExistence(timeout: 5), "Both eager agenda cards must have their real layout frames")
-        XCTAssertGreaterThan(firstCard.frame.height, 100)
-        XCTAssertGreaterThan(secondCard.frame.height, 100)
+        XCTAssertEqual(firstCard.frame.height, 300, accuracy: 1,
+            "Home previews must stay compact even when the review contains a long message")
+        XCTAssertEqual(secondCard.frame.height, 300, accuracy: 1)
         XCTAssertEqual(firstCard.frame.width, secondCard.frame.width, accuracy: 1,
             "A long review and a short note must use equal rail card widths")
         XCTAssertEqual(firstCard.frame.height, secondCard.frame.height, accuracy: 1,
-            "A long review and a short note must share the tallest card's natural height")
+            "A long review and a short note must share the compact preview height")
+        XCTAssertGreaterThanOrEqual(firstOpen.frame.minY, firstCard.frame.minY - 1)
+        XCTAssertLessThanOrEqual(firstOpen.frame.maxY, firstCard.frame.maxY + 1,
+            "The entire post action must fit within the compact card")
         capture(app, "modern-home-agenda-equal-card-dimensions")
+        firstOpen.tap()
+        XCTAssertTrue(app.scrollViews["agenda.detail.scroll"].waitForExistence(timeout: 8),
+            "A shortened home preview must still open the actual full post")
     }
 
     func testHomeGenreOpensFilteredCatalogAndReturnsToHomeInTheSameNavigationStack() {
@@ -455,7 +537,7 @@ final class ModernParityUITests: XCTestCase {
         }
     }
 
-    func testHomeAgendaUsesIntrinsicCardsForLongAccessibilityTextInBothOrientations() {
+    func testHomeAgendaKeepsCompactPreviewsAccessibleInBothOrientations() {
         for landscape in [false, true] {
             let app = launch("home", largeText: true, longAgenda: true)
             XCUIDevice.shared.orientation = landscape ? .landscapeLeft : .portrait
@@ -464,7 +546,7 @@ final class ModernParityUITests: XCTestCase {
             reveal(open, in: app)
             XCTAssertTrue(open.isHittable, "The actual post action must remain reachable")
             XCTAssertTrue(card.exists)
-            XCTAssertGreaterThan(card.frame.height, 360, "Accessibility content must grow beyond the normal rail height")
+            XCTAssertGreaterThan(card.frame.height, 0, "Large-text previews must have a real intrinsic height")
             let nextCard = app.descendants(matching: .any)["home.agenda.940002"].firstMatch
             XCTAssertTrue(nextCard.exists)
             XCTAssertGreaterThanOrEqual(nextCard.frame.minY, card.frame.maxY,
@@ -487,6 +569,9 @@ final class ModernParityUITests: XCTestCase {
             }
             // AX geometry establishes action/card containment, not glyph rendering. Retain pixels.
             capture(app, "modern-home-long-agenda-accessibility3-\(landscape ? "landscape" : "portrait")")
+            open.tap()
+            XCTAssertTrue(app.scrollViews["agenda.detail.scroll"].waitForExistence(timeout: 8),
+                "The complete post must remain reachable at accessibility text sizes")
             app.terminate()
             XCUIDevice.shared.orientation = .portrait
         }
@@ -878,6 +963,79 @@ final class ModernParityUITests: XCTestCase {
         XCTAssertTrue(chapter.isHittable)
         capture(app, "modern-native-audio-player-chapters")
         XCTAssertEqual(app.buttons.matching(identifier: "audio.mini.close").count, 0, "Full player must not display a duplicate mini player")
+    }
+
+    func testMiniPlayerRecommendationShowsBookAndReturnsToProfileWithoutChangingPlayback() {
+        let app = launch("profile", playAudio: true)
+        defer { app.terminate() }
+        let profileTab = app.buttons["primary-tab-profile"]
+        XCTAssertTrue(app.scrollViews["profile.scroll"].waitForExistence(timeout: 8))
+        XCTAssertTrue(profileTab.isSelected)
+        let expand = app.buttons["audio.mini.expand"]
+        XCTAssertTrue(expand.waitForExistence(timeout: 15))
+        expand.tap()
+        assertPlayerListening(to: "Beyaz Zambaklar Ülkesinde", in: app)
+
+        openPlayerRecommendation(102, in: app)
+
+        assertAudioDetail(102, title: "Küçük Prens", in: app)
+        capture(app, "modern-modal-player-related-book-loaded")
+        app.navigationBars.buttons.firstMatch.tap()
+        assertPlayerListening(to: "Beyaz Zambaklar Ülkesinde", in: app)
+        app.buttons["audio.player.minimize"].tap()
+        XCTAssertTrue(app.scrollViews["profile.scroll"].waitForExistence(timeout: 8))
+        XCTAssertTrue(profileTab.isSelected, "Closing the player must preserve the originating tab")
+        XCTAssertFalse(app.scrollViews["audio.detail"].exists)
+        assertMiniPlayerListening(to: "Beyaz Zambaklar Ülkesinde", in: app)
+        capture(app, "modern-modal-player-related-back-to-profile-playing")
+    }
+
+    func testNativePlayerRecommendationsAlternateBooksAndPreserveCatalogBackNavigation() {
+        let app = launch("catalog", playAudio: true)
+        defer { app.terminate() }
+        let catalogTab = app.buttons["primary-tab-catalog"]
+        openAudiobookCatalogFromMenu(in: app)
+        let start = app.buttons["audio.catalog.start"]
+        revealAudioElement(start, in: app.scrollViews["audio.catalog"], app: app)
+        XCTAssertTrue(start.isHittable)
+        let ready = XCTNSPredicateExpectation(predicate: NSPredicate(format: "isEnabled == true"), object: start)
+        XCTAssertEqual(XCTWaiter.wait(for: [ready], timeout: 8), .completed)
+        start.tap()
+        assertAudioDetail(101, title: "Beyaz Zambaklar Ülkesinde", in: app)
+        listenToAudioDetail(in: app)
+        assertPlayerListening(to: "Beyaz Zambaklar Ülkesinde", in: app)
+
+        openPlayerRecommendation(102, in: app)
+
+        assertAudioDetail(102, title: "Küçük Prens", in: app)
+        XCTAssertTrue(catalogTab.isSelected, "A related book must not change the active shell tab")
+        XCTAssertFalse(app.buttons["primary-tab-profile"].isSelected)
+        listenToAudioDetail(in: app)
+        assertPlayerListening(to: "Küçük Prens", in: app)
+
+        openPlayerRecommendation(101, in: app)
+
+        assertAudioDetail(101, title: "Beyaz Zambaklar Ülkesinde", in: app)
+        XCTAssertTrue(catalogTab.isSelected)
+        assertMiniPlayerListening(to: "Küçük Prens", in: app)
+        capture(app, "modern-native-player-related-alternating-book-loaded")
+
+        app.navigationBars.buttons.firstMatch.tap()
+        assertPlayerListening(to: "Küçük Prens", in: app)
+        app.buttons["audio.player.minimize"].tap()
+        assertAudioDetail(102, title: "Küçük Prens", in: app)
+        assertMiniPlayerListening(to: "Küçük Prens", in: app)
+        app.navigationBars.buttons.firstMatch.tap()
+        assertPlayerListening(to: "Küçük Prens", in: app)
+        app.buttons["audio.player.minimize"].tap()
+        assertAudioDetail(101, title: "Beyaz Zambaklar Ülkesinde", in: app)
+        app.navigationBars.buttons.firstMatch.tap()
+        XCTAssertTrue(app.scrollViews["audio.catalog"].waitForExistence(timeout: 8))
+        app.navigationBars.buttons.firstMatch.tap()
+        XCTAssertTrue(app.scrollViews["catalog.scroll"].waitForExistence(timeout: 8))
+        XCTAssertTrue(catalogTab.isSelected)
+        assertMiniPlayerListening(to: "Küçük Prens", in: app)
+        capture(app, "modern-native-player-related-back-to-catalog-playing")
     }
 
     func testAudioAnnotationTextRemainsVisibleAndEditableInDarkAppearance() {

@@ -131,6 +131,7 @@ public protocol BookRepositoryProtocol: Sendable {
     func updateProgress(bookID: Int, page: Int, percent: Double) async throws
     func library() async throws -> LibraryPageDTO
     func updateLibraryItem(bookID: Int, shelfState: String, progressPercent: Int, lastReadPage: Int) async throws
+    func setLibraryFavorite(bookID: Int, isFavorite: Bool) async throws
     func comments(bookID: Int, page: Int) async throws -> BookCommentsPageDTO
     func createComment(bookID: Int, message: String, rating: Int) async throws -> BookCommentCreateDTO
 }
@@ -191,7 +192,7 @@ public struct BookRepository: BookRepositoryProtocol, ReaderProgressRepositoryPr
     }
 
     public func updateLibraryItem(bookID: Int, shelfState: String, progressPercent: Int, lastReadPage: Int) async throws {
-        let _: SuccessResponse = try await apiClient.request(
+        let response: LibraryMutationAcknowledgement = try await apiClient.request(
             .updateLibraryItem(
                 bookID: bookID,
                 shelfState: shelfState,
@@ -199,6 +200,14 @@ public struct BookRepository: BookRepositoryProtocol, ReaderProgressRepositoryPr
                 lastReadPage: lastReadPage
             )
         )
+        try response.validate()
+    }
+
+    public func setLibraryFavorite(bookID: Int, isFavorite: Bool) async throws {
+        let response: LibraryMutationAcknowledgement = try await apiClient.request(
+            .setLibraryFavorite(bookID: bookID, isFavorite: isFavorite)
+        )
+        try response.validate()
     }
 
     public func comments(bookID: Int, page: Int = 1) async throws -> BookCommentsPageDTO {
@@ -312,6 +321,10 @@ public struct ProfileRepository: Sendable {
 
     public func comments(page: Int = 1) async throws -> MyCommentsPageDTO {
         try await apiClient.request(.myComments(page: page), as: MyCommentsPageDTO.self)
+    }
+
+    public func audioComments(page: Int = 1) async throws -> MyAudioCommentsPageDTO {
+        try await apiClient.request(.myAudioComments(page: page), as: MyAudioCommentsPageDTO.self)
     }
 
     public func uploadImage(kind: ProfileImageKind, fileName: String, mimeType: String, data: Data) async throws -> ProfileMediaDTO {
@@ -998,20 +1011,64 @@ public struct LibraryPageDTO: Decodable, Equatable, Sendable {
 
     public init(from decoder: Decoder) throws {
         let container = try decoder.singleValueContainer()
+        let decoded: [LibraryItemDTO]
         if let directItems = try? container.decode([LibraryItemDTO].self) {
-            self.items = directItems
-            return
+            decoded = directItems
+        } else {
+            let keyed = try decoder.container(keyedBy: CodingKeys.self)
+            if let items = try keyed.decodeIfPresent([LibraryItemDTO].self, forKey: .items)
+                ?? keyed.decodeIfPresent([LibraryItemDTO].self, forKey: .library) {
+                decoded = items
+            } else if let nested = try keyed.decodeIfPresent(LibraryPageDTO.self, forKey: .data) {
+                decoded = nested.items
+            } else {
+                throw DecodingError.dataCorrupted(.init(codingPath: decoder.codingPath,
+                    debugDescription: "Library response is missing its item collection."))
+            }
         }
-        let keyed = try decoder.container(keyedBy: CodingKeys.self)
-        self.items = try keyed.decodeIfPresent([LibraryItemDTO].self, forKey: .items)
-            ?? keyed.decodeIfPresent([LibraryItemDTO].self, forKey: .library)
-            ?? []
+        guard decoded.allSatisfy({ !$0.bookId.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty }) else {
+            throw DecodingError.dataCorrupted(.init(codingPath: decoder.codingPath,
+                debugDescription: "Library response contains an item without a book identifier."))
+        }
+        self.items = decoded
     }
 
     private enum CodingKeys: String, CodingKey {
         case items
         case library
+        case data
     }
+}
+
+/// A library write requires an explicit acknowledgement, unlike best-effort legacy actions.
+/// HTTP 200 error envelopes and `success: false` must never be committed as local changes.
+private struct LibraryMutationAcknowledgement: Decodable {
+    let success: Bool
+    let errors: [APIErrorDetail]
+    let message: String?
+
+    init(from decoder: Decoder) throws {
+        let container = try decoder.container(keyedBy: CodingKeys.self)
+        success = container.decodeFlexibleBool(forKey: .success)
+        errors = try container.decodeIfPresent([APIErrorDetail].self, forKey: .errors) ?? []
+        message = try container.decodeIfPresent(String.self, forKey: .message)
+    }
+
+    func validate() throws {
+        if !errors.isEmpty {
+            throw APIClientError.httpStatus(200, APIErrorEnvelope(errors: errors))
+        }
+        guard success else {
+            if let message, !message.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty {
+                throw APIClientError.httpStatus(200, APIErrorEnvelope(errors: [
+                    APIErrorDetail(code: "library_update_rejected", message: message)
+                ]))
+            }
+            throw APIClientError.invalidResponse
+        }
+    }
+
+    private enum CodingKeys: String, CodingKey { case success, errors, message }
 }
 
 public struct BookEnvelope: Decodable, Equatable, Sendable {

@@ -68,7 +68,7 @@ struct AudioCardView: View {
                 .frame(maxWidth: .infinity, alignment: .leading)
             }.padding(12).foregroundStyle(AudioStyle.ink).background(.white).clipShape(RoundedRectangle(cornerRadius: 20))
                 .overlay(RoundedRectangle(cornerRadius: 20).stroke(AudioStyle.line.opacity(0.7), lineWidth: 1))
-        }.buttonStyle(.plain)
+        }.buttonStyle(.plain).accessibilityIdentifier("audio.card.\(book.id)")
     }
 }
 @MainActor

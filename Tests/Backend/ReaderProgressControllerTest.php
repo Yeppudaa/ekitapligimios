@@ -8,6 +8,14 @@ namespace Ekitapligim\MobileApi\Api\Controller {
     {
         public array $input = [];
         public bool $loggedIn = true;
+        public object $request;
+        public function __construct() {
+            $this->request = new class($this) {
+                public function __construct(private object $controller) {}
+                public function getInput(): array { return $this->controller->input; }
+                public function getServer(string $name, string $default = ''): string { return $default; }
+            };
+        }
         protected function assertMobileScope(): void {}
         protected function assertMobileWriteScope(): void {}
         protected function assertRegisteredApiUser(): object {
@@ -30,6 +38,15 @@ namespace Ekitapligim\MobileApi\Service {
         public static array $shelfCalls = [];
         public function getLibraryItems(int $userId): array { return [['book_id' => '7', 'shelf_state' => 'OKUYORUM']]; }
         public function applyShelfState($book, int $userId, string $state): void { self::$shelfCalls[] = [$book->thread_id, $userId, $state]; }
+    }
+}
+namespace Ekitapligim\IosApi\Service {
+    // This suite isolates reader progress; full shelf storage/permission behavior is covered separately.
+    class LibraryShelfManager {
+        public function update($book, $visitor, ?string $state, ?bool $favorite): array {
+            \Ekitapligim\MobileApi\Service\ShelfManager::$shelfCalls[] = [$book->thread_id, $visitor->user_id, $state];
+            return ['book_id' => (string) $book->thread_id, 'shelf_state' => $state, 'is_favorite' => $favorite ?? $state === 'FAVORI'];
+        }
     }
 }
 namespace {

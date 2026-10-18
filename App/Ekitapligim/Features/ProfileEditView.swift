@@ -107,7 +107,7 @@ struct ProfileEditView: View {
                url.scheme?.lowercased() == "https" {
                 AsyncImage(url: url) { phase in
                     if case .success(let image) = phase {
-                        image.resizable().scaledToFill()
+                        ProfileBannerArtwork(image: image)
                     }
                 }
             }
