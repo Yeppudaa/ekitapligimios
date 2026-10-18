@@ -21,13 +21,26 @@ swift test --package-path "$BASELINE" \
   2>&1 | tee "$EVIDENCE/baseline-metadata.log"
 BASELINE_EXIT=${PIPESTATUS[0]}
 set -e
-python3 - "$EVIDENCE/baseline-metadata.xml" "$BASELINE_EXIT" <<'PY'
+python3 - "$EVIDENCE/baseline-metadata.log" "$BASELINE_EXIT" <<'PY'
 from pathlib import Path
-import sys,xml.etree.ElementTree as ET
-root=ET.parse(sys.argv[1]).getroot()
-cases=list(root.iter('testcase')); failures=list(root.iter('failure'))
-assert int(sys.argv[2])!=0 and len(cases)==1 and len(failures)==1
-assert 'invalidRange' in ET.tostring(root,encoding='unicode'), 'Expected original metadata error was not reproduced'
+import re,sys
+log=Path(sys.argv[1]).read_text()
+# Apple SwiftPM does not emit XCTest XML for this nonparallel failing run.
+# Require the actual executed assertion and exact selected test summary.
+assert int(sys.argv[2])!=0 and 'Build complete!' in log
+assert 'testMissingHeadLengthOrRangeAdvertisementUsesOnlyOneAuthenticatedByte' in log
+assert re.search(r'Executed 1 test, with 1 failure',log)
+assert 'caught error: "invalidRange"' in log or 'threw error "invalidRange"' in log
 print('Original TestFlight45 source reproduced the missing HEAD metadata failure.')
 PY
 swift test --xunit-output "$EVIDENCE/core-tests.xml" 2>&1 | tee "$EVIDENCE/core-tests.log"
+python3 - "$EVIDENCE" <<'PY'
+from pathlib import Path
+import json,re,sys
+out=Path(sys.argv[1]); log=(out/'core-tests.log').read_text()
+results=[(int(n),int(f)) for n,f in re.findall(r'Executed (\d+) tests?, with (\d+) failures?',log)]
+assert results and max(n for n,_ in results)>=450 and all(f==0 for _,f in results)
+report={'passed':max(n for n,_ in results),'failed':0,'platform':'macOS','source':'current build'}
+(out/'core-tests-summary.json').write_text(json.dumps(report,indent=2))
+print(json.dumps(report))
+PY
