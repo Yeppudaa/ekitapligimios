@@ -775,6 +775,7 @@ private struct BookGridItem: View {
             .frame(minHeight: metadataLineHeight, alignment: .topLeading)
         }
         .frame(maxWidth: .infinity, alignment: .leading)
+        .contentShape(Rectangle())
         .accessibilityElement(children: .combine)
     }
 }

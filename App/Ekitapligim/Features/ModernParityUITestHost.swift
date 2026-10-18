@@ -194,7 +194,13 @@ private final class ModernParityProtocol: URLProtocol, @unchecked Sendable {
             DispatchQueue.main.asyncAfter(deadline: .now() + cover.delay, execute: work)
             return
         }
-        if let result = ModernParityLibraryFixture.response(for: request) {
+        // URLProtocol may receive a request before URLSession applies additional headers.
+        // Mark the already intercepted DEBUG transport itself; origin and token guards
+        // remain enforced by the local fixture, and no request reaches the network.
+        var libraryRequest = request
+        libraryRequest.setValue(ModernParityAudioFixture.markerValue,
+                                forHTTPHeaderField: ModernParityAudioFixture.markerHeader)
+        if let result = ModernParityLibraryFixture.response(for: libraryRequest) {
             deliver(url: url, status: result.status, headers: result.headers, data: result.data)
             return
         }

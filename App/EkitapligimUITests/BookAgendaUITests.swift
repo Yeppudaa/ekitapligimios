@@ -20,6 +20,12 @@ final class BookAgendaUITests: XCTestCase {
         return app
     }
 
+    private func dismissKeyboardIntroduction(in app: XCUIApplication) {
+        // A clean simulator presents this non-app tutorial on the first software keyboard.
+        let introduction = app.buttons["Continue"]
+        if introduction.waitForExistence(timeout: 3), introduction.isHittable { introduction.tap() }
+    }
+
     private func reveal(_ element: XCUIElement, app: XCUIApplication) {
         let scroll = app.scrollViews["agenda.detail.scroll"]
         XCTAssertTrue(scroll.waitForExistence(timeout: 5))
@@ -37,9 +43,11 @@ final class BookAgendaUITests: XCTestCase {
         reveal(heading, app: app)
         heading.tap()
         XCTAssertTrue(app.keyboards.firstMatch.waitForExistence(timeout: 5))
+        dismissKeyboardIntroduction(in: app)
         let editor = app.descendants(matching: .any)["agenda.comment.message"].firstMatch
         let draft = "Bu kitabı okudum."
         editor.typeText(draft)
+        XCTAssertEqual(editor.value as? String, draft)
         app.buttons["agenda.comment.keyboard.close"].tap()
         reveal(editor, app: app)
         // Tap the lower padded area of the multiline field, away from its first text baseline.

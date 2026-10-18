@@ -11,7 +11,7 @@ final class HomeBookCardLayoutTests: XCTestCase {
         let tall = syntheticImage(CGSize(width: 80, height: 240))
         let phases: [AnyView] = [
             AnyView(ProgressView()),
-            AnyView(EKitapligimMissingBookCover(title: "Kapak bulunamadÄ±", author: "Yazar")),
+            AnyView(EKitapligimMissingBookCover(title: "Kapak bulunamadı", author: "Yazar")),
             AnyView(Image(uiImage: wide).resizable().scaledToFit()),
             AnyView(Image(uiImage: tall).resizable().scaledToFit())
         ]
@@ -102,9 +102,9 @@ final class HomeBookCardLayoutTests: XCTestCase {
     private func books() throws -> [BookDTO] {
         try [
             ("1", "Gizli Tarih", "Donna Tartt", "Roman"),
-            ("2", "TaÅŸÄ±yÄ±cÄ± Anne", "Penelope Ward", "Roman"),
-            ("3", "Birlikte KeÅŸfettiÄŸimiz HikÃ¢yelerin Ä°zinde Ã‡ok Uzun Bir Okuma YolculuÄŸu", "", ""),
-            ("4", "Birlikte KeÅŸfettiÄŸimiz HikÃ¢yelerin Ä°zinde Ã‡ok Uzun Bir Okuma YolculuÄŸu", "Birbirinden GÃ¼zel KitaplarÄ±n Ã‡ok Uzun Ä°simli Ã–rnek YazarÄ±", "Edebiyat")
+            ("2", "Taşıyıcı Anne", "Penelope Ward", "Roman"),
+            ("3", "Birlikte Keşfettiğimiz Hikâyelerin İzinde Çok Uzun Bir Okuma Yolculuğu", "", ""),
+            ("4", "Birlikte Keşfettiğimiz Hikâyelerin İzinde Çok Uzun Bir Okuma Yolculuğu", "Birbirinden Güzel Kitapların Çok Uzun İsimli Örnek Yazarı", "Edebiyat")
         ].map { id, title, author, category in
             let data = try JSONSerialization.data(withJSONObject: [
                 "id": id, "title": title, "author": author, "category": category,

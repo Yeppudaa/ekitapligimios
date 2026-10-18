@@ -4,7 +4,11 @@ import UIKit
 /// Tests the real Home rails with locally intercepted tall/wide, delayed and failed cover URLs.
 @MainActor
 final class HomeBookRailUITests: XCTestCase {
-    override func setUpWithError() throws { continueAfterFailure = false }
+    override func setUpWithError() throws {
+        continueAfterFailure = false
+        executionTimeAllowance = 300
+        XCUIDevice.shared.orientation = .portrait
+    }
 
     func testNormalCardsKeepCoverRatioAndCompactMetadataWhileScrolling() async throws {
         let app = launch()
@@ -16,10 +20,7 @@ final class HomeBookRailUITests: XCTestCase {
         let rail = app.scrollViews["home.bookRail.newest"]
         XCTAssertTrue(rail.exists)
         let second = app.buttons["home.bookRail.newest.book.900042"]
-        for _ in 0..<4 {
-            if second.isHittable && second.frame.maxX <= app.frame.maxX - 8 { break }
-            rail.swipeLeft()
-        }
+        revealHorizontally(second, rail: rail, app: app)
         let next = try await geometry(id: "900042", app: app)
         check(next, normal: true)
         XCTAssertEqual(next.card.width, before.card.width, accuracy: 1)
@@ -41,10 +42,7 @@ final class HomeBookRailUITests: XCTestCase {
         let rail = app.scrollViews["home.bookRail.newest"]
         for id in ["900043", "900044"] {
             let card = app.buttons["home.bookRail.newest.book.\(id)"]
-            for _ in 0..<8 {
-                if card.isHittable && card.frame.maxX <= app.frame.maxX - 8 { break }
-                rail.swipeLeft()
-            }
+            revealHorizontally(card, rail: rail, app: app)
             let before = try await geometry(id: id, app: app)
             check(before, normal: true)
             try await Task.sleep(nanoseconds: 2_300_000_000)
@@ -67,6 +65,9 @@ final class HomeBookRailUITests: XCTestCase {
         XCTAssertTrue(title.exists)
         XCTAssertGreaterThan(title.frame.height, 0)
         capture(app, "home-newest-accessibility3")
+        // A very tall accessible card need not fit as a whole; its visible cover must open it.
+        element("home.book.cover.900041", app).coordinate(withNormalizedOffset: CGVector(dx: 0.5, dy: 0.5)).tap()
+        XCTAssertTrue(app.buttons["book.detail.back"].waitForExistence(timeout: 8))
     }
 
     private func launch(large: Bool = false) -> XCUIApplication {
@@ -97,9 +98,12 @@ final class HomeBookRailUITests: XCTestCase {
             let cover = element("home.book.cover.\(id)", app)
             let title = element("home.book.title.\(id)", app)
             let author = element("home.book.author.\(id)", app)
-            if card.exists && cover.exists && title.exists && !cover.frame.isEmpty {
+            let expectsAuthor = id != "900042" // This fixture deliberately omits its author.
+            if card.exists && cover.exists && title.exists,
+               finite(card.frame), finite(cover.frame), finite(title.frame),
+               !expectsAuthor || (author.exists && finite(author.frame)) {
                 let value = CardGeometry(card: card.frame, cover: cover.frame, title: title.frame,
-                                         author: author.exists ? author.frame : nil)
+                                         author: expectsAuthor ? author.frame : nil)
                 if let previous, abs(previous.card.height - value.card.height) < 0.5,
                    abs(previous.cover.height - value.cover.height) < 0.5 { matches += 1 }
                 else { matches = 0 }
@@ -137,15 +141,40 @@ final class HomeBookRailUITests: XCTestCase {
         }
     }
 
+    private func finite(_ frame: CGRect) -> Bool {
+        !frame.isEmpty && frame.minX.isFinite && frame.minY.isFinite &&
+            frame.width.isFinite && frame.height.isFinite
+    }
+
+    private func revealHorizontally(_ card: XCUIElement, rail: XCUIElement, app: XCUIApplication) {
+        for _ in 0..<12 {
+            let frame = card.exists ? card.frame : CGRect.null
+            // XCTest can throw when asking for an offscreen element's activation point.
+            if finite(frame), frame.minX >= app.frame.minX + 8,
+               frame.maxX <= app.frame.maxX - 8, card.isHittable { return }
+            rail.coordinate(withNormalizedOffset: CGVector(dx: 0.85, dy: 0.5))
+                .press(forDuration: 0.05, thenDragTo: rail.coordinate(withNormalizedOffset: CGVector(dx: 0.45, dy: 0.5)))
+        }
+        XCTFail("The target card must be fully visible in its horizontal rail")
+    }
+
     private func reveal(_ card: XCUIElement, in app: XCUIApplication) throws {
         let scroll = app.scrollViews["home.scroll"]
         XCTAssertTrue(scroll.waitForExistence(timeout: 10))
-        for _ in 0..<30 {
-            if card.isHittable { return }
-            scroll.swipeUp()
+        let cover = element("home.book.cover.900041", app)
+        for _ in 0..<80 {
+            let viewport = scroll.frame.intersection(app.frame).insetBy(dx: 8, dy: 8)
+            let coverFrame = cover.exists ? cover.frame : CGRect.null
+            if cover.exists, finite(coverFrame), viewport.contains(coverFrame) { return }
+            let cardFrame = card.exists ? card.frame : CGRect.null
+            let above = finite(coverFrame) ? coverFrame.midY < viewport.midY :
+                (finite(cardFrame) && cardFrame.minY < viewport.minY)
+            let start = scroll.coordinate(withNormalizedOffset: CGVector(dx: 0.93, dy: above ? 0.45 : 0.70))
+            let end = scroll.coordinate(withNormalizedOffset: CGVector(dx: 0.93, dy: above ? 0.70 : 0.45))
+            start.press(forDuration: 0.05, thenDragTo: end)
         }
         capture(app, "home-book-unreachable")
-        XCTFail("Loaded newest books must be reachable")
+        XCTFail("Loaded newest book covers must be visible and reachable")
         throw GeometryFailure.unavailable
     }
 
