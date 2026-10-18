@@ -3,12 +3,22 @@ import XCTest
 @testable import EkitapligimCore
 
 final class BookCategoryCatalogTests: XCTestCase {
+    private let expectedEnglishTitles = [
+        "Fiction", "Literature", "Education", "Science", "History", "Religion", "Psychology", "Personal Growth",
+        "Economics", "Children's Books", "Biography", "Philosophy", "Short Stories", "Politics", "Romance",
+        "Fantasy", "Science Fiction", "Adventure", "Crime Fiction", "Horror / Thriller", "Young Adult", "Health",
+        "Turkish Classics", "World Classics", "Technology / Computing", "Foreign Languages", "Culture / Art",
+        "Film / Theatre", "Academic", "Family and Lifestyle", "Food / Cooking", "Fairy Tales"
+    ]
+
     func testEmptyCommunityResponseStillProvidesAndroidCatalogCategories() {
         let categories = BookCategoryCatalog.merging(live: [])
 
         XCTAssertEqual(categories, BookCategoryCatalog.defaults)
         XCTAssertEqual(categories.map(\.id), expectedCategories.map(\.id))
-        XCTAssertEqual(categories.map(\.title), expectedCategories.map(\.title))
+        let expectedTitles = Bundle.module.preferredLocalizations.first == "en"
+            ? expectedEnglishTitles : expectedCategories.map(\.title)
+        XCTAssertEqual(categories.map(\.title), expectedTitles)
         XCTAssertEqual(categories.count, 32)
         XCTAssertEqual(Array(categories.prefix(8)).map(\.id), ["6", "7", "8", "9", "10", "11", "12", "13"])
         XCTAssertFalse(categories.contains { $0.id == "31" })

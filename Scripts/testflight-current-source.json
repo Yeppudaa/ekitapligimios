@@ -427,7 +427,7 @@
     "Tests/EkitapligimCoreTests/AudioModelsTests.swift": "12480b7f8836da0a61a1db19602105be8218ebca76ea37a582e36b577c206cfb",
     "Tests/EkitapligimCoreTests/AudioPolicyTests.swift": "3335f115b6dd4c209edbdaa5e441ca0c32b1fa9de6d04139839c10c89eef2704",
     "Tests/EkitapligimCoreTests/AudioTransportTests.swift": "ad5e4cb66be4ceb89b90f0b1ebb1b11c483bf21e2a0f089da7028446a7a3c756",
-    "Tests/EkitapligimCoreTests/BookCategoryCatalogTests.swift": "ae491cf43ea7e0a6a831eab1771bf1dae964a3c3ee0538c98492a18fd7f85fd9",
+    "Tests/EkitapligimCoreTests/BookCategoryCatalogTests.swift": "25d08523ef569a01a114c81b49a285b39214da3a7bff198010e09335c2c0bc74",
     "Tests/EkitapligimCoreTests/BookFileEnvelopeDecoderTests.swift": "9a2bbbdb8db80de1455a57b8338d27f042a783fdd8e63b53148474cee109e6d2",
     "Tests/EkitapligimCoreTests/ChatInteractionTests.swift": "3b3a3d7a878723a4aa549d5bed82379177b5d7b3d1cba11da6ab71ba36794ce9",
     "Tests/EkitapligimCoreTests/ChatPresentationTests.swift": "e9ccfaaf957ec4528c04a97d8ac0cb45b21f0a184387f3b1de0a569d863cbdea",
