@@ -526,6 +526,7 @@ struct HomeView: View {
                                 .accessibilityIdentifier("home.bookRail.\(identifier).book.\(book.id)")
                         }
                     }
+                    .fixedSize(horizontal: false, vertical: true)
                     .padding(.horizontal, 16)
                 }
                 .accessibilityElement(children: .contain)
@@ -791,6 +792,8 @@ private struct HomeBookCard: View {
         .containerRelativeFrame(.horizontal) { length, _ in
             min(cardWidth + 24, max(1, length - 32))
         }
+        // Stretch to the tallest natural card without limiting accessibility text.
+        .frame(maxHeight: .infinity, alignment: .topLeading)
         .ekitapligimCard(radius: 18)
     }
 }

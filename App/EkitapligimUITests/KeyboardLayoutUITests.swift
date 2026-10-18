@@ -44,6 +44,11 @@ final class KeyboardLayoutUITests: XCTestCase {
         for cycle in 0..<3 {
             let editing = try await openKeyboard(editor, in: app, shell: true)
             assertEditorIsOutsideKeyboard(editor, geometry: editing)
+            let retainedDraft = (0..<cycle).map { "\($0 + 1). deneme " }.joined()
+            XCTAssertEqual(editor.value as? String, retainedDraft)
+            // Re-focusing with a center tap can place the caret before the existing draft.
+            // Choose the trailing insertion point explicitly when testing appended text.
+            editor.coordinate(withNormalizedOffset: CGVector(dx: 0.95, dy: 0.95)).tap()
             editor.typeText("\(cycle + 1). deneme ")
             try await dismissKeyboard(in: app)
             let restored = try await stableGeometry(app, keyboard: false, shell: true)
