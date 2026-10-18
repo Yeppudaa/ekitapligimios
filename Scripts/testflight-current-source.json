@@ -96,7 +96,7 @@
     "App/Ekitapligim/Features/BookDetailLoadingModel.swift": "1dfad7d22c7d6006477bf708d290361b67726f16a090e2a7130ddc1d86d9b506",
     "App/Ekitapligim/Features/BookDetailView.swift": "5dcfb92277e0888d0b18dc98cd68108f537ef0b900c5338bf0af14dcf11c1b27",
     "App/Ekitapligim/Features/BookRequestsView.swift": "4edaa7042752f9c86e89ec46d2ce1a4b9e3bf845d46276d37a2bcd45c256d100",
-    "App/Ekitapligim/Features/CatalogView.swift": "0f722581c77c9b130e7f11a0824f2d48178d29b2869275f65b28bb2995b4d5bb",
+    "App/Ekitapligim/Features/CatalogView.swift": "61ba7440d097844bf1c29f63b52265bf5470650f4a9107690cbdfa5bb9fb9078",
     "App/Ekitapligim/Features/ChatModel.swift": "3913f429b31889f6b9881a7efc72a539f638a2c98d871445c9c62c914109ea37",
     "App/Ekitapligim/Features/ChatUITestHost.swift": "81bc2a98db3a9d868bff45a6c39df62204d9cbfa62cd89abe4d73ccb60007ca7",
     "App/Ekitapligim/Features/ChatView.swift": "b325f0c7eb53bb6d4196a4ceb967d198810cb19143c407809f4c1eeda80c065f",

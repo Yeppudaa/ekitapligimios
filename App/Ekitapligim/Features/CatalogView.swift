@@ -108,9 +108,6 @@ struct CatalogView: View {
                     EKitapligimMenuToolbarItem(action: onOpenMenu)
                 }
             }
-            .navigationDestination(for: String.self) { id in
-                BookDetailDestination(bookIDString: id)
-            }
             .audioPageNavigation(enabled: hostsAudioNavigation)
             .task {
                 async let editorRequest: Void = loadEditorSelection()
@@ -244,7 +241,7 @@ struct CatalogView: View {
 
     @ViewBuilder private var catalogSpotlight: some View {
         if let book = editorialSpotlight {
-            NavigationLink(value: book.id) {
+            NavigationLink { BookDetailDestination(bookIDString: book.id) } label: {
                 VStack(spacing: 0) {
                     EKitapligimRemoteCover(urlString: book.coverUrl, title: book.title, author: book.author)
                         .aspectRatio(2.0 / 3.0, contentMode: .fit)
@@ -372,7 +369,7 @@ struct CatalogView: View {
         switch dynamicTypeSize.isAccessibilitySize ? CatalogDisplayMode.list : displayMode {
         case .list:
             ForEach(books) { book in
-                NavigationLink(value: book.id) { BookRow(book: book) }
+                NavigationLink { BookDetailDestination(bookIDString: book.id) } label: { BookRow(book: book) }
                     .buttonStyle(.plain)
                     .accessibilityIdentifier("catalog.book.\(book.id)")
             }
@@ -382,7 +379,7 @@ struct CatalogView: View {
                 spacing: 18
             ) {
                 ForEach(books) { book in
-                    NavigationLink(value: book.id) { BookGridItem(book: book) }
+                    NavigationLink { BookDetailDestination(bookIDString: book.id) } label: { BookGridItem(book: book) }
                         .buttonStyle(.plain)
                         .accessibilityIdentifier("catalog.book.\(book.id)")
                 }
