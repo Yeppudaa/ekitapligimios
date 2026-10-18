@@ -42,6 +42,7 @@ def main():
         info = plistlib.loads((app / "Info.plist").read_bytes())
         profile = plistlib.loads(subprocess.check_output(["security", "cms", "-D", "-i", str(app / "embedded.mobileprovision")]))
         permitted = profile["Entitlements"]
+        assert {hashlib.sha1(value).hexdigest().upper() for value in profile["DeveloperCertificates"]} == {"2D336E3D11A04C7E0644846019C9E850159DA36B"}
         assert info["CFBundleIdentifier"] == BUNDLE
         assert info["CFBundleShortVersionString"] == "1.1.0"
         assert info["CFBundleVersion"] == os.environ["TESTFLIGHT_NEXT_BUILD_NUMBER"]
