@@ -1,5 +1,7 @@
 #!/usr/bin/env bash
 set -euo pipefail
+PHASE="${1:-all}"
+[[ "$PHASE" == all || "$PHASE" == native || "$PHASE" == ui ]] || exit 2
 EVIDENCE="$PWD/build/testflight-reviewed"
 mkdir -p "$EVIDENCE"
 xcrun simctl list devices available --json > "$EVIDENCE/available-simulators.json"
@@ -24,6 +26,9 @@ defaults write com.apple.iphonesimulator ConnectHardwareKeyboard -bool false
 COMMON=(-project Ekitapligim.xcodeproj -configuration Development -destination "platform=iOS Simulator,id=$DEVICE"
   -parallel-testing-enabled NO -test-timeouts-enabled YES -clonedSourcePackagesDirPath .build/xcode-packages
   CODE_SIGNING_ALLOWED=YES CODE_SIGN_IDENTITY=- CODE_SIGN_STYLE=Manual CODE_SIGN_ENTITLEMENTS="$PWD/Scripts/ci-simulator.entitlements")
+native_status=0
+ui_status=0
+if [ "$PHASE" != ui ]; then
 NATIVE=(AudioPageRoutingTests BookAgendaFeedModelTests BookAgendaDetailModelTests PremiumLayoutTests ResponsiveComponentLayoutTests)
 SELECT=()
 for suite in "${NATIVE[@]}"; do SELECT+=("-only-testing:EkitapligimTests/$suite"); done
@@ -42,6 +47,8 @@ expected=2+sum(len(re.findall(r'func test\w+\(',Path('App/EkitapligimTests',s+'.
 s=json.load(open(sys.argv[1])); assert s['passedTests']==expected and s['failedTests']==0 and s.get('skippedTests',0)==0,(expected,s)
 print('Current native tests passed:',expected)
 PY
+fi
+if [ "$PHASE" != native ]; then
 UI=(
   ShellMenuLayoutUITests/testRootMenusAndPageActionsHaveSeparateHitAreas
   ShellMenuLayoutUITests/testRootMenusAndPageActionsHaveSeparateHitAreasWithAccessibilityText
@@ -65,11 +72,19 @@ s=json.load(open(sys.argv[1])); expected=int(sys.argv[2])
 assert s['passedTests']==expected and s['failedTests']==0 and s.get('skippedTests',0)==0,(expected,s)
 print('Current targeted UI tests passed:',expected)
 PY
-for label in current-native current-ui; do
+fi
+LABELS=()
+if [ "$PHASE" != ui ]; then LABELS+=(current-native); fi
+if [ "$PHASE" != native ]; then LABELS+=(current-ui); fi
+for label in "${LABELS[@]}"; do
   xcrun xcresulttool export attachments --path "$EVIDENCE/$label.xcresult" --output-path "$EVIDENCE/$label-images"
+  ditto -c -k --keepParent "$EVIDENCE/$label-images" "$EVIDENCE/$label-images.zip"
+  python3 - "$EVIDENCE/$label-summary.json" <<'PY'
+import json,sys
+s=json.load(open(sys.argv[1]))
+print('VALIDATION SUMMARY:',{k:s.get(k) for k in ('title','result','passedTests','failedTests','skippedTests')})
+PY
 done
-ditto -c -k --keepParent "$EVIDENCE/current-native-images" "$EVIDENCE/current-native-images.zip"
-ditto -c -k --keepParent "$EVIDENCE/current-ui-images" "$EVIDENCE/current-ui-images.zip"
 if [ "$native_status" -ne 0 ] || [ "$ui_status" -ne 0 ]; then
   echo "Current validation failed: native=$native_status UI=$ui_status; upload remains blocked."
   exit 1
