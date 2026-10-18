@@ -149,7 +149,8 @@ struct RootView: View {
 
     private func dismissKeyboard() { keyboardDismissRequest += 1 }
     private var shellMenuAction: (() -> Void)? {
-        container.audioPageRoute == nil ? openMenu : nil
+        guard container.audioPageRoute == nil else { return nil }
+        return { openMenu() }
     }
 
     private func openMenu() {
