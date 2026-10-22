@@ -101,8 +101,10 @@ struct ModernHomeSpotlight: View {
             .background {
                 Image("home_next_scene").resizable().scaledToFill()
                     .overlay { LinearGradient(colors: [Color(hex: 0xFFFCF8), Color(hex: 0xFFFCF8).opacity(0.94), Color(hex: 0xFFFCF8).opacity(0.48)], startPoint: .leading, endPoint: .trailing) }
+                    .allowsHitTesting(false)
             }
             .clipShape(RoundedRectangle(cornerRadius: 22))
+            .contentShape(RoundedRectangle(cornerRadius: 22))
             .overlay { RoundedRectangle(cornerRadius: 22).stroke(EKitapligimPalette.border) }
         }
         .buttonStyle(.plain)
