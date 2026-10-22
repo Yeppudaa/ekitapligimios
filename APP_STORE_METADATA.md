@@ -1,5 +1,15 @@
 # App Store Metadata Draft
 
+## Version 1.1.1 TestFlight search correction (2026-10-22)
+
+Requested destination: TestFlight. Apple rejected the 1.1.0 upload because that
+marketing version was already approved; 1.1.1 is the required patch increment.
+App/core/test sources passed 467 Core, 65 native, and 3 search UI tests each on
+iPhone and iPad. Packaging must preserve those exact sources and purchase behavior.
+Proposed Turkish test notes: “Ana sayfadaki arama alanına dokunarak kitap arayın.
+Kitaplar ekranında aramanın görünür kaldığını ve aramayı temizleyince listenin
+yenilendiğini kontrol edin.”
+
 ## Version 1.0.9 App Store submission (2026-10-12)
 
 After TestFlight delivery, the user explicitly requested public release. Version 1.0.9/build 42 was selected and submitted to App Review. App Store Connect confirms **Waiting for Review**, submission `9b547783-41e9-451c-8e3a-e058cdf3a1ac`, submitted on 12 October 2026 at 21:53 Europe/Istanbul. **Automatically release this version** remains selected, with immediate availability after Apple approval. This confirms submission, not approval or public availability. Review notes were updated to identify build 42, successful CI #167 and Codemagic build 53, and the unexecuted physical-device/live Sandbox transaction checks. Existing reviewer credentials, screenshots, pricing and purchase products were preserved. Evidence: `artifacts/release-20261012/appstore-1.0.9-waiting-review.jpg`.

@@ -541,3 +541,126 @@ workflows:
         auth: integration
         submit_to_testflight: false
         submit_to_app_store: false
+  ios-testflight-search-package:
+    name: Ekitapligim Catalog Search Versioned Package
+    max_build_duration: 60
+    instance_type: mac_mini_m2
+    integrations:
+      app_store_connect: Ekitapligim Codemagic
+    environment:
+      xcode: 26.3
+      ios_signing:
+        certificates:
+        - ekitapligim_distribution_20261018
+        provisioning_profiles:
+        - ekitapligim_app_store_20261018
+      vars:
+        APP_STORE_APPLE_ID: '6789584323'
+        APPLE_TEAM_ID: QA67383767
+        XCODE_PROJECT: Ekitapligim.xcodeproj
+        XCODE_SCHEME: Ekitapligim
+        XCODE_CONFIGURATION: Production
+    cache:
+      cache_paths:
+      - .build/xcode-packages
+    scripts:
+    - name: Require exact app and test sources from the passed iPhone and iPad validation
+      script: python3 Scripts/testflight-search-package-gate.py
+    - name: Install xcodegen if missing
+      script: "if ! command -v xcodegen >/dev/null 2>&1; then\n  brew update\n  brew install xcodegen\nfi\n"
+    - name: Generate project and retain reviewed production entitlements
+      script: 'set -euo pipefail
+
+        xcodegen generate
+
+        python3 - <<''PYCODE''
+
+        from pathlib import Path
+
+        import hashlib,subprocess
+
+        name=''App/Ekitapligim/Support/Ekitapligim.entitlements''
+
+        expected=subprocess.check_output([''git'',''show'',''5e8a245faf70dd977458f9fefc498b61d1f38f54:''+name])
+
+        Path(name).write_bytes(expected)
+
+        print(''Restored reviewed production entitlements SHA256:'',hashlib.sha256(expected).hexdigest())
+
+        PYCODE
+
+        '
+    - name: Prepare existing app signing capabilities and App Store profile
+      script: "set -euo pipefail\nBUNDLE_ID=\"com.ekitapligim.app\"\nSIGNING_DIR=\"$CM_BUILD_DIR/build/push-signing\"\nmkdir\
+        \ -p \"$SIGNING_DIR/profiles\"\nBUNDLE_IDS_JSON=$(app-store-connect bundle-ids list \\\n  --bundle-id-identifier \"\
+        $BUNDLE_ID\" \\\n  --strict-match-identifier \\\n  --json)\nBUNDLE_RESOURCE_ID=$(printf '%s' \"$BUNDLE_IDS_JSON\" |\
+        \ jq -r --arg identifier \"$BUNDLE_ID\" '\n  (if type == \"array\" then . else (.data // [.] ) end)\n  | map(select((.attributes.identifier\
+        \ // .identifier) == $identifier))\n  | first\n  | .id // empty\n')\nif [ -z \"$BUNDLE_RESOURCE_ID\" ]; then\n  echo\
+        \ \"Could not resolve Apple bundle ID resource for $BUNDLE_ID\"\n  exit 1\nfi\nCAPABILITIES_JSON=$(app-store-connect\
+        \ bundle-ids capabilities \"$BUNDLE_RESOURCE_ID\" --json)\nif ! printf '%s' \"$CAPABILITIES_JSON\" | grep -Eq 'PUSH_NOTIFICATIONS|Push\
+        \ Notifications'; then\n  app-store-connect bundle-ids enable-capabilities \\\n    \"$BUNDLE_RESOURCE_ID\" \\\n    --capability\
+        \ \"Push Notifications\"\nfi\nif ! printf '%s' \"$CAPABILITIES_JSON\" | grep -Eq 'ASSOCIATED_DOMAINS|Associated Domains';\
+        \ then\n  app-store-connect bundle-ids enable-capabilities \"$BUNDLE_RESOURCE_ID\" --capability \"Associated Domains\"\
+        \nfi\nCURRENT_CAPABILITIES_JSON=$(app-store-connect bundle-ids capabilities \"$BUNDLE_RESOURCE_ID\" --json)\nprintf\
+        \ '%s' \"$CURRENT_CAPABILITIES_JSON\" | grep -Eq 'PUSH_NOTIFICATIONS|Push Notifications'\nprintf '%s' \"$CURRENT_CAPABILITIES_JSON\"\
+        \ | grep -Eq 'ASSOCIATED_DOMAINS|Associated Domains'\nCERTIFICATES_JSON=$(app-store-connect certificates list \\\n \
+        \ --profile-type IOS_APP_STORE \\\n  --json)\nCERTIFICATE_RESOURCE_IDS=()\nwhile IFS= read -r CERTIFICATE_RESOURCE_ID;\
+        \ do\n  if [ -n \"$CERTIFICATE_RESOURCE_ID\" ]; then\n    CERTIFICATE_RESOURCE_IDS+=(\"$CERTIFICATE_RESOURCE_ID\")\n\
+        \  fi\ndone < <(printf '%s' \"$CERTIFICATES_JSON\" | jq -r '\n  (if type == \"array\" then . else (.data // [.] ) end)\n\
+        \  | map(select(.id == \"S2K5HT9GUU\") | .id // empty)\n  | .[]\n')\nif [ \"${#CERTIFICATE_RESOURCE_IDS[@]}\" -eq 0\
+        \ ]; then\n  echo \"Could not resolve an Apple Distribution certificate for App Store signing\"\n  exit 1\nfi\nPROFILE_NAME=\"\
+        Ekitapligim App Store Push ${CM_BUILD_ID}\"\napp-store-connect profiles create \"$BUNDLE_RESOURCE_ID\" \\\n  --certificate-ids\
+        \ \"${CERTIFICATE_RESOURCE_IDS[@]}\" \\\n  --type IOS_APP_STORE \\\n  --name \"$PROFILE_NAME\" \\\n  --save \\\n  --profiles-dir\
+        \ \"$SIGNING_DIR/profiles\"\n"
+    - name: Configure App Store code signing
+      script: "set -euo pipefail\nmkdir -p \"$CM_BUILD_DIR/build\"\nXCODE_PROFILES_DIR=\"$HOME/Library/Developer/Xcode/UserData/Provisioning\
+        \ Profiles\"\nLEGACY_PROFILES_DIR=\"$HOME/Library/MobileDevice/Provisioning Profiles\"\nmkdir -p \"$XCODE_PROFILES_DIR\"\
+        \ \"$LEGACY_PROFILES_DIR\"\ncp \"$CM_BUILD_DIR\"/build/push-signing/profiles/*.mobileprovision \"$XCODE_PROFILES_DIR/\"\
+        \ncp \"$CM_BUILD_DIR\"/build/push-signing/profiles/*.mobileprovision \"$LEGACY_PROFILES_DIR/\"\necho \"Available Apple\
+        \ signing identities:\"\nSIGNING_IDENTITIES=$(security find-identity -v -p codesigning)\nprintf '%s\\n' \"$SIGNING_IDENTITIES\"\
+        \nprintf '%s\\n' \"$SIGNING_IDENTITIES\" | grep -Eq 'Apple Distribution: .* \\(QA67383767\\)'\nxcode-project use-profiles\
+        \ \\\n  --profile \"$CM_BUILD_DIR/build/push-signing/profiles/*.mobileprovision\" \\\n  --archive-method app-store 2>&1\
+        \ | tee \"$CM_BUILD_DIR/build/configure-code-signing.log\"\n\npython3 Scripts/testflight-pin-signing.py\n"
+    - name: Resolve Swift Package dependencies
+      script: 'xcodebuild -resolvePackageDependencies -project "$XCODE_PROJECT" -scheme "$XCODE_SCHEME"
+
+        '
+    - name: Verify Production Google Sign-In settings
+      script: "set -euo pipefail\nSETTINGS_FILE=\"$CM_BUILD_DIR/build/production-build-settings.log\"\nmkdir -p \"$CM_BUILD_DIR/build\"\
+        \nxcodebuild -showBuildSettings \\\n  -project \"$XCODE_PROJECT\" \\\n  -scheme \"$XCODE_SCHEME\" \\\n  -configuration\
+        \ \"$XCODE_CONFIGURATION\" > \"$SETTINGS_FILE\"\ngrep -Eq '^[[:space:]]*PRODUCT_BUNDLE_IDENTIFIER = com\\.ekitapligim\\\
+        .app$' \"$SETTINGS_FILE\"\ngrep -Eq '^[[:space:]]*EKITAPLIGIM_GOOGLE_IOS_CLIENT_ID = 258534406055-trcoiet648ohvijagtpli1h1556i2cjq\\\
+        .apps\\.googleusercontent\\.com$' \"$SETTINGS_FILE\"\ngrep -Eq '^[[:space:]]*EKITAPLIGIM_GOOGLE_SERVER_CLIENT_ID = 258534406055-v8lmgd6moijakv1kcurgit788uk5v2el\\\
+        .apps\\.googleusercontent\\.com$' \"$SETTINGS_FILE\"\ngrep -Eq '^[[:space:]]*EKITAPLIGIM_GOOGLE_URL_SCHEME = com\\.googleusercontent\\\
+        .apps\\.258534406055-trcoiet648ohvijagtpli1h1556i2cjq$' \"$SETTINGS_FILE\"\ngrep -Eq '^[[:space:]]*EKITAPLIGIM_API_BASE_URL\
+        \ = https://ekitapligim\\.com/ios-api/v1/$' \"$SETTINGS_FILE\"\n"
+    - name: Assign an unused increasing TestFlight build number
+      script: "set -euo pipefail\nLATEST_BUILD_NUMBER=$(app-store-connect get-latest-testflight-build-number \"$APP_STORE_APPLE_ID\"\
+        \ --platform IOS --all-versions)\nif ! [[ \"$LATEST_BUILD_NUMBER\" =~ ^[0-9]+$ ]]; then\n  echo \"Could not determine\
+        \ the current TestFlight build number.\"\n  exit 1\nfi\nLOCAL_BUILD_FLOOR=48\nif [ \"$LATEST_BUILD_NUMBER\" -lt \"$LOCAL_BUILD_FLOOR\"\
+        \ ]; then LATEST_BUILD_NUMBER=\"$LOCAL_BUILD_FLOOR\"; fi\nNEXT_BUILD_NUMBER=$((LATEST_BUILD_NUMBER + 1))\nagvtool new-version\
+        \ -all \"$NEXT_BUILD_NUMBER\"\necho \"TESTFLIGHT_NEXT_BUILD_NUMBER=$NEXT_BUILD_NUMBER\" >> \"$CM_ENV\"\necho \"TestFlight\
+        \ build number: $NEXT_BUILD_NUMBER\"\n"
+    - name: Build IPA for TestFlight
+      script: 'xcodebuild clean -project Ekitapligim.xcodeproj -scheme Ekitapligim -configuration Production -destination generic/platform=iOS
+        CODE_SIGNING_ALLOWED=NO
+
+        bash Scripts/testflight-build-ipa.sh'
+    - name: Verify the actual signed TestFlight IPA
+      script: python3 Scripts/verify-testflight-ipa.py
+    artifacts:
+    - build/ios/ipa/*.ipa
+    - build/testflight-reviewed/*.json
+    - build/testflight-reviewed/*.log
+    - build/testflight-reviewed/*.xml
+    - build/build-ipa.log
+    - build/configure-code-signing.log
+    - build/testflight-reviewed/current-*-images.zip
+    - build/xcodebuild-raw/*.log
+    - build/testflight-reviewed/search-*-images.zip
+    - build/testflight-reviewed/search-*.xcresult
+    publishing:
+      app_store_connect:
+        auth: integration
+        submit_to_testflight: false
+        submit_to_app_store: false

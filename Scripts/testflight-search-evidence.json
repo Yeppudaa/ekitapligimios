@@ -1,0 +1,160 @@
+{
+  "source": "7928c43824070623f9a9bf39f22d453bba8dff86",
+  "buildURL": "https://codemagic.io/app/6a5221a644ecae83eeea61ec/build/6ada6f4c8a524d15d6a6293b",
+  "archiveSHA256": "16bde961fcab82109526ddbbd56b6b23ccb44c49d8ef4bcd8d244d64c816813f",
+  "observedReports": {
+    "core": {
+      "passed": 467,
+      "failed": 0,
+      "platform": "macOS",
+      "source": "current build"
+    },
+    "native": {
+      "devicesAndConfigurations": [
+        {
+          "device": {
+            "architecture": "arm64",
+            "deviceId": "7E1377C5-B5DB-4D9C-9E88-9C2D2AC21CA1",
+            "deviceName": "iPhone 17 Pro",
+            "modelName": "iPhone 17 Pro",
+            "osBuildNumber": "23C54",
+            "osVersion": "26.2",
+            "platform": "iOS Simulator"
+          },
+          "expectedFailures": 0,
+          "failedTests": 0,
+          "passedTests": 65,
+          "skippedTests": 0,
+          "testPlanConfiguration": {
+            "configurationId": "1",
+            "configurationName": "Test Scheme Action"
+          }
+        }
+      ],
+      "environmentDescription": "EkitapligimModernUnit \u00b7 Built with macOS 26.3",
+      "expectedFailures": 0,
+      "failedTests": 0,
+      "finishTime": 1792700542.102,
+      "passedTests": 65,
+      "result": "Passed",
+      "skippedTests": 0,
+      "startTime": 1792700414.199,
+      "statistics": [],
+      "testFailures": [],
+      "title": "Test - EkitapligimModernUnit",
+      "topInsights": [
+        {
+          "category": "Longest Test Runs",
+          "impact": "47% of duration",
+          "text": "2 longest test runs with outlier durations exceeding 0.83s (three standard deviations)"
+        }
+      ],
+      "totalTestCount": 65
+    },
+    "iPhone": {
+      "devicesAndConfigurations": [
+        {
+          "device": {
+            "architecture": "arm64",
+            "deviceId": "7E1377C5-B5DB-4D9C-9E88-9C2D2AC21CA1",
+            "deviceName": "iPhone 17 Pro",
+            "modelName": "iPhone 17 Pro",
+            "osBuildNumber": "23C54",
+            "osVersion": "26.2",
+            "platform": "iOS Simulator"
+          },
+          "expectedFailures": 0,
+          "failedTests": 0,
+          "passedTests": 3,
+          "skippedTests": 0,
+          "testPlanConfiguration": {
+            "configurationId": "1",
+            "configurationName": "Test Scheme Action"
+          }
+        }
+      ],
+      "environmentDescription": "Ekitapligim \u00b7 Built with macOS 26.3",
+      "expectedFailures": 0,
+      "failedTests": 0,
+      "finishTime": 1792700651.189,
+      "passedTests": 3,
+      "result": "Passed",
+      "skippedTests": 0,
+      "startTime": 1792700550.935,
+      "statistics": [],
+      "testFailures": [],
+      "title": "Test - Ekitapligim",
+      "topInsights": [],
+      "totalTestCount": 3
+    },
+    "iPad": {
+      "devicesAndConfigurations": [
+        {
+          "device": {
+            "architecture": "arm64",
+            "deviceId": "7B3BB7BE-40CA-4E2E-9D00-6D2B2CD49D58",
+            "deviceName": "iPad Pro 13-inch (M5)",
+            "modelName": "iPad Pro 13-inch (M5)",
+            "osBuildNumber": "23C54",
+            "osVersion": "26.2",
+            "platform": "iOS Simulator"
+          },
+          "expectedFailures": 0,
+          "failedTests": 0,
+          "passedTests": 3,
+          "skippedTests": 0,
+          "testPlanConfiguration": {
+            "configurationId": "1",
+            "configurationName": "Test Scheme Action"
+          }
+        }
+      ],
+      "environmentDescription": "Ekitapligim \u00b7 Built with macOS 26.3",
+      "expectedFailures": 0,
+      "failedTests": 0,
+      "finishTime": 1792700799.359,
+      "passedTests": 3,
+      "result": "Passed",
+      "skippedTests": 0,
+      "startTime": 1792700657.52,
+      "statistics": [],
+      "testFailures": [],
+      "title": "Test - Ekitapligim",
+      "topInsights": [],
+      "totalTestCount": 3
+    },
+    "sourceGate": {
+      "source": "7928c43824070623f9a9bf39f22d453bba8dff86",
+      "previousTestFlightSource": "189765c276ddc160e7d84316c7161abc8ce7f655",
+      "protectedFilesUnchanged": 66,
+      "searchSourceFiles": [
+        "App/Ekitapligim/App/AppContainer.swift",
+        "App/Ekitapligim/App/RootView.swift",
+        "App/Ekitapligim/Features/CatalogView.swift",
+        "App/Ekitapligim/Features/HomeView.swift",
+        "App/Ekitapligim/Features/ModernHomeComponents.swift",
+        "App/Ekitapligim/Features/ModernParityUITestHost.swift",
+        "App/EkitapligimUITests/CatalogSearchUITests.swift"
+      ],
+      "validationRequired": "Fresh Core, native model/layout tests, iPhone and iPad CatalogSearchUITests, clean signed Production archive and IPA verification.",
+      "distribution": "TestFlight only"
+    },
+    "signedIPA": {
+      "bundle": "com.ekitapligim.app",
+      "team": "QA67383767",
+      "version": "1.1.0",
+      "build": "48",
+      "signatureVerified": true,
+      "apsEnvironment": "production",
+      "associatedDomains": [
+        "applinks:ekitapligim.com",
+        "applinks:www.ekitapligim.com"
+      ],
+      "debugEntitlementAbsent": true,
+      "profileSupportsEntitlements": true,
+      "ipaSHA256": "166350667ee59d14ee9d5340a3c2cf62362ff787cb4d0a281df78389182eb69f",
+      "destination": "TestFlight only"
+    }
+  },
+  "uploadResult": "Apple rejected version 1.1.0 because the approved 1.1.0 version requires a marketing-version increment."
+}
