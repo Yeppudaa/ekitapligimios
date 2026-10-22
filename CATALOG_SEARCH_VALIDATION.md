@@ -1,29 +1,49 @@
 # Catalog search correction — 2026-10-22
 
-The native catalog search field uses an always-visible navigation-bar drawer. The
-home search shortcut retains the existing catalog tab route and activates native
-search for typing. The shell preserves that requested focus during the tab change.
-Switching away clears search presentation. Clearing the query reloads the catalog
-using the existing filters, request-generation guards, and pagination behavior.
+The native catalog search field remains visible. The home shortcut opens the
+existing Books tab and activates search for typing. Clearing the query reloads
+the catalog with the existing filters and pagination guards.
 
-The existing catalog API contract and localized search prompts are reused.
-No permissions, data collection, purchase behavior, or project configuration changed.
+The complete home search label, including its empty space, is tappable. The next
+book spotlight constrains interaction to its visible card and ignores decorative
+artwork hit testing. Layout, styling and purchase flows are preserved.
 
-Executed on Windows:
+Executed validation:
 
-- `Scripts/swift-test-windows.ps1 -Jobs 4`: all 467 core XCTest tests passed.
-- `swiftc -frontend -parse` for the five changed Swift sources and new UI test: passed.
-- `Scripts/swift-static-audit.ps1`: passed.
-- `Scripts/ui-accessibility-audit.ps1`: passed (static checks only).
-- `git diff --check`: passed.
-- Before/after hashes match for the purchase service, Premium view/design, project
-  configuration, entitlements, privacy manifest, and StoreKit configuration.
+- Windows Core XCTest suite: 467 passed.
+- macOS Core XCTest suite: 467 passed.
+- Native iOS model/layout/audio regressions: 65 passed, zero failed/skipped.
+- iPhone 17 Pro, iOS Simulator 26.2: all 3 CatalogSearchUITests passed.
+- iPad Pro 13-inch (M5), iOS Simulator 26.2: the same 3 tests passed.
+- Swift parser, workspace/secret scan, static Swift and accessibility audits passed.
+- Live public HTTPS catalog searches returned query-dependent results and an empty
+  list for the deliberately unmatched query. These were read-only requests.
 
-Added offline `CatalogSearchUITests` scenarios for initial search visibility,
-submission and clearing, home-to-search activation, and accessibility text with tab
-switching. The DEBUG catalog fixture now honors the search query so an unfiltered
-response cannot satisfy the submission assertion.
+The first iPad run caught the home shortcut hit-area defect. Its assertions were
+retained; the corrected production source passed both device suites.
 
-Pending on macOS/Xcode: compile the iOS app and execute `CatalogSearchUITests` on
-iPhone and iPad, including iOS 17 and the current supported iOS version. Native UI
-behavior and runtime accessibility have not been verified on this Windows host.
+Validated app/test source: `7928c43824070623f9a9bf39f22d453bba8dff86`.
+Evidence: https://codemagic.io/app/6a5221a644ecae83eeea61ec/build/6ada6f4c8a524d15d6a6293b
+Downloaded evidence archive SHA-256:
+`16bde961fcab82109526ddbbd56b6b23ccb44c49d8ef4bcd8d244d64c816813f`.
+
+The signed 1.1.0 (48) IPA passed verification but Apple rejected its upload because
+1.1.0 had already been approved. The patch version is now 1.1.1. Packaging reuses
+the executed test evidence only after checking identical app/core/test sources,
+65 unchanged protected files, and the sole marketing-version change in project.yml.
+A fresh clean Production archive and signed IPA verification passed before upload.
+
+Successful 1.1.1 (49) package and Apple upload:
+https://codemagic.io/app/6a5221a644ecae83eeea61ec/build/6ada73c08a524d15d6a62aa5
+
+At the user's subsequent request, 1.1.1 (49) was submitted to public App Review.
+App Store Connect confirmed **Waiting for Review**, submission
+`29215adf-243d-4fc4-88c8-71f571ec6e46`, on 22 October 2026 at 23:56 Europe/Istanbul.
+Automatic release after approval and immediate availability to all users are
+selected. Existing purchases, reviewer credentials and screenshots were preserved.
+Release notes are stored in `AppStore/1.1.1/whats-new.tr.txt`.
+Submission evidence is saved under the task's ignored `.codex-artifacts` directory.
+
+Physical-device testing, an iOS 17 runtime run and live Sandbox transactions were
+not performed for this search correction. These limits are disclosed in the Apple
+review notes. Submission does not establish Apple approval or public availability.

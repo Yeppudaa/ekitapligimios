@@ -1,8 +1,21 @@
 # App Store Metadata Draft
 
-## Version 1.1.1 TestFlight search correction (2026-10-22)
+## Version 1.1.1 App Store search correction (2026-10-22)
 
-Requested destination: TestFlight. Apple rejected the 1.1.0 upload because that
+The user requested App Store submission after successful TestFlight delivery of
+1.1.1 (49), with automatic public release after Apple approval. App Store Connect
+confirmed **Waiting for Review** on 22 October 2026 at 23:56 Europe/Istanbul.
+Submission: `29215adf-243d-4fc4-88c8-71f571ec6e46`.
+**Automatically release this version** and **Release update to all users
+immediately** are selected. No additional developer release approval is required.
+Existing purchase settings, screenshots and reviewer credentials were preserved.
+Turkish release notes saved: `AppStore/1.1.1/whats-new.tr.txt`.
+Review notes describe the search correction, executed tests and device-test limits.
+Evidence: `.codex-artifacts/catalog-search-testflight-20261022/appstore-1.1.1-waiting-review.jpg`
+and `appstore-1.1.1-auto-release.jpg`. Submission confirms receipt by Apple;
+approval and public availability remain pending.
+
+Apple rejected the 1.1.0 upload because that
 marketing version was already approved; 1.1.1 is the required patch increment.
 App/core/test sources passed 467 Core, 65 native, and 3 search UI tests each on
 iPhone and iPad. Packaging must preserve those exact sources and purchase behavior.
