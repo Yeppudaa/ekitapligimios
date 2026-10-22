@@ -85,7 +85,12 @@ struct CatalogView: View {
             .navigationTitle(L10n.catalogTitle)
             .navigationBarTitleDisplayMode(.inline)
             .toolbar(.visible, for: .navigationBar)
-            .searchable(text: $query, prompt: L10n.catalogSearchPrompt)
+            .searchable(
+                text: $query,
+                isPresented: $container.isCatalogSearchPresented,
+                placement: .navigationBarDrawer(displayMode: .always),
+                prompt: L10n.catalogSearchPrompt
+            )
             .tint(EKitapligimPalette.teal)
             .toolbar {
                 ToolbarItem(placement: .topBarTrailing) {
@@ -120,6 +125,11 @@ struct CatalogView: View {
                 Button(L10n.commonClose, role: .cancel) { }
             } message: { Text(HomeRefreshL10n.text("catalog.helpBody")) }
             .onSubmit(of: .search) { Task { await load(reset: true) } }
+            .onChange(of: query) { previous, current in
+                if !previous.isEmpty && current.isEmpty {
+                    Task { await load(reset: true) }
+                }
+            }
             .sheet(isPresented: $showingFilters) {
                 CatalogFiltersView(filters: filters, categories: categories) { updated in
                     filters = updated

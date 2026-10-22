@@ -237,7 +237,10 @@ struct HomeView: View {
     }
 
     private var searchBar: some View {
-        Button { container.open(route: .catalog) } label: {
+        Button {
+            container.open(route: .catalog)
+            container.isCatalogSearchPresented = true
+        } label: {
             HStack(spacing: 12) {
                 Image(systemName: "magnifyingglass")
                     .accessibilityHidden(true)
@@ -258,6 +261,7 @@ struct HomeView: View {
         }
         .buttonStyle(.plain)
         .accessibilityLabel(L10n.homeSearchPlaceholder)
+        .accessibilityIdentifier("home.search")
         .padding(.horizontal, 16)
     }
 

@@ -34,8 +34,10 @@ final class AppContainer: ObservableObject {
         didSet {
             isForumPresented = false
             audioPageRoute = nil
+            if selectedTab != .catalog { isCatalogSearchPresented = false }
         }
     }
+    @Published var isCatalogSearchPresented = false
     @Published var presentedRoute: AppRoute?
     /// Audio browsing uses the active page's navigation stack; the expanded player remains modal.
     @Published var audioPageRoute: AppRoute?

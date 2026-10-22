@@ -465,8 +465,12 @@ private enum ModernParityPayload {
             return ["comments": [], "pagination": ["page": 1, "pages": 1, "total": 0]]
         }
         if path.hasSuffix("/books") {
-            let books: [[String: Any]] = (1...8).map(book)
-            let pagination: [String: Any] = ["page": 1, "pages": 1, "total": 8]
+            let books: [[String: Any]] = (1...8).map(book).filter { item in
+                search.isEmpty || ["title", "author", "publisher", "isbn"].contains { key in
+                    (item[key] as? String ?? "").localizedCaseInsensitiveContains(search)
+                }
+            }
+            let pagination: [String: Any] = ["page": 1, "pages": 1, "total": books.count]
             return ["books": books, "pagination": pagination]
         }
         if path.contains("/books/") || path.contains("/book-detail/") {

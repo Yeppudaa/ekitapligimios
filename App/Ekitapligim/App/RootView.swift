@@ -38,7 +38,9 @@ struct RootView: View {
                 .accessibilityHidden(true)
         }
         .ignoresSafeArea(.keyboard, edges: .bottom)
-        .onChange(of: container.selectedTab) { _, _ in dismissKeyboard() }
+        .onChange(of: container.selectedTab) { _, _ in
+            if !container.isCatalogSearchPresented { dismissKeyboard() }
+        }
         .onChange(of: container.isForumPresented) { _, _ in dismissKeyboard() }
         .onOpenURL { url in
             if GoogleSignInService.handle(url) { return }
