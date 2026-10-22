@@ -3,7 +3,7 @@
   "sourceFiles": {
     "App/Ekitapligim/App/AppContainer.swift": "083d3debfd00321c7656f9c4254ec810e34efb4df2087b01ab6ace545f16735d",
     "App/Ekitapligim/App/RootView.swift": "0cec1652d227e1b992f59f00af0f115270b93fc9a783b24386d497880e4d2aa2",
-    "App/Ekitapligim/Features/HomeView.swift": "1919a9299fb6395a71dd108d0309fcf1e83bc6c614b6185811651029d9dda112",
+    "App/Ekitapligim/Features/HomeView.swift": "a5e847614104ce6d93894116d756e710ae110ac1a6bf2738635002f970285ca6",
     "App/Ekitapligim/Features/CatalogView.swift": "c3d7f5516a4141ed7cb0c2d49f73d2ccf70a125166ea36bb5fa3310271b96c20",
     "App/Ekitapligim/Features/ModernParityUITestHost.swift": "5e9de3b81ad4b709c0a7c016e04b48302efb80da1ebee694ac51860cc676c36a",
     "App/EkitapligimUITests/CatalogSearchUITests.swift": "85466ffd6558a2a4501d199fd0631debaf8a12136d1b7cd63094207825501fb8",

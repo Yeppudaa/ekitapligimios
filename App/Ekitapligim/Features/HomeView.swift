@@ -258,6 +258,7 @@ struct HomeView: View {
             .padding(.vertical, 14)
             .frame(minHeight: 58)
             .ekitapligimCard(radius: 17)
+            .contentShape(Rectangle())
         }
         .buttonStyle(.plain)
         .accessibilityLabel(L10n.homeSearchPlaceholder)
