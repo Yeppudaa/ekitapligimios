@@ -39,7 +39,8 @@ struct ReaderOpeningUITestHost: View {
         .fullScreenCover(isPresented: $isPresented, onDismiss: { snapshot = nil }) {
             if let book {
                 ReaderOpeningPresentation(book: book, snapshot: $snapshot, onCancel: { present(false) },
-                                          sequence: makeSequence()) {
+                                          sequence: makeSequence(),
+                                          reduceMotionOverride: ProcessInfo.processInfo.environment["READER_OPENING_REDUCE_MOTION"] == "1") {
                     ReaderUITestHost(mode: "reading", onClose: { present(false) })
                         .fullScreenCover(isPresented: $showsNestedCover) {
                             Button(L10n.commonClose) { showsNestedCover = false }
@@ -52,8 +53,6 @@ struct ReaderOpeningUITestHost: View {
                             showsNestedCover = true
                         }
                 }
-                .environment(\.accessibilityReduceMotion,
-                             ProcessInfo.processInfo.environment["READER_OPENING_REDUCE_MOTION"] == "1")
             }
         }
     }

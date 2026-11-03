@@ -536,7 +536,7 @@ private struct ProfileHero: View {
                     badgeColor: EKitapligimPalette.profileGold)
                         .font(.title2.weight(.bold))
                         .foregroundStyle(.white)
-                        .lineLimit(dynamicTypeSize.isAccessibilitySize ? nil : 2)
+                        .lineLimit(isPremium || dynamicTypeSize.isAccessibilitySize ? nil : 2)
                         .fixedSize(horizontal: false, vertical: true)
                         .layoutPriority(1)
                         .accessibilityIdentifier("profile.username")

@@ -163,6 +163,7 @@ struct ReaderOpeningPresentation<Reader: View>: View {
     @Binding var snapshot: ReaderOpeningSnapshot?
     let onCancel: () -> Void
     let reader: () -> Reader
+    private let reduceMotionOverride: Bool?
     @AppStorage("reader.paperTheme") private var paperThemeRaw = ReaderPaperTheme.sepia.rawValue
     @Environment(\.accessibilityReduceMotion) private var reduceMotion
     @Environment(\.scenePhase) private var scenePhase
@@ -171,15 +172,18 @@ struct ReaderOpeningPresentation<Reader: View>: View {
     @State private var didRequestDismissal = false
 
     init(book: BookDTO, snapshot: Binding<ReaderOpeningSnapshot?>, onCancel: @escaping () -> Void,
-         sequence: ReaderOpeningSequence? = nil, @ViewBuilder reader: @escaping () -> Reader) {
+         sequence: ReaderOpeningSequence? = nil, reduceMotionOverride: Bool? = nil,
+         @ViewBuilder reader: @escaping () -> Reader) {
         self.book = book
         _snapshot = snapshot
         self.onCancel = onCancel
         _sequence = State(initialValue: sequence ?? ReaderOpeningSequence())
+        self.reduceMotionOverride = reduceMotionOverride
         self.reader = reader
     }
 
     private var theme: ReaderPaperTheme { ReaderPaperTheme(rawValue: paperThemeRaw) ?? .sepia }
+    private var effectiveReduceMotion: Bool { reduceMotionOverride ?? reduceMotion }
 
     var body: some View {
         ZStack {
@@ -200,7 +204,7 @@ struct ReaderOpeningPresentation<Reader: View>: View {
             if phase != .finished && phase != .cancelled {
                 TimelineView(.animation) { _ in
                     let elapsed = sequence.elapsedMilliseconds
-                    if sequence.reducesMotion || reduceMotion {
+                    if sequence.reducesMotion || effectiveReduceMotion {
                         theme.paper.opacity(max(0, 1 - elapsed / ReaderOpeningFrame.reducedMotionMilliseconds))
                     } else {
                         ReaderOpeningArtwork(book: book, snapshot: snapshot, theme: theme,
@@ -245,13 +249,13 @@ struct ReaderOpeningPresentation<Reader: View>: View {
         .interactiveDismissDisabled(phase != .finished)
         .accessibilityAction(.escape, cancel)
         .task {
-            await sequence.run(reduceMotion: reduceMotion) { next in
+            await sequence.run(reduceMotion: effectiveReduceMotion) { next in
                 phase = next
                 if next == .finished || next == .cancelled { snapshot = nil }
                 if next == .cancelled { dismissPresentation() }
             }
         }
-        .onChange(of: reduceMotion) { _, enabled in if enabled { sequence.finish() } }
+        .onChange(of: effectiveReduceMotion) { _, enabled in if enabled { sequence.finish() } }
         .onChange(of: scenePhase) { _, next in if next == .background { sequence.finish() } }
         .onDisappear { sequence.presentationDisappeared() }
     }

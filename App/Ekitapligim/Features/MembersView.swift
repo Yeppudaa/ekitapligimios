@@ -136,7 +136,7 @@ private struct MemberRow: View {
             VStack(alignment: .leading, spacing: 8) {
                 PremiumMemberName(username: member.username, isPremium: member.isPremium)
                     .font(.headline.weight(.bold)).foregroundStyle(CommunityStyle.ink)
-                    .lineLimit(dynamicTypeSize.isAccessibilitySize ? nil : 2)
+                    .lineLimit(member.isPremium || dynamicTypeSize.isAccessibilitySize ? nil : 2)
                 if member.isPremium {
                     PremiumMemberPill()
                 }
