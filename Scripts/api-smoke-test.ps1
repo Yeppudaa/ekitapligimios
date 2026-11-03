@@ -158,7 +158,7 @@ function Assert-SmokeUnauthorizedPost($Path) {
 function Assert-SmokeUnauthorizedPut($Path, $Body) {
     $uri = [Uri]::new($script:baseUri, $Path)
     try {
-        Invoke-WebRequest -Uri $uri -Method PUT -Body $Body -UseBasicParsing -TimeoutSec $TimeoutSec | Out-Null
+        Invoke-WebRequest -Uri $uri -Method PUT -Body $Body -ContentType 'application/x-www-form-urlencoded; charset=utf-8' -UseBasicParsing -TimeoutSec $TimeoutSec | Out-Null
         throw "FAIL PUT $Path without authorization unexpectedly succeeded"
     } catch {
         if ($_.Exception.Message -eq "FAIL PUT $Path without authorization unexpectedly succeeded") {
@@ -204,7 +204,7 @@ function Invoke-SmokePut($Path, $Body, [switch]$RequiresAuth) {
     }
 
     try {
-        $response = Invoke-WebRequest -Uri $uri -Headers $headers -Method PUT -Body $Body -UseBasicParsing -TimeoutSec $TimeoutSec
+        $response = Invoke-WebRequest -Uri $uri -Headers $headers -Method PUT -Body $Body -ContentType 'application/x-www-form-urlencoded; charset=utf-8' -UseBasicParsing -TimeoutSec $TimeoutSec
         Write-Host "PASS PUT $Path -> HTTP $($response.StatusCode)"
     } catch {
         $statusCode = $_.Exception.Response.StatusCode.value__

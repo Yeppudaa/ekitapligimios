@@ -56,6 +56,17 @@ if [ "${EKITAPLIGIM_FULL_RELEASE_REVIEW:-0}" = "1" ] && { [ "$review_group" = al
     CODE_SIGNING_ALLOWED=NO 2>&1 | tee "$EVIDENCE/development-clean-build.log"
 fi
 
+production_status=not-run
+if [ "$review_group" = all ] || [ "$review_group" = native-unit ]; then
+  production_status=0
+  xcodebuild clean build -project Ekitapligim.xcodeproj -scheme Ekitapligim \
+    -configuration Production -destination generic/platform=iOS -derivedDataPath build/modern-parity-production \
+    -clonedSourcePackagesDirPath .build/xcode-packages -disableAutomaticPackageResolution \
+    CODE_SIGNING_ALLOWED=NO 2>&1 | tee "$EVIDENCE/production-build.log" || production_status=$?
+  if [ "$production_status" -ne 0 ]; then result=1; fi
+fi
+printf '%s\n' "$production_status" > "$EVIDENCE/production-status.txt"
+
 # Choose installed simulators rather than depending on an SDK-specific device name.
 xcrun simctl list devices available --json > "$EVIDENCE/available-simulators.json"
 python3 - "$EVIDENCE" "$review_group" <<'PY'
@@ -100,7 +111,7 @@ while IFS=$'\t' read -r label device; do
     -parallel-testing-enabled NO -test-timeouts-enabled YES \
     -resultBundlePath "$EVIDENCE/$label.xcresult" \
     -clonedSourcePackagesDirPath .build/xcode-packages -disableAutomaticPackageResolution \
-    "${arguments[@]}" CODE_SIGNING_ALLOWED=YES CODE_SIGN_IDENTITY=- CODE_SIGN_STYLE=Manual \
+    "${arguments[@]}" CODE_SIGN_IDENTITY=- CODE_SIGN_STYLE=Manual \
     CODE_SIGN_ENTITLEMENTS="$PWD/Scripts/ci-simulator.entitlements" \
     2>&1 | tee "$EVIDENCE/$label-tests.log" || test_status=$?
   printf '%s\n' "$test_status" > "$EVIDENCE/$label-status.txt"
@@ -124,16 +135,6 @@ while IFS=$'\t' read -r label device; do
   if [ "$evidence_status" -ne 0 ]; then result=1; fi
 done < "$EVIDENCE/simulators.tsv"
 
-production_status=not-run
-if [ "$review_group" = all ] || [ "$review_group" = native-unit ]; then
-  production_status=0
-  xcodebuild clean build -project Ekitapligim.xcodeproj -scheme Ekitapligim \
-    -configuration Production -destination generic/platform=iOS -derivedDataPath build/modern-parity-production \
-    -clonedSourcePackagesDirPath .build/xcode-packages -disableAutomaticPackageResolution \
-    CODE_SIGNING_ALLOWED=NO 2>&1 | tee "$EVIDENCE/production-build.log" || production_status=$?
-  if [ "$production_status" -ne 0 ]; then result=1; fi
-fi
-printf '%s\n' "$production_status" > "$EVIDENCE/production-status.txt"
 printf '%s\n' "$result" > "$EVIDENCE/result-code.txt"
 # Keep outcomes and concrete diagnostics visible in Codemagic's short web log as well as artifacts.
 printf '\nVALIDATION SUMMARY\nCore exit: %s\nProduction exit: %s\n' "$core_status" "$production_status"

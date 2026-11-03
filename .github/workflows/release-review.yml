@@ -23,7 +23,17 @@ jobs:
         env:
           EKITAPLIGIM_FULL_RELEASE_REVIEW: '1'
           EKITAPLIGIM_REVIEW_GROUP: ${{ matrix.group }}
-        run: bash Scripts/modern-parity-macos-validation.sh
+        run: |
+          # Process names only: no environment values, tokens or command arguments.
+          (
+            while sleep 60; do
+              date -u '+Review progress %Y-%m-%dT%H:%M:%SZ'
+              ps -axo pid,ppid,pcpu,etime,comm | awk '/xcodebuild|codesign|swift-frontend|Simulator/ { print }' | tail -n 12
+            done
+          ) &
+          review_monitor=$!
+          trap 'kill "$review_monitor" 2>/dev/null || true' EXIT
+          bash Scripts/modern-parity-macos-validation.sh
       - name: Preserve results including failures
         if: always()
         uses: actions/upload-artifact@v4
