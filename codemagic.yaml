@@ -24,7 +24,7 @@ workflows:
           set -euo pipefail
           if ! command -v xcodegen >/dev/null 2>&1; then brew install xcodegen; fi
           xcodegen generate
-      - name: Run Core, complete native tests and beta UI smoke tests
+      - name: Verify audio evidence and run Core, native and beta UI tests
         script: bash Scripts/testflight-beta-validation.sh
       - name: Configure existing App Store signing profiles
         script: |

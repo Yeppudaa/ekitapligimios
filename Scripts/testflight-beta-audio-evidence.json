@@ -1,0 +1,188 @@
+{
+  "source": "4c30106b3956810568513c5dd525e3fb0feff364",
+  "runURL": "https://github.com/Yeppudaa/ekitapligimios/actions/runs/41626715451",
+  "jobID": 125885787602,
+  "xcode": "Xcode 26.3\nBuild version 17C529",
+  "devices": [
+    {
+      "architecture": "arm64",
+      "deviceId": "B220EC43-535F-472F-935A-5B2D0E9F2975",
+      "deviceName": "iPhone SE (3rd generation)",
+      "modelName": "iPhone SE (3rd generation)",
+      "osBuildNumber": "23C54",
+      "osVersion": "26.2",
+      "platform": "iOS Simulator"
+    }
+  ],
+  "protectedGitObjects": {
+    "App/Ekitapligim": "7a36f0e8b497363954bcc031aeb351b2196c2ac9",
+    "Sources": "61d8cacc348f5de4c0d1316c2cdd99211f40f736",
+    "Package.swift": "12e7d397bd72681673c7327f3a0c8465d543f4a7",
+    "project.yml": "97aa778e15f8539c23e82d4238c12037bf391c72",
+    "App/EkitapligimTests/AudioPlaybackRuntimeTests.swift": "fbcc4d16723c271a647fffed0407acd2e51b0423"
+  },
+  "nativeResultsSHA256": "efaf7fe799dfb7cf20b89905c2b04f9c1159317304ae258dae0ab5d62ac11e13",
+  "xcresultArchiveSHA256": "25708904e565926aac549717306c2e38adab86dfe954feb817f7b3a6b484ed06",
+  "audioTests": [
+    {
+      "duration": "4s",
+      "durationInSeconds": 4.287060976028442,
+      "name": "testA00GeneratedLocalWaveParsesReachesPlayerReadinessAndAdvances()",
+      "nodeIdentifier": "AudioPlaybackRuntimeTests/testA00GeneratedLocalWaveParsesReachesPlayerReadinessAndAdvances()",
+      "nodeIdentifierURL": "test://com.apple.xcode/Ekitapligim/EkitapligimTests/AudioPlaybackRuntimeTests/testA00GeneratedLocalWaveParsesReachesPlayerReadinessAndAdvances",
+      "nodeType": "Test Case",
+      "result": "Passed"
+    },
+    {
+      "duration": "7s",
+      "durationInSeconds": 7.008653998374939,
+      "name": "testA01CloseWhileNativeMetadataIsPendingCancelsMediaAndCannotRevivePlayer()",
+      "nodeIdentifier": "AudioPlaybackRuntimeTests/testA01CloseWhileNativeMetadataIsPendingCancelsMediaAndCannotRevivePlayer()",
+      "nodeIdentifierURL": "test://com.apple.xcode/Ekitapligim/EkitapligimTests/AudioPlaybackRuntimeTests/testA01CloseWhileNativeMetadataIsPendingCancelsMediaAndCannotRevivePlayer",
+      "nodeType": "Test Case",
+      "result": "Passed"
+    },
+    {
+      "duration": "0.49s",
+      "durationInSeconds": 0.4853469133377075,
+      "name": "testA02AccountSwitchWhileNativeMetadataIsPendingCancelsOldMediaAndCannotResume()",
+      "nodeIdentifier": "AudioPlaybackRuntimeTests/testA02AccountSwitchWhileNativeMetadataIsPendingCancelsOldMediaAndCannotResume()",
+      "nodeIdentifierURL": "test://com.apple.xcode/Ekitapligim/EkitapligimTests/AudioPlaybackRuntimeTests/testA02AccountSwitchWhileNativeMetadataIsPendingCancelsOldMediaAndCannotResume",
+      "nodeType": "Test Case",
+      "result": "Passed"
+    },
+    {
+      "duration": "1s",
+      "durationInSeconds": 1.5739799737930298,
+      "name": "testAccountChangeClosesTheExistingNativePlayerAndCannotResumeOldAudio()",
+      "nodeIdentifier": "AudioPlaybackRuntimeTests/testAccountChangeClosesTheExistingNativePlayerAndCannotResumeOldAudio()",
+      "nodeIdentifierURL": "test://com.apple.xcode/Ekitapligim/EkitapligimTests/AudioPlaybackRuntimeTests/testAccountChangeClosesTheExistingNativePlayerAndCannotResumeOldAudio",
+      "nodeType": "Test Case",
+      "result": "Passed"
+    },
+    {
+      "duration": "1s",
+      "durationInSeconds": 1.1695120334625244,
+      "name": "testAcknowledgedDetailFavoriteUpdatesPlayingBookWithoutRestartAndRejectsStaleAccountAck()",
+      "nodeIdentifier": "AudioPlaybackRuntimeTests/testAcknowledgedDetailFavoriteUpdatesPlayingBookWithoutRestartAndRejectsStaleAccountAck()",
+      "nodeIdentifierURL": "test://com.apple.xcode/Ekitapligim/EkitapligimTests/AudioPlaybackRuntimeTests/testAcknowledgedDetailFavoriteUpdatesPlayingBookWithoutRestartAndRejectsStaleAccountAck",
+      "nodeType": "Test Case",
+      "result": "Passed"
+    },
+    {
+      "duration": "0.064s",
+      "durationInSeconds": 0.06409895420074463,
+      "name": "testAssetDurationLoadsThroughAuthenticatedRangesWithoutStartingAudioOutput()",
+      "nodeIdentifier": "AudioPlaybackRuntimeTests/testAssetDurationLoadsThroughAuthenticatedRangesWithoutStartingAudioOutput()",
+      "nodeIdentifierURL": "test://com.apple.xcode/Ekitapligim/EkitapligimTests/AudioPlaybackRuntimeTests/testAssetDurationLoadsThroughAuthenticatedRangesWithoutStartingAudioOutput",
+      "nodeType": "Test Case",
+      "result": "Passed"
+    },
+    {
+      "duration": "0.062s",
+      "durationInSeconds": 0.062474966049194336,
+      "name": "testAssetDurationWithMissingHeadMetadataUsesOneByteProbe()",
+      "nodeIdentifier": "AudioPlaybackRuntimeTests/testAssetDurationWithMissingHeadMetadataUsesOneByteProbe()",
+      "nodeIdentifierURL": "test://com.apple.xcode/Ekitapligim/EkitapligimTests/AudioPlaybackRuntimeTests/testAssetDurationWithMissingHeadMetadataUsesOneByteProbe",
+      "nodeType": "Test Case",
+      "result": "Passed"
+    },
+    {
+      "duration": "3s",
+      "durationInSeconds": 3.3103890419006348,
+      "name": "testCloseRemovesMiniPlayerStopsMediaAndClearsNowPlaying()",
+      "nodeIdentifier": "AudioPlaybackRuntimeTests/testCloseRemovesMiniPlayerStopsMediaAndClearsNowPlaying()",
+      "nodeIdentifierURL": "test://com.apple.xcode/Ekitapligim/EkitapligimTests/AudioPlaybackRuntimeTests/testCloseRemovesMiniPlayerStopsMediaAndClearsNowPlaying",
+      "nodeType": "Test Case",
+      "result": "Passed"
+    },
+    {
+      "duration": "4s",
+      "durationInSeconds": 4.816051959991455,
+      "name": "testGeneratedWavePlaysThroughNativeRangesAndSupportsPauseResumeAndFifteenSecondSkips()",
+      "nodeIdentifier": "AudioPlaybackRuntimeTests/testGeneratedWavePlaysThroughNativeRangesAndSupportsPauseResumeAndFifteenSecondSkips()",
+      "nodeIdentifierURL": "test://com.apple.xcode/Ekitapligim/EkitapligimTests/AudioPlaybackRuntimeTests/testGeneratedWavePlaysThroughNativeRangesAndSupportsPauseResumeAndFifteenSecondSkips",
+      "nodeType": "Test Case",
+      "result": "Passed"
+    },
+    {
+      "duration": "0.063s",
+      "durationInSeconds": 0.06318902969360352,
+      "name": "testServerPremium403NeverCreatesAnAssetOrRequestsMedia()",
+      "nodeIdentifier": "AudioPlaybackRuntimeTests/testServerPremium403NeverCreatesAnAssetOrRequestsMedia()",
+      "nodeIdentifierURL": "test://com.apple.xcode/Ekitapligim/EkitapligimTests/AudioPlaybackRuntimeTests/testServerPremium403NeverCreatesAnAssetOrRequestsMedia",
+      "nodeType": "Test Case",
+      "result": "Passed"
+    },
+    {
+      "duration": "1s",
+      "durationInSeconds": 1.225147008895874,
+      "name": "testTerminationNotificationClosesNativePlayback()",
+      "nodeIdentifier": "AudioPlaybackRuntimeTests/testTerminationNotificationClosesNativePlayback()",
+      "nodeIdentifierURL": "test://com.apple.xcode/Ekitapligim/EkitapligimTests/AudioPlaybackRuntimeTests/testTerminationNotificationClosesNativePlayback",
+      "nodeType": "Test Case",
+      "result": "Passed"
+    }
+  ],
+  "originalNativeSummary": {
+    "devicesAndConfigurations": [
+      {
+        "device": {
+          "architecture": "arm64",
+          "deviceId": "B220EC43-535F-472F-935A-5B2D0E9F2975",
+          "deviceName": "iPhone SE (3rd generation)",
+          "modelName": "iPhone SE (3rd generation)",
+          "osBuildNumber": "23C54",
+          "osVersion": "26.2",
+          "platform": "iOS Simulator"
+        },
+        "expectedFailures": 0,
+        "failedTests": 2,
+        "passedTests": 268,
+        "skippedTests": 0,
+        "testPlanConfiguration": {
+          "configurationId": "1",
+          "configurationName": "Test Scheme Action"
+        }
+      }
+    ],
+    "environmentDescription": "EkitapligimModernUnit \u00c2\u00b7 Built with macOS 15.8.2",
+    "expectedFailures": 0,
+    "failedTests": 2,
+    "finishTime": 1793707088.524,
+    "passedTests": 268,
+    "result": "Failed",
+    "skippedTests": 0,
+    "startTime": 1793706453.815,
+    "statistics": [],
+    "testFailures": [
+      {
+        "failureText": "XCTAssertLessThan failed: (\"60\") is not less than (\"30\")",
+        "targetName": "EkitapligimTests",
+        "testIdentifier": 191,
+        "testIdentifierString": "PremiumAvatarLayoutTests/testPixelCoordinatesMatchTheRenderedTopAndBottom()",
+        "testIdentifierURL": "test://com.apple.xcode/Ekitapligim/EkitapligimTests/PremiumAvatarLayoutTests/testPixelCoordinatesMatchTheRenderedTopAndBottom",
+        "testName": "testPixelCoordinatesMatchTheRenderedTopAndBottom()"
+      },
+      {
+        "failureText": "XCTAssertGreaterThan failed: (\"214\") is not greater than (\"220\") - Photo must reach both inner edges",
+        "targetName": "EkitapligimTests",
+        "testIdentifier": 192,
+        "testIdentifierString": "PremiumAvatarLayoutTests/testRealFrameKeepsAvatarAndGoldEdgeConcentricAtSmallAndLargeSizes()",
+        "testIdentifierURL": "test://com.apple.xcode/Ekitapligim/EkitapligimTests/PremiumAvatarLayoutTests/testRealFrameKeepsAvatarAndGoldEdgeConcentricAtSmallAndLargeSizes",
+        "testName": "testRealFrameKeepsAvatarAndGoldEdgeConcentricAtSmallAndLargeSizes()"
+      }
+    ],
+    "title": "Test - EkitapligimModernUnit",
+    "topInsights": [
+      {
+        "category": "Longest Test Runs",
+        "impact": "57% of duration",
+        "text": "10 longest test runs with outlier durations exceeding 6.75s (three standard deviations)"
+      }
+    ],
+    "totalTestCount": 270
+  },
+  "scope": "Only the 11 AudioPlaybackRuntimeTests passed here. The original full run had two independent pixel-calibration failures. Fresh Codemagic execution must pass all other native tests, including their fixes.",
+  "codemagicControl": "Build 6ae9cf7657e81944fbc199f0: 262 of 270 passed; all 8 failures were AudioPlaybackRuntimeTests, including local-file WAV AVPlayer readiness without app networking."
+}
