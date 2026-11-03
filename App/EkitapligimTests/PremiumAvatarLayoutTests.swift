@@ -33,7 +33,7 @@ final class PremiumAvatarLayoutTests: XCTestCase {
         for size: CGFloat in [66, 94, 106, 160] {
             let frame = PremiumAvatarFrame(size: size) { diameter in
                 Color.red.frame(width: diameter, height: diameter)
-            }.environment(\.accessibilityReduceMotion, true)
+            }.environment(\.scenePhase, .inactive)
             let image = try render(frame, size: size)
             XCTAssertEqual(image.size.width, size)
             XCTAssertEqual(image.size.height, size)
