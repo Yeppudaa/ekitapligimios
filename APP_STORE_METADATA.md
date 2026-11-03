@@ -1,5 +1,11 @@
 # App Store Metadata Draft
 
+## Current candidate 1.1.2 — 2026-11-03
+
+Draft only: the source is under [general release review](RELEASE_REVIEW_20261103.md). New device screenshots, signed-device authentication/APNs/purchase tests and the photo API deployment remain required. Earlier descriptions of submitted builds and attached recordings refer to those historical versions, not this candidate.
+
+The current UI offers Google sign-in/registration and first-party username/password access. The user explicitly chose not to add Apple login. Do not describe this candidate as first-party-only or assert App Review 4.8 compliance; the equivalent privacy-preserving login/exception remains unresolved. [Apple login-services guideline](https://developer.apple.com/app-store/review/guidelines/#login-services).
+
 ## Premium profile appearance draft (2026-11-03)
 
 Draft release note after native verification: “Premium profiller için kitap simgeli, ışık geçişli altın avatar çerçevesi eklendi. Onay ikonu kullanıcı adının sonunda görünür.” Run the native frame/profile checks before submission. [Evidence and remaining checks](PREMIUM_AVATAR_VALIDATION.md).

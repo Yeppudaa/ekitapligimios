@@ -8,9 +8,13 @@ permissions:
   contents: read
 jobs:
   native:
-    name: Clean native builds and complete iPhone/iPad tests
+    name: Review ${{ matrix.group }}
     runs-on: macos-15
     timeout-minutes: 120
+    strategy:
+      fail-fast: false
+      matrix:
+        group: [native-unit, iPhone-compact, iPhone-large, iPad]
     steps:
       - uses: actions/checkout@v4
       - name: Select App Store compatible Xcode
@@ -18,12 +22,13 @@ jobs:
       - name: Complete native review
         env:
           EKITAPLIGIM_FULL_RELEASE_REVIEW: '1'
+          EKITAPLIGIM_REVIEW_GROUP: ${{ matrix.group }}
         run: bash Scripts/modern-parity-macos-validation.sh
       - name: Preserve results including failures
         if: always()
         uses: actions/upload-artifact@v4
         with:
-          name: release-review-native
+          name: release-review-${{ matrix.group }}
           path: |
             build/modern-parity-archives/
             build/modern-parity-packaging.log

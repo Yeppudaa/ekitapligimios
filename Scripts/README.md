@@ -218,7 +218,7 @@ The mutation command is refused against production unless `-AllowProductionMutat
 
 API/parity smoke checks no longer enable writes merely because credentials are available. Profile visits, terms acceptance, presence, read receipts and write probes require `-ExerciseMutations`; production additionally requires `-AllowProductionMutations`. Use a disposable staging account. Authentication may create a session but does not accept new terms in read-only mode. `Scripts/smoke-readonly-contract-test.ps1` verifies this with mocked HTTP.
 
-For a complete, non-publishing native review, push a `codex/release-review-*` branch or dispatch `.github/workflows/release-review.yml`. It selects Xcode 26+, clean-builds Development and Production, runs all native tests and all UI suites on two iPhones and an iPad, and preserves results even on failure. Physical-device/APNs/Sandbox and authorized server deployment checks remain separate.
+For a complete, non-publishing native review, push a `codex/release-review-*` branch or dispatch `.github/workflows/release-review.yml`. It selects Xcode 26+, clean-builds Development and Production, runs all native tests and all UI suites on two iPhones and an iPad, and preserves results even on failure. Four independent jobs cover native builds/tests and each UI device; a failed group does not cancel the others. `EKITAPLIGIM_REVIEW_GROUP` selects a group locally; omitting it retains the complete sequential runner. Physical-device/APNs/Sandbox and authorized server deployment checks remain separate.
 
 ## `appstore-preflight.ps1`
 

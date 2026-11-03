@@ -1,5 +1,20 @@
 # App Store Checklist
 
+## Current release review — 2026-11-03
+
+This section describes the current candidate; earlier dated checklists are historical evidence, not approval for today's source. See [current review](RELEASE_REVIEW_20261103.md).
+
+- [x] 538 Core tests passed on Windows (debug and clean optimized) and macOS/Xcode 26.3; 124 portable app-state tests passed.
+- [x] Offline server contracts, workspace/basic secret scan, source accessibility checks and metadata preflight executed. The new photo/account-switch regression failed before its fix and passed afterward.
+- [ ] Complete the current clean native builds and all iPhone/iPad unit/UI suites; review their actual screenshots. Native compilation found a PhotosPicker import error and a read-only Reduce Motion environment assignment; both corrected and awaiting a complete rerun.
+- [ ] Deploy and validate IosApi 1.0.40 on authorized HTTPS staging. The production media-capabilities query still returns a legacy feed; real photo publishing is not available through that contract yet. The configured staging host was unreachable in this audit.
+- [ ] Signed-device PhotosPicker/profile upload, reader, Google login, VoiceOver and real APNs foreground/background/locked delivery.
+- [ ] Current App Store Sandbox purchase/restore and account deletion; do not reuse historical signed-build evidence as current proof.
+- [ ] Resolve or explicitly document the App Review 4.8 login-service risk. Per the user's instruction, Google and first-party login remain; no Apple login is being added and no equivalence exception has been verified.
+- [ ] Verify App Store Connect version/build, product and privacy information before any submission. Public lookup currently shows 1.1.1; project.yml prepares 1.1.2 with local build 50, and signing CI must allocate a unique build number.
+
+No server installation, TestFlight upload or App Store submission was performed by this review.
+
 ## Agenda photos release gate (2026-11-03)
 
 - [ ] Install and verify the IosApi 1.0.40 review package on authorized HTTPS staging; exercise real image storage, moderation, read permissions and deletion with a reviewer account.

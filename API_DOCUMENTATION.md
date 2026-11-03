@@ -6,6 +6,8 @@
 
 ## Book Agenda photos — IosApi 1.0.40 (2026-11-03)
 
+Photo publishing binds the capability lookup and multipart write to the initiating session. Replacing the account or signing out during lookup cannot publish the draft under another account. A verified refresh of the same session remains supported. Three client regressions cover replacement, sign-out and normal refresh.
+
 Existing feed ordering, tabs, post IDs, navigation and text-only form POSTs are unchanged. iOS uses the existing `/ios-api/v1/book-agenda` routes:
 
 - `GET book-agenda?media_capabilities=1`: `image_upload_version: 1`, `can_upload_images`, `maximum_bytes` (bytes, bounded to 8 MiB and the XenForo attachment limit). Upload support requires view/create/upload plus the native attachment handler permission. Old servers without this explicit version cannot enable the photo control or receive a photo POST.
