@@ -53,14 +53,22 @@ final class PremiumAvatarLayoutTests: XCTestCase {
             XCTAssertEqual(image.size.height, size)
             let data = try pixels(image)
             let width = Int(size)
-            let centerY = Int((size * PremiumAvatarAppearance.photoCenterYRatio).rounded())
+            let centerY = Int(floor(size * PremiumAvatarAppearance.photoCenterYRatio))
             let radius = size * PremiumAvatarAppearance.photoDiameterRatio / 2
             for delta in [CGFloat(-1), CGFloat(1)] {
-                let sampleX = Int((size / 2 + delta * (radius - size * 0.025)).rounded())
+                // Pixel n has its center at n + 0.5. Flooring these mirrored
+                // coordinates keeps both probes equally far from the avatar center.
+                // Keep the color probes just inside the decorative sparkle halo.
+                let sampleX = Int(floor(size / 2 + delta * (radius - size * 0.04)))
                 let offset = (centerY * width + sampleX) * 4
                 XCTAssertGreaterThan(data[offset], 220, "Photo must reach both inner edges")
                 XCTAssertLessThan(data[offset + 1], 80)
             }
+            let photo = opaqueRedBounds(data, width: width)
+            XCTAssertEqual(photo.midX, size / 2, accuracy: 1)
+            XCTAssertEqual(photo.midY, size * PremiumAvatarAppearance.photoCenterYRatio, accuracy: 1.5)
+            XCTAssertEqual(photo.width, size * 0.80, accuracy: 1,
+                           "The visible photo must fill the opening up to the inner gold rim")
             capture(image, name: "premium-avatar-fit-\(Int(size))")
         }
     }
@@ -102,6 +110,18 @@ final class PremiumAvatarLayoutTests: XCTestCase {
             context.draw(cgImage, in: CGRect(x: 0, y: 0, width: width, height: height))
         }
         return data
+    }
+
+    private func opaqueRedBounds(_ data: [UInt8], width: Int) -> CGRect {
+        var minX = width, minY = width, maxX = -1, maxY = -1
+        for y in 0..<width { for x in 0..<width {
+            let offset = (y * width + x) * 4
+            if data[offset] > 220, data[offset + 1] < 80, data[offset + 3] > 250 {
+                minX = min(minX, x); minY = min(minY, y)
+                maxX = max(maxX, x); maxY = max(maxY, y)
+            }
+        } }
+        return CGRect(x: minX, y: minY, width: max(0, maxX - minX + 1), height: max(0, maxY - minY + 1))
     }
 
     private func capture(_ image: UIImage, name: String) {

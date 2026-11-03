@@ -1,6 +1,11 @@
 name: Full release review (no publishing)
 on:
   workflow_dispatch:
+    inputs:
+      groups:
+        description: JSON array of review groups; omit to run the complete review
+        required: false
+        default: '["native-unit", "iPhone-compact", "iPhone-large", "iPad"]'
   push:
     branches:
       - 'codex/release-review-*'
@@ -14,7 +19,7 @@ jobs:
     strategy:
       fail-fast: false
       matrix:
-        group: [native-unit, iPhone-compact, iPhone-large, iPad]
+        group: ${{ fromJSON(inputs.groups || '["native-unit", "iPhone-compact", "iPhone-large", "iPad"]') }}
     steps:
       - uses: actions/checkout@v4
       - name: Select App Store compatible Xcode
