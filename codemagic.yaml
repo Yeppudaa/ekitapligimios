@@ -1,4 +1,59 @@
 workflows:
+  ios-testflight-beta:
+    name: Ekitapligim iOS TestFlight Beta 1.1.2
+    max_build_duration: 120
+    instance_type: mac_mini_m2
+    integrations:
+      app_store_connect: Ekitapligim Codemagic
+    environment:
+      xcode: 26.3
+      ios_signing:
+        distribution_type: app_store
+        bundle_identifier: com.ekitapligim.app
+      vars:
+        APP_STORE_APPLE_ID: "6789584323"
+        APPLE_TEAM_ID: QA67383767
+    cache:
+      cache_paths:
+        - .build/xcode-packages
+    scripts:
+      - name: Check available App Store and TestFlight version
+        script: bash Scripts/prepare-release-version.sh
+      - name: Generate the current native project
+        script: |
+          set -euo pipefail
+          if ! command -v xcodegen >/dev/null 2>&1; then brew install xcodegen; fi
+          xcodegen generate
+      - name: Run Core, complete native tests and beta UI smoke tests
+        script: bash Scripts/testflight-beta-validation.sh
+      - name: Configure existing App Store signing profiles
+        script: |
+          set -euo pipefail
+          xcode-project use-profiles --archive-method app-store
+      - name: Recheck Apple versions and assign the build number
+        script: bash Scripts/prepare-release-version.sh --apply
+      - name: Build signed Production IPA
+        script: |
+          set -euo pipefail
+          xcode-project build-ipa --project Ekitapligim.xcodeproj --scheme Ekitapligim \
+            2>&1 | tee build/testflight-beta/archive.log
+      - name: Verify signed IPA version, signature and production entitlements
+        script: python3 Scripts/verify-testflight-ipa.py
+    artifacts:
+      - build/ios/ipa/*.ipa
+      - build/release-version/version-plan.json
+      - build/testflight-reviewed/signed-ipa-verification.json
+      - build/testflight-beta/*.log
+      - build/testflight-beta/*.json
+      - build/testflight-beta/*.xml
+      - build/testflight-beta/*.txt
+      - build/testflight-beta/*.xcresult
+    publishing:
+      app_store_connect:
+        auth: integration
+        submit_to_testflight: true
+        submit_to_app_store: false
+
   ios-release-version-check:
     name: Ekitapligim App Store and TestFlight Version Check (read only)
     max_build_duration: 10
