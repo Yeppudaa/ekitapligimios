@@ -94,7 +94,9 @@ Tek kalan hata `testPublisherDottedLetterCollectsAllSparsePagesWithoutExtraTaps`
 - Temiz Development test derlemesi ve imzalı Production arşivi/IPA üretildi. IPA'nın gerçek imzası `codesign --verify --deep --strict` ile doğrulandı.
 - Sürüm **1.1.2**, build **50**, bundle `com.ekitapligim.app`, team `QA67383767`. Üretim HTTPS yapılandırması, `aps-environment=production`, Associated Domains ve dağıtım profilinin bunları desteklediği kontrol edildi; debug entitlement kapalı.
 - IPA SHA256: `422f536f1b6dc4004b6e8dd2f2105f892179dac8625f663b1386ab500d65f6b7`.
-- Apple yükleme servisi 13:29:10 UTC'de `UPLOAD SUCCEEDED with no errors` döndürdü. Codemagic derleme süresi 17m 51s. Apple işleme/TestFlight son dağıtım adımı ayrıca izleniyor; bu kayıt test kullanıcısının cihazında indirdiğini iddia etmez.
+- Apple yükleme servisi 13:29:10 UTC'de `UPLOAD SUCCEEDED with no errors` döndürdü. Codemagic derleme süresi 17m 51s. Codemagic son işlem adımı da 2m 43s içinde tamamlandı (`Post process finished`, son durum `finished`). Bu kayıt test kullanıcısının cihazında indirdiğini iddia etmez.
 - Sonuç paketi indirildi: `C:/Users/Monster/Downloads/ekitapligimios_4_artifacts.zip`. Yerel özetler `.codex-artifacts/release-review-20261103/codemagic-beta-4/` altında. Yayınevi İ seçimi ve sonraki sayfalardaki sonuçların birleştirilmesi testinin son ekranı gözle doğrulandı.
 
 Bu başarı beta dağıtım kanıtıdır. Gerçek cihaz APNs popup/Google/IAP, canlı fotoğraf backend dağıtımı ve tam cihaz matrisi için yukarıdaki genel yayın koşulları açık kalır.
+
+Başarılı çalışma ekranı: `.codex-artifacts/release-review-20261103/codemagic-testflight-1.1.2-50.jpg`.
