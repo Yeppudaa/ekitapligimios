@@ -3,6 +3,8 @@
 Kontrol dalı: `codex/release-review-20261103`. Workflow: **ios-release-review**.
 Bu akış elle başlatılır; TestFlight/App Store yüklemesi, imzalama profili değişikliği veya canlı sunucuya yazma yapmaz.
 
+Sürüm kontrolü için ayrıca **ios-release-version-check** vardır. Bu kısa, salt okunur akış Apple'daki App Store sürümlerini ve her iki kanalın en yüksek build numarasını sorgular. `project.yml` içindeki sürüm ve build alt sınırından `version-plan.json` üretir; hiçbir sürüm yüklemez veya numara rezerve etmez. İmzalama anında sorgular tekrarlanır. TestFlight ve yayın adayı aynı pazarlama sürümünü kullanır; yeni yüklemeler ayrı ve artan build numarası alır.
+
 Codemagic'te aynı commit için dört çalışma başlatın; `review_group` alanında sırayla `native-unit`, `iPhone-compact`, `iPhone-large`, `iPad` seçin. Seçenek alanı [Codemagic build inputs](https://docs.codemagic.io/knowledge-codemagic/build-inputs/) biçimini kullanır.
 
 | Grup | Kontrol |

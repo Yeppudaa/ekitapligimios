@@ -9,6 +9,7 @@ import plistlib
 import subprocess
 import tempfile
 import zipfile
+from release_version import project_version
 
 BUNDLE = "com.ekitapligim.app"
 TEAM = "QA67383767"
@@ -43,7 +44,9 @@ def main():
         profile = plistlib.loads(subprocess.check_output(["security", "cms", "-D", "-i", str(app / "embedded.mobileprovision")]))
         permitted = profile["Entitlements"]
         assert info["CFBundleIdentifier"] == BUNDLE
-        assert info["CFBundleShortVersionString"] == "1.1.1"
+        expected_version, _ = project_version()
+        assert os.environ["EXPECTED_MARKETING_VERSION"] == expected_version
+        assert info["CFBundleShortVersionString"] == expected_version
         assert info["CFBundleVersion"] == os.environ["TESTFLIGHT_NEXT_BUILD_NUMBER"]
         assert info["EKITAPLIGIM_ENVIRONMENT"] == "production"
         assert info["EKITAPLIGIM_API_BASE_URL"] == "https://ekitapligim.com/ios-api/v1/"

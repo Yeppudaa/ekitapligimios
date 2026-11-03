@@ -1,4 +1,20 @@
 workflows:
+  ios-release-version-check:
+    name: Ekitapligim App Store and TestFlight Version Check (read only)
+    max_build_duration: 10
+    instance_type: mac_mini_m2
+    integrations:
+      app_store_connect: Ekitapligim Codemagic 3
+    environment:
+      xcode: 26.3
+      vars:
+        APP_STORE_APPLE_ID: "6789584323"
+    scripts:
+      - name: Read App Store and TestFlight versions without signing or uploading
+        script: bash Scripts/prepare-release-version.sh
+    artifacts:
+      - build/release-version/version-plan.json
+
   ios-release-review:
     name: Ekitapligim iOS Release Review (no publishing)
     max_build_duration: 120
@@ -296,16 +312,7 @@ workflows:
             SWIFT_ENABLE_BATCH_MODE=NO 2>&1 | tee "$CM_BUILD_DIR/build/ios-tests.log"
 
       - name: Increment App Store build number
-        script: |
-          set -euo pipefail
-          LATEST_BUILD_NUMBER=$(app-store-connect get-latest-testflight-build-number "$APP_STORE_APPLE_ID" --platform IOS --all-versions)
-          if ! [[ "$LATEST_BUILD_NUMBER" =~ ^[0-9]+$ ]]; then
-            echo "Invalid TestFlight build number: $LATEST_BUILD_NUMBER"
-            exit 1
-          fi
-          NEXT_BUILD_NUMBER=$((LATEST_BUILD_NUMBER + 1))
-          echo "Using App Store build number: $NEXT_BUILD_NUMBER"
-          agvtool new-version -all "$NEXT_BUILD_NUMBER"
+        script: bash Scripts/prepare-release-version.sh --apply
 
       - name: Build IPA for TestFlight
         script: |
@@ -314,29 +321,8 @@ workflows:
             --project "$CM_BUILD_DIR/$XCODE_PROJECT" \
             --scheme "$XCODE_SCHEME" 2>&1 | tee "$CM_BUILD_DIR/build/build-ipa.log"
 
-      - name: Verify signed Production push entitlement
-        script: |
-          set -euo pipefail
-          IPA_PATH=$(find "$CM_BUILD_DIR/build/ios/ipa" -maxdepth 1 -name '*.ipa' -print -quit)
-          if [ -z "$IPA_PATH" ]; then
-            echo "No IPA was produced for entitlement verification."
-            exit 1
-          fi
-          VERIFY_DIR=$(mktemp -d)
-          trap 'rm -rf "$VERIFY_DIR"' EXIT
-          unzip -q "$IPA_PATH" -d "$VERIFY_DIR"
-          APP_PATH=$(find "$VERIFY_DIR/Payload" -maxdepth 1 -name '*.app' -type d -print -quit)
-          if [ -z "$APP_PATH" ]; then
-            echo "Signed application bundle was not found in the IPA."
-            exit 1
-          fi
-          codesign -d --entitlements :- "$APP_PATH" > "$CM_BUILD_DIR/build/production-entitlements.plist" 2>/dev/null
-          PUSH_ENVIRONMENT=$(/usr/libexec/PlistBuddy -c 'Print :aps-environment' "$CM_BUILD_DIR/build/production-entitlements.plist")
-          if [ "$PUSH_ENVIRONMENT" != "production" ]; then
-            echo "Invalid signed aps-environment: $PUSH_ENVIRONMENT"
-            exit 1
-          fi
-          echo "Signed IPA uses the production APNs environment."
+      - name: Verify signed Production version, build, profile and push entitlement
+        script: python3 Scripts/verify-testflight-ipa.py
 
     artifacts:
       - build/**/*
@@ -485,19 +471,7 @@ workflows:
         grep -Eq '^[[:space:]]*EKITAPLIGIM_GOOGLE_URL_SCHEME = com\.googleusercontent\.apps\.258534406055-trcoiet648ohvijagtpli1h1556i2cjq$' "$SETTINGS_FILE"
         grep -Eq '^[[:space:]]*EKITAPLIGIM_API_BASE_URL = https://ekitapligim\.com/ios-api/v1/$' "$SETTINGS_FILE"
     - name: Assign an unused increasing TestFlight build number
-      script: |
-        set -euo pipefail
-        LATEST_BUILD_NUMBER=$(app-store-connect get-latest-testflight-build-number "$APP_STORE_APPLE_ID" --platform IOS --all-versions)
-        if ! [[ "$LATEST_BUILD_NUMBER" =~ ^[0-9]+$ ]]; then
-          echo "Could not determine the current TestFlight build number."
-          exit 1
-        fi
-        LOCAL_BUILD_FLOOR=44
-        if [ "$LATEST_BUILD_NUMBER" -lt "$LOCAL_BUILD_FLOOR" ]; then LATEST_BUILD_NUMBER="$LOCAL_BUILD_FLOOR"; fi
-        NEXT_BUILD_NUMBER=$((LATEST_BUILD_NUMBER + 1))
-        agvtool new-version -all "$NEXT_BUILD_NUMBER"
-        echo "TESTFLIGHT_NEXT_BUILD_NUMBER=$NEXT_BUILD_NUMBER" >> "$CM_ENV"
-        echo "TestFlight build number: $NEXT_BUILD_NUMBER"
+      script: bash Scripts/prepare-release-version.sh --apply
     - name: Build IPA for TestFlight
       script: |
         set -euo pipefail
