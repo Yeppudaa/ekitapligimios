@@ -1,6 +1,6 @@
 # Genel yayın incelemesi — 3 Kasım 2026
 
-**Henüz yayın onayı yok.** Bugünkü okuyucu geçişi, misafir/giriş, mesajlar/üyeler/profil, profil düzenleme, dizinler, canlı akış, bildirimler, gündem fotoğrafları ve premium çerçeve ile ortak oturum/ödeme/okuma altyapısı inceleniyor. Eski tarihlerde geçen testler güncel kaynak için otomatik onay sayılmıyor.
+**TestFlight yüklemesi 1.1.2 (50) için tamamlandı; genel App Store yayın onayı yok.** Bugünkü okuyucu geçişi, misafir/giriş, mesajlar/üyeler/profil, profil düzenleme, dizinler, canlı akış, bildirimler, gündem fotoğrafları ve premium çerçeve ile ortak oturum/ödeme/okuma altyapısı inceleniyor. Eski tarihlerde geçen testler güncel kaynak için otomatik onay sayılmıyor.
 
 ## Bulunan ve düzeltilen sorunlar
 
@@ -67,7 +67,7 @@ Eski `parity-audit.ps1` güncel mimari/renk/sekme düzenini tanımayan regex idd
 
 Eski parity betiğini çalıştırırken otomatik yazma davranışı önceden fark edilmedi. Yerel olarak yapılandırılmış test hesabıyla canlı sunucuda profil ziyareti, şart kabulü, presence ve okuyucu oturum kayıtları oluştu; 39444 numaralı kitabın ilerlemesine `%1 / sayfa 1` yazıldı. Sonraki kütüphane isteği HTTP 400 verdiği için yorum/sohbet/gündem/forum paylaşımı aşamasına ulaşılmadı. Bu durum kullanıcıya açıklandı. Önceki ilerleme bilinmediğinden tahmin ederek geri yazılmadı. Tekrarını engelleyen varsayılan salt okunur davranış ve regresyon testi eklendi.
 
-Bu inceleme sunucu kurmadı, TestFlight yüklemedi ve App Store'a göndermedi. Kaynak/CI başarısı tek başına mağaza yayınına hazır olunduğu anlamına gelmez.
+İlk inceleme aşaması sunucu kurmadı veya dağıtım yapmadı; sonradan açık kullanıcı talebiyle yapılan TestFlight yüklemesinin kanıtı aşağıdadır. App Store yayını başlatılmadı. Kaynak/CI başarısı tek başına mağaza yayınına hazır olunduğu anlamına gelmez.
 
 
 ## TestFlight beta ikinci çalışma ve düzeltmeler
@@ -75,3 +75,26 @@ Bu inceleme sunucu kurmadı, TestFlight yüklemedi ve App Store'a göndermedi. K
 [Codemagic 6ae9d29157e81944fbc19b00](https://codemagic.io/app/6a5221a644ecae83eeea61ec/build/6ae9d29157e81944fbc19b00), kaynak 337b72a: 538 Core ve 259/259 güncel native test geçti (atlama yok). 11 ses testi yukarıdaki gerçek GitHub sonuçlarıyla doğrulandı. 25 UI testinden 16 geçti, 9 başarısız; gönderim imzalama/yükleme öncesinde durdu.
 
 İndirilen xcresult ve erişilebilirlik ağacı şu nedenleri gösterdi: DEBUG üye profili verisi `member-detail` yerine eski `members` adresini dinliyordu; mesaj katılımcılarında zorunlu `is_active` eksikti. Paylaşım kartının üst kimliği görselin alt kimliklerine yayılıyordu. Fotoğraf seç/kaldır testleri sabit paylaşım çubuğunun örttüğü koordinata dokunuyordu. Fixture adres/alanları, erişilebilirlik kapsayıcıları ve görünür içerikte kısa yönlü kaydırma düzeltildi. Üye testleri gerçek adı bekler; standart üye ve uzun isim testleri boş profil üzerinde yanlış başarı veremez. Önizleme kaldırma ve seçiciden dönüş kontrolleri bounded bekleme kullanır. Başarısızlık halinde de xcresult özeti/ekleri saklanır. Bu düzeltmelerin Codemagic sonucu henüz alınmadı.
+
+
+## Beta üçüncü çalışma sonucu
+
+[Codemagic 6ae9d90a57e81944fbc19e1a](https://codemagic.io/app/6a5221a644ecae83eeea61ec/build/6ae9d90a57e81944fbc19e1a), kaynak `13edc88`: 538 Core ve 259 native test sıfır hatayla geçti. 25 UI testinden 24 geçti, atlama yok. Önceki dokuz UI hatasının tamamı giderildi: altı fotoğraf, altı topluluk ve beş premium profil testi başarılıdır; okuyucu dört testte de geçti. Fotoğraf seçici açma/kapatma, hata sonrası taslağın korunması/kaldırılması, fotoğraf-only multipart paylaşımı, ana sayfa-detay geçişi ve galeri dahil.
+
+Tek kalan hata `testPublisherDottedLetterCollectsAllSparsePagesWithoutExtraTaps` oldu. Kaydedilmiş erişilebilirlik ağacında istenen İ düğmesi x=-10.7 konumuyla ekran dışına taşarken J seçilmişti. Kısa iki yönlü kaydırma, tam görünür düğme kontrolü ve istenen harfin seçildiğini doğrulayan bekleme eklendi (`db91450`). Uygulama kaynakları 13edc88 ile birebir aynı; son değişiklik yalnızca bu UI testidir.
+
+Üçüncü çalışmanın orijinal ekranları yerel `codemagic-beta-3/screenshots` kanıt klasöründe saklandı. Premium ziyaret edilen profil, uzun premium isim, mesaj kutusu ve gündem görselinin ana sayfa/detay görünümü gözle incelendi. Fiziksel cihaz ve canlı sunucu şartları bu simülatör sonuçlarıyla kapatılmadı.
+
+
+## Başarılı beta yüklemesi — 3 Kasım 2026, 16:29 TRT
+
+[Codemagic başarılı çalışma](https://codemagic.io/app/6a5221a644ecae83eeea61ec/build/6ae9dd7257e81944fbc19fc5), kaynak `db9145008625d50f3667333f5722af615906e22f`, workflow `ios-testflight-beta`.
+
+- Güncel kaynakta 538 Core, 259 native ve **25/25 UI** testi sıfır hatayla geçti; native/UI atlama yok. Değişmeyen ses kaynaklarının 11 gerçek GitHub testi, açıklanan üç tam UI/DEBUG blob istisnası denetlenerek kullanıldı.
+- Temiz Development test derlemesi ve imzalı Production arşivi/IPA üretildi. IPA'nın gerçek imzası `codesign --verify --deep --strict` ile doğrulandı.
+- Sürüm **1.1.2**, build **50**, bundle `com.ekitapligim.app`, team `QA67383767`. Üretim HTTPS yapılandırması, `aps-environment=production`, Associated Domains ve dağıtım profilinin bunları desteklediği kontrol edildi; debug entitlement kapalı.
+- IPA SHA256: `422f536f1b6dc4004b6e8dd2f2105f892179dac8625f663b1386ab500d65f6b7`.
+- Apple yükleme servisi 13:29:10 UTC'de `UPLOAD SUCCEEDED with no errors` döndürdü. Codemagic derleme süresi 17m 51s. Apple işleme/TestFlight son dağıtım adımı ayrıca izleniyor; bu kayıt test kullanıcısının cihazında indirdiğini iddia etmez.
+- Sonuç paketi indirildi: `C:/Users/Monster/Downloads/ekitapligimios_4_artifacts.zip`. Yerel özetler `.codex-artifacts/release-review-20261103/codemagic-beta-4/` altında. Yayınevi İ seçimi ve sonraki sayfalardaki sonuçların birleştirilmesi testinin son ekranı gözle doğrulandı.
+
+Bu başarı beta dağıtım kanıtıdır. Gerçek cihaz APNs popup/Google/IAP, canlı fotoğraf backend dağıtımı ve tam cihaz matrisi için yukarıdaki genel yayın koşulları açık kalır.
