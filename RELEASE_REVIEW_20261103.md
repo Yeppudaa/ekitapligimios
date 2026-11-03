@@ -12,6 +12,10 @@
 6. DEBUG test giriş verisindeki eski yasal bağlantılar metadata ön kontrolünü bozuyordu; mevcut yasal URL'lerle eşitlendi.
 7. Üç xcconfig dosyasındaki eski sürüm değerleri kaldırıldı; tek kaynak `project.yml`. Kamuya açık mağaza sorgusu 1.1.1 gösterdiği için sonraki aday 1.1.2/build 50 olarak hazırlandı. Dağıtım CI'sı Apple'daki son build numarasını sorgulayıp benzersiz numara üretmeye devam eder.
 8. Xcode 16.4'e bağlı eski CI seçimi güncellendi. Ayrı, yayın yapmayan tam inceleme akışı Xcode 26+ seçer, temiz Development/Production derlemesi ve iki iPhone/iPad'de bütün native/UI sınıflarını çalıştırır. [Apple SDK koşulu](https://developer.apple.com/news/upcoming-requirements/?id=04282026a).
+9. Eski smoke betiği PUT gövdesinin içerik türünü belirtmiyordu. Gerçek yardımcıyı sahte HTTP ile çağıran regresyon önce başarısız oldu; uygulamayla aynı UTF-8 form başlığı eklendikten sonra geçti. Salt okunur koruma testi de tekrar geçti. Önceki canlı HTTP 400 yanıtının yalnızca bundan kaynaklandığı kanıtlanmış değildir; canlı yazma tekrarlanmadı.
+10. Fotoğraf UI test sunucusu yalnızca canlı alan adını tanıyordu; Development derlemesinin `.local.invalid` adresinde kabiliyet ve resim istekleri yanlış genel JSON yanıtına düşüyordu. Test sunucusu üç yapılandırılmış HTTPS adresiyle eşitlendi. Üç yeni sözleşme testi (gerçek URLSession multipart dahil) Windows'ta geçti; Apple URLSession ve UI tekrar kontrolü bekleniyor.
+11. Premium piksel testindeki dikey çevirme, üstteki sabit kitap yerine alttaki hareketli kenarı örnekliyordu. Çevirme kaldırıldı ve üst/alt kontrolü eklendi. Ses süre testinin zorunlu senkron tanılama kayıtları kaldırıldı; iki saniyelik performans sınırı korundu. Büyük yazıda kütüphane testinin kartın tümünü ekrana sığdırma koşulu, görünür ve dokunulabilir merkez kontrolüne dönüştürüldü. Bu native test düzeltmelerinin sonucu henüz doğrulanmadı.
+12. Codemagic için elle başlatılan `ios-release-review` eklendi: aynı commit üzerinde native, küçük/büyük iPhone ve iPad grupları seçilebilir. Yayın adımı yoktur. Kullanım: `CODEMAGIC_RELEASE_REVIEW.md`. Codemagic üzerinde henüz çalıştırılmadı.
 
 ## Çalıştırılmış kanıtlar
 
@@ -22,7 +26,8 @@ Yerel ayrıntılar `.codex-artifacts/release-review-20261103/` içinde; kimlik b
 | Swift Core, Windows normal | 538 test geçti |
 | Swift Core, Windows temiz optimize | 538 test geçti |
 | Swift Core, macOS/Xcode 26.3 | 538 test geçti |
-| Taşınabilir gerçek uygulama modelleri | 124 test: gündem 24, profil/dizin 32, bildirim 10, canlı akış 8, kütüphane 12, sesli yorum 8, sesli yönlendirme 6, sohbet 13, okuma aktarımı 11 |
+| Temiz native Development derlemesi | Xcode 26.3 ile `17cbcd2` kaynağında geçti (`2026-11-03T10:52:05Z`); sonraki `8217603` yalnızca denetim betiklerini/CI'yı değiştirdi |
+| Taşınabilir uygulama modelleri/sözleşmeleri | 127 test: gündem 27 (üç yeni medya test sözleşmesi dahil), profil/dizin 32, bildirim 10, canlı akış 8, kütüphane 12, sesli yorum 8, sesli yönlendirme 6, sohbet 13, okuma aktarımı 11 |
 | Sunucu sözleşmeleri | 29 PHP paketi geçti; ReaderDriveSource gerçek yerel kurulu ExternalEbook doğrulayıcısıyla sınandı. HTTP/veritabanı kullanılmadı; canlı sunucudaki kaynakla eşitlik kanıtı değildir |
 | Sunucu paket kimliği | Hazır IosApi 1.0.40 ZIP'indeki 161 dosya güncel kaynakla aynı; SHA-256 `591a880afa12ef12560e1e3a49d48d42a5711f70662f90eb8013bae19887792a` |
 | Sözdizimi | 317 Swift dosyası normal ve DEBUG ayrıştırıldı |
@@ -31,9 +36,9 @@ Yerel ayrıntılar `.codex-artifacts/release-review-20261103/` içinde; kimlik b
 | Canlı C harfi sorgusu | İlk sayfa 11 eşleşme/317 ms; ikinci sayfayla 30 eşleşme/464 ms. Tek bilgisayar ölçümü, cihaz performans garantisi değil |
 | Canlı üyeler | Mevcut `is_premium` ve `role_type` alanları doğrulandı; dekorasyon için yeni sunucu alanı gerekmiyor |
 
-Taşınabilir model testleri Apple Combine/SwiftUI'ı taklit eden saklama yardımcıları kullanır; gerçek Apple framework, cihaz veya APNs kanıtı değildir. İlk macOS çalışmasında Core geçti fakat native derleme import hatasında durdu. Native/UI sonuçları sonraki çalışma tamamlandığında ayrıca kaydedilecek.
+Taşınabilir model testleri Apple Combine/SwiftUI'ı taklit eden saklama yardımcıları kullanır; gerçek Apple framework, cihaz veya APNs kanıtı değildir. İlk iki macOS derlemesinde bulunan import/test ortamı hataları düzeltildikten sonra temiz Development derlemesi geçti. GitHub'ın gecikmeli ara logları önce imzalamada bekleme olarak yorumlandı; tam loglar bu yorumu çürüttü. İptal edilen 41621590518 çalışmasında native testler bitmişti: 266 testten 263'ü geçti, üç testte 53 assertion başarısız oldu (iki avatar piksel testi ve ses oynatıcı hesap değişimi süre testi). UI testlerinde de fotoğraf paylaşımı ve görünürlük hataları görüldü. Bunlar başarılı sayılmadı; sonuç paketleriyle yeniden inceleniyor. Global paket imzalama zorlaması kaldırıldı, test uygulamasının ad-hoc kimliği ve Keychain entitlements dosyası korundu. Yeni çalışma işlem adlarını/CPU sürelerini kaydeder ve Production derlemesini testlerden önce çalıştırır.
 
-Kod [ayrı inceleme dalında](https://github.com/Yeppudaa/ekitapligimios/tree/codex/release-review-20261103). İlk native hata [çalışma 41618242757](https://github.com/Yeppudaa/ekitapligimios/actions/runs/41618242757) içinde saklandı. Düzeltmenin native çalışması: [41619439090](https://github.com/Yeppudaa/ekitapligimios/actions/runs/41619439090).
+Kod [ayrı inceleme dalında](https://github.com/Yeppudaa/ekitapligimios/tree/codex/release-review-20261103). İlk native hata [çalışma 41618242757](https://github.com/Yeppudaa/ekitapligimios/actions/runs/41618242757) içinde saklandı. Temiz Development başarısı [41621590518](https://github.com/Yeppudaa/ekitapligimios/actions/runs/41621590518) içindedir; bu çalışmanın bütününün iptal edilmiş olması nedeniyle tam test başarısı sayılamaz. Güncel tam inceleme: [41623814220](https://github.com/Yeppudaa/ekitapligimios/actions/runs/41623814220).
 
 ## Açık yayın koşulları
 

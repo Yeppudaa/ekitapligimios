@@ -1,4 +1,35 @@
 workflows:
+  ios-release-review:
+    name: Ekitapligim iOS Release Review (no publishing)
+    max_build_duration: 120
+    instance_type: mac_mini_m2
+    inputs:
+      review_group:
+        description: Run each group on the same commit before release
+        type: choice
+        default: native-unit
+        options:
+          - native-unit
+          - iPhone-compact
+          - iPhone-large
+          - iPad
+    environment:
+      xcode: 26.3
+      vars:
+        EKITAPLIGIM_FULL_RELEASE_REVIEW: "1"
+        EKITAPLIGIM_REVIEW_GROUP: ${{ inputs.review_group }}
+    cache:
+      cache_paths:
+        - .build/xcode-packages
+    scripts:
+      - name: Complete selected native review and preserve failure evidence
+        script: bash Scripts/modern-parity-macos-validation.sh
+    artifacts:
+      - build/modern-parity-archives/modern-parity-evidence.zip
+      - build/modern-parity-archives/forensics/*.xcresult.zip
+      - build/modern-parity-archives/packaging-status.json
+      - build/modern-parity-packaging.log
+
   ios-modern-parity-validation:
     name: Ekitapligim iOS Modern Parity Validation
     max_build_duration: 120

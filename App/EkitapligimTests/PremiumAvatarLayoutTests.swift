@@ -6,6 +6,20 @@ import EkitapligimCore
 
 @MainActor
 final class PremiumAvatarLayoutTests: XCTestCase {
+    func testPixelCoordinatesMatchTheRenderedTopAndBottom() throws {
+        let image = try render(VStack(spacing: 0) {
+            Color.red
+            Color.blue
+        }, size: 20)
+        let data = try pixels(image)
+        let top = (5 * 20 + 10) * 4
+        let bottom = (15 * 20 + 10) * 4
+        XCTAssertGreaterThan(data[top], 220)
+        XCTAssertLessThan(data[top + 2], 30)
+        XCTAssertLessThan(data[bottom], 30)
+        XCTAssertGreaterThan(data[bottom + 2], 220)
+    }
+
     func testMovingFrameChangesRimButLeavesPhotoOpeningAndBookStill() throws {
         let first = try render(PremiumAvatarArtwork(cycle: 0.05, sparkle: 0.16), size: 200)
         let second = try render(PremiumAvatarArtwork(cycle: 0.42, sparkle: 0.68), size: 200)
@@ -83,8 +97,8 @@ final class PremiumAvatarLayoutTests: XCTestCase {
             let context = try XCTUnwrap(CGContext(data: buffer.baseAddress, width: width, height: height,
                 bitsPerComponent: 8, bytesPerRow: width * 4, space: CGColorSpaceCreateDeviceRGB(),
                 bitmapInfo: CGImageAlphaInfo.premultipliedLast.rawValue))
-            context.translateBy(x: 0, y: CGFloat(height))
-            context.scaleBy(x: 1, y: -1)
+            // CGImage rows already match the renderer's top-to-bottom pixel coordinates.
+            // Flipping here samples the animated bottom rim when checking the fixed top book.
             context.draw(cgImage, in: CGRect(x: 0, y: 0, width: width, height: height))
         }
         return data

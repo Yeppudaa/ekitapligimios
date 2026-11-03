@@ -31,6 +31,8 @@ foreach ($model in @('BookAgendaFeedModel', 'BookAgendaDetailModel', 'AgendaPhot
     Copy-Item -LiteralPath (Join-Path $repositoryRoot "App\Ekitapligim\Features\$model.swift") -Destination (Join-Path $harnessRoot "App\$model.swift")
     Copy-Item -LiteralPath (Join-Path $repositoryRoot "App\EkitapligimTests\${model}Tests.swift") -Destination (Join-Path $harnessRoot "Tests\${model}Tests.swift")
 }
+Copy-Item -LiteralPath (Join-Path $repositoryRoot 'App\Ekitapligim\Features\ModernParityAgendaMediaFixture.swift') -Destination (Join-Path $harnessRoot 'App\ModernParityAgendaMediaFixture.swift')
+Copy-Item -LiteralPath (Join-Path $repositoryRoot 'App\EkitapligimTests\AgendaMediaFixtureTests.swift') -Destination (Join-Path $harnessRoot 'Tests\AgendaMediaFixtureTests.swift')
 & (Join-Path $PSScriptRoot 'swift-test-windows.ps1') -PackagePath $harnessRoot
 if ($LASTEXITCODE -ne 0) { throw 'Agenda state harness failed.' }
 Write-Output 'Agenda business-state tests passed. Apple Combine/SwiftUI and native device tests remain pending macOS.'

@@ -2,7 +2,6 @@ import XCTest
 import AVFoundation
 import MediaPlayer
 import UIKit
-import Darwin
 import EkitapligimCore
 @testable import Ekitapligim
 
@@ -10,15 +9,10 @@ import EkitapligimCore
 /// These exercise AVPlayer -> AVAssetResourceLoader -> authenticated HEAD/206 transport, not a mock player.
 @MainActor
 final class AudioPlaybackRuntimeTests: XCTestCase {
-    nonisolated(unsafe) private var previousTraceEnvironment: String?
     override func setUpWithError() throws {
         executionTimeAllowance = 90
-        previousTraceEnvironment = ProcessInfo.processInfo.environment["MODERN_PARITY_AUDIO_TRACE"]
-        setenv("MODERN_PARITY_AUDIO_TRACE", "1", 1)
-    }
-    override func tearDownWithError() throws {
-        if let previousTraceEnvironment { setenv("MODERN_PARITY_AUDIO_TRACE", previousTraceEnvironment, 1) }
-        else { unsetenv("MODERN_PARITY_AUDIO_TRACE") }
+        // Keep synchronous diagnostic logging opt-in: it otherwise becomes part of
+        // the teardown latency measured below. The two-second limit stays unchanged.
     }
 
     /// A framework control uses identical generated PCM bytes without the repository, resource loader,

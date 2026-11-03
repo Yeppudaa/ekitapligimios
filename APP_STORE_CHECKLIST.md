@@ -4,7 +4,7 @@
 
 This section describes the current candidate; earlier dated checklists are historical evidence, not approval for today's source. See [current review](RELEASE_REVIEW_20261103.md).
 
-- [x] 538 Core tests passed on Windows (debug and clean optimized) and macOS/Xcode 26.3; 124 portable app-state tests passed.
+- [x] 538 Core tests passed on Windows (debug and clean optimized) and macOS/Xcode 26.3; 127 portable app-state/fixture contract tests passed.
 - [x] Offline server contracts, workspace/basic secret scan, source accessibility checks and metadata preflight executed. The new photo/account-switch regression failed before its fix and passed afterward.
 - [ ] Complete the current clean native builds and all iPhone/iPad unit/UI suites; review their actual screenshots. Native compilation found a PhotosPicker import error and a read-only Reduce Motion environment assignment; both corrected and awaiting a complete rerun.
 - [ ] Deploy and validate IosApi 1.0.40 on authorized HTTPS staging. The production media-capabilities query still returns a legacy feed; real photo publishing is not available through that contract yet. The configured staging host was unreachable in this audit.

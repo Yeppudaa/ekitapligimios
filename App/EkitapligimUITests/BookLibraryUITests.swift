@@ -126,9 +126,19 @@ final class BookLibraryUITests: XCTestCase {
         XCTAssertTrue(viewport.waitForExistence(timeout: 10), file: file, line: line)
         for _ in 0..<28 {
             let bounds = viewport.frame.intersection(app.frame)
-            if element.exists, element.isHittable,
-               element.frame.minY >= bounds.minY, element.frame.maxY <= bounds.maxY { return }
-            viewport.swipeUp()
+            var movingUp = true
+            if element.exists {
+                let frame = element.frame
+                let visible = frame.intersection(bounds)
+                // Accessible book cards can be taller than the viewport. Their tap
+                // target must be visible; requiring the entire card skips past it.
+                if element.isHittable, visible.height >= min(44, frame.height),
+                   bounds.contains(CGPoint(x: frame.midX, y: frame.midY)) { return }
+                movingUp = frame.midY >= bounds.midY
+            }
+            let start = viewport.coordinate(withNormalizedOffset: CGVector(dx: 0.5, dy: movingUp ? 0.7 : 0.3))
+            let end = viewport.coordinate(withNormalizedOffset: CGVector(dx: 0.5, dy: movingUp ? 0.3 : 0.7))
+            start.press(forDuration: 0.05, thenDragTo: end)
         }
         XCTFail("Could not reveal \(element.identifier) in its visible scroll viewport", file: file, line: line)
     }
