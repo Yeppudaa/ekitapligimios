@@ -8,8 +8,10 @@ import EkitapligimCore
 final class PremiumAvatarLayoutTests: XCTestCase {
     func testPixelCoordinatesMatchTheRenderedTopAndBottom() throws {
         let image = try render(VStack(spacing: 0) {
-            Color.red
-            Color.blue
+            // Use exact RGB primaries: semantic Color.red/blue are system palette
+            // colors and contain other channels on current iOS versions.
+            Color(.sRGB, red: 1, green: 0, blue: 0, opacity: 1)
+            Color(.sRGB, red: 0, green: 0, blue: 1, opacity: 1)
         }, size: 20)
         let data = try pixels(image)
         let top = (5 * 20 + 10) * 4
