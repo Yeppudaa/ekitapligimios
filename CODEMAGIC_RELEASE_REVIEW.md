@@ -23,3 +23,5 @@ Her çalışmada `modern-parity-evidence.zip`, ayrıntılı `.xcresult.zip` pake
 Bu dört kontrolün geçmesi gerçek iPhone'da APNs popup, Google oturumu, fotoğraf/iCloud seçimi, Sandbox satın alma/geri yükleme veya canlı sunucu fotoğraf yüklemesini doğrulamaz. Açık koşullar `RELEASE_REVIEW_20261103.md` içindedir. Bu koşullar kapanmadan yayın hazır kabul edilmez.
 
 Mevcut `ios-production` ve `ios-testflight-reviewed` dağıtım akışları ayrıdır. Kontrol çalışması için bunları seçmeyin.
+
+Kullanıcının 3 Kasım tarihli açık TestFlight gönderim isteği için **ios-testflight-beta** eklendi. Elle başlatılır; mevcut Apple bağlantısını ve imzalama profillerini kullanır. Tüm Core ve native testleri, ardından gündem fotoğrafları, okuyucu açılışı, premium profil, profil/dizin ve topluluk ekranları için 25 UI testi çalışır. Başarısız veya atlanan testte gönderim durur. Sürüm tekrar sorgulanır, Production IPA üretilir ve gerçek imza/entitlements/sürüm kontrolünden sonra yalnızca TestFlight'a yüklenir. App Store incelemesi ve otomatik e-posta bildirimi yoktur. Bu beta akışı tam yayın matrisinin veya fiziksel cihaz/sunucu doğrulamasının geçtiğini iddia etmez.
