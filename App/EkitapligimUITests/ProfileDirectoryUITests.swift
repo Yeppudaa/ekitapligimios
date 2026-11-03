@@ -31,12 +31,20 @@ final class ProfileDirectoryUITests: XCTestCase {
         let alphabet = app.scrollViews["directory.alphabet"]
         reveal(alphabet, in: app)
         let button = app.buttons["directory.letter.\(letter)"]
-        for _ in 0..<12 {
-            if button.exists && button.isHittable { break }
-            alphabet.swipeLeft()
+        for _ in 0..<20 {
+            let bounds = alphabet.frame.intersection(app.frame).insetBy(dx: 8, dy: 0)
+            if button.exists, bounds.contains(button.frame), button.isHittable { break }
+            let movingLeft = !button.exists || button.frame.midX >= bounds.midX
+            let start = alphabet.coordinate(withNormalizedOffset: CGVector(dx: movingLeft ? 0.75 : 0.25, dy: 0.5))
+            let end = alphabet.coordinate(withNormalizedOffset: CGVector(dx: movingLeft ? 0.25 : 0.75, dy: 0.5))
+            start.press(forDuration: 0.1, thenDragTo: end)
         }
+        XCTAssertTrue(alphabet.frame.intersection(app.frame).contains(button.frame),
+                      "The complete letter button must be visible before tapping")
         XCTAssertTrue(button.isHittable, app.debugDescription)
         button.tap()
+        let selected = XCTNSPredicateExpectation(predicate: NSPredicate(format: "selected == true"), object: button)
+        XCTAssertEqual(XCTWaiter.wait(for: [selected], timeout: 5), .completed, "The requested letter must be selected")
     }
 
     private func capture(_ app: XCUIApplication, _ name: String) {
