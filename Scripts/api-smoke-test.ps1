@@ -12,6 +12,8 @@ param(
 
     [switch]$ExerciseMutations,
 
+    [switch]$AllowProductionMutations,
+
     [int]$BookId = 1,
 
     [int]$TimeoutSec = 15
@@ -240,11 +242,12 @@ function Resolve-SmokeAccessToken() {
 
     $uri = [Uri]::new($script:baseUri, "auth/login")
     try {
-        $response = Invoke-RestMethod -Uri $uri -Method POST -Body @{
+        $loginBody = @{
             login = $resolvedLogin
             password = $resolvedPassword
-            accepted_terms_version = $acceptedTermsVersion
-        } -TimeoutSec $TimeoutSec
+        }
+        if ($ExerciseMutations) { $loginBody.accepted_terms_version = $acceptedTermsVersion }
+        $response = Invoke-RestMethod -Uri $uri -Method POST -Body $loginBody -TimeoutSec $TimeoutSec
     } catch {
         $statusCode = $_.Exception.Response.StatusCode.value__
         if ($statusCode) {
@@ -263,6 +266,10 @@ function Resolve-SmokeAccessToken() {
 
 $normalized = Normalize-BaseUrl $BaseUrl
 $script:baseUri = [Uri]$normalized
+
+if ($ExerciseMutations -and $script:baseUri.Host -in @('ekitapligim.com', 'www.ekitapligim.com') -and -not $AllowProductionMutations) {
+    throw 'Mutation smoke tests require a disposable staging account. Production writes require explicit -AllowProductionMutations.'
+}
 
 if ($script:baseUri.Scheme -ne "https" -and -not $AllowInsecure) {
     throw "BaseUrl must use HTTPS unless -AllowInsecure is provided."
@@ -289,7 +296,7 @@ if ($booksResponse -and $booksResponse.books -and $booksResponse.books.Count -gt
         throw "FAIL books/$($firstBook.id)/reader/access -> guest access must fail closed"
     }
     Write-Host "PASS GET books/$($firstBook.id)/reader/access -> guest access fails closed"
-    Assert-SmokeUnauthorizedPost "books/$($firstBook.id)/reader/session"
+    if ($ExerciseMutations) { Assert-SmokeUnauthorizedPost "books/$($firstBook.id)/reader/session" }
 } else {
     Write-Host "SKIP book-detail/{id} smoke check (no visible books)"
 }
@@ -321,7 +328,7 @@ $membersResponse = Invoke-SmokeJsonGet "members?page=1&per_page=2&sort=alphabeti
 if ($membersResponse -and $membersResponse.members -and $membersResponse.members.Count -gt 0) {
     $member = $membersResponse.members | Select-Object -First 1
     Invoke-SmokeJsonGet "member-detail/$($member.id)" | Out-Null
-    if (-not [string]::IsNullOrWhiteSpace($BearerToken)) {
+    if ($ExerciseMutations -and -not [string]::IsNullOrWhiteSpace($BearerToken)) {
         Invoke-SmokePost "member-visit/$($member.id)" @{} -RequiresAuth
     }
 }
@@ -358,6 +365,7 @@ if ($forumsResponse -and $forumsResponse.forums -and $forumsResponse.forums.Coun
 }
 
 Write-Step "Probing UGC write routes fail closed without auth"
+if ($ExerciseMutations) {
 Assert-SmokeUnauthorizedPost "book-requests" @{
     title = "parity probe"
     author = "probe"
@@ -407,21 +415,23 @@ if ($forumsResponse -and $forumsResponse.forums -and $forumsResponse.forums.Coun
     Write-Host "SKIP forums/{id}/threads write probe (no visible forums)"
 }
 
+}
+
 Invoke-SmokeGet "book-stats"
 Invoke-SmokeGet "me" -RequiresAuth
 Invoke-SmokeGet "me/library" -RequiresAuth
 Invoke-SmokeGet "me/comments?page=1" -RequiresAuth
 Invoke-SmokeGet "me/subscription" -RequiresAuth
 $termsResponse = Invoke-SmokeJsonGet "me/terms" -RequiresAuth
-if ($termsResponse -and $termsResponse.requiredVersion) {
+if ($ExerciseMutations -and $termsResponse -and $termsResponse.requiredVersion) {
     Invoke-SmokePost "me/terms/accept" @{ version = [string]$termsResponse.requiredVersion } -RequiresAuth
 } else {
     Write-Host "SKIP me/terms/accept (requires auth and a current terms version)"
 }
 Invoke-SmokeGet "me/notifications/counts" -RequiresAuth
-Invoke-SmokePost "me/presence" @{} -RequiresAuth
+if ($ExerciseMutations) { Invoke-SmokePost "me/presence" @{} -RequiresAuth }
 $conversationsResponse = Invoke-SmokeJsonGet "conversations?page=1" -RequiresAuth
-if ($conversationsResponse -and $conversationsResponse.conversations -and $conversationsResponse.conversations.Count -gt 0) {
+if ($ExerciseMutations -and $conversationsResponse -and $conversationsResponse.conversations -and $conversationsResponse.conversations.Count -gt 0) {
     $conversation = $conversationsResponse.conversations | Select-Object -First 1
     Invoke-SmokeJsonGet "conversation-detail/$($conversation.id)" -RequiresAuth | Out-Null
 }

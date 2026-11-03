@@ -274,7 +274,7 @@ $ciWorkflow = Get-Content -Raw -LiteralPath ".github/workflows/ios-ci.yml"
 foreach ($requiredCIControl in @(
     "workflow_dispatch:",
     "- master",
-    "Xcode 16.4",
+    "Scripts/select-ci-xcode.sh",
     "xcodebuild -resolvePackageDependencies",
     "Readium 3.9.0 resolved",
     "-disableAutomaticPackageResolution",

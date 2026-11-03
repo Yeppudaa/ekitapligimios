@@ -18,6 +18,14 @@
 "requests.step2Body" = "Readers looking for the same book can support your request.";
 "requests.step3" = "Follow its journey to the shelf.";
 "requests.step3Body" = "Check the status of your request on this page.";
+"requests.form.title" = "Share the book on your mind.";
+"requests.form.subtitle" = "Add the title and author so readers looking for the same story can support your request.";
+"requests.form.titlePlaceholder" = "e.g. The Little Prince";
+"requests.form.authorPlaceholder" = "e.g. Antoine de Saint-Exupéry";
+"requests.form.isbn" = "ISBN · Optional";
+"requests.form.isbnPlaceholder" = "Add the ISBN if you know it";
+"requests.form.required" = "The title and author are required. You can leave the ISBN blank.";
+"requests.form.submit" = "Send book request";
 "forum.eyebrow" = "THE EKİTAPLIĞIM READER COMMUNITY";
 "forum.title" = "It starts with a book,";
 "forum.emphasis" = "grows with conversation.";
@@ -87,3 +95,20 @@
 "notifications.settingsAction" = "Notification settings";
 "notifications.permissionFailed" = "Notification permission could not be updated. You can check your preferences in iOS settings.";
 "notifications.readState" = "Read";
+
+"composer.typeTitle" = "Post type";
+"composer.bookHint" = "Choose a book for your post.";
+"composer.changeBook" = "Change book";
+"composer.noteTitle" = "Your reading note";
+"composer.bookTitle" = "About the book";
+"composer.quotationTitle" = "Words that stayed with you";
+"composer.reviewTitle" = "What did this book leave you with?";
+"composer.progressTitle" = "Your reading journey";
+"composer.pageHint" = "Page containing the quote (optional)";
+"composer.ratingTitle" = "Your rating";
+"composer.progressDetails" = "How far have you read?";
+"composer.characterCount" = "%d / 5,000";
+"composer.characterCountAccessibility" = "%d of 5,000 characters";
+"composer.numberPlaceholder" = "0";
+"agenda.commentsLoadFailed" = "Comments could not be loaded. Please try again.";
+"agenda.commentPermission" = "You do not have permission to comment on this post.";

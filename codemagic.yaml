@@ -152,6 +152,12 @@ workflows:
               "$BUNDLE_RESOURCE_ID" \
               --capability "Push Notifications"
           fi
+          # project.yml now emits applinks; the profile must carry the same capability.
+          if ! printf '%s' "$CAPABILITIES_JSON" | grep -Eq 'ASSOCIATED_DOMAINS|Associated Domains'; then
+            app-store-connect bundle-ids enable-capabilities \
+              "$BUNDLE_RESOURCE_ID" \
+              --capability "Associated Domains"
+          fi
           CERTIFICATES_JSON=$(app-store-connect certificates list \
             --profile-type IOS_APP_STORE \
             --json)
@@ -356,11 +362,8 @@ workflows:
         Path(name).write_bytes(expected)
         print('Restored reviewed production entitlements SHA256:',hashlib.sha256(expected).hexdigest())
         PYCODE
-    - name: Run Core tests for the unchanged reviewed logic
-      script: |-
-        set -euo pipefail
-        set -o pipefail
-        swift test 2>&1 | tee build/testflight-reviewed/core-tests.log
+    - name: Run complete Core suite including live audio header regressions
+      script: bash Scripts/testflight-audio-core-regression.sh
     - name: Prepare existing app signing capabilities and App Store profile
       script: |
         set -euo pipefail
@@ -434,6 +437,8 @@ workflows:
     - name: Resolve Swift Package dependencies
       script: |
         xcodebuild -resolvePackageDependencies -project "$XCODE_PROJECT" -scheme "$XCODE_SCHEME"
+    - name: Verify native AVFoundation metadata compatibility without starting audio output
+      script: bash Scripts/testflight-audio-metadata-regression.sh
     - name: Verify Production Google Sign-In settings
       script: |
         set -euo pipefail
@@ -474,6 +479,7 @@ workflows:
     - build/ios/ipa/*.ipa
     - build/testflight-reviewed/*.json
     - build/testflight-reviewed/*.log
+    - build/testflight-reviewed/*.xml
     - build/build-ipa.log
     - build/configure-code-signing.log
     publishing:

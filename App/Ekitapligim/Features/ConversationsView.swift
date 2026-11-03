@@ -4,6 +4,12 @@ import EkitapligimCore
 @MainActor
 struct ConversationsView: View {
     @EnvironmentObject private var container: AppContainer
+    var body: some View { ConversationInboxView().id(container.sessionRevision) }
+}
+
+@MainActor
+private struct ConversationInboxView: View {
+    @EnvironmentObject private var container: AppContainer
     @State private var conversations: [ConversationDTO] = []
     @State private var currentPage = 0
     @State private var lastPage = 1
@@ -11,72 +17,88 @@ struct ConversationsView: View {
     @State private var showComposer = false
     @State private var errorMessage: String?
 
+    private var visibleConversations: [ConversationDTO] {
+        conversations.filter { conversation in
+            let blocked = conversation.participants.contains { participant in
+                Int(participant.id).map(container.blockedUserIDs.contains) == true
+            }
+            return conversation.participants.count > 2 || !blocked
+        }
+    }
+
     var body: some View {
-        EKitapligimScreen {
-            Group {
+        ScrollView {
+            LazyVStack(alignment: .leading, spacing: 16) {
+                VStack(alignment: .leading, spacing: 15) {
+                    Label(CommunityDesignL10n.text("messages.eyebrow"), systemImage: "envelope.fill")
+                        .font(.caption2.weight(.bold)).tracking(1.5).foregroundStyle(CommunityStyle.teal)
+                    Text(CommunityDesignL10n.text("messages.hero"))
+                        .font(.system(.largeTitle, design: .serif).bold()).foregroundStyle(CommunityStyle.ink)
+                        .fixedSize(horizontal: false, vertical: true)
+                    Text(CommunityDesignL10n.text("messages.subtitle"))
+                        .font(.subheadline).foregroundStyle(CommunityStyle.muted)
+                }
+                .padding(22).frame(maxWidth: .infinity, alignment: .leading)
+                .background(LinearGradient(colors: [CommunityStyle.soft, CommunityStyle.cream],
+                                           startPoint: .topLeading, endPoint: .bottomTrailing),
+                            in: RoundedRectangle(cornerRadius: 26))
+                .overlay { RoundedRectangle(cornerRadius: 26).strokeBorder(CommunityStyle.border) }
+
                 if isLoading && conversations.isEmpty {
-                    EKLoadingState(message: L10n.conversationsLoading)
+                    ProgressView(L10n.conversationsLoading).frame(maxWidth: .infinity).padding(24)
                 } else if let errorMessage, conversations.isEmpty {
                     EKErrorState(title: L10n.conversationsUnavailableTitle, message: errorMessage) {
                         Task { await load(reset: true) }
                     }
-                } else if conversations.isEmpty {
-                    EKEmptyState(
-                        title: L10n.conversationsEmptyTitle,
-                        message: L10n.conversationsEmptyDescription,
-                        systemImage: "envelope.open"
-                    )
+                } else if visibleConversations.isEmpty {
+                    CommunityCard {
+                        VStack(alignment: .leading, spacing: 14) {
+                            Text(L10n.conversationsEmptyTitle).font(.title3.bold()).foregroundStyle(CommunityStyle.ink)
+                            Text(L10n.conversationsEmptyDescription).font(.subheadline).foregroundStyle(CommunityStyle.muted)
+                            Button { showComposer = true } label: {
+                                Label(L10n.conversationsNew, systemImage: "square.and.pencil")
+                            }.buttonStyle(CommunityButtonStyle())
+                        }
+                    }
                 } else {
-                    ScrollView {
-                        LazyVStack(spacing: 12) {
-                            ForEach(conversations.filter { conversation in
-                                let blockedParticipants = conversation.participants.filter { participant in
-                                    Int(participant.id).map(container.blockedUserIDs.contains) == true
-                                }
-                                return conversation.participants.count > 2 || blockedParticipants.isEmpty
-                            }) { conversation in
-                                ZStack(alignment: .topTrailing) {
-                                    NavigationLink {
-                                        ConversationDetailView(conversationID: conversation.id)
-                                    } label: {
-                                        ConversationRow(conversation: conversation)
-                                            .ekitapligimCard(radius: 16)
-                                    }
-                                    .buttonStyle(.plain)
-                                    if let message = conversation.lastMessage, !message.isMine, let contentID = Int(message.id) {
-                                        UGCSafetyMenu(
-                                            type: .conversationMessage,
-                                            contentID: contentID,
-                                            userID: message.userId
-                                        ) {
-                                            conversations.removeAll { item in
-                                                item.participants.contains { Int($0.id) == message.userId }
-                                            }
-                                        }
-                                        .padding(8)
-                                    }
-                                }
+                    ForEach(visibleConversations) { conversation in
+                        ZStack(alignment: .topTrailing) {
+                            NavigationLink {
+                                ConversationDetailView(conversationID: conversation.id)
+                            } label: {
+                                ConversationRow(conversation: conversation)
                             }
-                            if currentPage < lastPage {
-                                EKLoadMoreButton(isLoading: isLoading) {
-                                    Task { await load(reset: false) }
-                                }
+                            .buttonStyle(.plain)
+                            .accessibilityIdentifier("messages.conversation.\(conversation.id)")
+                            if let message = conversation.lastMessage, !message.isMine, let contentID = Int(message.id) {
+                                UGCSafetyMenu(type: .conversationMessage, contentID: contentID, userID: message.userId) {
+                                    conversations.removeAll { item in
+                                        item.participants.contains { Int($0.id) == message.userId }
+                                    }
+                                }.padding(12)
                             }
                         }
-                        .padding(.horizontal, 18)
-                        .padding(.vertical, 12)
                     }
-                    .refreshable { await load(reset: true) }
+                }
+                if let errorMessage, !conversations.isEmpty { EKInlineError(message: errorMessage) }
+                if currentPage < lastPage {
+                    EKLoadMoreButton(isLoading: isLoading) { Task { await load(reset: false) } }
                 }
             }
+            .frame(maxWidth: 760).padding(18).frame(maxWidth: .infinity)
         }
+        .background(CommunityStyle.page.ignoresSafeArea())
+        .refreshable { await load(reset: true) }
         .navigationTitle(L10n.conversationsTitle)
+        .navigationBarTitleDisplayMode(.inline)
         .toolbar {
-            ToolbarItem(placement: .topBarTrailing) {
+            ToolbarItemGroup(placement: .topBarTrailing) {
+                Button { Task { await load(reset: true) } } label: {
+                    Image(systemName: "arrow.clockwise").frame(width: 44, height: 44)
+                }.disabled(isLoading).accessibilityLabel(L10n.commonRefresh).accessibilityIdentifier("messages.refresh")
                 Button { showComposer = true } label: {
-                    Image(systemName: "square.and.pencil")
-                }
-                .accessibilityLabel(L10n.conversationsNew)
+                    Image(systemName: "square.and.pencil").frame(width: 44, height: 44)
+                }.accessibilityLabel(L10n.conversationsNew).accessibilityIdentifier("messages.compose")
             }
         }
         .task { await load(reset: true) }
@@ -86,26 +108,27 @@ struct ConversationsView: View {
                     _ = try await container.conversations.create(recipient: recipient, title: title, message: message)
                     await load(reset: true)
                     return true
-                } catch {
-                    return false
-                }
+                } catch { return false }
             }
         }
     }
 
     private func load(reset: Bool) async {
         guard !isLoading else { return }
+        let revision = container.sessionRevision
         isLoading = true
         errorMessage = nil
         defer { isLoading = false }
         do {
             let result = try await container.conversations.conversations(page: reset ? 1 : currentPage + 1)
+            guard revision == container.sessionRevision, !Task.isCancelled else { return }
             conversations = reset ? result.items : conversations + result.items.filter { item in
                 !conversations.contains(where: { $0.id == item.id })
             }
             currentPage = result.currentPage
             lastPage = result.lastPage
         } catch {
+            guard revision == container.sessionRevision, !Task.isCancelled else { return }
             errorMessage = L10n.conversationsLoadFailed
         }
     }
@@ -113,77 +136,68 @@ struct ConversationsView: View {
 
 @MainActor
 private struct ConversationRow: View {
+    @Environment(\.dynamicTypeSize) private var dynamicTypeSize
     let conversation: ConversationDTO
 
+    private var hasSafetyMenu: Bool {
+        guard let message = conversation.lastMessage else { return false }
+        return !message.isMine && Int(message.id) != nil
+    }
+
     var body: some View {
-        HStack(alignment: .top, spacing: 0) {
-            Rectangle()
-                .fill(conversation.isUnread ? EKitapligimPalette.teal : Color.clear)
-                .frame(width: 3)
-                .accessibilityHidden(true)
-
-            HStack(alignment: .top, spacing: 12) {
-                EKAvatar(
-                    urlString: avatarURL,
-                    username: avatarName,
-                    size: 46,
-                    cornerRadius: 14
-                )
-
+        VStack(alignment: .leading, spacing: 15) {
+            (dynamicTypeSize.isAccessibilitySize
+                ? AnyLayout(VStackLayout(alignment: .leading, spacing: 12))
+                : AnyLayout(HStackLayout(alignment: .top, spacing: 13))) {
+                EKAvatar(urlString: avatarURL, username: avatarName, size: 52, cornerRadius: 18,
+                         background: CommunityStyle.soft, foreground: CommunityStyle.teal)
+                    .accessibilityHidden(true)
                 VStack(alignment: .leading, spacing: 6) {
-                    HStack(alignment: .firstTextBaseline, spacing: 6) {
-                        Text(conversation.title)
-                            .font(.headline.weight(conversation.isUnread ? .bold : .semibold))
-                            .foregroundStyle(EKitapligimPalette.ink)
-                            .lineLimit(2)
-                        if conversation.isUnread {
-                            Circle()
-                                .fill(EKitapligimPalette.teal)
-                                .frame(width: 7, height: 7)
-                                .accessibilityLabel(L10n.notificationsUnread)
-                        }
-                        Spacer(minLength: 8)
-                        if conversation.isStarred {
-                            Image(systemName: "star.fill")
-                                .font(.caption2)
-                                .foregroundStyle(EKitapligimPalette.amber)
-                                .accessibilityLabel(L10n.conversationsStarred)
-                        }
-                        if conversation.lastMessageDate > 0 {
-                            Text(EKitapligimFormat.relativeTime(conversation.lastMessageDate))
-                                .font(.caption.weight(.semibold))
-                                .foregroundStyle(EKitapligimPalette.muted)
-                                .lineLimit(1)
-                        }
-                    }
-
+                    Text(conversation.title).font(.headline.weight(conversation.isUnread ? .bold : .semibold))
+                        .foregroundStyle(CommunityStyle.ink)
+                        .lineLimit(dynamicTypeSize.isAccessibilitySize ? nil : 2)
                     if !participantLine.isEmpty {
-                        Text(participantLine)
-                            .font(.caption.weight(.medium))
-                            .foregroundStyle(EKitapligimPalette.tealDark)
-                            .lineLimit(1)
+                        Text(participantLine).font(.subheadline.weight(.medium)).foregroundStyle(CommunityStyle.teal)
+                            .lineLimit(dynamicTypeSize.isAccessibilitySize ? nil : 2)
                     }
-
-                    if !conversation.preview.isEmpty {
-                        Text(conversation.preview)
-                            .font(.subheadline)
-                            .foregroundStyle(EKitapligimPalette.muted)
-                            .lineLimit(2)
-                    }
-
-                    EKPill(
-                        title: L10n.conversationsReplyCount(conversation.replyCount),
-                        systemImage: "arrowshape.turn.up.left",
-                        foreground: EKitapligimPalette.muted,
-                        background: EKitapligimPalette.surfaceAlt
-                    )
-                }
+                }.frame(maxWidth: .infinity, alignment: .leading)
+                    .padding(.trailing, hasSafetyMenu ? 44 : 0)
             }
-            .padding(.leading, 12)
-            .padding(.trailing, 14)
-            .padding(.vertical, 14)
+            if !conversation.preview.isEmpty {
+                Text(EKitapligimFormat.plainText(conversation.preview)).font(.subheadline)
+                    .foregroundStyle(CommunityStyle.muted).lineLimit(dynamicTypeSize.isAccessibilitySize ? nil : 3)
+            }
+            ViewThatFits(in: .horizontal) {
+                HStack(spacing: 10) { metadata }
+                VStack(alignment: .leading, spacing: 7) { metadata }
+            }
+        }
+        .padding(19).frame(maxWidth: .infinity, alignment: .leading)
+        .background(.white, in: RoundedRectangle(cornerRadius: 24))
+        .overlay {
+            RoundedRectangle(cornerRadius: 24)
+                .strokeBorder(conversation.isUnread ? CommunityStyle.teal.opacity(0.36) : CommunityStyle.border,
+                              lineWidth: conversation.isUnread ? 1.5 : 1)
         }
         .accessibilityElement(children: .combine)
+    }
+
+    @ViewBuilder private var metadata: some View {
+        if conversation.isUnread {
+            Label(L10n.notificationsUnread, systemImage: "circle.fill")
+                .font(.caption.weight(.semibold)).foregroundStyle(CommunityStyle.teal)
+        }
+        if conversation.lastMessageDate > 0 {
+            Text(EKitapligimFormat.relativeTime(conversation.lastMessageDate)).font(.caption)
+                .foregroundStyle(CommunityStyle.muted)
+        }
+        if conversation.replyCount > 0 {
+            Text(L10n.conversationsReplyCount(conversation.replyCount)).font(.caption).foregroundStyle(CommunityStyle.muted)
+        }
+        if conversation.isStarred {
+            Image(systemName: "star.fill").foregroundStyle(EKitapligimPalette.amber)
+                .accessibilityLabel(L10n.conversationsStarred)
+        }
     }
 
     private var avatarURL: String {
@@ -211,6 +225,18 @@ private struct ConversationRow: View {
 @MainActor
 struct ConversationDetailView: View {
     @EnvironmentObject private var container: AppContainer
+    let conversationID: String
+    var body: some View {
+        ConversationContentView(conversationID: conversationID)
+            .id(conversationID + "|" + container.sessionRevision.uuidString)
+    }
+}
+
+@MainActor
+private struct ConversationContentView: View {
+    @EnvironmentObject private var container: AppContainer
+    @Environment(\.dynamicTypeSize) private var dynamicTypeSize
+    @Environment(\.replyViewportHeight) private var replyViewportHeight
     let conversationID: String
 
     @State private var detail: ConversationDetailDTO?
@@ -246,6 +272,8 @@ struct ConversationDetailView: View {
                         .padding(.horizontal, 18)
                         .padding(.vertical, 12)
                     }
+                    .accessibilityIdentifier("conversation-messages-scroll")
+                    .scrollDismissesKeyboard(.interactively)
                     .safeAreaInset(edge: .bottom, spacing: 0) {
                         if detail.conversation.canReply {
                             replyComposer
@@ -261,9 +289,11 @@ struct ConversationDetailView: View {
             ToolbarItemGroup(placement: .keyboard) {
                 Spacer()
                 Button(L10n.commonDismiss) { isReplyFocused = false }
+                    .accessibilityIdentifier("keyboard-dismiss")
             }
         }
         .task { await load() }
+        .onDisappear { isReplyFocused = false }
         .alert(
             L10n.conversationsSendFailedTitle,
             isPresented: Binding(
@@ -278,14 +308,14 @@ struct ConversationDetailView: View {
     }
 
     private func conversationHero(_ conversation: ConversationDTO) -> some View {
-        HStack(alignment: .center, spacing: 14) {
+        (dynamicTypeSize.isAccessibilitySize ? AnyLayout(VStackLayout(alignment: .leading, spacing: 14)) : AnyLayout(HStackLayout(alignment: .top, spacing: 14))) {
             Image(systemName: "envelope.open.fill")
                 .font(.system(size: 28, weight: .semibold))
                 .foregroundStyle(EKitapligimPalette.teal)
                 .frame(width: 58, height: 58)
-                .background(EKitapligimPalette.tealSoft, in: RoundedRectangle(cornerRadius: 14, style: .continuous))
+                .background(EKitapligimPalette.tealSoft, in: RoundedRectangle(cornerRadius: 20, style: .continuous))
                 .overlay {
-                    RoundedRectangle(cornerRadius: 14, style: .continuous)
+                    RoundedRectangle(cornerRadius: 20, style: .continuous)
                         .stroke(Color(hex: 0xD9C79F), lineWidth: 1)
                 }
                 .accessibilityHidden(true)
@@ -295,12 +325,12 @@ struct ConversationDetailView: View {
                     .font(.system(.title3, design: .serif).weight(.heavy))
                     .foregroundStyle(EKitapligimPalette.ink)
                     .multilineTextAlignment(.leading)
-                    .lineLimit(3)
+                    .fixedSize(horizontal: false, vertical: true)
                 if !conversationParticipantLine(conversation).isEmpty {
                     Text(conversationParticipantLine(conversation))
                         .font(.subheadline.weight(.medium))
                         .foregroundStyle(EKitapligimPalette.tealDark)
-                        .lineLimit(2)
+                        .fixedSize(horizontal: false, vertical: true)
                 }
                 Text(L10n.conversationsReplyCount(conversation.replyCount))
                     .font(.caption)
@@ -309,83 +339,121 @@ struct ConversationDetailView: View {
             Spacer(minLength: 0)
         }
         .padding(16)
-        .forumHeroSurface(radius: 12)
+        .background(CommunityStyle.soft, in: RoundedRectangle(cornerRadius: 24))
+        .overlay { RoundedRectangle(cornerRadius: 24).strokeBorder(CommunityStyle.border) }
     }
+
+    private var usesCompactReply: Bool { replyViewportHeight < 300 }
 
     private var replyComposer: some View {
         VStack(alignment: .leading, spacing: 10) {
-            TextEditor(text: $replyText)
-                .focused($isReplyFocused)
-                .accessibilityLabel(L10n.conversationsReplyPlaceholder)
-                .ekPinnedReplyEditor()
-                .padding(10)
-                .scrollContentBackground(.hidden)
-                .background(.white, in: RoundedRectangle(cornerRadius: 16, style: .continuous))
-                .overlay {
-                    RoundedRectangle(cornerRadius: 16, style: .continuous)
-                        .stroke(Color(hex: isReplyFocused ? 0x087A80 : 0xD7C59C), lineWidth: 1)
-                }
-                .overlay(alignment: .topLeading) {
-                    if replyText.trimmed.isEmpty {
-                        Text(L10n.conversationsReplyPlaceholder)
-                            .font(.body)
-                            .foregroundStyle(EKitapligimPalette.muted)
-                            .padding(.horizontal, 16)
-                            .padding(.vertical, 18)
-                            .allowsHitTesting(false)
-                    }
-                }
-                .onChange(of: replyText) { _, value in replyText = String(value.prefix(10_000)) }
-
-            HStack(alignment: .center) {
-                Text("\(replyText.count)")
-                    .font(.caption2.weight(.semibold))
+            if !usesCompactReply && dynamicTypeSize.isAccessibilitySize && replyText.trimmed.isEmpty {
+                Text(L10n.conversationsReplyPlaceholder)
+                    .font(.body)
                     .foregroundStyle(EKitapligimPalette.muted)
+                    .fixedSize(horizontal: false, vertical: true)
                     .accessibilityHidden(true)
-                Spacer(minLength: 0)
-                Button {
-                    Task { await sendReply() }
-                } label: {
-                    Group {
-                        if isSending {
-                            ProgressView().tint(.white)
-                        } else {
-                            Label(L10n.commonSubmit, systemImage: "paperplane.fill")
-                        }
+            }
+            // AnyLayout preserves editor focus when the keyboard changes the viewport.
+            (usesCompactReply
+                ? AnyLayout(HStackLayout(alignment: .bottom, spacing: 8))
+                : AnyLayout(VStackLayout(alignment: .leading, spacing: 10))) {
+                replyEditor
+                HStack(alignment: .center) {
+                    if !usesCompactReply {
+                        Text("\(replyText.count)")
+                            .font(.caption2.weight(.semibold))
+                            .foregroundStyle(EKitapligimPalette.muted)
+                            .accessibilityHidden(true)
+                        Spacer(minLength: 0)
                     }
-                    .font(.subheadline.weight(.bold))
-                    .foregroundStyle(.white)
-                    .padding(.horizontal, 16)
-                    .padding(.vertical, 10)
+                    replySendButton
                 }
-                .background(
-                    (isSending || replyText.trimmed.isEmpty)
-                        ? EKitapligimPalette.teal.opacity(0.45)
-                        : EKitapligimPalette.teal,
-                    in: RoundedRectangle(cornerRadius: 14, style: .continuous)
-                )
-                .disabled(replyText.trimmed.isEmpty || isSending)
-                .accessibilityLabel(L10n.commonSubmit)
+                .fixedSize(horizontal: usesCompactReply, vertical: true)
             }
         }
-        .padding(12)
+        .padding(usesCompactReply ? 8 : 12)
         .background(.white)
         .overlay(alignment: .top) {
             Rectangle().fill(EKitapligimPalette.border).frame(height: 1)
         }
     }
 
+    private var replyEditor: some View {
+        TextEditor(text: $replyText)
+            .focused($isReplyFocused)
+            .accessibilityLabel(L10n.conversationsReplyPlaceholder)
+            .accessibilityIdentifier("conversation-reply-input")
+            .ekPinnedReplyEditor()
+            .padding(usesCompactReply ? 4 : 10)
+            .scrollContentBackground(.hidden)
+            .background(.white, in: RoundedRectangle(cornerRadius: 16, style: .continuous))
+            .overlay {
+                RoundedRectangle(cornerRadius: 16, style: .continuous)
+                    .stroke(isReplyFocused ? CommunityStyle.teal : CommunityStyle.border, lineWidth: 1)
+            }
+            .overlay(alignment: .topLeading) {
+                if !usesCompactReply && !dynamicTypeSize.isAccessibilitySize && replyText.trimmed.isEmpty {
+                    Text(L10n.conversationsReplyPlaceholder)
+                        .font(.body)
+                        .foregroundStyle(EKitapligimPalette.muted)
+                        .padding(.horizontal, 16)
+                        .padding(.vertical, 18)
+                        .allowsHitTesting(false)
+                        .accessibilityHidden(true)
+                }
+            }
+            .onChange(of: replyText) { _, value in replyText = String(value.prefix(10_000)) }
+            .frame(maxWidth: .infinity)
+    }
+
+    private var replySendButton: some View {
+        Button {
+            Task { await sendReply() }
+        } label: {
+            Group {
+                if isSending {
+                    ProgressView().tint(.white)
+                } else if usesCompactReply {
+                    Image(systemName: "paperplane.fill")
+                        .font(.system(size: 17, weight: .bold))
+                        .accessibilityHidden(true)
+                } else {
+                    Label(L10n.commonSubmit, systemImage: "paperplane.fill")
+                }
+            }
+            .font(.subheadline.weight(.bold))
+            .foregroundStyle(.white)
+            .padding(.horizontal, usesCompactReply ? 0 : 16)
+            .padding(.vertical, usesCompactReply ? 0 : 10)
+            .frame(minWidth: 44, minHeight: 44)
+        }
+        .background(
+            (isSending || replyText.trimmed.isEmpty)
+                ? EKitapligimPalette.teal.opacity(0.45)
+                : EKitapligimPalette.teal,
+            in: RoundedRectangle(cornerRadius: 20, style: .continuous)
+        )
+        .disabled(replyText.trimmed.isEmpty || isSending)
+        .accessibilityLabel(L10n.commonSubmit)
+        .accessibilityIdentifier("conversation-reply-send")
+    }
+
     private func load() async {
         guard !isLoading else { return }
+        let revision = container.sessionRevision
         isLoading = true
         errorMessage = nil
         defer { isLoading = false }
         do {
-            detail = try await container.conversations.conversation(id: conversationID)
+            let result = try await container.conversations.conversation(id: conversationID)
+            guard revision == container.sessionRevision, !Task.isCancelled else { return }
+            detail = result
             if let id = Int(conversationID) {
                 try? await container.notificationReadSync.markConversationRead(id)
             }
         } catch {
+            guard revision == container.sessionRevision, !Task.isCancelled else { return }
             errorMessage = L10n.conversationsLoadFailed
         }
     }
@@ -407,6 +475,7 @@ struct ConversationDetailView: View {
 
 @MainActor
 private struct ConversationMessageCard: View {
+    @Environment(\.dynamicTypeSize) private var dynamicTypeSize
     let message: ConversationMessageDTO
 
     var body: some View {
@@ -421,11 +490,11 @@ private struct ConversationMessageCard: View {
                             cornerRadius: 12
                         )
                         VStack(alignment: .leading, spacing: 4) {
-                            HStack(spacing: 6) {
+                            (dynamicTypeSize.isAccessibilitySize ? AnyLayout(VStackLayout(alignment: .leading, spacing: 6)) : AnyLayout(HStackLayout(spacing: 6))) {
                                 Text(ForumMessageFormatting.displayUsername(message.username))
                                     .font(.subheadline.weight(.bold))
                                     .foregroundStyle(EKitapligimPalette.ink)
-                                    .lineLimit(1)
+                                    .lineLimit(dynamicTypeSize.isAccessibilitySize ? nil : 2)
                                 if message.isMine {
                                     EKPill(
                                         title: L10n.conversationsYou,
@@ -453,7 +522,7 @@ private struct ConversationMessageCard: View {
             }
 
             Rectangle()
-                .fill(Color(hex: 0xE9D9BA))
+                .fill(CommunityStyle.border)
                 .frame(height: 1)
                 .padding(.vertical, 14)
 
@@ -464,10 +533,10 @@ private struct ConversationMessageCard: View {
         .frame(maxWidth: .infinity, alignment: .leading)
         .background(
             message.isMine ? EKitapligimPalette.tealSoft.opacity(0.55) : EKitapligimPalette.paper,
-            in: RoundedRectangle(cornerRadius: 14, style: .continuous)
+            in: RoundedRectangle(cornerRadius: 20, style: .continuous)
         )
         .overlay {
-            RoundedRectangle(cornerRadius: 14, style: .continuous)
+            RoundedRectangle(cornerRadius: 20, style: .continuous)
                 .stroke(message.isMine ? EKitapligimPalette.teal.opacity(0.18) : EKitapligimPalette.border)
         }
     }
@@ -514,7 +583,8 @@ private struct NewConversationView: View {
                             TextEditor(text: $message)
                                 .focused($focusedField, equals: .message)
                                 .accessibilityLabel(L10n.conversationsMessageBody)
-                                .frame(minHeight: 160)
+                                .accessibilityIdentifier("conversation-new-message-input")
+                                .frame(minHeight: 160, maxHeight: 240)
                                 .scrollContentBackground(.hidden)
                                 .overlay(alignment: .topLeading) {
                                     if message.trimmed.isEmpty {
@@ -532,7 +602,8 @@ private struct NewConversationView: View {
                                 .frame(maxWidth: .infinity, alignment: .trailing)
                         }
                         .padding(14)
-                        .ekitapligimCard(radius: 14)
+                        .background(.white, in: RoundedRectangle(cornerRadius: 20))
+                        .overlay { RoundedRectangle(cornerRadius: 20).strokeBorder(CommunityStyle.border) }
 
                         if sendFailed {
                             Text(L10n.conversationsSendFailed)
@@ -546,6 +617,7 @@ private struct NewConversationView: View {
                     .padding(.horizontal, 18)
                     .padding(.vertical, 12)
                 }
+                .scrollDismissesKeyboard(.interactively)
             }
             .navigationTitle(L10n.conversationsNew)
             .navigationBarTitleDisplayMode(.inline)
@@ -556,6 +628,7 @@ private struct NewConversationView: View {
                 ToolbarItem(placement: .confirmationAction) {
                     Button(isSending ? L10n.conversationsSending : L10n.commonSubmit) {
                         Task {
+                            guard !isSending else { return }
                             isSending = true
                             sendFailed = false
                             let sent = await submit(recipient.trimmed, title.trimmed, message.trimmed)
@@ -569,9 +642,11 @@ private struct NewConversationView: View {
                 ToolbarItemGroup(placement: .keyboard) {
                     Spacer()
                     Button(L10n.commonDismiss) { focusedField = nil }
+                        .accessibilityIdentifier("keyboard-dismiss")
                 }
             }
         }
+        .onDisappear { focusedField = nil }
     }
 
     private func labeledField(title: String, text: Binding<String>, focus: Field, limit: Int) -> some View {
@@ -588,7 +663,8 @@ private struct NewConversationView: View {
                 }
         }
         .padding(14)
-        .ekitapligimCard(radius: 14)
+        .background(.white, in: RoundedRectangle(cornerRadius: 20))
+                        .overlay { RoundedRectangle(cornerRadius: 20).strokeBorder(CommunityStyle.border) }
     }
 }
 

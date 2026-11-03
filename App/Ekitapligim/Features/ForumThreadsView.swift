@@ -59,7 +59,7 @@ struct ForumThreadsView: View {
                             .foregroundStyle(EKitapligimPalette.forumMuted)
                             .multilineTextAlignment(.center)
                         Button(L10n.forumThreadsCreateDialogTitle) {
-                            showCreateSheet = true
+                            openCreate()
                         }
                         .font(.subheadline.weight(.bold))
                         .foregroundStyle(.white)
@@ -97,9 +97,10 @@ struct ForumThreadsView: View {
                                     NavigationLink {
                                         ForumThreadDetailView(thread: thread)
                                     } label: {
-                                        EKForumThreadRow(thread: thread)
+                                        EKForumThreadRow(thread: thread, titleTrailingInset: thread.firstPostId == nil ? 0 : 44)
                                     }
                                     .buttonStyle(.plain)
+                                    .accessibilityIdentifier("forum.thread.\(thread.id)")
                                     if let firstPostID = thread.firstPostId {
                                         UGCSafetyMenu(
                                             type: .forumPost,
@@ -135,17 +136,21 @@ struct ForumThreadsView: View {
         .toolbar {
             ToolbarItem(placement: .topBarTrailing) {
                 Button {
-                    showCreateSheet = true
+                    openCreate()
                 } label: {
                     Image(systemName: "plus")
                 }
                 .accessibilityLabel(L10n.forumThreadsCreateAccessibility)
+                .accessibilityIdentifier("forum.create.open")
             }
         }
         .task { await load(reset: true) }
         .sheet(isPresented: $showCreateSheet) {
-            ForumThreadCreateView(isSubmitting: isSubmitting) { title, message in
-                await create(title: title, message: message)
+            NavigationStack {
+                ForumThreadCreateView(isSubmitting: isSubmitting, errorMessage: operationError) { title, message in
+                    await create(title: title, message: message)
+                }
+                .toolbar(.hidden, for: .navigationBar)
             }
         }
         .sheet(isPresented: $showingTerms) {
@@ -160,7 +165,7 @@ struct ForumThreadsView: View {
         .alert(
             L10n.forumThreadsCreateFailedTitle,
             isPresented: Binding(
-                get: { operationError != nil },
+                get: { operationError != nil && !showCreateSheet },
                 set: { if !$0 { operationError = nil } }
             )
         ) {
@@ -178,7 +183,7 @@ struct ForumThreadsView: View {
             subtitle: forum.description.isEmpty ? L10n.forumThreadsCommunitySubtitle : EKitapligimFormat.plainText(forum.description),
             minHeight: 220,
             actionTitle: L10n.forumThreadsCreate
-        ) { showCreateSheet = true }
+        ) { openCreate() }
     }
     private func load(reset: Bool = true) async {
         guard let forumID = Int(forum.id) else {
@@ -212,9 +217,21 @@ struct ForumThreadsView: View {
         }
     }
 
+    /// Guests get the login prompt instead of a form whose submit button cannot work.
+    private func openCreate() {
+        if isSignedIn {
+            operationError = nil
+            showCreateSheet = true
+        } else {
+            showLoginAlert = true
+        }
+    }
+
     private func create(title: String, message: String) async -> Bool {
         guard !isSubmitting, let forumID = Int(forum.id) else { return false }
         guard isSignedIn else {
+            showCreateSheet = false
+            try? await Task.sleep(nanoseconds: 400_000_000)
             showLoginAlert = true
             return false
         }
@@ -239,9 +256,13 @@ struct ForumThreadsView: View {
         do {
             let terms = try? await container.account.termsStatus()
             if terms?.requiresAcceptance == true {
+                // A sheet cannot present over the open create sheet; close it first.
+                showCreateSheet = false
+                try? await Task.sleep(nanoseconds: 400_000_000)
                 showingTerms = true
                 return false
             }
+            operationError = nil
             let thread = try await container.community.createThread(forumID: forumID, title: title, message: message)
             threads.insert(thread, at: 0)
             statusMessage = L10n.forumThreadsCreateSuccess
@@ -257,11 +278,16 @@ struct ForumThreadsView: View {
 @MainActor
 private struct ForumThreadCreateView: View {
     @Environment(\.dismiss) private var dismiss
+    @Environment(\.dynamicTypeSize) private var dynamicTypeSize
     let isSubmitting: Bool
+    var errorMessage: String? = nil
     let submit: (String, String) async -> Bool
 
     @State private var title = ""
     @State private var message = ""
+    @FocusState private var focusedField: Field?
+
+    private enum Field: Hashable { case title, message }
 
     private var canSubmit: Bool {
         !title.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty
@@ -270,6 +296,7 @@ private struct ForumThreadCreateView: View {
     }
 
     var body: some View {
+        ScrollView {
         VStack(alignment: .leading, spacing: 16) {
             HStack(spacing: 10) {
                 Image(systemName: "square.and.pencil")
@@ -283,11 +310,23 @@ private struct ForumThreadCreateView: View {
             }
             .frame(maxWidth: .infinity, alignment: .leading)
 
+            if let errorMessage {
+                Text(errorMessage)
+                    .font(.caption)
+                    .foregroundStyle(EKitapligimPalette.warningInk)
+                    .frame(maxWidth: .infinity, alignment: .leading)
+                    .padding(12)
+                    .background(EKitapligimPalette.warningBackground, in: RoundedRectangle(cornerRadius: 12, style: .continuous))
+                    .accessibilityIdentifier("forum.create.error")
+            }
+
             VStack(alignment: .leading, spacing: 8) {
                 Text(L10n.forumThreadsCreateTitlePlaceholder)
                     .font(.caption.weight(.semibold))
                     .foregroundStyle(EKitapligimPalette.forumMuted)
                 TextField(L10n.forumThreadsCreateTitlePlaceholder, text: $title)
+                    .focused($focusedField, equals: .title)
+                    .accessibilityIdentifier("forum.create.title")
                     .foregroundStyle(EKitapligimPalette.forumInk)
                     .tint(EKitapligimPalette.forumTeal)
                     .padding(12)
@@ -304,11 +343,13 @@ private struct ForumThreadCreateView: View {
                     .font(.caption.weight(.semibold))
                     .foregroundStyle(EKitapligimPalette.forumMuted)
                 TextEditor(text: $message)
+                    .focused($focusedField, equals: .message)
                     .accessibilityLabel(L10n.forumThreadsCreateMessageSection)
+                    .accessibilityIdentifier("forum.create.message")
                     .foregroundStyle(EKitapligimPalette.forumInk)
                     .tint(EKitapligimPalette.forumTeal)
                     .scrollContentBackground(.hidden)
-                    .frame(minHeight: 120)
+                    .frame(minHeight: 120, maxHeight: 240)
                     .padding(8)
                     .background(.white, in: RoundedRectangle(cornerRadius: 12, style: .continuous))
                     .overlay {
@@ -326,13 +367,14 @@ private struct ForumThreadCreateView: View {
                     }
             }
 
-            HStack {
+            (dynamicTypeSize.isAccessibilitySize ? AnyLayout(VStackLayout(alignment: .leading, spacing: 12)) : AnyLayout(HStackLayout(spacing: 12))) {
                 Text("\(message.count) \(L10n.forumThreadReplyCountLabel)")
                     .font(.caption2.weight(.semibold))
                     .foregroundStyle(EKitapligimPalette.forumMuted)
                 Spacer(minLength: 0)
-                Button(L10n.commonCancel) { dismiss() }
+                Button(L10n.commonCancel) { focusedField = nil; dismiss() }
                     .foregroundStyle(EKitapligimPalette.forumMuted)
+                    .accessibilityIdentifier("forum.create.cancel")
                 Button {
                     Task {
                         let trimmedTitle = title.trimmingCharacters(in: .whitespacesAndNewlines)
@@ -368,7 +410,17 @@ private struct ForumThreadCreateView: View {
             }
         }
         .padding(20)
+        }
         .background(EKitapligimPalette.forumSurface)
+        .scrollDismissesKeyboard(.interactively)
+        .onDisappear { focusedField = nil }
+        .toolbar {
+            ToolbarItemGroup(placement: .keyboard) {
+                Spacer()
+                Button(L10n.commonClose) { focusedField = nil }
+                    .accessibilityIdentifier("keyboard-dismiss")
+            }
+        }
         .presentationDetents([.medium, .large])
         .presentationDragIndicator(.visible)
     }

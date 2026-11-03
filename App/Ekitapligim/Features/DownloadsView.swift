@@ -73,9 +73,12 @@ private struct DownloadStateRow: View {
                     .font(.caption)
                     .foregroundStyle(EKitapligimPalette.muted)
             }
-            Spacer()
+            .frame(maxWidth: .infinity, alignment: .leading)
+            .fixedSize(horizontal: false, vertical: true)
             Image(systemName: iconName)
                 .foregroundStyle(iconColor)
+                .fixedSize()
+                .accessibilityHidden(true)
         }
     }
 

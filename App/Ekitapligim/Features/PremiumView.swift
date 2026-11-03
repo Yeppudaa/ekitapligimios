@@ -21,7 +21,7 @@ struct PremiumView: View {
 
 @MainActor
 private struct PremiumContentView: View {
-    @Environment(\.dynamicTypeSize) private var dynamicTypeSize
+    @Environment(\.accessibilityReduceMotion) private var reduceMotion
     @ObservedObject var storeKit: StoreKitPurchaseService
     let subscription: SubscriptionDTO?
     let isSignedIn: Bool
@@ -36,29 +36,38 @@ private struct PremiumContentView: View {
     }
 
     var body: some View {
-        GeometryReader { geometry in
-            ScrollView {
-                VStack(alignment: .leading, spacing: 28) {
-                    heroSection
-                    benefitsSection(compact: geometry.size.width < 400 || dynamicTypeSize > .large)
-                    statusSection
-                    productsSection
-                    operationSection
-                    actionsSection
-                    legalSection
+        ScrollViewReader { proxy in
+            GeometryReader { geometry in
+                ScrollView {
+                    VStack(alignment: .leading, spacing: 24) {
+                        PremiumHeroCard(membershipStatus: hasPremium ? statusTitle : nil) {
+                            withAnimation(reduceMotion ? nil : .easeInOut(duration: 0.35)) {
+                                proxy.scrollTo("premium.plans", anchor: .top)
+                            }
+                        }
+                        benefitsSection(availableWidth: min(600, max(0, geometry.size.width - 32)))
+                        statusSection
+                        productsSection.id("premium.plans")
+                        operationSection
+                        actionsSection
+                        legalSection
+                    }
+                    .frame(maxWidth: 600)
+                    .padding(.horizontal, 16)
+                    .padding(.top, 16)
+                    .padding(.bottom, 32)
+                    .frame(maxWidth: .infinity)
                 }
-                .frame(maxWidth: 600)
-                .padding(.horizontal, 20)
-                .padding(.top, 16)
-                .padding(.bottom, 32)
-                .frame(maxWidth: .infinity)
+                .background(PremiumStyle.page)
             }
-            .background(PremiumStyle.page)
         }
         .foregroundStyle(PremiumStyle.ink)
+        .multilineTextAlignment(.leading)
         .tint(PremiumStyle.accent)
         .navigationTitle(L10n.premiumTitle)
         .navigationBarTitleDisplayMode(.inline)
+        .toolbarBackground(PremiumStyle.page, for: .navigationBar)
+        .toolbarBackground(.visible, for: .navigationBar)
         .manageSubscriptionsSheet(isPresented: $isManagingSubscriptions)
         .alert(operationErrorTitle, isPresented: Binding(
             get: { operationErrorMessage != nil },
@@ -93,88 +102,12 @@ private struct PremiumContentView: View {
         .preference(key: AILauncherHiddenKey.self, value: true)
     }
 
-    private var heroSection: some View {
-        VStack(spacing: 16) {
-            Image(systemName: "crown.fill")
-                .font(.system(size: 30, weight: .semibold))
-                .foregroundStyle(PremiumStyle.ink)
-                .frame(width: 68, height: 68)
-                .background {
-                    RoundedRectangle(cornerRadius: 23, style: .continuous)
-                        .fill(LinearGradient(
-                            colors: [Color(hex: 0xFAEBC6), PremiumStyle.gold, Color(hex: 0xC39B53)],
-                            startPoint: .topLeading, endPoint: .bottomTrailing
-                        ))
-                        .overlay {
-                            RoundedRectangle(cornerRadius: 23, style: .continuous)
-                                .strokeBorder(.white.opacity(0.65), lineWidth: 1)
-                        }
-                }
-                .shadow(color: PremiumStyle.accent.opacity(0.12), radius: 12, y: 6)
-                .accessibilityHidden(true)
-
-            Text(L10n.premiumEyebrow)
-                .font(.caption2.weight(.bold))
-                .tracking(1.8)
-                .foregroundStyle(PremiumStyle.accent)
-
-            Text(L10n.premiumTitle)
-                .font(.system(.largeTitle, design: .serif, weight: .bold))
-                .accessibilityAddTraits(.isHeader)
-
-            Capsule()
-                .fill(PremiumStyle.accent.opacity(0.7))
-                .frame(width: 36, height: 2)
-                .accessibilityHidden(true)
-
-            Text(L10n.premiumHeroSubtitle)
-                .font(.subheadline)
-                .foregroundStyle(PremiumStyle.muted)
-        }
-        .multilineTextAlignment(.center)
-        .fixedSize(horizontal: false, vertical: true)
-        .padding(.horizontal, 24)
-        .padding(.vertical, 32)
-        .frame(maxWidth: .infinity)
-        .background {
-            RoundedRectangle(cornerRadius: 28, style: .continuous)
-                .fill(LinearGradient(
-                    colors: [Color(hex: 0xFFFCF5), Color(hex: 0xF5EAD4), Color(hex: 0xF0DFBE)],
-                    startPoint: .topLeading, endPoint: .bottomTrailing
-                ))
-                .overlay { PremiumHeroOrbits() }
-                .clipShape(RoundedRectangle(cornerRadius: 28, style: .continuous))
-                .overlay {
-                    RoundedRectangle(cornerRadius: 28, style: .continuous)
-                        .strokeBorder(PremiumStyle.goldBorder, lineWidth: 1)
-                }
-        }
-        .accessibilityIdentifier("premium.hero")
-    }
-
-    private func benefitsSection(compact: Bool) -> some View {
+    private func benefitsSection(availableWidth: CGFloat) -> some View {
         VStack(alignment: .leading, spacing: 16) {
-            sectionHeading(L10n.premiumBenefitsTitle)
-            let layout = compact
-                ? AnyLayout(VStackLayout(alignment: .leading, spacing: 12))
-                : AnyLayout(HStackLayout(alignment: .top, spacing: 12))
-            layout {
-                PremiumBenefitCard(
-                    title: L10n.premiumReadingTitle,
-                    message: L10n.premiumBenefitReading,
-                    systemImage: "book.closed.fill"
-                )
-                PremiumBenefitCard(
-                    title: L10n.premiumDownloadsTitle,
-                    message: L10n.premiumBenefitDownloads,
-                    systemImage: "arrow.down.circle.fill"
-                )
-            }
-            .fixedSize(horizontal: false, vertical: true)
-            Text(L10n.premiumDescription)
-                .font(.footnote)
-                .foregroundStyle(PremiumStyle.muted)
-                .fixedSize(horizontal: false, vertical: true)
+            PremiumSectionHeading(title: L10n.premiumBenefitsTitle, subtitle: PremiumDesignL10n.text("benefits.subtitle"))
+            PremiumAudioBenefitCard()
+            PremiumQuotaCards(availableWidth: availableWidth)
+            PremiumExtraBenefitsCard()
         }
     }
 
@@ -212,11 +145,12 @@ private struct PremiumContentView: View {
     }
 
     private var productsSection: some View {
-        VStack(alignment: .leading, spacing: 14) {
-            sectionHeading(L10n.premiumPlans)
+        VStack(alignment: .leading, spacing: 12) {
+            PremiumSectionHeading(title: L10n.premiumPlans, subtitle: PremiumDesignL10n.text("plans.subtitle"))
             if storeKit.products.isEmpty {
                 if case .loading = storeKit.state {
                     ProgressView(L10n.premiumLoading)
+                        .fixedSize(horizontal: false, vertical: true)
                         .frame(maxWidth: .infinity, alignment: .leading)
                         .padding(22)
                         .premiumSurface()
@@ -238,7 +172,8 @@ private struct PremiumContentView: View {
                             name: product.displayName,
                             price: product.displayPrice,
                             period: PremiumProductCatalog.period(for: product.id),
-                            tagline: PremiumProductCatalog.tagline(for: product.id)
+                            tagline: PremiumProductCatalog.tagline(for: product.id),
+                            isYearly: PremiumProductCatalog.subscriptionMonths(for: product.id) == 12
                         )
                     }
                     .buttonStyle(PremiumPressStyle())
@@ -261,6 +196,7 @@ private struct PremiumContentView: View {
         switch storeKit.state {
         case .purchasing:
             ProgressView(L10n.premiumPurchasing)
+                .fixedSize(horizontal: false, vertical: true)
                 .frame(maxWidth: .infinity, alignment: .leading)
                 .padding(22)
                 .premiumSurface()
@@ -356,17 +292,7 @@ private struct PremiumContentView: View {
     }
 
     private func actionLabel(_ title: String, systemImage: String) -> some View {
-        HStack(spacing: 12) {
-            Image(systemName: systemImage)
-                .frame(width: 22)
-                .accessibilityHidden(true)
-            Text(title)
-                .frame(maxWidth: .infinity, alignment: .leading)
-                .fixedSize(horizontal: false, vertical: true)
-            Image(systemName: "chevron.right")
-                .font(.caption.weight(.semibold))
-                .accessibilityHidden(true)
-        }
+        PremiumActionLabel(title: title, systemImage: systemImage, trailingSystemImage: "chevron.right")
         .font(.subheadline.weight(.semibold))
         .foregroundStyle(PremiumStyle.accent)
         .multilineTextAlignment(.leading)
@@ -409,123 +335,6 @@ private struct PremiumContentView: View {
     }()
 }
 
-// Presentation is local to this screen; the shared app theme and purchase service stay independent.
-private enum PremiumStyle {
-    static let page = Color(hex: 0xF8F6F1)
-    static let surface = Color(hex: 0xFFFEFB)
-    static let ink = Color(hex: 0x101E36)
-    static let muted = Color(hex: 0x566171)
-    static let accent = Color(hex: 0x78551A)
-    static let gold = Color(hex: 0xE8C77D)
-    static let goldBorder = Color(hex: 0xE3CFAB)
-    static let border = Color(hex: 0xE3E2DD)
-    static let success = Color(hex: 0x216A50)
-    static let danger = Color(hex: 0xB3261E)
-}
-
-private struct PremiumHeroOrbits: View {
-    var body: some View {
-        GeometryReader { geometry in
-            let center = CGPoint(x: geometry.size.width * 0.95, y: geometry.size.height * 0.08)
-            Path { path in
-                for scale in [0.46, 0.65, 0.84] {
-                    let radius = geometry.size.width * scale
-                    path.addEllipse(in: CGRect(
-                        x: center.x - radius, y: center.y - radius,
-                        width: radius * 2, height: radius * 2
-                    ))
-                }
-            }
-            .stroke(PremiumStyle.accent.opacity(0.10), lineWidth: 1)
-        }
-        .allowsHitTesting(false)
-        .accessibilityHidden(true)
-    }
-}
-
-private struct PremiumBenefitCard: View {
-    let title: String
-    let message: String
-    let systemImage: String
-
-    var body: some View {
-        VStack(alignment: .leading, spacing: 12) {
-            Image(systemName: systemImage)
-                .font(.title3)
-                .foregroundStyle(PremiumStyle.accent)
-                .frame(width: 44, height: 44)
-                .background(PremiumStyle.gold.opacity(0.20), in: RoundedRectangle(cornerRadius: 14))
-                .accessibilityHidden(true)
-            Text(title).font(.headline)
-            Text(message)
-                .font(.subheadline)
-                .foregroundStyle(PremiumStyle.muted)
-        }
-        .fixedSize(horizontal: false, vertical: true)
-        .frame(maxWidth: .infinity, maxHeight: .infinity, alignment: .topLeading)
-        .padding(20)
-        .premiumSurface()
-        .accessibilityElement(children: .combine)
-    }
-}
-
-private struct PremiumPlanCard: View {
-    let name: String
-    let price: String
-    let period: String
-    var tagline: String? = nil
-
-    var body: some View {
-        VStack(alignment: .leading, spacing: 16) {
-            HStack(alignment: .top, spacing: 12) {
-                Text(name)
-                    .font(.title3.weight(.bold))
-                    .frame(maxWidth: .infinity, alignment: .leading)
-                Image(systemName: "crown.fill")
-                    .font(.subheadline)
-                    .foregroundStyle(PremiumStyle.accent)
-                    .padding(10)
-                    .background(PremiumStyle.gold.opacity(0.20), in: RoundedRectangle(cornerRadius: 12))
-                    .accessibilityHidden(true)
-            }
-            Text(price)
-                .font(.system(.largeTitle, design: .serif, weight: .bold))
-            if let tagline {
-                Text(tagline)
-                    .font(.subheadline.weight(.semibold))
-                    .foregroundStyle(PremiumStyle.accent)
-            }
-            Text(period)
-                .font(.subheadline)
-                .foregroundStyle(PremiumStyle.muted)
-            Rectangle()
-                .fill(PremiumStyle.goldBorder.opacity(0.65))
-                .frame(height: 1)
-                .accessibilityHidden(true)
-            HStack(spacing: 12) {
-                Image(systemName: "lock.shield")
-                    .accessibilityHidden(true)
-                Text(L10n.premiumPurchaseAction)
-                    .frame(maxWidth: .infinity, alignment: .leading)
-                Image(systemName: "arrow.right")
-                    .accessibilityHidden(true)
-            }
-            .font(.subheadline.weight(.bold))
-            .padding(.horizontal, 16)
-            .padding(.vertical, 13)
-            .frame(minHeight: 48)
-            .background(PremiumStyle.gold.opacity(0.55), in: RoundedRectangle(cornerRadius: 14))
-        }
-        .foregroundStyle(PremiumStyle.ink)
-        .multilineTextAlignment(.leading)
-        .fixedSize(horizontal: false, vertical: true)
-        .padding(22)
-        .premiumSurface(border: PremiumStyle.goldBorder)
-        .contentShape(RoundedRectangle(cornerRadius: 24, style: .continuous))
-        .accessibilityElement(children: .combine)
-    }
-}
-
 private struct PremiumNotice: View {
     let message: String
     let systemImage: String
@@ -543,24 +352,11 @@ private struct PremiumNotice: View {
     }
 }
 
-private struct PremiumPressStyle: ButtonStyle {
+struct PremiumPressStyle: ButtonStyle {
     @Environment(\.isEnabled) private var isEnabled
 
     func makeBody(configuration: Configuration) -> some View {
         configuration.label
-            .opacity(isEnabled ? (configuration.isPressed ? 0.75 : 1) : 0.50)
-    }
-}
-
-private extension View {
-    func premiumSurface(border: Color = PremiumStyle.border) -> some View {
-        frame(maxWidth: .infinity, alignment: .leading)
-            .background(PremiumStyle.surface, in: RoundedRectangle(cornerRadius: 24, style: .continuous))
-            .overlay {
-                RoundedRectangle(cornerRadius: 24, style: .continuous)
-                    .strokeBorder(border, lineWidth: 1)
-                    .allowsHitTesting(false)
-            }
-            .shadow(color: PremiumStyle.ink.opacity(0.025), radius: 12, y: 5)
+            .opacity(isEnabled && configuration.isPressed ? 0.85 : 1)
     }
 }

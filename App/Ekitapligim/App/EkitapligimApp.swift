@@ -26,6 +26,7 @@ struct EkitapligimApp: App {
                     #endif
                     appDelegate.pushManager = container.pushManager
                     await container.bootstrap()
+                    appDelegate.completeNotificationStartup()
                 }
         }
     }

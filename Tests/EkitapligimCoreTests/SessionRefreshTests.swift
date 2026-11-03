@@ -5,6 +5,25 @@ import FoundationNetworking
 @testable import EkitapligimCore
 
 final class SessionRefreshTests: XCTestCase {
+    func testPhotoPublishKeepsItsAccountAcrossCapabilityTokenRefresh() async throws {
+        let store = SessionRefreshTestStore()
+        let client = try makeClient(store: store)
+        SessionRefreshStubProtocol.handler = { request in
+            if request.url?.path.hasSuffix("auth/refresh") == true {
+                return (200, #"{"access_token":"refreshed","refresh_token":"next-refresh","user":{"user_id":1,"username":"reader","email":"reader@example.invalid","is_premium":false,"premium_plan_name":"member"}}"#)
+            }
+            if request.httpMethod == "GET" {
+                if request.value(forHTTPHeaderField: "Authorization") == "Bearer expired" { return (401, "{}") }
+                return (200, #"{"image_upload_version":1,"can_upload_images":true,"maximum_bytes":8388608}"#)
+            }
+            XCTAssertEqual(request.httpMethod, "POST")
+            XCTAssertEqual(request.value(forHTTPHeaderField: "Authorization"), "Bearer refreshed")
+            return (200, #"{"post":{"id":9}}"#)
+        }
+        let result = try await BookAgendaRepository(apiClient: client).createPost(message: "photo", postType: .standard, photo: Data([1]))
+        XCTAssertEqual(result.id, "9")
+    }
+
     override func tearDown() {
         SessionRefreshStubProtocol.handler = nil
         SessionRefreshStubProtocol.asyncHandler = nil

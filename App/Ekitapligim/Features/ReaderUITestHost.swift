@@ -18,10 +18,12 @@ struct ReaderUITestHost: View {
     @State private var layout = PDFReadingLayout.continuous
     @State private var isClosed = false
     private let mode: String
+    private let onClose: (() -> Void)?
 
-    init() {
+    init(mode: String? = nil, onClose: (() -> Void)? = nil) {
         let environment = ProcessInfo.processInfo.environment
-        mode = environment["READER_FIXTURE_MODE"] ?? "reading"
+        self.mode = mode ?? environment["READER_FIXTURE_MODE"] ?? "reading"
+        self.onClose = onClose
         _theme = State(initialValue: ReaderPaperTheme(rawValue: environment["READER_FIXTURE_THEME"] ?? "sepia") ?? .sepia)
     }
 
@@ -38,6 +40,11 @@ struct ReaderUITestHost: View {
     }
 
     var body: some View {
+        if mode == "cover-opening" { ReaderOpeningUITestHost() }
+        else { readerBody }
+    }
+
+    private var readerBody: some View {
         ZStack {
             theme.paper.ignoresSafeArea()
             if isClosed {
@@ -93,12 +100,12 @@ struct ReaderUITestHost: View {
             if showsControls {
                 ReaderChrome(title: ReaderFixtureDocument.title, detail: "PDF · " + detail, theme: theme,
                              isBookmarked: isBookmarked, supportsPDF: true, enabled: loadingPhase == nil,
-                             close: { isClosed = true }, focus: { showsControls = false }, changeTheme: cycleTheme,
+                             close: close, focus: { showsControls = false }, changeTheme: cycleTheme,
                              bookmark: { isBookmarked.toggle() }, bookmarks: { showsPages = true },
                              pages: { showsPages = true }, settings: { showsSettings = true })
             } else {
                 HStack {
-                    ReaderIconButton(icon: "chevron.left", label: L10n.commonClose, theme: theme) { isClosed = true }
+                    ReaderIconButton(icon: "chevron.left", label: L10n.commonClose, theme: theme, action: close)
                         .background(theme.panel, in: RoundedRectangle(cornerRadius: 14))
                         .accessibilityIdentifier("reader.close")
                     Spacer()
@@ -129,6 +136,11 @@ struct ReaderUITestHost: View {
 
     private func cycleTheme() {
         theme = theme == .sepia ? .night : (theme == .night ? .white : .sepia)
+    }
+
+    private func close() {
+        if let onClose { onClose() }
+        else { isClosed = true }
     }
 }
 

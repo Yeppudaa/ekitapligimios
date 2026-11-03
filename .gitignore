@@ -33,6 +33,8 @@ Backend/deployment/
 Thumbs.db
 .idea/
 .vscode/
+__pycache__/
+*.pyc
 
 # Local Codex working data and generated release evidence
 .codex-artifacts/

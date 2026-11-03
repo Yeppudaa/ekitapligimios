@@ -51,6 +51,7 @@ final class AudioPlaybackController: ObservableObject {
     private var lastSave = ProcessInfo.processInfo.systemUptime
     private var sleepDeadline: TimeInterval?
     private var playWhenReady = false
+    private var resumeAfterInterruption = false
     private var artworkTask: Task<Void, Never>?
     private var nowPlayingArtwork: MPMediaItemArtwork?
     private var acknowledgedActivities: Set<String> = []
@@ -73,9 +74,25 @@ final class AudioPlaybackController: ObservableObject {
         configureRemoteControls()
         let center = NotificationCenter.default
         notifications.append(center.addObserver(forName: AVAudioSession.interruptionNotification, object: nil, queue: .main) { [weak self] note in
-            guard let type = note.userInfo?[AVAudioSessionInterruptionTypeKey] as? UInt,
-                  type == AVAudioSession.InterruptionType.began.rawValue else { return }
-            Task { @MainActor in self?.pause() }
+            guard let rawType = note.userInfo?[AVAudioSessionInterruptionTypeKey] as? UInt,
+                  let type = AVAudioSession.InterruptionType(rawValue: rawType) else { return }
+            let rawOptions = note.userInfo?[AVAudioSessionInterruptionOptionKey] as? UInt ?? 0
+            let shouldResume = AVAudioSession.InterruptionOptions(rawValue: rawOptions).contains(.shouldResume)
+            Task { @MainActor in
+                guard let self else { return }
+                switch type {
+                case .began:
+                    // Remember whether a call/alarm stopped active listening.
+                    self.resumeAfterInterruption = self.playing
+                    self.pause()
+                case .ended:
+                    let resume = self.resumeAfterInterruption && shouldResume
+                    self.resumeAfterInterruption = false
+                    if resume { self.resume() }
+                @unknown default:
+                    break
+                }
+            }
         })
         notifications.append(center.addObserver(forName: AVAudioSession.routeChangeNotification, object: nil, queue: .main) { [weak self] note in
             guard let reason = note.userInfo?[AVAudioSessionRouteChangeReasonKey] as? UInt,

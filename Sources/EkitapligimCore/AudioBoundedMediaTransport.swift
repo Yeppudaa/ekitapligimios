@@ -106,7 +106,7 @@ private final class AudioBoundedMediaOperation: NSObject, URLSessionDataDelegate
         }
         do {
             guard let range else {
-                _ = try AudioMediaMetadata(response: http)
+                _ = try AudioMediaMetadata.requiresRangeProbe(response: http)
                 completionHandler(.cancel)
                 finish(.success((Data(), http)))
                 return

@@ -36,7 +36,7 @@ struct DeleteAccountView: View {
                 Button(L10n.deleteAccountSubmit, role: .destructive) {
                     Task { await submit() }
                 }
-                .disabled(confirmationText.uppercased() != "SIL" || isSubmitting || isSubmitted)
+                .disabled(!AccountDeletionConfirmation.isConfirmed(confirmationText) || isSubmitting || isSubmitted)
             }
         }
         .navigationTitle(L10n.deleteAccountTitle)

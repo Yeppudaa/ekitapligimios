@@ -1,5 +1,42 @@
 # iOS API Documentation
 
+## Premium profile decoration (2026-11-03)
+
+`MemberDTO` now reads existing `is_premium` and `role_type` fields, including nested `role` fallback, for the visited member's premium frame. A premium flag or `role_type=premium` enables decoration. The username, custom title, staff flag and verification badge alone do not imply premium. Existing own-profile subscription precedence applies. [Validation](PREMIUM_AVATAR_VALIDATION.md).
+
+## Book Agenda photos — IosApi 1.0.40 (2026-11-03)
+
+Existing feed ordering, tabs, post IDs, navigation and text-only form POSTs are unchanged. iOS uses the existing `/ios-api/v1/book-agenda` routes:
+
+- `GET book-agenda?media_capabilities=1`: `image_upload_version: 1`, `can_upload_images`, `maximum_bytes` (bytes, bounded to 8 MiB and the XenForo attachment limit). Upload support requires view/create/upload plus the native attachment handler permission. Old servers without this explicit version cannot enable the photo control or receive a photo POST.
+- `POST book-agenda`: text-only requests retain the existing form contract. A photo uses **one multipart request** with `image_upload=1`, `image` (JPEG, filename `agenda.jpg`) and the existing message/type/visibility/book/review/progress fields. Standard posts may contain only a photo. Existing UGC terms/text validation, scopes, flood controls, book requirements and Social moderation apply. The server generates the temporary attachment hash, validates the native handler constraints, stores the file and uses Social Creator to associate it in the post transaction. Failed post creation deletes the pending file; failed upload never publishes text alone.
+- `GET book-agenda/{post_id}?image_id={attachment_id}`: original image bytes after Social post visibility, ignored-author and exact attachment/content association checks. Private `no-store` response; no public fallback after denial. Invalid/hidden/mismatched IDs return 404. Uses the existing read scope and optional mobile bearer.
+- Feed/detail/create attachment DTOs add `width`, `height`, `protected_image`. Secure inline `[IMG]` URLs are included with stable IDs and no API bearer; image/attachment BBCode is removed from display text. Original images take priority over small/empty thumbnails. Malformed/duplicate attachment rows do not invalidate the post.
+
+The native PhotosPicker exposes one selected photo, preview, replace and remove. ImageIO applies orientation and downsamples to 2048 pixels, exports a fresh JPEG without source EXIF/GPS, and rejects oversized/invalid input. Selected data remains in memory; publishing rechecks server support. Original selection limit is 40 MiB; prepared upload limit is 8 MiB or the smaller server limit. Display fetches have a 20 MiB compressed-data cap, MIME checks, cancellation and no redirect/cookie/disk cache. Protected image 401s use the existing coordinated token refresh once. Remote inline URLs never receive credentials.
+
+Deploy the reviewed backend package **before** distributing this client. The local package/tests do not establish deployment or real iPhone/iPad behavior. See [validation and native gate](AGENDA_MEDIA_VALIDATION.md).
+
+## Community presentation and device-registration recovery (2026-11-03)
+
+The guest, conversations and members redesign retains existing API contracts/capability checks. Live actor/book links use their own validated IDs rather than sharing the general event destination. Existing `me/device-token` POST/DELETE scopes and ownership remain unchanged; iOS retries authorization/registration on foreground and discards stale token uploads after account loss. Cold-start notification acknowledgment waits for session restoration. The new synthetic display test is device-local and sends no API request or unread mutation. No server deployment was performed. [Validation and remaining real-device gate](COMMUNITY_DESIGN_VALIDATION.md).
+
+## Book-opening visual handoff (2026-11-03)
+
+Book detail now starts its existing native reader after the 1640 ms opaque-paper milestone of a cancellable cover-opening animation. Reader session authorization, file loading/validation, real download progress, errors, saved position and shelf/progress writes still use their existing services and payloads. Cancellation before handoff does not mount the reader or create a reader session. The animation adds no endpoint or backend permission decision. See [implementation and pending native checks](READER_OPENING_VALIDATION.md).
+
+## Personal audiobook comments — IosApi 1.0.38 (2026-10-18)
+
+`GET /ios-api/v1/me/audio-comments?page=1&per_page=30` requires the existing authenticated mobile bearer session and `user:read`. It returns `scope: "audio"`, equivalent `comments`/`items` arrays of `ForumPostDTO` fields, and `pagination: {page, per_page, perPage, total, pages}`. Page starts at 1; empty history has `pages: 1, total: 0`; per-page defaults to 30 and is bounded to 1...50. Ordering is `post_date DESC, post_id DESC`. Only the visitor's visible replies to published, viewable audiobooks are counted. The canonical AudioBooks `ProfileLibrary::comments` selector supplies the audiobook boundary; post/thread permissions are checked again before pagination. Missing/inactive AudioBooks dependencies return 503 `audio_unavailable`; mutations are unsupported.
+
+The native profile action uses this dedicated route, validates the response scope and pagination, and opens each comment's `thread_id` as a native audiobook. It has loading, empty, retry, refresh and pagination states. Account changes discard private content and stale responses. An older server's missing endpoint shows a retryable unavailable state. This endpoint adds no website fallback, data collection, entitlement, purchase or token-storage behavior. Source and offline tests do not establish server deployment or native device verification; see [validation](AUDIO_COMMENTS_VALIDATION.md).
+
+## Book agenda permission and comment handling (2026-10-18, source patch)
+
+`GET /book-agenda`, `/book-agenda/{id}` and `/book-agenda/{id}/comments` preserve the shared XenForo serializer's actual `can_create`, `can_comment`, `can_react`, `can_edit` and `can_delete` decisions. The iOS adapter mirrors snake/camel aliases without granting rights based on authentication or content ownership. Missing permissions remain denied. Every write continues through the existing server permission and UGC policy checks. Deploy the updated `Api/Controller/UgcControllerTrait.php` with the next IosApi rollout; this source patch has not been deployed.
+
+The native detail screen fetches the dedicated comment list, exposes read errors with retry, preserves the draft after write failures, and increments/decrements the server's comment total independently of the number of loaded or blocked comments. Feed query revisions and account revisions discard stale responses. There are no new routes, request fields, data collection, entitlements or purchase behavior. See [Book agenda validation](BOOK_AGENDA_VALIDATION.md) for executed and pending checks.
+
 ## Native audiobook addition (2026-10-17)
 
 `AudioRepository` uses the same first-party origin under `/mobile-api/v1/` independently of the unchanged `/ios-api/v1/` client. GET: `audio-books` (search/order/duration/language/category/author/page), `audio-books/{id}`, `audio-library?tab=...`; POST: `audio-books/{id}/manifest`, `/progress`, `/shelf`, `/bookmark`; authenticated HEAD/GET Range: `/stream?chapter_id=...`. See `AudioRepository.swift` and `AudioFilters.queryItems` for exact parameter encoding. The existing Keychain mobile session is accepted by the shared server session table; 401 coordinates with existing refresh and does not introduce a second login implementation.
@@ -110,6 +147,10 @@ Auth: optional.
 Query: `page`, `per_page`, `q`, `category`, `author`, `publisher`, `isbn`, `order` (`latest`, `popular`, `rated`), and `premium_only` (`0` or `1`). If the installed BookThreads schema has no premium-book field, `premium_only=1` fails closed with an empty result instead of returning non-premium books.
 Response: paged books.
 
+Native genre discovery uses the Android-compatible catalog taxonomy (IDs `6`–`30` and `32`–`38`) for `category` destinations. The Home showcase displays the first eight in Android order and does not require `GET /forums` to succeed. Optional live forum metadata enriches known entries; missing counts remain unknown. This client taxonomy does not grant access: `GET /books?category={id}` continues to enforce server visibility and XenForo permissions.
+
+The Home “Çok okunanlar” panel now shows up to four randomly selected novels. `HomeNovelRepository` requests `category=6&order=latest&page=1` to read pagination, then at most one randomly chosen page of the same category. It shuffles distinct valid books from that page; a short, empty or failed sampled page may use the first Roman page to fill the selection. It never falls back to an unfiltered catalog. The selection is stored until the Home data reloads. No new endpoint or unsupported `order=random` value is used.
+
 ### GET `/book-detail/{thread_id}`
 Auth: optional.
 Response: book detail with up to eight visible same-category books in `book.similar_books`/`book.similarBooks`; the current book is excluded.
@@ -152,7 +193,7 @@ POST compares the revision under a database row lock and returns the stored repr
 New clients retain account-scoped pending records locally, serialize writes and retry them when connectivity returns. A lost acknowledgement is reconciled before retransmission. GETs bypass local HTTP caching; bootstrap restoration never writes a temporary page 1. The service's opaque revision includes the stored position, percentage and server date, so same-second page changes still conflict.
 
 ### GET `/me/library` / PUT `/me/library/{thread_id}` (IosApi 1.0.24+)
-The library includes viewable books with progress even without shelf membership. Items include `position_type` and `last_read_date` and are ordered by server reading recency. Shelf updates preserve all reader progress; callers must use the reader progress endpoint to change position. The existing shelf/favorite operation itself is unchanged.
+The library includes viewable books with progress even without shelf membership. Items include `position_type` and `last_read_date` and are ordered by server reading recency. Shelf and favorite updates preserve all reader progress; callers must use the reader progress endpoint to change position. The independent favorite/shelf contract is documented below.
 
 ### GET `/books/{thread_id}/reader/source`
 Auth: login/session token required.
@@ -167,6 +208,10 @@ Auth: optional.
 Query: `page`, optional `q`.
 Response: `authors` or `publishers` array plus pagination. Each item includes `id`, `name`, `slug`, `book_count`, and `kind`.
 
+Supported optional `per_page`: 1...100, server default 30. The native index requests 100 candidates to reduce round trips. Optional site statistics do not block the list. Successful query/initial snapshots are reused in memory for up to 120 seconds within the current directory/account model; explicit refresh bypasses them. No new endpoint or backend deployment is required. [Performance validation](DIRECTORY_PERFORMANCE_VALIDATION.md).
+
+Native index behavior (2026-11-03): `q` is a contains search, not a prefix filter. With no search text, letter selection sends that Turkish letter as `q`; otherwise it sends the search text and intersects results with the selected initial locally. For a selected initial, the client accumulates at least 30 new unique matches across candidate pages or reaches the final page. Whole-page overflow is retained, and subsequent batches resume at the next server page without a total-result cap. Partial failures preserve rows and retry the failed cursor. No new prefix parameter, endpoint or response field is required. See [validation](DIRECTORY_DESIGN_VALIDATION.md).
+
 ### GET `/authors/{slug}/books` and GET `/publishers/{slug}/books`
 Auth: optional.
 Query: `page`.
@@ -176,12 +221,28 @@ Response: paged books using the standard books payload.
 
 ### GET `/me/library`
 Auth: login required.
-Response: library items.
+Response: `{ "items": [...], "library": [...] }`. Each viewable item includes `book_id`, `shelf_state`, `is_favorite`, reader progress and book presentation fields. Favorites are independent of the reading shelf: an item can have `shelf_state: "OKUYORUM"` and `is_favorite: true` at the same time.
+
+The iOS decoder also accepts the Android-compatible direct array, `library` array and `data.items` / `data.library` envelopes. A missing or malformed collection or a blank book identifier is an error, not an empty library. A valid empty array remains authoritative. Fetches bypass local HTTP caches.
 
 ### PUT `/me/library/{thread_id}`
-Auth: login required.
-Body: `shelf_state`, `progress_percent`, `last_read_page`.
-Response: empty success.
+Auth: login, mobile write scope and XenForo permission for this book and requested shelf action.
+
+IosApi 1.0.37 source update, 2026-10-18:
+
+- `shelf_state` is optional: `NONE`, `OKUYORUM`, `OKUYACAGIM` or `OKUDUM`. It changes reading shelf membership and preserves the favorite flag. `NONE` removes reading shelf membership.
+- `is_favorite` is optional and accepts an explicit boolean or `1` / `0` (`true` / `false` text is also supported). It changes only favorite membership and preserves reading shelves and progress. The iOS `setLibraryFavorite(bookID:isFavorite:)` operation sends only this field.
+- Legacy `shelf_state=FAVORI` adds favorite membership without removing a reading shelf. New clients use `is_favorite` for both addition and removal.
+- Both fields can be supplied atomically. Omitting both, supplying an invalid value or conflicting snake/camel aliases fails with HTTP 400 `library_update_invalid`. Existing camel aliases `shelfState` / `isFavorite` remain accepted.
+- Legacy `progress_percent` and `last_read_page` fields remain accepted but do not alter reader progress. Position changes require the reader progress endpoint.
+
+The body is URL encoded. Both `application/x-www-form-urlencoded` and the iOS `application/x-www-form-urlencoded; charset=utf-8` header are supported. The controller applies a bounded 8 KiB raw form fallback for XenForo versions that parse PUT bodies only with the bare MIME value; other MIME bodies are not parsed by this fallback.
+
+Response: `{ "success": true, "item": { "book_id": "15582", "shelf_state": "OKUYORUM", "is_favorite": true } }` with the committed canonical shelf/favorite state. Invalid requests return HTTP 400, permission failures HTTP 403, and storage failures HTTP 503 `shelf_error`. These failures must not be presented as successful writes.
+
+The iOS repository requires explicit positive acknowledgement. A missing/empty body, `success: false` or an error envelope is rejected even with HTTP 200. After acknowledgement, the app updates its shared local library while retaining any newer reader progress; later `/me/library` fetches remain authoritative. Responses from a previous account are discarded. Successful mutations notify the live activity view to refresh actual server events; the client does not synthesize feed entries.
+
+Deployment: this contract requires IosApi 1.0.37 or later, including the updated `MeLibraryItem` controller and `LibraryShelfManager` service in the local add-on source. Source changes and local tests do not confirm that the server has been updated; deploy the reviewed add-on and verify with an authorized staging account before release.
 
 ## Book Requests
 
@@ -250,6 +311,8 @@ Auth: login required; XenForo `canEditProfile()` permission required.
 Body: `about` (maximum 5,000 characters), `location` (maximum 100), `website` (maximum 200; HTTP/HTTPS only), and `activity_visible` (`0` or `1`).
 Response: updated profile payload.
 Security: XenForo profile validation and about-text spam checks are enforced server-side. Email and password changes are intentionally excluded from this endpoint.
+
+Native editor (2026-11-03) retains these fields and limits. Media refreshes preserve its unsaved draft; concurrent saves/uploads are prevented and stale account results are ignored. Selected photo bytes are encoded as JPEG to match the existing profile-media multipart contract, with a 12 MB pre/post-encoding limit. No account endpoint/schema change is included.
 
 ### POST `/me/email`
 Auth: login required.

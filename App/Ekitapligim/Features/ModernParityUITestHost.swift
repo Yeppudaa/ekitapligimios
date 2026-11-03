@@ -4,7 +4,7 @@ import Foundation
 import EkitapligimCore
 
 /// Offline harness for the shipping SwiftUI screens. All transports are intercepted, including
-/// unexpected requests; mutations receive 405 except the explicit, local audio playback fixture.
+/// unexpected requests; mutations receive 405 except explicit local audio and library fixtures.
 /// No bootstrap runs and no request or mutation can leave the simulator.
 @MainActor
 struct ModernParityUITestHost: View {
@@ -16,6 +16,8 @@ struct ModernParityUITestHost: View {
     private let guest: Bool
     private let largeText: Bool
     private let dark: Bool
+    private let shellNavigation: Bool
+    private let socialNavigation: Bool
     @State private var prepared = false
     @State private var audioID: Int?
     @State private var audioLibrary = false
@@ -27,6 +29,9 @@ struct ModernParityUITestHost: View {
         guest = environment["MODERN_PARITY_GUEST"] == "1"
         largeText = environment["MODERN_PARITY_LARGE_TEXT"] == "1"
         dark = environment["MODERN_PARITY_DARK"] == "1"
+        shellNavigation = environment["MODERN_PARITY_SHELL_NAVIGATION"] == "1"
+        socialNavigation = environment["MODERN_PARITY_SOCIAL_NAVIGATION"] == "1"
+        ModernParityLibraryFixture.seed(book: ModernParityPayload.book(2), library: ModernParityPayload.library)
         URLProtocol.registerClass(ModernParityProtocol.self)
         let configuration = URLSessionConfiguration.ephemeral
         configuration.protocolClasses = [ModernParityProtocol.self]
@@ -69,6 +74,26 @@ struct ModernParityUITestHost: View {
             }
             if screen == "catalog" { fixtureContainer.selectedTab = .catalog }
             if screen == "profile" { fixtureContainer.selectedTab = .profile }
+            if socialNavigation && screen == "live" { fixtureContainer.open(route: .liveActivity) }
+            if screen == "keyboard-shell" {
+                switch ProcessInfo.processInfo.environment["MODERN_PARITY_KEYBOARD_DESTINATION"] {
+                case "forum": fixtureContainer.open(route: .forum)
+                case "agenda": fixtureContainer.open(route: .bookAgenda)
+                case "conversation": fixtureContainer.open(route: .conversation(980001))
+                case "chat": fixtureContainer.open(route: .chatRoom(4))
+                case "book-detail": fixtureContainer.open(route: .bookDetail(900042))
+                default: break
+                }
+            }
+            if shellNavigation {
+                switch screen {
+                case "requests": fixtureContainer.open(route: .requests)
+                case "agenda": fixtureContainer.open(route: .bookAgenda)
+                case "live": fixtureContainer.open(route: .liveActivity)
+                case "forum": fixtureContainer.open(route: .forum)
+                default: break
+                }
+            }
             if ModernParityAudioFixture.enabled, let audioController {
                 audioController.activate(account: ModernParityTokenStore.username)
                 audioController.setVolume(0)
@@ -80,17 +105,35 @@ struct ModernParityUITestHost: View {
     }
 
     @ViewBuilder private var content: some View {
+        if socialNavigation && screen == "live" {
+            RootView().environment(\.scenePhase, .active)
+        } else if shellNavigation && ["requests", "agenda", "live", "forum"].contains(screen) {
+            RootView().environment(\.scenePhase, ModernParityLibraryFixture.enabled ? .active : .inactive)
+        } else {
+            standaloneContent
+        }
+    }
+
+    @ViewBuilder private var standaloneContent: some View {
         switch screen {
-        case "home", "menu", "catalog", "profile": RootView().environment(\.scenePhase, .inactive)
+        case "home", "menu", "catalog", "profile", "keyboard-shell":
+            RootView().environment(\.scenePhase, ModernParityLibraryFixture.enabled ? .active : .inactive)
         case "library": NavigationStack { LibraryView() }
         case "requests": NavigationStack { BookRequestsView() }
         case "forum": CommunityView()
         case "threads": NavigationStack { ForumThreadsView(forum: ForumDTO(id: "1", title: "Kitap Kulübü", description: "Okuduğumuz kitapları birlikte keşfedelim.")) }
         case "authors": NavigationStack { DirectoryView(kind: .author) }
         case "publishers": NavigationStack { DirectoryView(kind: .publisher) }
+        case "profile-edit": NavigationStack { ProfileEditView() }
         case "agenda": NavigationStack { BookAgendaView() }
+        case "agenda-detail": NavigationStack { BookAgendaDetailView(postID: "940001") }
         case "live": NavigationStack { LiveActivityView() }
         case "notifications": NavigationStack { NotificationsView() }
+        case "members": NavigationStack { MembersView() }
+        case "member-profile": NavigationStack { MemberProfileView(memberID: "900002") }
+        case "messages": NavigationStack { ConversationsView() }
+        case "login": LoginView()
+        case "register": LoginView(initialMode: .register)
         case "chat": NavigationStack { ChatView(initialRoomID: "4") }
         case "audio", "audio-detail", "audio-library", "audio-player": audioContent
         default: Text("Unknown fixture screen").accessibilityIdentifier("modern-parity-error")
@@ -146,17 +189,59 @@ private actor ModernParityTokenStore: TokenStore {
 }
 
 private final class ModernParityProtocol: URLProtocol, @unchecked Sendable {
+    private var homeCoverWork: DispatchWorkItem?
     private static let catalogFailureLock = NSLock()
     private static var didFailFilteredCatalog = false
     override class func canInit(with request: URLRequest) -> Bool { true }
     override class func canonicalRequest(for request: URLRequest) -> URLRequest { request }
     override func startLoading() {
         guard let url = request.url else { client?.urlProtocol(self, didFailWithError: URLError(.badURL)); return }
+        if let media = ModernParityAgendaMediaFixture.response(for: request) {
+            deliver(url: url, status: media.status, headers: ["Content-Type": media.mime, "Cache-Control": "no-store"], data: media.data)
+            return
+        }
+        if let cover = ModernParityHomeCoverFixture.response(for: url) {
+            let work = DispatchWorkItem { [weak self] in
+                self?.deliver(url: url, status: cover.status,
+                              headers: ["Content-Type": "image/png", "Cache-Control": "no-store"], data: cover.data)
+            }
+            homeCoverWork = work
+            DispatchQueue.main.asyncAfter(deadline: .now() + cover.delay, execute: work)
+            return
+        }
+        // URLProtocol may receive a request before URLSession applies additional headers.
+        // Mark the already intercepted DEBUG transport itself; origin and token guards
+        // remain enforced by the local fixture, and no request reaches the network.
+        var libraryRequest = request
+        libraryRequest.setValue(ModernParityAudioFixture.markerValue,
+                                forHTTPHeaderField: ModernParityAudioFixture.markerHeader)
+        if let result = ModernParityLibraryFixture.response(for: libraryRequest) {
+            deliver(url: url, status: result.status, headers: result.headers, data: result.data)
+            return
+        }
         if let result = ModernParityAudioFixture.response(for: request) {
             deliver(url: url, status: result.status, headers: result.headers, data: result.data)
             return
         }
         let readOnly = request.httpMethod == nil || request.httpMethod == "GET" || request.httpMethod == "HEAD"
+        if readOnly, url.path.hasSuffix("/ios-api/v1/forums") {
+            let categoryForums = ProcessInfo.processInfo.environment["MODERN_PARITY_CATEGORY_FORUMS"] ?? "normal"
+            let response: (status: Int, payload: [String: Any])?
+            switch categoryForums {
+            case "empty": response = (200, ["forums": []])
+            case "failure": response = (503, ["errors": ["Deliberate offline category forum failure"]])
+            case "unrelated": response = (200, ["forums": [["id": "900", "title": "Genel Sohbet", "is_book_forum": false]]])
+            default: response = nil
+            }
+            if let response {
+                guard let data = try? JSONSerialization.data(withJSONObject: response.payload) else {
+                    client?.urlProtocol(self, didFailWithError: URLError(.cannotDecodeContentData)); return
+                }
+                deliver(url: url, status: response.status,
+                        headers: ["Content-Type": "application/json", "Cache-Control": "no-store"], data: data)
+                return
+            }
+        }
         if readOnly, ProcessInfo.processInfo.environment["MODERN_PARITY_CATALOG_FAILURE"] == "1", url.path.hasSuffix("/books") {
             let filtered = URLComponents(url: url, resolvingAgainstBaseURL: false)?.queryItems?.contains(where: { $0.name == "category" && !($0.value ?? "").isEmpty }) == true
             NSLog("MODERN_CATALOG_FIXTURE books-request filtered=%d failurePath=%d", filtered ? 1 : 0, url.path.hasSuffix("/ios-api/v1/books") ? 1 : 0)
@@ -185,6 +270,18 @@ private final class ModernParityProtocol: URLProtocol, @unchecked Sendable {
             deliver(url: url, status: 200, headers: ["Content-Type": "text/html; charset=utf-8"], data: Data(cards.utf8))
             return
         }
+        if readOnly, url.path.hasSuffix("/book-agenda/940001/comments"),
+           ProcessInfo.processInfo.environment["MODERN_PARITY_AGENDA_COMMENTS_FAILURE"] == "1" {
+            deliver(url: url, status: 503, headers: ["Content-Type": "application/json"],
+                    data: Data(#"{"errors":["Offline comment failure"]}"#.utf8))
+            return
+        }
+        if readOnly, url.path.hasSuffix("/me/audio-comments"),
+           ProcessInfo.processInfo.environment["MODERN_PARITY_AUDIO_COMMENTS"] == "unavailable" {
+            deliver(url: url, status: 503, headers: ["Content-Type": "application/json", "Cache-Control": "no-store"],
+                    data: Data(#"{"errors":[{"code":"audio_unavailable","message":"Offline audiobook comments unavailable"}]}"#.utf8))
+            return
+        }
         let payload: [String: Any] = readOnly ? ModernParityPayload.response(for: url) : ["success": false, "errors": ["Offline UI fixtures reject all mutations."]]
         guard let data = try? JSONSerialization.data(withJSONObject: payload) else {
             client?.urlProtocol(self, didFailWithError: URLError(.cannotDecodeContentData)); return
@@ -203,7 +300,7 @@ private final class ModernParityProtocol: URLProtocol, @unchecked Sendable {
         }
         client?.urlProtocolDidFinishLoading(self)
     }
-    override func stopLoading() {}
+    override func stopLoading() { homeCoverWork?.cancel() }
 }
 
 /// Synthetic books and accounts are purposefully distinct from production IDs and credentials.
@@ -241,7 +338,16 @@ private enum ModernParityPayload {
         return item
     }
     static func book(_ value: Int) -> [String: Any] {
-        ["id": String(900040 + value), "title": ["Varoluş Yolunda Sayılı Yıllar", "Sonsuzluğun Büyüsü", "Beyaz Zambaklar Ülkesinde", "Küçük Prens"][value % 4], "author": value == 3 ? "Grigori Petrov" : "Örnek Yazar", "publisher": "Örnek Yayınevi", "isbn": "", "category": "Roman", "language": "Türkçe", "publish_year": "2024", "description": "Her sayfada yeni bir dünya. Okuma yolculuğunda sana eşlik edecek bir hikâye.", "cover_url": "", "pdf_url": "", "page_count": 200, "is_premium_only": false, "view_count": 320, "download_count": 18, "rating": 4.5, "file_type": "PDF"]
+        var item: [String: Any] = ["id": String(900040 + value), "title": ["Varoluş Yolunda Sayılı Yıllar", "Sonsuzluğun Büyüsü", "Beyaz Zambaklar Ülkesinde", "Küçük Prens"][value % 4], "author": value == 3 ? "Grigori Petrov" : "Örnek Yazar", "publisher": "Örnek Yayınevi", "isbn": "", "category": "Roman", "language": "Türkçe", "publish_year": "2024", "description": "Her sayfada yeni bir dünya. Okuma yolculuğunda sana eşlik edecek bir hikâye.", "cover_url": "", "pdf_url": "", "page_count": 200, "is_premium_only": false, "view_count": 320, "download_count": 18, "rating": 4.5, "file_type": "PDF"]
+        if let cover = ModernParityHomeCoverFixture.url(for: value) { item["cover_url"] = cover }
+        if value == 2, ProcessInfo.processInfo.environment["MODERN_PARITY_CARD_SIZING"] == "1" {
+            item["title"] = "Birlikte Keşfettiğimiz Hikâyelerin İzinde Uzun Bir Okuma Yolculuğunun Unutulmaz Sayfaları"
+            item["author"] = ""
+            item["category"] = ""
+            item["page_count"] = 0
+            item.removeValue(forKey: "rating")
+        }
+        return item
     }
     static func audioBook(_ value: Int) -> [String: Any] {
         if ModernParityAudioFixture.enabled { return ModernParityAudioFixture.book(value) }
@@ -251,6 +357,26 @@ private enum ModernParityPayload {
         let path = url.path
         let query = URLComponents(url: url, resolvingAgainstBaseURL: false)?.queryItems ?? []
         let search = query.first { $0.name == "q" }?.value ?? ""
+        if path.hasSuffix("/legal/terms") {
+            return ["version": "offline-fixture", "eula_url": "https://ekitapligim.com/eula",
+                    "terms_url": "https://ekitapligim.com/yardim/kurallar/", "privacy_url": "https://ekitapligim.com/yardim/gizlilik-politikasi/",
+                    "support_url": "https://ekitapligim.com/diger/iletisim", "moderation_sla_hours": 24]
+        }
+        if path.hasSuffix("/me/audio-comments") {
+            let empty = ProcessInfo.processInfo.environment["MODERN_PARITY_AUDIO_COMMENTS"] == "empty"
+            let comments: [[String: Any]] = empty ? [] : [
+                ["id": "980001", "post_id": 980001, "thread_id": 101,
+                 "thread_title": "Beyaz Zambaklar Ülkesinde", "user_id": 900001, "username": "parity-fixture",
+                 "message": "Seslendirme çok akıcı. Hikâyenin duygusunu koruyan anlatımı sayesinde dinlerken her bölümde yeni ayrıntılar keşfettim.",
+                 "post_date": timestamp, "can_edit": true, "can_delete": false, "can_reply": true],
+                ["id": "980002", "post_id": 980002, "thread_id": 102,
+                 "thread_title": "Küçük Prens", "user_id": 900001, "username": "parity-fixture",
+                 "message": "Küçük Prens'i yeniden dinlemek çok güzeldi. Seslendirenin sakin anlatımı ve bölüm geçişleri hikâyeye odaklanmamı kolaylaştırdı.",
+                 "post_date": timestamp - 300, "can_edit": false, "can_delete": false, "can_reply": true]
+            ]
+            return ["scope": "audio", "comments": comments, "items": comments,
+                    "pagination": ["page": 1, "per_page": 30, "pages": 1, "total": comments.count]]
+        }
         if path.hasSuffix("/audio-library") {
             return ["api_version": 1, "books": [audioBook(101), audioBook(102)], "counts": ["saved": 2, "listening": 1, "completed": 0, "favorite": 1, "later": 1, "history": 2], "resume_book": audioBook(101), "stats": ["total": "1 sa 12 dk", "month": "42 dk", "completed": "0", "active": "1"]]
         }
@@ -258,7 +384,11 @@ private enum ModernParityPayload {
             let books = search.isEmpty ? [audioBook(101), audioBook(102)] : [audioBook(101)]
             return ["api_version": 1, "available": true, "books": books, "hero": audioBook(101), "categories": [["id": 1, "title": "Roman", "count": 2]], "pagination": ["page": 1, "pages": 1, "total": books.count], "sections": [["title": "Yeni eklenenler", "hint": "Dinleyeceğin yeni hikâyeler", "books": books]]]
         }
-        if path.contains("/audio-books/") { return ["api_version": 1, "book": audioBook(Int(url.lastPathComponent) ?? 101), "related": [audioBook(102)], "same_author": []] }
+        if path.contains("/audio-books/") {
+            let bookID = Int(url.lastPathComponent) ?? 101
+            let relatedID = ModernParityAudioFixture.enabled && bookID == 102 ? 101 : 102
+            return ["api_version": 1, "book": audioBook(bookID), "related": [audioBook(relatedID)], "same_author": []]
+        }
         if path.hasSuffix("/book-stats") { return ["total_books": 35818, "total_authors": 13656, "total_publishers": 2000, "total_categories": 32] }
         if path.hasSuffix("/me/subscription") {
             let premium = ProcessInfo.processInfo.environment["MODERN_PARITY_STANDARD_MEMBER"] != "1"
@@ -306,8 +436,27 @@ private enum ModernParityPayload {
             let pagination: [String: Any] = ["page": 1, "has_more": false]
             return ["items": items, "capabilities": capabilities, "pagination": pagination]
         }
+        if path.hasSuffix("/book-agenda/940001") {
+            return ["post": agendaItem(1)]
+        }
+        if path.hasSuffix("/book-agenda/940001/comments") {
+            return ["comments": []]
+        }
         if path.hasSuffix("/authors") || path.hasSuffix("/publishers") {
             let author = path.hasSuffix("/authors")
+            if ProcessInfo.processInfo.environment["MODERN_PARITY_DIRECTORY_PAGES"] == "1" {
+                let names = author
+                    ? ["Franz Kafka", "Aziz Nesin", "Zülfü Livaneli", "Zygmunt Bauman"]
+                    : ["Deniz Yayınları", "Bilgi Yayınevi", "İletişim Yayınları", "İmge Kitabevi"]
+                let candidates = names.enumerated().filter {
+                    search.isEmpty || $0.element.range(of: search, options: [.caseInsensitive, .diacriticInsensitive], locale: Locale(identifier: "tr_TR")) != nil
+                }
+                let requested = max(1, Int(query.first { $0.name == "page" }?.value ?? "1") ?? 1)
+                let rows: [[String: Any]] = candidates.dropFirst(requested - 1).prefix(1).map {
+                    ["id": String(950100 + $0.offset), "name": $0.element, "slug": "fixture-\($0.offset)", "book_count": 12 + $0.offset]
+                }
+                return ["items": rows, "pagination": ["page": requested, "pages": max(1, candidates.count), "total": candidates.count]]
+            }
             let names = author ? ["Ahmet Hamdi Tanpınar", "Grigori Petrov", "Sabahattin Ali", "Stefan Zweig", "Zygmunt Bauman"] : ["Can Yayınları", "İletişim Yayınları", "Türkiye İş Bankası Kültür Yayınları", "Yapı Kredi Yayınları"]
             var items: [[String: Any]] = []
             for (index, name) in names.enumerated() where search.isEmpty || name.localizedStandardContains(search) {
@@ -327,9 +476,58 @@ private enum ModernParityPayload {
             let pagination: [String: Any] = ["page": 1, "pages": 1]
             return ["threads": threads, "pagination": pagination]
         }
+        if path.hasSuffix("/threads/960001/posts") {
+            let posts: [[String: Any]] = (1...6).map { value in
+                ["id": String(960100 + value), "thread_id": "960001", "user_id": 900002,
+                 "username": "Ada", "message": "Kitap hakkında çevrimdışı deneme mesajı \(value).",
+                 "post_date": timestamp + value, "can_reply": true, "can_edit": false, "can_delete": false]
+            }
+            return ["posts": posts, "can_reply": true, "pagination": ["page": 1, "pages": 1]]
+        }
+        if path.hasSuffix("/members") {
+            var entries: [[String: Any]] = [
+                ["id": "900002", "username": "Ada", "role_label": "Topluluk üyesi", "message_count": 128, "reaction_score": 356, "avatar_url": ""],
+                ["id": "900003", "username": "Deniz Yılmaz", "role_label": "Topluluk üyesi", "message_count": 45, "reaction_score": 91, "avatar_url": ""]
+            ]
+            if ProcessInfo.processInfo.environment["MODERN_PARITY_PREMIUM_MEMBER"] == "1" {
+                entries[0]["is_premium"] = true
+                entries[0]["role_type"] = "premium"
+                entries[0]["show_verified_badge"] = true
+            }
+            let matches = entries.filter { search.isEmpty || ($0["username"] as? String ?? "").localizedCaseInsensitiveContains(search) }
+            return ["members": matches, "pagination": ["page": 1, "pages": 1, "total": matches.count]]
+        }
+        if path.hasSuffix("/conversations") {
+            let items: [[String: Any]] = [
+                ["id": "980001", "title": "Okuma önerileri", "starter_username": "Ada", "last_message_username": "Ada",
+                 "last_message_date": timestamp, "is_unread": true, "reply_count": 3,
+                 "participants": [["id": "900002", "username": "Ada", "avatar_url": ""]],
+                 "preview": "Bir sonraki kitabımızı birlikte seçelim."],
+                ["id": "980002", "title": "Okuma notları", "starter_username": "Deniz", "last_message_date": timestamp - 500,
+                 "participants": [["id": "900003", "username": "Deniz", "avatar_url": ""]], "preview": "Bu bölümün ayrıntıları üzerine konuşalım."]
+            ]
+            return ["items": items, "pagination": ["page": 1, "pages": 1, "total": 2]]
+        }
+        if path.hasSuffix("/conversation-detail/980001") {
+            let conversation: [String: Any] = ["id": "980001", "title": "Okuma önerileri",
+                "starter_username": "Ada", "can_reply": true, "reply_count": 3]
+            let messages: [[String: Any]] = (1...4).map { value in
+                ["id": String(980100 + value), "conversation_id": 980001, "user_id": 900002,
+                 "username": "Ada", "message": "Çevrimdışı özel mesaj \(value).",
+                 "message_date": timestamp + value, "avatar_url": "", "is_mine": false]
+            }
+            return ["conversation": conversation, "messages": messages]
+        }
+        if path.hasSuffix("/books/900042/comments") {
+            return ["comments": [], "pagination": ["page": 1, "pages": 1, "total": 0]]
+        }
         if path.hasSuffix("/books") {
-            let books: [[String: Any]] = (1...8).map(book)
-            let pagination: [String: Any] = ["page": 1, "pages": 1, "total": 8]
+            let books: [[String: Any]] = (1...8).map(book).filter { item in
+                search.isEmpty || ["title", "author", "publisher", "isbn"].contains { key in
+                    (item[key] as? String ?? "").localizedCaseInsensitiveContains(search)
+                }
+            }
+            let pagination: [String: Any] = ["page": 1, "pages": 1, "total": books.count]
             return ["books": books, "pagination": pagination]
         }
         if path.contains("/books/") || path.contains("/book-detail/") {
@@ -338,7 +536,22 @@ private enum ModernParityPayload {
             }
             return ["book": book(2)]
         }
-        if path.contains("/members/") { return ["member": ["id": "900002", "username": "Ada", "can_view_profile": true], "items": []] }
+        if path.contains("/members/") {
+            var member: [String: Any] = ["id": "900002", "username": "Ada", "role_label": "Topluluk üyesi", "avatar_url": "",
+                "can_view_profile": true, "can_follow": true, "can_converse": true, "can_block": true,
+                "message_count": 128, "reaction_score": 356, "reading_count": 4, "read_count": 28,
+                "listed_count": 44, "want_to_read_count": 10, "favorite_count": 2,
+                "about": "Kitaplarla yeni dünyalar keşfediyorum.", "library": library, "last_read_book": library[0]]
+            if ProcessInfo.processInfo.environment["MODERN_PARITY_PREMIUM_MEMBER"] == "1" {
+                member["is_premium"] = true
+                member["role_type"] = "premium"
+                member["show_verified_badge"] = true
+            }
+            if ProcessInfo.processInfo.environment["MODERN_PARITY_LONG_MEMBER_NAME"] == "1" {
+                member["username"] = "Kitaplarla Yeni Dünyalar Keşfeden Deniz"
+            }
+            return ["member": member]
+        }
         if path.contains("bootstrap") { return ["enabled": false] }
         return ["items": [], "members": [], "posts": [], "success": true]
     }
@@ -373,7 +586,8 @@ private enum ModernParityPayload {
 
     private static func agendaItem(_ value: Int) -> [String: Any] {
         let referencedBook: [String: Any] = ["id": "900042", "title": "Yeni Bir Hikâye", "author": "Örnek Yazar", "cover_url": ""]
-        let viewer: [String: Any] = ["can_react": true, "can_bookmark": true]
+        let viewer: [String: Any] = ["can_react": true, "can_bookmark": true,
+            "can_comment": ProcessInfo.processInfo.environment["MODERN_PARITY_AGENDA_READ_ONLY"] != "1"]
         var item: [String: Any] = [:]
         item["id"] = String(940000 + value)
         item["type"] = value == 1 ? "quotation" : "standard"
@@ -383,6 +597,7 @@ private enum ModernParityPayload {
         item["book"] = referencedBook
         item["viewer"] = viewer
         item["reaction_score"] = 12
+        if ModernParityAgendaMediaFixture.enabled { item["attachments"] = ModernParityAgendaMediaFixture.attachments }
         // Opt-in stress content remains inside this DEBUG-only, intercepted transport.
         if value == 1, ProcessInfo.processInfo.environment["MODERN_PARITY_LONG_AGENDA"] == "1" {
             item["type"] = "review"

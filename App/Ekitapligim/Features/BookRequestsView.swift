@@ -10,6 +10,7 @@ struct BookRequestsView: View {
     @State private var isLoading = true
     @State private var errorMessage: String?
     @State private var operationError: String?
+    @State private var createError: String?
     @State private var statusMessage: String?
     @State private var showCreateSheet = false
     @State private var showLoginAlert = false
@@ -54,14 +55,19 @@ struct BookRequestsView: View {
             }
         }
         .navigationTitle(L10n.bookRequestsTitle)
+        .navigationBarTitleDisplayMode(.inline)
+        .toolbar(.visible, for: .navigationBar)
         .toolbar {
-            ToolbarItem(placement: .primaryAction) {
+            // Keep creation separate from the menu's native trailing toolbar item.
+            ToolbarItem(placement: .topBarLeading) {
                 Button {
                     presentCreate()
                 } label: {
                     Image(systemName: "plus")
+                        .frame(width: 44, height: 44)
                 }
                 .accessibilityLabel(L10n.bookRequestsCreate)
+                .accessibilityIdentifier("requests.create.open")
             }
         }
         .task { await load() }
@@ -90,36 +96,16 @@ struct BookRequestsView: View {
         }
         .sheet(isPresented: $showingLogin) { LoginView() }
         .sheet(isPresented: $showCreateSheet) {
-            ScrollView {
-            VStack(alignment: .leading, spacing: 12) {
-                Text(L10n.bookRequestsCreateDialogTitle)
-                    .font(.title3.weight(.bold))
-                    .frame(maxWidth: .infinity, alignment: .leading)
-                if !container.isSignedIn {
-                    Text(L10n.bookRequestsGuestCreateHint)
-                        .font(.footnote)
-                        .foregroundStyle(EKitapligimPalette.danger)
-                }
-                TextField(L10n.bookRequestsBookTitle, text: $draftTitle)
-                    .textFieldStyle(.roundedBorder)
-                TextField(L10n.bookRequestsAuthor, text: $draftAuthor)
-                    .textFieldStyle(.roundedBorder)
-                TextField(L10n.bookRequestsISBN, text: $draftISBN)
-                    .textFieldStyle(.roundedBorder)
-                    .keyboardType(.numbersAndPunctuation)
-                HStack {
-                    Spacer(minLength: 0)
-                    Button(L10n.commonCancel) { showCreateSheet = false }
-                    Button(isSubmitting ? L10n.bookRequestsSubmitting : L10n.commonSubmit) {
-                        Task { await submitRequest() }
-                    }
-                    .disabled(isSubmitting || !container.isSignedIn)
-                }
-            }
-            .padding(20)
-            }
-            .presentationDetents([.medium, .large])
-            .presentationDragIndicator(.visible)
+            BookRequestCreateSheet(
+                title: $draftTitle,
+                author: $draftAuthor,
+                isbn: $draftISBN,
+                isSignedIn: container.isSignedIn,
+                isSubmitting: isSubmitting,
+                errorMessage: createError,
+                onCancel: { showCreateSheet = false },
+                onSubmit: { Task { await submitRequest() } }
+            )
         }
     }
 
@@ -183,6 +169,7 @@ struct BookRequestsView: View {
                 }
                 .padding(.horizontal, 16).padding(.vertical, 12)
             }
+            .accessibilityIdentifier("requests.scroll")
         }
     }
 
@@ -193,7 +180,7 @@ struct BookRequestsView: View {
             ("requests.rejected", items.filter { $0.status.uppercased() == "REJECTED" }.count, "shield"),
             ("requests.support", items.reduce(0) { $0 + $1.voteCount }, "heart")
         ]
-        return LazyVGrid(columns: [GridItem(.adaptive(minimum: 130), spacing: 10)], spacing: 10) {
+        return LazyVGrid(columns: dynamicTypeSize.isAccessibilitySize ? [GridItem(.flexible())] : [GridItem(.adaptive(minimum: 130), spacing: 10)], spacing: 10) {
             ForEach(metrics.indices, id: \.self) { index in
                 let metric = metrics[index]
                 VStack(alignment: .leading, spacing: 10) {
@@ -283,6 +270,7 @@ struct BookRequestsView: View {
         draftTitle = ""
         draftAuthor = ""
         draftISBN = ""
+        createError = nil
         showCreateSheet = true
     }
 
@@ -303,6 +291,7 @@ struct BookRequestsView: View {
         guard !title.isEmpty, !author.trimmed.isEmpty else { return }
         guard container.isSignedIn else { return }
         isSubmitting = true
+        createError = nil
         defer { isSubmitting = false }
         do {
             _ = try await container.bookRequests.create(title: title, author: author, isbn: draftISBN.trimmed)
@@ -310,7 +299,7 @@ struct BookRequestsView: View {
             statusMessage = L10n.bookRequestsCreated
             await load()
         } catch {
-            operationError = L10n.bookRequestsCreateFailed
+            createError = L10n.bookRequestsCreateFailed
         }
     }
 
@@ -332,7 +321,238 @@ struct BookRequestsView: View {
     }
 }
 
+@MainActor
+private struct BookRequestCreateSheet: View {
+    @Binding var title: String
+    @Binding var author: String
+    @Binding var isbn: String
+    let isSignedIn: Bool
+    let isSubmitting: Bool
+    let errorMessage: String?
+    let onCancel: () -> Void
+    let onSubmit: () -> Void
+
+    @Environment(\.colorScheme) private var colorScheme
+    @Environment(\.dynamicTypeSize) private var dynamicTypeSize
+    @FocusState private var focusedField: Field?
+
+    private enum Field: Hashable { case title, author, isbn }
+
+    private var page: Color { Color(hex: colorScheme == .dark ? 0x102329 : 0xFAF8F2) }
+    private var surface: Color { Color(hex: colorScheme == .dark ? 0x193239 : 0xFFFFFF) }
+    private var ink: Color { Color(hex: colorScheme == .dark ? 0xF2F4EC : 0x183F45) }
+    private var muted: Color { Color(hex: colorScheme == .dark ? 0xACC1C3 : 0x647B7D) }
+    private var accent: Color { Color(hex: colorScheme == .dark ? 0x9DDCCF : 0x246D69) }
+    private var border: Color { Color(hex: colorScheme == .dark ? 0x355157 : 0xDCE5DE) }
+    private var canSubmit: Bool {
+        isSignedIn && !isSubmitting && !title.trimmed.isEmpty && !author.trimmed.isEmpty
+    }
+
+    var body: some View {
+        NavigationStack {
+            ScrollView {
+                VStack(alignment: .leading, spacing: 24) {
+                    header
+                    VStack(alignment: .leading, spacing: 18) {
+                        inputField(L10n.bookRequestsBookTitle, placeholderKey: "requests.form.titlePlaceholder",
+                                   symbol: "book.closed", text: $title, field: .title)
+                        inputField(L10n.bookRequestsAuthor, placeholderKey: "requests.form.authorPlaceholder",
+                                   symbol: "person", text: $author, field: .author)
+                        inputField(CommunityRefreshL10n.text("requests.form.isbn"), placeholderKey: "requests.form.isbnPlaceholder",
+                                   symbol: "barcode", text: $isbn, field: .isbn)
+                    }
+                    .disabled(isSubmitting)
+
+                    if !isSignedIn {
+                        formMessage(L10n.bookRequestsGuestCreateHint, isError: true)
+                    }
+                    if let errorMessage {
+                        formMessage(errorMessage, isError: true)
+                            .accessibilityIdentifier("requests.create.error")
+                    } else {
+                        formMessage(CommunityRefreshL10n.text("requests.form.required"), isError: false)
+                    }
+                }
+                .padding(.horizontal, 22)
+                .padding(.top, 24)
+                .padding(.bottom, 24)
+                .frame(maxWidth: 560)
+                .frame(maxWidth: .infinity, alignment: .top)
+            }
+            .scrollDismissesKeyboard(.interactively)
+            .accessibilityIdentifier("requests.create.scroll")
+            .safeAreaInset(edge: .bottom, spacing: 0) { submitBar }
+            .background(page.ignoresSafeArea(.container))
+            .toolbar(.hidden, for: .navigationBar)
+            .toolbar {
+                ToolbarItemGroup(placement: .keyboard) {
+                    Spacer()
+                    Button(L10n.commonClose) { focusedField = nil }
+                        .tint(accent)
+                }
+            }
+        }
+        .tint(accent)
+        .presentationBackground(page)
+        .presentationDetents(dynamicTypeSize.isAccessibilitySize ? [.large] : [.height(650), .large])
+        .presentationDragIndicator(.visible)
+        .presentationCornerRadius(30)
+        .interactiveDismissDisabled(isSubmitting)
+    }
+
+    private var header: some View {
+        VStack(alignment: .leading, spacing: 12) {
+            HStack(alignment: .top) {
+                Image(systemName: "book.closed.fill")
+                    .font(.title2.weight(.medium))
+                    .foregroundStyle(Color(hex: 0xE9CD8B))
+                    .frame(width: 52, height: 56)
+                    .background {
+                        RoundedRectangle(cornerRadius: 16, style: .continuous)
+                            .fill(LinearGradient(colors: [Color(hex: 0x2E716D), Color(hex: 0x173F45)],
+                                                 startPoint: .topLeading, endPoint: .bottomTrailing))
+                    }
+                    .overlay {
+                        RoundedRectangle(cornerRadius: 16, style: .continuous)
+                            .strokeBorder(Color(hex: 0xE9CD8B).opacity(0.24))
+                    }
+                    .accessibilityHidden(true)
+                Spacer(minLength: 12)
+                Button(action: onCancel) {
+                    Image(systemName: "xmark")
+                        .font(.subheadline.weight(.semibold))
+                        .foregroundStyle(muted)
+                        .frame(width: 44, height: 44)
+                        .background(surface, in: Circle())
+                        .overlay { Circle().strokeBorder(border) }
+                }
+                .buttonStyle(.plain)
+                .disabled(isSubmitting)
+                .accessibilityLabel(L10n.commonCancel)
+                .accessibilityIdentifier("requests.create.cancel")
+            }
+            Text(L10n.bookRequestsCreate)
+                .font(.caption2.weight(.bold))
+                .tracking(1.4)
+                .textCase(.uppercase)
+                .foregroundStyle(accent)
+                .fixedSize(horizontal: false, vertical: true)
+            Text(CommunityRefreshL10n.text("requests.form.title"))
+                .font(.system(.title, design: .serif, weight: .semibold))
+                .foregroundStyle(ink)
+                .fixedSize(horizontal: false, vertical: true)
+                .accessibilityAddTraits(.isHeader)
+            Text(CommunityRefreshL10n.text("requests.form.subtitle"))
+                .font(.subheadline)
+                .foregroundStyle(muted)
+                .lineSpacing(3)
+                .fixedSize(horizontal: false, vertical: true)
+        }
+        .multilineTextAlignment(.leading)
+    }
+
+    private func inputField(_ label: String, placeholderKey: String, symbol: String,
+                            text: Binding<String>, field: Field) -> some View {
+        VStack(alignment: .leading, spacing: 8) {
+            Text(label)
+                .font(.caption.weight(.semibold))
+                .foregroundStyle(ink)
+                .fixedSize(horizontal: false, vertical: true)
+            HStack(alignment: .firstTextBaseline, spacing: 12) {
+                Image(systemName: symbol)
+                    .font(.body)
+                    .foregroundStyle(focusedField == field ? accent : muted)
+                    .frame(width: 22)
+                    .accessibilityHidden(true)
+                TextField(label, text: text,
+                          prompt: Text(CommunityRefreshL10n.text(placeholderKey)).foregroundColor(muted.opacity(0.8)),
+                          axis: .vertical)
+                    .font(.body)
+                    .foregroundStyle(ink)
+                    .textFieldStyle(.plain)
+                    .lineLimit(1...3)
+                    .textInputAutocapitalization(field == .isbn ? .characters : .words)
+                    .autocorrectionDisabled()
+                    .keyboardType(field == .isbn ? .asciiCapable : .default)
+                    .submitLabel(field == .isbn ? .done : .next)
+                    .focused($focusedField, equals: field)
+                    .onSubmit {
+                        switch field {
+                        case .title: focusedField = .author
+                        case .author: focusedField = .isbn
+                        case .isbn: focusedField = nil
+                        }
+                    }
+                    .accessibilityIdentifier("requests.create.\(field)")
+            }
+            .padding(.horizontal, 16)
+            .padding(.vertical, 15)
+            .frame(minHeight: 54)
+            .background(surface, in: RoundedRectangle(cornerRadius: 15, style: .continuous))
+            .overlay {
+                RoundedRectangle(cornerRadius: 15, style: .continuous)
+                    .strokeBorder(focusedField == field ? accent : border,
+                                  lineWidth: focusedField == field ? 1.5 : 1)
+            }
+        }
+    }
+
+    private func formMessage(_ message: String, isError: Bool) -> some View {
+        HStack(alignment: .firstTextBaseline, spacing: 8) {
+            Image(systemName: isError ? "exclamationmark.circle" : "info.circle")
+                .accessibilityHidden(true)
+            Text(message).fixedSize(horizontal: false, vertical: true)
+        }
+        .font(.caption)
+        .foregroundStyle(isError ? Color.red : muted)
+        .frame(maxWidth: .infinity, alignment: .leading)
+    }
+
+    private var submitBar: some View {
+        Button {
+            guard canSubmit else { return }
+            focusedField = nil
+            onSubmit()
+        } label: {
+            HStack(spacing: 10) {
+                if isSubmitting {
+                    ProgressView().tint(.white)
+                } else {
+                    Image(systemName: "paperplane.fill").accessibilityHidden(true)
+                }
+                Text(isSubmitting ? L10n.bookRequestsSubmitting : CommunityRefreshL10n.text("requests.form.submit"))
+                    .font(.subheadline.weight(.bold))
+                    .fixedSize(horizontal: false, vertical: true)
+            }
+            .foregroundStyle(.white)
+            .padding(.horizontal, 18)
+            .padding(.vertical, 16)
+            .frame(maxWidth: .infinity, minHeight: 54)
+            .background {
+                RoundedRectangle(cornerRadius: 16, style: .continuous)
+                    .fill(LinearGradient(colors: [Color(hex: 0x2C7C70), Color(hex: 0x205A60)],
+                                         startPoint: .leading, endPoint: .trailing))
+            }
+            .opacity(canSubmit || isSubmitting ? 1 : 0.55)
+            .contentShape(RoundedRectangle(cornerRadius: 16, style: .continuous))
+        }
+        .buttonStyle(.plain)
+        .disabled(!canSubmit)
+        .accessibilityIdentifier("requests.create.submit")
+        .padding(.horizontal, 22)
+        .padding(.vertical, 14)
+        .frame(maxWidth: 560)
+        .frame(maxWidth: .infinity)
+        .background {
+            page
+                .overlay(alignment: .top) { border.frame(height: 1) }
+                .ignoresSafeArea(.container, edges: .bottom)
+        }
+    }
+}
+
 private struct BookRequestRow: View {
+    @Environment(\.dynamicTypeSize) private var dynamicTypeSize
     let item: BookRequestDTO
     var isVoting: Bool = false
     let onVote: () -> Void
@@ -369,24 +589,24 @@ private struct BookRequestRow: View {
     }
 
     private var bookInfo: some View {
-        HStack(alignment: .top, spacing: 14) {
+        (dynamicTypeSize.isAccessibilitySize ? AnyLayout(VStackLayout(alignment: .leading, spacing: 14)) : AnyLayout(HStackLayout(alignment: .top, spacing: 14))) {
             EKBookRequestCover(title: item.title, author: item.author, seed: item.id + item.title)
             VStack(alignment: .leading, spacing: 6) {
                 Text(item.title)
                     .font(.system(.title3, design: .serif).weight(.semibold))
                     .foregroundStyle(EKitapligimPalette.ink)
-                    .lineLimit(2)
+                    .lineLimit(dynamicTypeSize.isAccessibilitySize ? nil : 2)
                     .frame(maxWidth: .infinity, alignment: .leading)
                 Text(L10n.bookRequestsAuthorLine(item.author))
                     .font(.body)
                     .foregroundStyle(Color(hex: 0x697386))
-                    .lineLimit(1)
+                    .lineLimit(dynamicTypeSize.isAccessibilitySize ? nil : 2)
                 if !item.requestedBy.isEmpty {
                     MemberProfileLink(memberID: item.userId) {
                         Text(L10n.bookRequestsRequestedBy(item.requestedBy))
                             .font(.subheadline)
                             .foregroundStyle(Color(hex: 0x697386))
-                            .lineLimit(1)
+                            .lineLimit(dynamicTypeSize.isAccessibilitySize ? nil : 2)
                     }
                 }
                 EKBookRequestStatusPill(status: item.status, showsBookHint: item.fulfilledBookID != nil)
@@ -413,7 +633,7 @@ private struct BookRequestRow: View {
             Text(L10n.bookRequestsVoteCount(item.voteCount))
                 .font(.headline.weight(.bold))
                 .foregroundStyle(Color(hex: 0x697386))
-                .lineLimit(1)
+                .fixedSize(horizontal: false, vertical: true)
         }
     }
 }

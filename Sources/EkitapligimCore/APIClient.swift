@@ -72,13 +72,55 @@ public final class APIClient: Sendable {
         try await request(endpoint, as: type, allowsTokenRefresh: true)
     }
 
+    /// Bind a multi-request write to the account that started it, including known token rotations.
+    func captureWriteAuthorization() async throws -> String {
+        guard let token = try await tokenProvider?.accessToken(), !token.isEmpty else {
+            throw APIClientError.authenticationRequired
+        }
+        return token
+    }
+
+    func request<T: Decodable>(_ endpoint: APIEndpoint, authorizedBy token: String, as type: T.Type) async throws -> T {
+        try await request(endpoint, as: type, allowsTokenRefresh: true, originalAccessToken: token)
+    }
+
+    func publicAgendaImage(url: URL) async throws -> Data {
+        // Public media never inherits the API bearer or web cookies.
+        try await AgendaImageTransport.data(for: URLRequest(url: url), configuration: session.configuration)
+    }
+
+    func agendaImage(_ endpoint: APIEndpoint) async throws -> Data {
+        var request = try await authenticatedRequest(endpoint)
+        request.setValue("image/*", forHTTPHeaderField: "Accept")
+        request.cachePolicy = .reloadIgnoringLocalCacheData
+        do {
+            return try await AgendaImageTransport.data(for: request, configuration: session.configuration)
+        } catch APIClientError.httpStatus(401, _) {
+            guard let authorization = request.value(forHTTPHeaderField: "Authorization"),
+                  tokenProvider is any SessionTokenManaging else { throw APIClientError.authenticationRequired }
+            let refreshed = try await refreshSession(afterUnauthorized: String(authorization.dropFirst(7)))
+            guard try await (tokenProvider as? any SessionTokenManaging)?.loadSession() == refreshed else { throw CancellationError() }
+            request.setValue("Bearer \(refreshed.accessToken)", forHTTPHeaderField: "Authorization")
+            return try await AgendaImageTransport.data(for: request, configuration: session.configuration)
+        }
+    }
+
     private func request<T: Decodable>(
         _ endpoint: APIEndpoint,
         as type: T.Type,
         allowsTokenRefresh: Bool,
-        retryingSession: Session? = nil
+        retryingSession: Session? = nil,
+        originalAccessToken: String? = nil
     ) async throws -> T {
         var request = try await authenticatedRequest(endpoint)
+        if let originalAccessToken,
+           request.value(forHTTPHeaderField: "Authorization") != "Bearer \(originalAccessToken)" {
+            guard let rotated = try await refreshCoordinator.existingResult(key: originalAccessToken),
+                  request.value(forHTTPHeaderField: "Authorization") == "Bearer \(rotated.accessToken)",
+                  try await (tokenProvider as? any SessionTokenManaging)?.loadSession() == rotated else {
+                throw CancellationError()
+            }
+        }
         if let retryingSession {
             guard try await (tokenProvider as? any SessionTokenManaging)?.loadSession() == retryingSession else {
                 throw CancellationError()
@@ -86,6 +128,7 @@ public final class APIClient: Sendable {
             request.setValue("Bearer \(retryingSession.accessToken)", forHTTPHeaderField: "Authorization")
         }
         let transport = endpoint.service == .assistant ? assistantSession : session
+        try Task.checkCancellation()
         let (data, response) = try await transport.data(for: request)
         guard let http = response as? HTTPURLResponse else { throw APIClientError.invalidResponse }
         if http.statusCode == 401,
@@ -265,6 +308,12 @@ public final class APIClient: Sendable {
 
     static func multipartBody(for file: MultipartFile, boundary: String) -> Data {
         var body = Data()
+        for key in file.fields.keys.sorted() {
+            // Field names are internal constants; still remove multipart header delimiters.
+            let name = key.filter { $0 != "\r" && $0 != "\n" && $0 != "\"" }
+            let part = "--\(boundary)\r\nContent-Disposition: form-data; name=\"\(name)\"\r\n\r\n\(file.fields[key] ?? "")\r\n"
+            body.append(Data(part.utf8))
+        }
         let header = """
         --\(boundary)\r
         Content-Disposition: form-data; name="\(file.field)"; filename="\(file.fileName)"\r

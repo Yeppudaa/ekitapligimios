@@ -305,6 +305,19 @@ class AuthApple extends \Ekitapligim\MobileApi\Api\Controller\AbstractMobileCont
 			/** @var User|null $user */
 			$user = $this->em()->findOne('XF:User', ['email' => $email], ['Profile']);
 		}
+		// Same ACP switch as MobileApi (Google/Apple linking): an existing account whose
+		// e-mail was never confirmed may have been pre-registered by someone else with the
+		// victim's address. Default off, so behaviour is unchanged until enabled.
+		if ($user && $this->appleLinkRequiresVerifiedAccount())
+		{
+			$emailVerified = filter_var($appleUser['email_verified'] ?? true, FILTER_VALIDATE_BOOLEAN);
+			if ((string) $user->user_state !== 'valid' || !$emailVerified)
+			{
+				throw $this->exception($this->apiError(
+					'Bu e-posta adresiyle kayıtlı bir hesap var. Lütfen önce e-posta ve şifrenizle giriş yapın.',
+					'account_link_requires_login', null, 409));
+			}
+		}
 		if (!$user)
 		{
 			$user = $this->createAppleUser($appleUser);
@@ -316,6 +329,18 @@ class AuthApple extends \Ekitapligim\MobileApi\Api\Controller\AbstractMobileCont
 
 		$this->associateAppleAccount($user, $appleUser);
 		return $user;
+	}
+
+	protected function appleLinkRequiresVerifiedAccount(): bool
+	{
+		// MobileApi 1.0.156+ provides the switch; older installs keep today's behaviour.
+		if (!class_exists(\Ekitapligim\MobileApi\Service\MobileSafety::class))
+		{
+			return false;
+		}
+		return \Ekitapligim\MobileApi\Service\MobileSafety::enabled(
+			\Ekitapligim\MobileApi\Service\MobileSafety::VERIFIED_EMAIL_LINK
+		);
 	}
 
 	protected function createAppleUser(array $appleUser): ?User

@@ -18,4 +18,12 @@ final class ContentSafetyTests: XCTestCase {
     func testRejectsBlockedTerms() {
         XCTAssertEqual(ContentSafety().validateUserGeneratedText("Bu bir spamlink mesajıdır."), .rejected(reason: .blockedTerm))
     }
+
+    func testTurkishCaseAndDotVariantsCannotBypassBlockedTerms() {
+        let safety = ContentSafety()
+        for text in ["KİŞİSEL VERİ PAYLAŞIMI", "KISISEL VERI PAYLASIMI", "kisisel veri paylasimi", "Nefret Söylemi", "NEFRET SOYLEMI"] {
+            XCTAssertEqual(safety.validateUserGeneratedText(text), .rejected(reason: .blockedTerm), text)
+        }
+        XCTAssertEqual(safety.validateUserGeneratedText("Işık ve kitaplar"), .accepted)
+    }
 }

@@ -4,8 +4,10 @@ import EkitapligimCore
 @MainActor
 struct MembersView: View {
     @EnvironmentObject private var container: AppContainer
+    @Environment(\.dynamicTypeSize) private var dynamicTypeSize
     @State private var members: [MemberDTO] = []
     @State private var query = ""
+    @FocusState private var searchFocused: Bool
     @State private var sort = "alphabetical"
     @State private var currentPage = 0
     @State private var lastPage = 1
@@ -15,10 +17,40 @@ struct MembersView: View {
     @State private var errorMessage: String?
 
     var body: some View {
-        EKitapligimScreen {
-            Group {
+        ScrollView {
+            LazyVStack(alignment: .leading, spacing: 18) {
+                CommunityHero(eyebrow: CommunityDesignL10n.text("members.eyebrow"),
+                              title: CommunityDesignL10n.text("members.hero"),
+                              subtitle: CommunityDesignL10n.text("members.subtitle"),
+                              badge: total > 0 ? L10n.membersTotalLabel + ": " + EKitapligimFormat.count(total) : nil,
+                              minHeight: 240)
+                HStack(spacing: 12) {
+                    Image(systemName: "magnifyingglass").foregroundStyle(CommunityStyle.teal).accessibilityHidden(true)
+                    TextField(L10n.membersSearchPrompt, text: $query)
+                        .focused($searchFocused).textInputAutocapitalization(.never).autocorrectionDisabled()
+                        .submitLabel(.search).onSubmit { searchFocused = false }
+                        .accessibilityIdentifier("members.search")
+                    if !query.isEmpty {
+                        Button { query = "" } label: {
+                            Image(systemName: "xmark.circle.fill").frame(width: 44, height: 44)
+                        }.accessibilityLabel(CommunityDesignL10n.text("members.clearSearch"))
+                            .accessibilityIdentifier("members.clearSearch")
+                    }
+                }
+                .padding(.horizontal, 16).frame(minHeight: 54)
+                .background(.white, in: RoundedRectangle(cornerRadius: 20))
+                .overlay { RoundedRectangle(cornerRadius: 20).strokeBorder(CommunityStyle.border) }
+                Text(CommunityDesignL10n.text("members.discover"))
+                    .font(.system(.title2, design: .serif).bold()).foregroundStyle(CommunityStyle.ink)
+                ScrollView(.horizontal, showsIndicators: false) {
+                    HStack(spacing: 9) {
+                        sortChip(L10n.membersSortAlphabetical, value: "alphabetical")
+                        sortChip(L10n.membersSortNewest, value: "newest")
+                        sortChip(L10n.membersSortActive, value: "active")
+                    }
+                }
                 if isLoading && members.isEmpty {
-                    EKLoadingState(message: L10n.membersLoading)
+                    ProgressView(L10n.membersLoading).frame(maxWidth: .infinity).padding(22)
                 } else if let errorMessage, members.isEmpty {
                     EKErrorState(title: L10n.membersUnavailableTitle, message: errorMessage) {
                         Task { await load(reset: true) }
@@ -26,64 +58,38 @@ struct MembersView: View {
                 } else if members.isEmpty {
                     EKEmptyState(title: L10n.membersEmptyTitle, message: L10n.membersEmptyDescription, systemImage: "person.3")
                 } else {
-                    ScrollView {
-                        LazyVStack(spacing: 12) {
-                            membersHeader
-                            ForEach(members) { member in
-                                NavigationLink {
-                                    MemberProfileView(memberID: member.id)
-                                } label: {
-                                    MemberRow(member: member)
-                                }
-                                .buttonStyle(.plain)
-                            }
-                            if currentPage < lastPage {
-                                EKLoadMoreButton(isLoading: isLoading) {
-                                    Task { await load(reset: false) }
-                                }
-                            }
-                        }
-                        .padding(.horizontal, 18)
-                        .padding(.vertical, 12)
+                    ForEach(members) { member in
+                        NavigationLink { MemberProfileView(memberID: member.id) } label: { MemberRow(member: member) }
+                            .buttonStyle(.plain).accessibilityIdentifier("members.member.\(member.id)")
                     }
                 }
+                if let errorMessage, !members.isEmpty { EKInlineError(message: errorMessage) }
+                if currentPage < lastPage {
+                    EKLoadMoreButton(isLoading: isLoading) { Task { await load(reset: false) } }
+                }
             }
+            .frame(maxWidth: 760).padding(18).frame(maxWidth: .infinity)
         }
-        .navigationTitle(L10n.membersTitle)
-        .searchable(text: $query, prompt: L10n.membersSearchPrompt)
-        .onSubmit(of: .search) { Task { await load(reset: true) } }
-        .task { await load(reset: true) }
+        .background(CommunityStyle.page.ignoresSafeArea())
+        .scrollDismissesKeyboard(.interactively)
+        .navigationTitle(L10n.membersTitle).navigationBarTitleDisplayMode(.inline)
+        .task(id: sort + "|" + query + "|" + container.sessionRevision.uuidString) {
+            if !query.isEmpty {
+                do { try await Task.sleep(for: .milliseconds(300)) } catch { return }
+            }
+            await load(reset: true)
+        }
+        .refreshable { await load(reset: true) }
     }
 
-    private var membersHeader: some View {
-        VStack(alignment: .leading, spacing: 12) {
-            HStack(alignment: .firstTextBaseline) {
-                VStack(alignment: .leading, spacing: 4) {
-                    Text(L10n.membersTitle)
-                        .font(.title3.weight(.heavy))
-                        .foregroundStyle(EKitapligimPalette.ink)
-                    Text(L10n.membersTotalLabel)
-                        .font(.caption)
-                        .foregroundStyle(EKitapligimPalette.muted)
-                }
-                Spacer()
-                Text("\(total)")
-                    .font(.title2.weight(.heavy))
-                    .foregroundStyle(EKitapligimPalette.tealDark)
-                    .padding(.horizontal, 12)
-                    .padding(.vertical, 8)
-                    .background(EKitapligimPalette.tealSoft, in: RoundedRectangle(cornerRadius: 12, style: .continuous))
-            }
-            Picker(L10n.membersSortLabel, selection: $sort) {
-                Text(L10n.membersSortAlphabetical).tag("alphabetical")
-                Text(L10n.membersSortNewest).tag("newest")
-                Text(L10n.membersSortActive).tag("active")
-            }
-            .pickerStyle(.segmented)
-            .onChange(of: sort) { _, _ in Task { await load(reset: true) } }
-        }
-        .padding(16)
-        .ekitapligimCard(radius: 16)
+    private func sortChip(_ title: String, value: String) -> some View {
+        Button { sort = value } label: {
+            Text(title).font(.subheadline.weight(.semibold)).padding(.horizontal, 17).padding(.vertical, 13)
+                .frame(minHeight: 44).foregroundStyle(sort == value ? .white : CommunityStyle.muted)
+                .background(sort == value ? CommunityStyle.ink : .white, in: Capsule())
+                .overlay { Capsule().strokeBorder(sort == value ? .clear : CommunityStyle.border) }
+        }.buttonStyle(.plain).accessibilityAddTraits(sort == value ? .isSelected : [])
+            .accessibilityIdentifier("members.sort.\(value)")
     }
 
     private func load(reset: Bool) async {
@@ -119,76 +125,92 @@ struct MembersView: View {
 
 @MainActor
 private struct MemberRow: View {
+    @Environment(\.dynamicTypeSize) private var dynamicTypeSize
     let member: MemberDTO
 
     var body: some View {
-        HStack(spacing: 14) {
-            ZStack(alignment: .bottomTrailing) {
-                AsyncImage(url: URL(string: member.avatarUrl)) { image in
-                    image.resizable().scaledToFill()
-                } placeholder: {
-                    Image(systemName: "person.crop.circle.fill")
-                        .resizable()
-                        .foregroundStyle(EKitapligimPalette.muted)
+        (dynamicTypeSize.isAccessibilitySize
+            ? AnyLayout(VStackLayout(alignment: .leading, spacing: 14))
+            : AnyLayout(HStackLayout(alignment: .top, spacing: 14))) {
+            CommunityMemberAvatar(member: member, size: 58)
+            VStack(alignment: .leading, spacing: 8) {
+                PremiumMemberName(username: member.username, isPremium: member.isPremium)
+                    .font(.headline.weight(.bold)).foregroundStyle(CommunityStyle.ink)
+                    .lineLimit(dynamicTypeSize.isAccessibilitySize ? nil : 2)
+                if member.isPremium {
+                    PremiumMemberPill()
                 }
-                .frame(width: 56, height: 56)
-                .clipShape(Circle())
-                .overlay(Circle().stroke(Color(hex: 0xE0EAEB), lineWidth: 1))
-                .accessibilityHidden(true)
-
-                if member.showVerifiedBadge {
-                    Image(systemName: "checkmark.seal.fill")
-                        .font(.caption)
-                        .foregroundStyle(EKitapligimPalette.teal)
-                        .background(Circle().fill(.white).padding(-2))
-                        .accessibilityLabel(L10n.membersVerified)
-                } else if member.isOnline {
-                    Circle()
-                        .fill(Color.green)
-                        .frame(width: 12, height: 12)
-                        .overlay(Circle().stroke(.white, lineWidth: 2))
-                        .offset(x: 2, y: 2)
-                        .accessibilityLabel(L10n.profileOnline)
+                if !member.isPremium || member.isStaff || ["admin", "moderator"].contains(member.roleType) {
+                    Text(member.roleLabel.isEmpty ? (member.userTitle.isEmpty ? CommunityDesignL10n.text("member.role") : member.userTitle) : member.roleLabel)
+                    .font(.caption.weight(.semibold)).foregroundStyle(CommunityStyle.muted)
+                    .padding(.horizontal, 9).padding(.vertical, 4)
+                    .background(CommunityStyle.soft, in: Capsule())
                 }
-            }
-
-            VStack(alignment: .leading, spacing: 5) {
-                Text(member.username)
-                    .font(.headline.weight(.semibold))
-                    .foregroundStyle(EKitapligimPalette.ink)
-                    .lineLimit(1)
-                Text(member.roleLabel.isEmpty ? member.userTitle : member.roleLabel)
-                    .font(.caption.weight(.semibold))
-                    .foregroundStyle(EKitapligimPalette.tealDark)
-                    .lineLimit(1)
+                ViewThatFits(in: .horizontal) {
+                    HStack(spacing: 10) { counts }
+                    VStack(alignment: .leading, spacing: 4) { counts }
+                }.font(.caption).foregroundStyle(CommunityStyle.muted)
                 if member.isOnline {
-                    Text(L10n.profileOnline)
-                        .font(.caption2.weight(.bold))
-                        .foregroundStyle(Color.green)
+                    Text(L10n.profileOnline).font(.caption2.weight(.semibold)).foregroundStyle(CommunityStyle.teal)
                 }
-                if !member.about.isEmpty {
-                    Text(member.about)
-                        .font(.caption)
-                        .foregroundStyle(EKitapligimPalette.muted)
-                        .lineLimit(2)
-                }
-                Text(L10n.membersMessageCount(member.messageCount))
-                    .font(.caption2.weight(.semibold))
-                    .foregroundStyle(EKitapligimPalette.muted)
+            }.frame(maxWidth: .infinity, alignment: .leading)
+            if !dynamicTypeSize.isAccessibilitySize {
+                Image(systemName: "arrow.right").foregroundStyle(CommunityStyle.teal.opacity(0.6)).accessibilityHidden(true)
             }
-            Spacer(minLength: 0)
-            Image(systemName: "chevron.right")
-                .font(.caption.weight(.bold))
-                .foregroundStyle(EKitapligimPalette.muted)
         }
-        .padding(14)
-        .ekitapligimCard(radius: 16)
+        .padding(18).frame(maxWidth: .infinity, alignment: .leading)
+        .background(.white, in: RoundedRectangle(cornerRadius: 24))
+        .overlay { RoundedRectangle(cornerRadius: 24).strokeBorder(CommunityStyle.border) }
+        .accessibilityElement(children: .combine)
+    }
+
+    @ViewBuilder private var counts: some View {
+        Text(L10n.membersMessageCount(member.messageCount))
+        Label(EKitapligimFormat.count(member.reactionScore), systemImage: "heart")
+            .accessibilityLabel(L10n.membersReactionsLabel + ": " + EKitapligimFormat.count(member.reactionScore))
+    }
+}
+
+struct CommunityMemberAvatar: View {
+    let member: MemberDTO
+    let size: CGFloat
+    @ViewBuilder
+    var body: some View {
+        if member.isPremium {
+            PremiumAvatarFrame(size: size + 10) { diameter in
+                EKAvatar(urlString: member.avatarUrl, username: member.username, size: diameter,
+                    background: CommunityStyle.soft, foreground: CommunityStyle.teal)
+            }
+        } else {
+            EKAvatar(urlString: member.avatarUrl, username: member.username, size: size,
+                 background: CommunityStyle.soft, foreground: CommunityStyle.teal)
+            .padding(5).background(.white, in: Circle())
+            .overlay { Circle().strokeBorder(LinearGradient(colors: [Color(hex: 0xE5D6AB), Color(hex: 0xBBD9CD)],
+                                                           startPoint: .topLeading, endPoint: .bottomTrailing), lineWidth: 3) }
+            .overlay(alignment: .bottomTrailing) {
+                if member.showVerifiedBadge {
+                    Image(systemName: "checkmark.seal.fill").foregroundStyle(CommunityStyle.teal)
+                        .background(.white, in: Circle()).accessibilityLabel(L10n.membersVerified)
+                }
+            }
+        }
     }
 }
 
 @MainActor
 struct MemberProfileView: View {
     @EnvironmentObject private var container: AppContainer
+    let memberID: String
+    var body: some View {
+        MemberProfileContentView(memberID: memberID)
+            .id(memberID + "|" + container.sessionRevision.uuidString)
+    }
+}
+
+@MainActor
+private struct MemberProfileContentView: View {
+    @EnvironmentObject private var container: AppContainer
+    @Environment(\.dynamicTypeSize) private var dynamicTypeSize
     let memberID: String
 
     @State private var profile: MemberProfileDTO?
@@ -273,7 +295,7 @@ struct MemberProfileView: View {
                 } else if let profile {
                     ScrollView {
                         LazyVStack(spacing: 16) {
-                            if isSignedIn {
+                            if isSignedIn && (profile.member.canFollow || profile.member.isFollowed || profile.canConverse || profile.member.canConverse) {
                                 actionBar(profile)
                             }
                             memberHero(profile)
@@ -281,9 +303,9 @@ struct MemberProfileView: View {
                             sectionTabs
                             sectionContent(profile)
                         }
-                        .padding(.horizontal, 18)
-                        .padding(.vertical, 12)
+                        .frame(maxWidth: 760).padding(18).frame(maxWidth: .infinity)
                     }
+                    .background(CommunityStyle.page.ignoresSafeArea())
                     .refreshable { await load() }
                 } else {
                     EKErrorState(title: L10n.membersProfileLoadFailed, message: nil) {
@@ -296,7 +318,7 @@ struct MemberProfileView: View {
 
     private func actionBar(_ profile: MemberProfileDTO) -> some View {
         VStack(spacing: 8) {
-            HStack(spacing: 10) {
+            (dynamicTypeSize.isAccessibilitySize ? AnyLayout(VStackLayout(spacing: 10)) : AnyLayout(HStackLayout(spacing: 10))) {
                 if profile.member.canFollow || profile.member.isFollowed {
                     Button {
                         Task { await toggleFollow(profile) }
@@ -306,10 +328,12 @@ struct MemberProfileView: View {
                             systemImage: profile.member.isFollowed ? "person.badge.minus" : "person.badge.plus"
                         )
                         .font(.subheadline.weight(.bold))
+                        .fixedSize(horizontal: false, vertical: true)
+                        .multilineTextAlignment(.center)
                         .foregroundStyle(.white)
                         .frame(maxWidth: .infinity)
                         .padding(.vertical, 12)
-                        .background(EKitapligimPalette.teal, in: RoundedRectangle(cornerRadius: 12, style: .continuous))
+                        .frame(minHeight: 48).background(CommunityStyle.ink, in: RoundedRectangle(cornerRadius: 16))
                     }
                     .buttonStyle(.plain)
                     .disabled(isActing)
@@ -325,10 +349,12 @@ struct MemberProfileView: View {
                     } label: {
                         Label(L10n.membersSendMessage, systemImage: "envelope.fill")
                             .font(.subheadline.weight(.bold))
-                            .foregroundStyle(.white)
+                            .fixedSize(horizontal: false, vertical: true)
+                            .multilineTextAlignment(.center)
+                            .foregroundStyle(CommunityStyle.ink)
                             .frame(maxWidth: .infinity)
-                            .padding(.vertical, 12)
-                            .background(EKitapligimPalette.ink, in: RoundedRectangle(cornerRadius: 12, style: .continuous))
+                            .padding(.vertical, 12).frame(minHeight: 48)
+                            .background(CommunityStyle.soft, in: RoundedRectangle(cornerRadius: 16))
                     }
                     .buttonStyle(.plain)
                 }
@@ -341,133 +367,117 @@ struct MemberProfileView: View {
                     .frame(maxWidth: .infinity, alignment: .center)
             }
         }
-        .padding(14)
-        .ekitapligimCard(radius: 16)
     }
 
     private func memberHero(_ profile: MemberProfileDTO) -> some View {
         let member = profile.member
-        return VStack(alignment: .leading, spacing: 0) {
-            ZStack {
-                EKitapligimPalette.profileBannerGradient
-                EKitapligimPalette.profileHeroGradient.opacity(0.35)
-            }
-            .frame(height: 84)
-            .clipped()
-            .accessibilityHidden(true)
-
-            VStack(alignment: .leading, spacing: 12) {
-                HStack(alignment: .center, spacing: 13) {
-                    EKAvatar(
-                        urlString: member.avatarUrl,
-                        username: member.username,
-                        size: 76,
-                        background: .white.opacity(0.16),
-                        foreground: .white
-                    )
-                    .overlay { Circle().stroke(.white.opacity(0.6), lineWidth: 2) }
-
-                    VStack(alignment: .leading, spacing: 5) {
-                        HStack(spacing: 6) {
-                            Text(member.username)
-                                .font(.title3.weight(.heavy))
-                                .foregroundStyle(.white)
-                                .lineLimit(1)
-                            if member.showVerifiedBadge {
-                                Image(systemName: "checkmark.seal.fill")
-                                    .font(.footnote)
-                                    .foregroundStyle(EKitapligimPalette.profileGold)
-                            }
-                        }
-                        Text(member.roleLabel.isEmpty ? member.userTitle : member.roleLabel)
-                            .font(.caption)
-                            .foregroundStyle(.white.opacity(0.82))
-                            .lineLimit(1)
-                        HStack(spacing: 7) {
-                            if member.isOnline {
-                                memberChip(L10n.profileOnline)
-                            }
-                            if member.isFollowed {
-                                memberChip(L10n.membersFollowingBadge)
-                            }
-                            if profile.isIgnored {
-                                memberChip(L10n.membersBlockedBadge)
-                            }
-                        }
+        return CommunityCard(padding: 0) {
+            VStack(spacing: 0) {
+                Label(CommunityDesignL10n.text("member.eyebrow"), systemImage: "book.pages")
+                    .font(.caption.weight(.bold)).tracking(1.4).foregroundStyle(Color(hex: 0xE5D6AB))
+                    .padding(22).frame(maxWidth: .infinity, minHeight: 145, alignment: .topLeading)
+                    .background {
+                        GeometryReader { geometry in
+                            Image("agenda_reader_community").resizable().scaledToFill()
+                                .frame(width: geometry.size.width, height: geometry.size.height).clipped()
+                                .overlay(CommunityStyle.ink.opacity(0.58))
+                        }.accessibilityHidden(true)
                     }
-                    Spacer(minLength: 0)
-                }
-
-                if member.registerDate > 0 || member.lastActivity > 0 {
-                    HStack(spacing: 16) {
-                        if let joined = EKitapligimFormat.date(member.registerDate) {
-                            heroFootnote(L10n.profileJoinedOn(joined), systemImage: "calendar")
-                        }
-                        if let seen = EKitapligimFormat.date(member.lastActivity) {
-                            heroFootnote(L10n.profileLastSeen(seen), systemImage: "clock")
-                        }
-                        Spacer(minLength: 0)
+                VStack(spacing: 14) {
+                    CommunityMemberAvatar(member: member, size: 96).padding(.top, -48)
+                    PremiumMemberName(username: member.username, isPremium: member.isPremium)
+                        .font(.system(.largeTitle, design: .serif).bold())
+                        .foregroundStyle(CommunityStyle.ink).multilineTextAlignment(.center)
+                        .fixedSize(horizontal: false, vertical: true)
+                        .accessibilityIdentifier("member.username")
+                    if member.isPremium {
+                        PremiumMemberPill()
                     }
-                }
+                    if !member.isPremium || member.isStaff || ["admin", "moderator"].contains(member.roleType) {
+                        Text(member.roleLabel.isEmpty ? (member.userTitle.isEmpty ? CommunityDesignL10n.text("member.role") : member.userTitle) : member.roleLabel)
+                        .font(.caption.weight(.semibold)).foregroundStyle(CommunityStyle.muted)
+                        .padding(.horizontal, 12).padding(.vertical, 6).background(CommunityStyle.soft, in: Capsule())
+                    }
+                    if member.isOnline { memberChip(L10n.profileOnline) }
+                    if member.isFollowed { memberChip(L10n.membersFollowingBadge) }
+                    if profile.isIgnored || isBlocked { memberChip(L10n.membersBlockedBadge) }
+                    if let joined = EKitapligimFormat.date(member.registerDate) {
+                        heroFootnote(L10n.profileJoinedOn(joined), systemImage: "calendar")
+                    }
+                    if let seen = EKitapligimFormat.date(member.lastActivity) {
+                        heroFootnote(L10n.profileLastSeen(seen), systemImage: "clock")
+                    }
+                }.padding(.horizontal, 20).padding(.bottom, 24)
+                    .frame(maxWidth: .infinity)
             }
-            .padding(16)
-        }
-        .background(EKitapligimPalette.profileHeroGradient)
-        .clipShape(RoundedRectangle(cornerRadius: 22, style: .continuous))
+        }.clipShape(RoundedRectangle(cornerRadius: 26))
     }
 
     private func memberChip(_ title: String) -> some View {
         Text(title)
-            .font(.system(size: 10, weight: .heavy))
-            .foregroundStyle(EKitapligimPalette.profileGold)
+            .font(.caption2.weight(.heavy))
+            .multilineTextAlignment(.center)
+            .fixedSize(horizontal: false, vertical: true)
+            .foregroundStyle(CommunityStyle.teal)
             .padding(.horizontal, 8)
             .padding(.vertical, 4)
-            .background(.white.opacity(0.13), in: Capsule())
+            .background(CommunityStyle.soft, in: RoundedRectangle(cornerRadius: dynamicTypeSize.isAccessibilitySize ? 10 : 999))
     }
 
     private func heroFootnote(_ text: String, systemImage: String) -> some View {
         HStack(spacing: 4) {
             Image(systemName: systemImage).font(.system(size: 9))
-            Text(text).font(.system(size: 10))
+            Text(text).font(.caption2)
+                .fixedSize(horizontal: false, vertical: true)
         }
-        .foregroundStyle(.white.opacity(0.75))
-        .lineLimit(1)
+        .foregroundStyle(CommunityStyle.muted)
     }
 
     private func statsBand(_ profile: MemberProfileDTO) -> some View {
-        let member = profile.member
-        return ScrollView(.horizontal, showsIndicators: false) {
-            HStack(spacing: 0) {
-                EKStatCell(value: EKitapligimFormat.count(member.messageCount), label: L10n.membersMessagesLabel)
-                statsDivider
-                EKStatCell(value: EKitapligimFormat.count(member.reactionScore), label: L10n.membersReactionsLabel)
-                statsDivider
-                EKStatCell(value: EKitapligimFormat.count(profile.readingCount), label: L10n.membersStatReading)
-                statsDivider
-                EKStatCell(value: EKitapligimFormat.count(profile.readCount), label: L10n.membersStatRead)
-                statsDivider
-                EKStatCell(value: EKitapligimFormat.count(profile.listedCount), label: L10n.membersStatListed)
+        CommunityCard {
+            VStack(spacing: 17) {
+                (dynamicTypeSize.isAccessibilitySize
+                    ? AnyLayout(VStackLayout(spacing: 18))
+                    : AnyLayout(HStackLayout(alignment: .top, spacing: 12))) {
+                    memberStat(profile.readingCount, label: L10n.membersStatReading)
+                    memberStat(profile.readCount, label: L10n.membersStatRead)
+                    memberStat(profile.listedCount, label: L10n.membersStatListed)
+                }
+                Divider().overlay(CommunityStyle.border)
+                ViewThatFits(in: .horizontal) {
+                    HStack(spacing: 12) { memberForumStats(profile.member) }
+                    VStack(alignment: .leading, spacing: 8) { memberForumStats(profile.member) }
+                }.font(.caption).foregroundStyle(CommunityStyle.muted)
             }
-            .padding(.vertical, 14)
         }
-        .background(.white)
-        .clipShape(RoundedRectangle(cornerRadius: 18, style: .continuous))
-        .overlay { RoundedRectangle(cornerRadius: 18, style: .continuous).stroke(EKitapligimPalette.profileBorder) }
     }
 
-    private var statsDivider: some View {
-        Rectangle()
-            .fill(EKitapligimPalette.profileBorder)
-            .frame(width: 1, height: 28)
+    private func memberStat(_ count: Int, label: String) -> some View {
+        VStack(spacing: 7) {
+            Text(EKitapligimFormat.count(count)).font(.system(.largeTitle, design: .serif).bold())
+                .foregroundStyle(CommunityStyle.ink)
+            Text(label).font(.caption).foregroundStyle(CommunityStyle.muted)
+        }.frame(maxWidth: .infinity).accessibilityElement(children: .combine)
+    }
+
+    @ViewBuilder private func memberForumStats(_ member: MemberDTO) -> some View {
+        Text(L10n.membersMessageCount(member.messageCount))
+        Label(EKitapligimFormat.count(member.reactionScore), systemImage: "heart")
+            .accessibilityLabel(L10n.membersReactionsLabel + ": " + EKitapligimFormat.count(member.reactionScore))
     }
 
     private var sectionTabs: some View {
         ScrollView(.horizontal, showsIndicators: false) {
             HStack(spacing: 9) {
                 ForEach(MemberProfileSection.allCases) { item in
-                    EKChip(title: item.title, isSelected: section == item) {
-                        section = item
-                    }
+                    Button { section = item } label: {
+                        Text(item.title).font(.subheadline.weight(.semibold))
+                            .padding(.horizontal, 17).padding(.vertical, 13).frame(minHeight: 44)
+                            .foregroundStyle(section == item ? .white : CommunityStyle.muted)
+                            .background(section == item ? CommunityStyle.ink : .white, in: Capsule())
+                            .overlay { Capsule().strokeBorder(section == item ? .clear : CommunityStyle.border) }
+                    }.buttonStyle(.plain).accessibilityAddTraits(section == item ? .isSelected : [])
+                        .accessibilityIdentifier("member.tab.\(item.rawValue)")
                 }
             }
             .padding(.vertical, 2)
@@ -496,7 +506,7 @@ struct MemberProfileView: View {
 
     private func lastReadCard(_ profile: MemberProfileDTO) -> some View {
         VStack(alignment: .leading, spacing: 10) {
-            Text(L10n.membersLastReadTitle.uppercased())
+            Text(L10n.membersLastReadTitle.uppercased(with: Locale(identifier: "tr_TR")))
                 .font(.system(size: 10, weight: .heavy))
                 .tracking(0.8)
                 .foregroundStyle(EKitapligimPalette.profileTealDeep)
@@ -540,7 +550,7 @@ struct MemberProfileView: View {
     private func shelfOverview(_ profile: MemberProfileDTO) -> some View {
         VStack(alignment: .leading, spacing: 12) {
             ProfileSectionHeading(title: L10n.membersShelvesTitle, subtitle: nil)
-            LazyVGrid(columns: [GridItem(.flexible(), spacing: 10), GridItem(.flexible(), spacing: 10)], spacing: 10) {
+            LazyVGrid(columns: dynamicTypeSize.isAccessibilitySize ? [GridItem(.flexible())] : [GridItem(.flexible(), spacing: 10), GridItem(.flexible(), spacing: 10)], spacing: 10) {
                 LibraryShelfCard(title: L10n.profileStatReading, count: profile.readingCount, systemImage: "book.pages.fill") {
                     section = .library
                 }
@@ -687,6 +697,7 @@ struct MemberProfileView: View {
     private var messageComposeSheet: some View {
         NavigationStack {
             EKitapligimScreen {
+                ScrollView {
                 VStack(alignment: .leading, spacing: 14) {
                     Text(L10n.membersMessagePrompt)
                         .font(.caption.weight(.bold))
@@ -710,6 +721,7 @@ struct MemberProfileView: View {
                     .disabled(isSendingMessage || messageDraft.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty)
                 }
                 .padding(18)
+                }
             }
             .navigationTitle(L10n.membersSendMessage)
             .navigationBarTitleDisplayMode(.inline)
@@ -728,11 +740,14 @@ struct MemberProfileView: View {
     private func load() async {
         guard !isOwnProfile else { return }
         let visitingAccount = container.audioAccount
+        let revision = container.sessionRevision
         isLoading = true
         errorMessage = nil
         defer { isLoading = false }
         do {
-            profile = try await container.members.memberProfile(id: memberID)
+            let result = try await container.members.memberProfile(id: memberID)
+            guard revision == container.sessionRevision, !Task.isCancelled else { return }
+            profile = result
             if isSignedIn, container.audioAccount == visitingAccount, let id = Int(memberID) {
                 _ = await container.profileVisitRecorder?.record(memberID: id, account: visitingAccount)
             }
@@ -799,6 +814,7 @@ struct MemberProfileView: View {
     }
 
     private func sendMessage() async {
+        guard !isSendingMessage else { return }
         guard let username = profile?.member.username, !username.isEmpty else { return }
         let body = messageDraft.trimmingCharacters(in: .whitespacesAndNewlines)
         guard !body.isEmpty else { return }

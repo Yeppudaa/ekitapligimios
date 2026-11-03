@@ -1,5 +1,56 @@
 # App Store Metadata Draft
 
+## Premium profile appearance draft (2026-11-03)
+
+Draft release note after native verification: “Premium profiller için kitap simgeli, ışık geçişli altın avatar çerçevesi eklendi. Onay ikonu kullanıcı adının sonunda görünür.” Run the native frame/profile checks before submission. [Evidence and remaining checks](PREMIUM_AVATAR_VALIDATION.md).
+
+## Agenda photo feature review note (2026-11-03)
+
+Draft release note: “Kitap Gündemi paylaşımlarındaki fotoğraflar artık ana sayfada ve detaylarda daha iyi görünüyor. Paylaşımlarına fotoğraf ekleyebilir, yayımlamadan önce önizleyip değiştirebilirsin.”
+
+Before submitting this claim, install/review IosApi 1.0.40 and complete native PhotosPicker, HEIC orientation, image+text, photo-only, failure/retry, large text and VoiceOver checks on iPhone/iPad. Existing User Content / Photos or Videos privacy disclosures cover the new selection flow; no camera permission or purchase change. Current Windows evidence is not App Store readiness. [Validation](AGENDA_MEDIA_VALIDATION.md).
+
+## Author / publisher directory draft (2026-11-03; native validation pending)
+
+Performance follow-up release-note addition after native validation: “Yazar ve yayınevi listelerinde harfler arasında geçiş hızlandırıldı.” This describes independent counter loading, larger candidate pages and short-lived memory snapshots; it makes no live-device timing guarantee. [Validation](DIRECTORY_PERFORMANCE_VALIDATION.md).
+
+Proposed Turkish release note: “Yazarlar ve yayınevleri sayfalarını görsel başlıklar ve daha okunaklı kartlarla yeniledik. Harf seçiminde sonraki sayfalardaki sonuçlara erişimi iyileştirdik.” No version bump, submission or changed data/permission declaration. Publish after the native gates in [directory validation](DIRECTORY_DESIGN_VALIDATION.md).
+
+## Profile editor and directory draft (2026-11-03; native validation pending)
+
+Proposed Turkish release note: “Profil düzenleme ekranını yeniledik. Profil fotoğrafı, afiş ve kişisel bilgilerinize daha kolay ulaşabilirsiniz. Yazarlar ve yayınevlerinde harf seçimi ve sonraki sayfalara erişim iyileştirildi.” Existing account, privacy and purchase declarations remain applicable. No version bump or submission is included; publish only after the native visual, media upload, save and live directory checks in [validation](PROFILE_DIRECTORY_VALIDATION.md).
+
+## Guest/community design draft (2026-11-03; native validation pending)
+
+Proposed Turkish release note: “Misafir profilini, mesaj kutusunu ve üye sayfalarını daha sade bir tasarımla yeniledik. Google ile giriş ve kayıt seçeneklerine daha kolay ulaşabilir, canlı akıştan kitaplara ve üye profillerine doğrudan geçebilirsiniz. Cihaz bildirim ayarlarını ve bildirim kaydını uygulama içinden kontrol edebilirsiniz.” Publish only after native visual/authentication checks and a real iPhone APNs delivery test. The local notification test is a display diagnostic, not proof of server delivery. No version bump or submission is included. See [validation](COMMUNITY_DESIGN_VALIDATION.md).
+
+## Book-opening animation draft (2026-11-03; native validation pending)
+
+Proposed Turkish release note: “Kitap kapağının açıldığı yeni animasyonla okumaya geçiş artık daha akıcı. Hareketi Azalt ayarına uygun sade geçiş de eklendi.” Book detail opens the existing native reader through the Android cover/paper sequence. Reviewer steps: sign in, open a permitted book, tap Kitap Oku, inspect the cover-to-paper transition and saved reading position; close/reopen and repeat with Reduce Motion. No version bump, submission or upload is part of this source change. Publish these notes only after the native build, visual and accessibility gates in [READER_OPENING_VALIDATION.md](READER_OPENING_VALIDATION.md) pass.
+
+## Version 1.1.1 App Store search correction (2026-10-22)
+
+The user requested App Store submission after successful TestFlight delivery of
+1.1.1 (49), with automatic public release after Apple approval. App Store Connect
+confirmed **Waiting for Review** on 22 October 2026 at 23:56 Europe/Istanbul.
+Submission: `29215adf-243d-4fc4-88c8-71f571ec6e46`.
+**Automatically release this version** and **Release update to all users
+immediately** are selected. No additional developer release approval is required.
+Existing purchase settings, screenshots and reviewer credentials were preserved.
+Turkish release notes saved: `AppStore/1.1.1/whats-new.tr.txt`.
+Review notes describe the search correction, executed tests and device-test limits.
+Evidence: `.codex-artifacts/catalog-search-testflight-20261022/appstore-1.1.1-waiting-review.jpg`
+and `appstore-1.1.1-auto-release.jpg`. Submission confirms receipt by Apple;
+approval and public availability remain pending.
+
+Apple rejected the 1.1.0 upload because that
+marketing version was already approved; 1.1.1 is the required patch increment.
+App/core/test sources passed 467 Core, 65 native, and 3 search UI tests each on
+iPhone and iPad. Packaging must preserve those exact sources and purchase behavior.
+Proposed Turkish test notes: “Ana sayfadaki arama alanına dokunarak kitap arayın.
+Kitaplar ekranında aramanın görünür kaldığını ve aramayı temizleyince listenin
+yenilendiğini kontrol edin.”
+
 ## Version 1.0.9 App Store submission (2026-10-12)
 
 After TestFlight delivery, the user explicitly requested public release. Version 1.0.9/build 42 was selected and submitted to App Review. App Store Connect confirms **Waiting for Review**, submission `9b547783-41e9-451c-8e3a-e058cdf3a1ac`, submitted on 12 October 2026 at 21:53 Europe/Istanbul. **Automatically release this version** remains selected, with immediate availability after Apple approval. This confirms submission, not approval or public availability. Review notes were updated to identify build 42, successful CI #167 and Codemagic build 53, and the unexecuted physical-device/live Sandbox transaction checks. Existing reviewer credentials, screenshots, pricing and purchase products were preserved. Evidence: `artifacts/release-20261012/appstore-1.0.9-waiting-review.jpg`.

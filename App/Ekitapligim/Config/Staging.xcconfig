@@ -1,7 +1,6 @@
 // Sandbox IAP products belong to the App Store Connect production app record.
 PRODUCT_BUNDLE_IDENTIFIER = com.ekitapligim.app
-MARKETING_VERSION = 1.0.10
-CURRENT_PROJECT_VERSION = 43
+// Version and build number are defined once in project.yml; CI increments the build at signing.
 EKITAPLIGIM_ENVIRONMENT = staging
 APS_ENVIRONMENT = production
 EKITAPLIGIM_API_BASE_URL = https:/$()/staging.ekitapligim.com/ios-api/v1/

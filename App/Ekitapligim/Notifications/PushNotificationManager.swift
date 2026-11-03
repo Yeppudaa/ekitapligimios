@@ -35,6 +35,8 @@ final class PushNotificationManager: ObservableObject {
     private var registrationTask: Task<Void, Never>?
     private var unregistrationTask: Task<Void, Never>?
     private var isUnregistering = false
+    private var registrationRevision = UUID()
+    private var registrationOperationID: UUID?
 
     init(apiClient: APIClient) {
         self.registerToken = { token in
@@ -66,21 +68,39 @@ final class PushNotificationManager: ObservableObject {
 
     /// Requests notification permission and registers for remote notifications.
     func requestPermissionAndRegister() async {
+        let revision = registrationRevision
         let center = UNUserNotificationCenter.current()
         do {
             let granted = try await center.requestAuthorization(options: [.alert, .badge, .sound])
+            guard revision == registrationRevision, !isUnregistering else { return }
             guard granted else {
                 registrationStatus = .permissionDenied
                 return
             }
+            if registeredToken == nil { registrationStatus = .registering }
             UIApplication.shared.registerForRemoteNotifications()
         } catch {
+            guard revision == registrationRevision else { return }
             registrationStatus = .failed
             #if DEBUG
-            print("[Push] Authorization error: \(error.localizedDescription)")
+            print("[Push] Notification authorization failed.")
             #endif
         }
     }
+
+    /// Re-check after returning from iOS Settings without showing another permission prompt.
+    func registerIfAuthorized() async {
+        let revision = registrationRevision
+        let settings = await UNUserNotificationCenter.current().notificationSettings()
+        guard revision == registrationRevision, !isUnregistering else { return }
+        guard settings.authorizationStatus == .authorized || settings.authorizationStatus == .provisional
+                || settings.authorizationStatus == .ephemeral else { return }
+        if registeredToken == nil { registrationStatus = .registering }
+        UIApplication.shared.registerForRemoteNotifications()
+        await retryPendingRegistration()
+    }
+
+    func didFailRemoteRegistration() { registrationStatus = .failed }
 
     // MARK: - Token Handling
 
@@ -99,11 +119,35 @@ final class PushNotificationManager: ObservableObject {
     /// Retries a token upload that previously failed without exposing the token in diagnostics.
     func retryPendingRegistration() async {
         guard !isUnregistering else { return }
-        if let registrationTask { await registrationTask.value; return }
-        let task = Task { await performPendingRegistration() }
+        let revision = registrationRevision
+        if let registrationTask {
+            let operation = registrationOperationID
+            await registrationTask.value
+            guard revision == registrationRevision, !isUnregistering else { return }
+            if registrationOperationID == operation {
+                self.registrationTask = nil
+                registrationOperationID = nil
+            }
+            guard pendingToken != nil else { return }
+            await retryPendingRegistration()
+            return
+        }
+        let operation = UUID()
+        let task = Task {
+            repeat {
+                let attempted = pendingToken
+                await performPendingRegistration()
+                guard revision == registrationRevision, !isUnregistering, !Task.isCancelled,
+                      registrationStatus == .registered, let next = pendingToken, next != attempted else { return }
+            } while true
+        }
+        registrationOperationID = operation
         registrationTask = task
         await task.value
-        registrationTask = nil
+        if registrationOperationID == operation {
+            registrationTask = nil
+            registrationOperationID = nil
+        }
     }
 
     private func performPendingRegistration() async {
@@ -112,12 +156,16 @@ final class PushNotificationManager: ObservableObject {
               !isRegistering else { return }
 
         isRegistering = true
+        let revision = registrationRevision
         registeringToken = token
         registrationStatus = .registering
-        defer { isRegistering = false; registeringToken = nil }
+        defer {
+            if registrationRevision == revision { isRegistering = false; registeringToken = nil }
+        }
 
         do {
             try await registerToken(token)
+            guard registrationRevision == revision, !Task.isCancelled else { return }
             let previousToken = registeredToken
             registeredToken = token
             if pendingToken == token {
@@ -129,11 +177,29 @@ final class PushNotificationManager: ObservableObject {
                 try? await unregisterTokenRequest(previousToken)
             }
         } catch {
+            guard registrationRevision == revision, !Task.isCancelled else { return }
             registrationStatus = .failed
             #if DEBUG
             print("[Push] Token registration failed; it will be retried when the app becomes active.")
             #endif
         }
+    }
+
+    /// The server session already ended (expired or revoked), so the backend cannot be
+    /// asked to delete the token. Forget it locally: the next sign-in, possibly with
+    /// another account, must upload the same APNs token again so the server moves it to
+    /// that account instead of keeping the previous owner's notifications on this device.
+    func forgetRegistrationAfterSessionLoss() {
+        registrationRevision = UUID()
+        registrationTask?.cancel()
+        registrationTask = nil
+        registrationOperationID = nil
+        isRegistering = false
+        registeringToken = nil
+        // APNs hands the same token back after the next sign-in; upload it then.
+        pendingToken = nil
+        registeredToken = nil
+        registrationStatus = .idle
     }
 
     /// Removes the current device token from the backend (called on logout).

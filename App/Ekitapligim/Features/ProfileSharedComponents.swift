@@ -48,7 +48,7 @@ struct LibraryShelfCard: View {
         Button(action: action) {
             VStack(alignment: .leading, spacing: 8) {
                 Image(systemName: systemImage)
-                    .font(.subheadline.weight(.semibold))
+                    .font(.system(size: 18, weight: .semibold))
                     .foregroundStyle(EKitapligimPalette.profileTeal)
                     .frame(width: 36, height: 36)
                     .background(EKitapligimPalette.profileTealSoft, in: RoundedRectangle(cornerRadius: 10, style: .continuous))
@@ -58,7 +58,7 @@ struct LibraryShelfCard: View {
                 Text(title)
                     .font(.caption.weight(.semibold))
                     .foregroundStyle(EKitapligimPalette.profileMuted)
-                    .lineLimit(1)
+                    .fixedSize(horizontal: false, vertical: true)
             }
             .frame(maxWidth: .infinity, alignment: .leading)
             .padding(14)
@@ -71,12 +71,16 @@ struct LibraryShelfCard: View {
 }
 
 struct ProfileBookRow: View {
+    @Environment(\.dynamicTypeSize) private var dynamicTypeSize
     let item: LibraryItemDTO
 
     private var progress: Int { min(max(item.progressPercent, 0), 100) }
 
     var body: some View {
-        HStack(spacing: 12) {
+        let layout = dynamicTypeSize.isAccessibilitySize
+            ? AnyLayout(VStackLayout(alignment: .leading, spacing: 12))
+            : AnyLayout(HStackLayout(alignment: .center, spacing: 12))
+        layout {
             EKitapligimRemoteCover(urlString: item.coverUrl, title: item.title, author: item.author)
                 .frame(width: 48, height: 70)
                 .clipShape(RoundedRectangle(cornerRadius: 9, style: .continuous))
@@ -85,13 +89,15 @@ struct ProfileBookRow: View {
                 Text(item.title.isEmpty ? L10n.commonBookNumber(item.bookId) : item.title)
                     .font(.subheadline.weight(.semibold))
                     .foregroundStyle(EKitapligimPalette.profileInk)
-                    .lineLimit(2)
+                    .lineLimit(dynamicTypeSize.isAccessibilitySize ? nil : 2)
+                    .fixedSize(horizontal: false, vertical: true)
                     .multilineTextAlignment(.leading)
                 if !item.author.isEmpty {
                     Text(item.author)
                         .font(.caption)
                         .foregroundStyle(EKitapligimPalette.profileMuted)
-                        .lineLimit(1)
+                        .lineLimit(dynamicTypeSize.isAccessibilitySize ? nil : 1)
+                        .fixedSize(horizontal: false, vertical: true)
                 }
                 HStack(spacing: 8) {
                     ProgressView(value: Double(progress), total: 100)
@@ -100,6 +106,7 @@ struct ProfileBookRow: View {
                         .font(.caption2.weight(.bold))
                         .foregroundStyle(EKitapligimPalette.profileTealDeep)
                         .monospacedDigit()
+                        .fixedSize()
                 }
             }
             Spacer(minLength: 0)

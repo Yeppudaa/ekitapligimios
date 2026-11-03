@@ -25,6 +25,7 @@ struct BookDetailDestination: View {
 struct BookDetailView: View {
     @EnvironmentObject private var container: AppContainer
     @Environment(\.dismiss) private var dismiss
+    @Environment(\.dynamicTypeSize) private var dynamicTypeSize
     let bookID: Int
 
     @StateObject private var loading = BookDetailLoadingModel()
@@ -37,9 +38,14 @@ struct BookDetailView: View {
     @State private var exportFileURL: URL?
     @State private var isPreparingDownload = false
     @State private var shelfStatusMessage: String?
-    @State private var currentShelfState = ""
-    @State private var isFavorite = false
-    @State private var isUpdatingShelf = false
+    @State private var shelfUpdateFailed = false
+    @State private var showingShelfPicker = false
+    private var currentShelfState: String {
+        guard let item = libraryItem, !["NONE", ""].contains(item.normalizedShelfState) else { return "" }
+        return item.displayShelfStateForMenu
+    }
+    private var isFavorite: Bool { libraryItem?.isFavoriteItem ?? false }
+    private var isUpdatingShelf: Bool { container.libraryUpdatingBookIDs.contains(bookID) }
     private var comments: [BookCommentDTO] { loading.comments }
     private var commentsPage: Int { loading.commentsPage }
     private var commentsLastPage: Int { loading.commentsLastPage }
@@ -51,8 +57,11 @@ struct BookDetailView: View {
     @State private var showingCommentLoginAlert = false
     @State private var showingDownloadPremiumAlert = false
     @State private var showingReaderLoginAlert = false
+    @State private var showingLibraryLoginAlert = false
     @State private var showingReport = false
     @State private var showingReader = false
+    @State private var readerOpeningSource = ReaderOpeningSource()
+    @State private var readerOpeningSnapshot: ReaderOpeningSnapshot?
     @State private var readerRequestedPremium = false
     @State private var selectedIssueType = "copyright"
     @State private var issueFeedback: String?
@@ -99,24 +108,41 @@ struct BookDetailView: View {
             )
         }
         .toolbar(.hidden, for: .navigationBar)
+        .toolbar {
+            ToolbarItemGroup(placement: .keyboard) {
+                Spacer()
+                Button(L10n.commonDismiss) { isCommentFocused = false }
+                    .accessibilityIdentifier("keyboard-dismiss")
+            }
+        }
         .safeAreaInset(edge: .top, spacing: 0) {
             androidBookTopBar
         }
         .task(id: bookID) { await load() }
-        .onDisappear { loading.cancel() }
-        .onChange(of: loading.book?.id) { _, _ in syncShelfFromLibrary() }
+        .onDisappear {
+            isCommentFocused = false
+            loading.cancel()
+        }
         .fullScreenCover(isPresented: $showingReader, onDismiss: {
+            readerOpeningSnapshot = nil
             if readerRequestedPremium {
                 readerRequestedPremium = false
                 container.open(route: .premium)
             }
         }) {
             if let book {
-                ReaderView(book: book, onPremium: {
-                    readerRequestedPremium = true
-                    showingReader = false
-                })
+                ReaderOpeningPresentation(book: book, snapshot: $readerOpeningSnapshot, onCancel: cancelReaderOpening) {
+                    ReaderView(book: book, onPremium: {
+                        readerRequestedPremium = true
+                        showingReader = false
+                    })
+                }
             }
+        }
+        .onChange(of: container.authState) { previous, current in
+            if case .signedIn(let old) = previous, case .signedIn(let new) = current,
+               old.belongsToSameAccount(as: new) { return }
+            if showingReader { cancelReaderOpening() }
         }
         .sheet(isPresented: $showingReport) {
             ReportContentView(kind: .book(bookID: bookID), initialType: selectedIssueType) { success in
@@ -139,14 +165,17 @@ struct BookDetailView: View {
         } message: {
             Text(L10n.bookDetailLoginRequiredMessage)
         }
+        .alert(L10n.bookCommentsLoginRequiredTitle, isPresented: $showingLibraryLoginAlert) {
+            Button(L10n.bookRequestsGoToLogin) { container.selectedTab = .profile }
+            Button(L10n.commonCancel, role: .cancel) {}
+        } message: {
+            Text(LibraryDetailL10n.text("loginMessage"))
+        }
         .alert(L10n.quotaDownloadPremiumTitle, isPresented: $showingDownloadPremiumAlert) {
             Button(L10n.readerPreviewLimitUpgrade) { container.open(route: .premium) }
             Button(L10n.commonCancel, role: .cancel) {}
         } message: {
             Text(L10n.quotaDownloadPremiumRequired)
-        }
-        .onChange(of: container.libraryItems) { _, _ in
-            syncShelfFromLibrary()
         }
         .background {
             BookFileDeviceExportPresenter(fileURL: $exportFileURL)
@@ -158,8 +187,8 @@ struct BookDetailView: View {
             LazyVStack(alignment: .leading, spacing: 16) {
                 heroSection(book)
                 actionsSection(book)
-                AIBookEntry(model: container.assistantModel, book: book)
                 statusBanners
+                AIBookEntry(model: container.assistantModel, book: book)
                 infoCard(book)
                 synopsisCard(book)
                 reportSection
@@ -169,10 +198,12 @@ struct BookDetailView: View {
             .padding(.horizontal, 18)
             .padding(.vertical, 12)
         }
+        .accessibilityIdentifier("book-detail-scroll")
+        .scrollDismissesKeyboard(.interactively)
     }
 
     private var isCompactHero: Bool { heroCardWidth < 380 }
-    private var isStackedHero: Bool { heroCardWidth < 260 }
+    private var isStackedHero: Bool { heroCardWidth < 330 || dynamicTypeSize.isAccessibilitySize }
 
     /// Android `BookDetailScreen` similar-card widths: 106 / 116 / 128.
     private var similarCardWidth: CGFloat {
@@ -210,6 +241,7 @@ struct BookDetailView: View {
     private func heroCover(_ book: BookDTO, compact: Bool) -> some View {
         EKitapligimRemoteCover(urlString: book.coverUrl, title: book.title, author: book.author)
             .frame(width: compact ? 112 : 170, height: compact ? 166 : 250)
+            .background(ReaderOpeningAnchor(source: readerOpeningSource))
             .clipShape(RoundedRectangle(cornerRadius: 12, style: .continuous))
             .background(.white, in: RoundedRectangle(cornerRadius: 12, style: .continuous))
     }
@@ -231,44 +263,46 @@ struct BookDetailView: View {
                 book.publisher.isEmpty ? L10n.bookDetailUnspecified : book.publisher,
                 Color(hex: 0x7D8A8F)
             )
-            HStack(spacing: 8) {
-                Image(systemName: "star.fill")
-                    .font(.title3)
-                    .foregroundStyle(Color(hex: 0xD08A27))
-                    .frame(width: 27, height: 27)
-                Text(String(format: "%.1f", book.rating ?? 0))
-                    .font(.title3.weight(.semibold))
-                    .foregroundStyle(Color(hex: 0x12252C))
-                Rectangle()
-                    .fill(Color(hex: 0xE7D8C5))
-                    .frame(width: 1, height: 24)
-                Text(L10n.bookDetailDownloadCount(book.displayedDownloadCount))
-                    .font(.body)
-                    .foregroundStyle(Color(hex: 0x7D8A8F))
-                    .lineLimit(1)
-                if book.isPremiumOnly {
-                    Text(L10n.premiumTitle)
-                        .font(.system(size: 10, weight: .heavy))
-                        .foregroundStyle(EKitapligimPalette.profileGoldDeep)
-                        .padding(.horizontal, 8)
-                        .padding(.vertical, 4)
-                        .background(EKitapligimPalette.amberSoft, in: Capsule())
-                }
+            ViewThatFits(in: .horizontal) {
+                HStack(spacing: 8) { heroStatistics(book) }
+                    .fixedSize(horizontal: true, vertical: false)
+                VStack(alignment: centered ? .center : .leading, spacing: 8) { heroStatistics(book) }
             }
         }
         .frame(maxWidth: .infinity, alignment: centered ? .center : .leading)
     }
 
+    @ViewBuilder private func heroStatistics(_ book: BookDTO) -> some View {
+        Label {
+            Text(String(format: "%.1f", book.rating ?? 0))
+                .foregroundStyle(Color(hex: 0x12252C))
+        } icon: {
+            Image(systemName: "star.fill").foregroundStyle(Color(hex: 0xD08A27))
+        }
+        .font(.title3.weight(.semibold))
+        Text(L10n.bookDetailDownloadCount(book.displayedDownloadCount))
+            .font(.body).foregroundStyle(Color(hex: 0x7D8A8F))
+            .fixedSize(horizontal: false, vertical: true)
+        if book.isPremiumOnly {
+            Text(L10n.premiumTitle)
+                .font(.caption2.weight(.heavy))
+                .foregroundStyle(EKitapligimPalette.profileGoldDeep)
+                .fixedSize(horizontal: false, vertical: true)
+                .padding(.horizontal, 8).padding(.vertical, 4)
+                .background(EKitapligimPalette.amberSoft, in: Capsule())
+        }
+    }
+
     private func heroMetaLine(_ icon: String, _ text: String, _ color: Color) -> some View {
         HStack(spacing: 9) {
             Image(systemName: icon)
-                .font(.subheadline)
+                .font(.system(size: 17))
                 .foregroundStyle(color.opacity(0.82))
                 .frame(width: 17, height: 17)
             Text(text)
                 .font(.body.weight(.semibold))
                 .foregroundStyle(color)
-                .lineLimit(1)
+                .fixedSize(horizontal: false, vertical: true)
         }
     }
 
@@ -276,7 +310,7 @@ struct BookDetailView: View {
         VStack(spacing: 10) {
             HStack(spacing: 10) {
                 if isSignedIn {
-                    Button { showingReader = true } label: {
+                    Button(action: openReader) {
                         readButtonLabel
                     }
                     .accessibilityIdentifier("book.openReader")
@@ -297,7 +331,7 @@ struct BookDetailView: View {
                     Task { await download(book) }
                 } label: {
                     Image(systemName: "arrow.down.circle.fill")
-                        .font(.title3.weight(.bold))
+                        .font(.system(size: 24, weight: .bold))
                         .accessibilityLabel(L10n.bookDetailOfflineDownload)
                         .foregroundStyle(access?.canDownload == true ? Color(hex: 0x087A80) : Color(hex: 0x20363D))
                         .frame(width: 56, height: 56)
@@ -311,60 +345,37 @@ struct BookDetailView: View {
                 .disabled(isPreparingDownload)
             }
 
-            HStack(spacing: 10) {
-                Menu {
-                    Button(L10n.libraryShelfLater) { Task { await updateShelf("OKUYACAGIM") } }
-                    Button(L10n.libraryShelfReading) { Task { await updateShelf("OKUYORUM") } }
-                    Button(L10n.libraryShelfFinished) { Task { await updateShelf("OKUDUM") } }
-                    Button(L10n.libraryShelfRemove, role: .destructive) { Task { await updateShelf("NONE") } }
-                } label: {
-                    Label(shelfActionTitle, systemImage: "bookmark.fill")
-                        .font(.system(.subheadline, design: .serif).weight(.bold))
-                        .foregroundStyle(.white)
-                        .frame(maxWidth: .infinity)
-                        .frame(height: 56)
-                        .background(
-                            LinearGradient(
-                                colors: [Color(hex: 0xD9A24A), Color(hex: 0xC48728), Color(hex: 0xB97718)],
-                                startPoint: .top,
-                                endPoint: .bottom
-                            ),
-                            in: RoundedRectangle(cornerRadius: 10, style: .continuous)
-                        )
-                        .overlay {
-                            RoundedRectangle(cornerRadius: 10)
-                                .stroke(Color(hex: 0xE0B567), lineWidth: 1)
-                        }
-                }
-                .disabled(!isSignedIn || isUpdatingShelf)
-                .accessibilityLabel(L10n.libraryShelfPicker)
-
-                Button {
-                    Task { await toggleFavorite() }
-                } label: {
-                    Image(systemName: isFavorite ? "heart.fill" : "heart")
-                        .font(.title3.weight(.bold))
-                        .foregroundStyle(isFavorite ? Color(hex: 0xC58A32) : Color(hex: 0x20363D))
-                        .frame(width: 56, height: 56)
-                        .background(
-                            LinearGradient(colors: [.white, Color(hex: 0xFFFBF4)], startPoint: .top, endPoint: .bottom),
-                            in: RoundedRectangle(cornerRadius: 10, style: .continuous)
-                        )
-                        .overlay { RoundedRectangle(cornerRadius: 10).stroke(Color(hex: 0xE7D8C5)) }
-                }
-                .disabled(!isSignedIn || isUpdatingShelf)
-                .accessibilityLabel(L10n.bookDetailAddToFavorites)
-
-            }
+            shelfButton
+            favoriteButton
         }
+    }
+
+    private func openReader() {
+        guard !showingReader else { return }
+        isCommentFocused = false
+        readerOpeningSnapshot = readerOpeningSource.capture()
+        var transaction = Transaction(animation: nil)
+        transaction.disablesAnimations = true
+        withTransaction(transaction) { showingReader = true }
+    }
+
+    private func cancelReaderOpening() {
+        readerOpeningSnapshot = nil
+        var transaction = Transaction(animation: nil)
+        transaction.disablesAnimations = true
+        withTransaction(transaction) { showingReader = false }
     }
 
     private var readButtonLabel: some View {
         Label(access?.canReadOnline == true ? L10n.bookDetailRead : L10n.bookDetailCheckReading, systemImage: "book.fill")
             .font(.system(.subheadline, design: .serif).weight(.bold))
             .foregroundStyle(.white)
+            .fixedSize(horizontal: false, vertical: true)
+            .multilineTextAlignment(.center)
+            .padding(.horizontal, 12)
+            .padding(.vertical, 14)
             .frame(maxWidth: .infinity)
-            .frame(height: 56)
+            .frame(minHeight: 56)
             .background(
                 LinearGradient(
                     colors: [Color(hex: 0x0A3B43), Color(hex: 0x0E5660), Color(hex: 0x08323A)],
@@ -379,13 +390,75 @@ struct BookDetailView: View {
             }
     }
 
-    private var shelfActionTitle: String {
-        switch currentShelfState.uppercased() {
-        case "OKUYACAGIM", "WANT_TO_READ": L10n.libraryShelfLaterShort
-        case "OKUYORUM", "READING": L10n.libraryShelfReading
-        case "OKUDUM", "READ", "FINISHED": L10n.libraryShelfFinished
-        default: L10n.libraryShelfAdd
+    private var shelfButton: some View {
+        Button {
+            guard isSignedIn else { showingLibraryLoginAlert = true; return }
+            showingShelfPicker = true
+        } label: {
+            HStack(spacing: 14) {
+                Image(systemName: "books.vertical.fill")
+                    .font(.system(size: 21, weight: .semibold))
+                    .foregroundStyle(Color(hex: 0xA66A20))
+                    .frame(width: 46, height: 46)
+                    .background(Color(hex: 0xF8ECD7), in: RoundedRectangle(cornerRadius: 14))
+                    .accessibilityHidden(true)
+                VStack(alignment: .leading, spacing: 5) {
+                    Text(L10n.libraryShelfAdd)
+                        .font(.headline.weight(.semibold)).foregroundStyle(Color(hex: 0x163E43))
+                    Text(isUpdatingShelf ? LibraryDetailL10n.text("updating") : shelfDescription)
+                        .font(.caption).foregroundStyle(Color(hex: 0x6E7167))
+                }.fixedSize(horizontal: false, vertical: true)
+                    .frame(maxWidth: .infinity, alignment: .leading)
+                if isUpdatingShelf { ProgressView().tint(Color(hex: 0xA66A20)).accessibilityHidden(true) }
+                else { Image(systemName: "chevron.down").font(.subheadline.weight(.semibold)).foregroundStyle(Color(hex: 0xA66A20)).accessibilityHidden(true) }
+            }
+            .padding(15).frame(maxWidth: .infinity, minHeight: 78)
+            .background(LinearGradient(colors: [.white, Color(hex: 0xFFFAEF)], startPoint: .topLeading, endPoint: .bottomTrailing),
+                        in: RoundedRectangle(cornerRadius: 19, style: .continuous))
+            .overlay { RoundedRectangle(cornerRadius: 19).stroke(Color(hex: 0xEAD8B8), lineWidth: 1) }
+            .shadow(color: Color(hex: 0x9B742A).opacity(0.07), radius: 10, x: 0, y: 4)
         }
+        .buttonStyle(.plain).disabled(isUpdatingShelf)
+        .accessibilityLabel(L10n.libraryShelfAdd).accessibilityValue(shelfDescription)
+        .accessibilityIdentifier("book.library.shelf")
+        .confirmationDialog(L10n.libraryShelfPicker, isPresented: $showingShelfPicker, titleVisibility: .visible) {
+            Button(L10n.libraryShelfLater) { Task { await updateShelf("OKUYACAGIM") } }
+            Button(L10n.libraryShelfReading) { Task { await updateShelf("OKUYORUM") } }
+            Button(L10n.libraryShelfFinished) { Task { await updateShelf("OKUDUM") } }
+            if !currentShelfState.isEmpty {
+                Button(L10n.libraryShelfRemove, role: .destructive) { Task { await updateShelf("NONE") } }
+            }
+            Button(L10n.commonCancel, role: .cancel) {}
+        }
+    }
+
+    private var favoriteButton: some View {
+        Button {
+            guard isSignedIn else { showingLibraryLoginAlert = true; return }
+            Task { await toggleFavorite() }
+        } label: {
+            HStack(spacing: 10) {
+                Image(systemName: isFavorite ? "heart.fill" : "heart")
+                    .font(.system(size: 19, weight: .semibold)).accessibilityHidden(true)
+                Text(isFavorite ? LibraryDetailL10n.text("favoriteAdded") : L10n.bookDetailAddToFavorites)
+                    .font(.subheadline.weight(.semibold)).fixedSize(horizontal: false, vertical: true)
+                Spacer(minLength: 0)
+                if isFavorite { Image(systemName: "checkmark.circle.fill").accessibilityHidden(true) }
+            }
+            .foregroundStyle(isFavorite ? Color(hex: 0x865314) : Color(hex: 0x36545A))
+            .padding(.horizontal, 18).padding(.vertical, 14).frame(maxWidth: .infinity, minHeight: 50)
+            .background(isFavorite ? Color(hex: 0xFBF1DE) : .white.opacity(0.8), in: RoundedRectangle(cornerRadius: 16))
+            .overlay { RoundedRectangle(cornerRadius: 16).stroke(isFavorite ? Color(hex: 0xE5C790) : Color(hex: 0xE1E8E4)) }
+        }
+        .buttonStyle(.plain).disabled(isUpdatingShelf)
+        .accessibilityLabel(isFavorite ? LibraryDetailL10n.text("removeFavorite") : L10n.bookDetailAddToFavorites)
+        .accessibilityValue(isFavorite ? LibraryDetailL10n.text("favoriteAdded") : "")
+        .accessibilityAddTraits(isFavorite ? .isSelected : [])
+        .accessibilityIdentifier("book.library.favorite")
+    }
+
+    private var shelfDescription: String {
+        currentShelfState.isEmpty ? LibraryDetailL10n.text("shelfHint") : LibraryDetailL10n.currentShelf(shelfLabel(for: currentShelfState))
     }
 
     @ViewBuilder
@@ -394,7 +467,7 @@ struct BookDetailView: View {
             statusBanner(downloadStatusMessage, icon: "arrow.down.circle.fill", tint: EKitapligimPalette.teal)
         }
         if let shelfStatusMessage {
-            statusBanner(shelfStatusMessage, icon: "books.vertical.fill", tint: EKitapligimPalette.success)
+            statusBanner(shelfStatusMessage, icon: shelfUpdateFailed ? "exclamationmark.circle.fill" : "checkmark.circle.fill", tint: shelfUpdateFailed ? EKitapligimPalette.danger : EKitapligimPalette.success)
         }
     }
 
@@ -411,15 +484,13 @@ struct BookDetailView: View {
     private func infoCard(_ book: BookDTO) -> some View {
         VStack(alignment: .leading, spacing: 10) {
             sectionHeading(L10n.bookDetailInfoTitle)
-            HStack(spacing: 10) {
+            LazyVGrid(columns: dynamicTypeSize.isAccessibilitySize
+                ? [GridItem(.flexible())]
+                : [GridItem(.adaptive(minimum: 140), spacing: 10)], spacing: 10) {
                 infoCell("tag.fill", L10n.bookDetailInfoCategory, book.category, accent: Color(hex: 0xE75D8F))
                 infoCell("globe", L10n.bookDetailInfoLanguage, book.language)
-            }
-            HStack(spacing: 10) {
                 infoCell("book.closed.fill", L10n.bookDetailInfoPages, String(book.pageCount))
                 infoCell("calendar", L10n.bookDetailInfoYear, book.publishYear)
-            }
-            HStack(spacing: 10) {
                 infoCell("barcode", L10n.bookDetailInfoISBN, book.isbn)
                 infoCell("doc.text", L10n.bookDetailInfoFormat, book.displayedFormat)
             }
@@ -438,6 +509,7 @@ struct BookDetailView: View {
             Text(title)
                 .font(.system(.title3, design: .serif).weight(.heavy))
                 .foregroundStyle(Color(hex: 0x0D3037))
+                .fixedSize(horizontal: false, vertical: true)
             Rectangle()
                 .fill(Color(hex: 0xD5A65A))
                 .frame(width: 46, height: 1)
@@ -448,17 +520,18 @@ struct BookDetailView: View {
     private func infoCell(_ icon: String, _ label: String, _ value: String, accent: Color = Color(hex: 0x42646A)) -> some View {
         HStack(spacing: 12) {
             Image(systemName: icon)
-                .font(.title3)
+                .font(.system(size: 24))
                 .foregroundStyle(accent)
                 .frame(width: 24, height: 24)
             VStack(alignment: .leading, spacing: 2) {
                 Text(label)
                     .font(.caption.weight(.medium))
                     .foregroundStyle(Color(hex: 0x8C8175))
+                    .fixedSize(horizontal: false, vertical: true)
                 Text(value.isEmpty ? L10n.bookDetailUnspecified : value)
                     .font(.system(.subheadline, design: .serif).weight(.bold))
                     .foregroundStyle(label == L10n.bookDetailInfoCategory ? Color(hex: 0xE75D8F) : Color(hex: 0x18252B))
-                    .lineLimit(1)
+                    .fixedSize(horizontal: false, vertical: true)
             }
             Spacer(minLength: 0)
         }
@@ -589,7 +662,9 @@ struct BookDetailView: View {
                 }
                 Spacer(minLength: 0)
             }
-            HStack(spacing: 8) {
+            LazyVGrid(columns: dynamicTypeSize.isAccessibilitySize
+                ? [GridItem(.flexible())]
+                : [GridItem(.adaptive(minimum: 110), spacing: 8)], spacing: 8) {
                 issueChip(L10n.bookDetailIssueBrokenLink, icon: "link", type: "broken_link")
                 issueChip(L10n.bookDetailIssueMissingCover, icon: "photo", type: "missing_cover")
                 issueChip(L10n.bookDetailIssueCopyright, icon: "c.circle", type: "copyright")
@@ -635,11 +710,13 @@ struct BookDetailView: View {
                     .accessibilityHidden(true)
                 Text(title)
                     .font(.caption2.weight(.bold))
-                    .lineLimit(1)
+                    .fixedSize(horizontal: false, vertical: true)
             }
             .foregroundStyle(Color(hex: 0x244C73))
+            .padding(.horizontal, 10)
+            .padding(.vertical, 10)
             .frame(maxWidth: .infinity)
-            .frame(height: 42)
+            .frame(minHeight: 44)
             .background(.white, in: RoundedRectangle(cornerRadius: 12, style: .continuous))
             .overlay {
                 RoundedRectangle(cornerRadius: 12, style: .continuous)
@@ -716,22 +793,25 @@ struct BookDetailView: View {
     }
 
     private var commentsSectionHeader: some View {
-        HStack(alignment: .center, spacing: 14) {
-            Image(systemName: "text.bubble.fill")
-                .font(.title3)
-                .foregroundStyle(Color(hex: 0x153F45))
-                .frame(width: 46, height: 46)
-                .background(Color(hex: 0xE8EFEA), in: RoundedRectangle(cornerRadius: 14, style: .continuous))
-            VStack(alignment: .leading, spacing: 2) {
-                Text(L10n.bookCommentsTitleCount(comments.count))
-                    .font(.system(.title3, design: .serif).weight(.heavy))
-                    .foregroundStyle(Color(hex: 0x0D3037))
-                Text(isSignedIn ? L10n.bookCommentsSignedInSubtitle : L10n.bookCommentsGuestSubtitle)
-                    .font(.caption)
-                    .foregroundStyle(Color(hex: 0x56666C))
-                    .multilineTextAlignment(.leading)
+        VStack(alignment: .leading, spacing: 12) {
+            HStack(alignment: .top, spacing: 14) {
+                Image(systemName: "text.bubble.fill")
+                    .font(.system(size: 22))
+                    .foregroundStyle(Color(hex: 0x153F45))
+                    .frame(width: 46, height: 46)
+                    .background(Color(hex: 0xE8EFEA), in: RoundedRectangle(cornerRadius: 14, style: .continuous))
+                VStack(alignment: .leading, spacing: 2) {
+                    Text(L10n.bookCommentsTitleCount(comments.count))
+                        .font(.system(.title3, design: .serif).weight(.heavy))
+                        .foregroundStyle(Color(hex: 0x0D3037))
+                        .fixedSize(horizontal: false, vertical: true)
+                    Text(isSignedIn ? L10n.bookCommentsSignedInSubtitle : L10n.bookCommentsGuestSubtitle)
+                        .font(.caption)
+                        .foregroundStyle(Color(hex: 0x56666C))
+                        .multilineTextAlignment(.leading)
+                        .fixedSize(horizontal: false, vertical: true)
+                }
             }
-            Spacer(minLength: 0)
             if !isSignedIn {
                 Button(L10n.bookCommentsLoginToComment) { showingCommentLoginAlert = true }
                     .font(.caption.weight(.bold))
@@ -745,23 +825,27 @@ struct BookDetailView: View {
 
     private var commentsComposer: some View {
         VStack(alignment: .leading, spacing: 10) {
-            HStack(spacing: 6) {
+            VStack(alignment: .leading, spacing: 6) {
                 Text(L10n.bookCommentsYourRating)
                     .font(.subheadline)
                     .foregroundStyle(Color(hex: 0x56666C))
-                ForEach(1...5, id: \.self) { value in
-                    Button { commentRating = value } label: {
-                        Image(systemName: value <= commentRating ? "star.fill" : "star")
-                            .font(.body)
-                            .foregroundStyle(Color(hex: 0xD08A27))
-                            .frame(width: 30, height: 30)
+                    .fixedSize(horizontal: false, vertical: true)
+                HStack(spacing: 6) {
+                    ForEach(1...5, id: \.self) { value in
+                        Button { commentRating = value } label: {
+                            Image(systemName: value <= commentRating ? "star.fill" : "star")
+                                .font(.system(size: 24))
+                                .foregroundStyle(Color(hex: 0xD08A27))
+                                .frame(width: 44, height: 44)
+                        }
+                        .buttonStyle(.plain)
+                        .accessibilityLabel(L10n.bookCommentsRating(value))
                     }
-                    .buttonStyle(.plain)
-                    .accessibilityLabel(L10n.bookCommentsRating(value))
                 }
             }
             TextField(L10n.bookCommentsPlaceholder, text: $commentText, axis: .vertical)
                 .focused($isCommentFocused)
+                .accessibilityIdentifier("book-comments-input")
                 .lineLimit(2...5)
                 .frame(minHeight: 84, alignment: .top)
                 .padding(10)
@@ -781,6 +865,7 @@ struct BookDetailView: View {
                     .disabled(isSubmittingComment)
             }
         }
+        .accessibilityIdentifier("book-comments-composer")
     }
 
     @ViewBuilder
@@ -804,107 +889,35 @@ struct BookDetailView: View {
         )
     }
 
-    private func syncShelfFromLibrary() {
-        guard let item = libraryItem else {
-            currentShelfState = ""
-            isFavorite = false
-            return
-        }
-        currentShelfState = item.displayShelfStateForMenu
-        isFavorite = item.isFavoriteItem
-    }
-
     private var libraryItem: LibraryItemDTO? {
         container.libraryItems.first(where: { $0.bookId == String(bookID) })
     }
 
-    private func preservedReadingProgress() -> (percent: Int, page: Int) {
-        libraryItem?.readingProgressForShelfUpdate ?? (0, 0)
-    }
-
-    private func applyOptimisticShelfUpdate(shelfState: String, isFavorite favoriteOverride: Bool? = nil) {
-        let bookIDString = String(bookID)
-        let progress = preservedReadingProgress()
-        let favorite = favoriteOverride ?? (shelfState == "FAVORI")
-
-        if let existing = libraryItem {
-            container.patchLibraryItem(bookIDString) { item in
-                item.updating(
-                    shelfState: shelfState,
-                    progressPercent: progress.percent,
-                    lastReadPage: progress.page,
-                    isFavorite: favorite
-                )
-            }
-        } else if let book {
-            container.upsertLibraryItem(
-                LibraryItemDTO(
-                    bookId: bookIDString,
-                    shelfState: shelfState,
-                    progressPercent: progress.percent,
-                    lastReadPage: progress.page,
-                    isDownloaded: false,
-                    isFavorite: favorite,
-                    title: book.title,
-                    author: book.author,
-                    coverUrl: book.coverUrl,
-                    pageCount: book.pageCount
-                )
-            )
-        }
-
-        if favoriteOverride != nil {
-            isFavorite = favoriteOverride ?? isFavorite
-        }
-        if !shelfState.isEmpty, shelfState != "FAVORI", shelfState != "NONE" {
-            currentShelfState = shelfState
-        }
-    }
-
     private func updateShelf(_ state: String) async {
-        guard isSignedIn, !isUpdatingShelf else { return }
-        isUpdatingShelf = true
+        guard isSignedIn, !isUpdatingShelf, let book else { return }
         shelfStatusMessage = nil
-        defer { isUpdatingShelf = false }
-        let progress = preservedReadingProgress()
         do {
-            try await container.books.updateLibraryItem(
-                bookID: bookID,
-                shelfState: state,
-                progressPercent: progress.percent,
-                lastReadPage: progress.page
-            )
-            applyOptimisticShelfUpdate(shelfState: state)
+            try await container.updateBookShelf(book: book, state: state)
+            shelfUpdateFailed = false
             shelfStatusMessage = shelfLabel(for: state)
-            Task { await container.refreshSessionData() }
-            syncShelfFromLibrary()
-        } catch {
+        } catch is CancellationError { }
+        catch {
+            shelfUpdateFailed = true
             shelfStatusMessage = L10n.libraryUpdateFailed
         }
     }
 
     private func toggleFavorite() async {
-        guard isSignedIn, !isUpdatingShelf else { return }
-        isUpdatingShelf = true
-        defer { isUpdatingShelf = false }
-        // Android toggles favorite via shelf_state FAVORI <-> NONE while preserving reading shelf metadata.
-        let nextState = isFavorite ? "NONE" : "FAVORI"
-        let progress = preservedReadingProgress()
+        guard isSignedIn, !isUpdatingShelf, let book else { return }
+        let nextFavorite = !isFavorite
+        shelfStatusMessage = nil
         do {
-            try await container.books.updateLibraryItem(
-                bookID: bookID,
-                shelfState: nextState,
-                progressPercent: progress.percent,
-                lastReadPage: progress.page
-            )
-            applyOptimisticShelfUpdate(
-                shelfState: nextState,
-                isFavorite: nextState == "FAVORI"
-            )
-            Task { await container.refreshSessionData() }
-            syncShelfFromLibrary()
-            shelfStatusMessage = isFavorite ? L10n.libraryShelfFavorites : L10n.libraryShelfRemove
-        } catch {
+            try await container.setBookFavorite(book: book, isFavorite: nextFavorite)
+            shelfUpdateFailed = false
+            shelfStatusMessage = LibraryDetailL10n.text(nextFavorite ? "favoriteAdded" : "favoriteRemoved")
+        } catch is CancellationError { }
+        catch {
+            shelfUpdateFailed = true
             shelfStatusMessage = L10n.libraryUpdateFailed
         }
     }
@@ -1070,7 +1083,8 @@ struct BookDetailView: View {
                 .font(.system(.headline, design: .serif).weight(.heavy))
                 .foregroundStyle(Color(hex: 0x0D3037))
                 .multilineTextAlignment(.center)
-                .lineLimit(1)
+                .lineLimit(dynamicTypeSize.isAccessibilitySize ? 2 : 1)
+                .fixedSize(horizontal: false, vertical: true)
                 .frame(maxWidth: .infinity)
 
             Group {
@@ -1082,6 +1096,7 @@ struct BookDetailView: View {
                         androidRoundToolbarIcon("square.and.arrow.up")
                     }
                     .accessibilityLabel(L10n.commonShare)
+                    .accessibilityIdentifier("book.detail.share")
                 } else {
                     androidRoundToolbarIcon("square.and.arrow.up")
                         .opacity(0.35)
@@ -1089,8 +1104,7 @@ struct BookDetailView: View {
                 }
             }
         }
-        .padding(.leading, 20)
-        .padding(.trailing, 78)
+        .padding(.horizontal, 20)
         .padding(.vertical, 12)
         .background {
             Rectangle()
@@ -1106,7 +1120,7 @@ struct BookDetailView: View {
 
     private func androidRoundToolbarIcon(_ systemName: String) -> some View {
         Image(systemName: systemName)
-            .font(.body.weight(.semibold))
+            .font(.system(size: 22, weight: .semibold))
             .foregroundStyle(Color(hex: 0x153F45))
             .frame(width: 48, height: 48)
             .background(Color.white.opacity(0.96), in: Circle())
@@ -1152,17 +1166,22 @@ private struct SimilarBookCard: View {
 
 @MainActor
 private struct BookCommentRow: View {
+    @Environment(\.dynamicTypeSize) private var dynamicTypeSize
     let comment: BookCommentDTO
     let onBlocked: () -> Void
 
     var body: some View {
         VStack(alignment: .leading, spacing: 6) {
-            HStack(alignment: .center, spacing: 8) {
+            let headerLayout = dynamicTypeSize.isAccessibilitySize
+                ? AnyLayout(VStackLayout(alignment: .leading, spacing: 8))
+                : AnyLayout(HStackLayout(alignment: .center, spacing: 8))
+            headerLayout {
                 MemberProfileLink(memberID: comment.userId) {
                     Text(comment.username)
                         .font(.subheadline.weight(.bold))
                         .foregroundStyle(Color(hex: 0x0D3037))
-                        .lineLimit(1)
+                        .lineLimit(dynamicTypeSize.isAccessibilitySize ? nil : 1)
+                        .fixedSize(horizontal: false, vertical: true)
                 }
                 Spacer(minLength: 0)
                 HStack(spacing: 2) {

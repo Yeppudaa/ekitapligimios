@@ -6,6 +6,7 @@ import EkitapligimCore
 struct LoginView: View {
     @EnvironmentObject private var container: AppContainer
     @Environment(\.dismiss) private var dismiss
+    @Environment(\.dynamicTypeSize) private var dynamicTypeSize
 
     @State private var mode: AuthFormMode
     @State private var username = ""
@@ -35,19 +36,15 @@ struct LoginView: View {
             ScrollView {
                 VStack(spacing: 18) {
                     brandHeader
-                    signalRow
                     authCard
                 }
-                .padding(.horizontal, 24)
+                .frame(maxWidth: 560)
+                .padding(.horizontal, 18)
                 .padding(.vertical, 20)
+                .frame(maxWidth: .infinity)
             }
             .background(
-                LinearGradient(
-                    colors: [Color(hex: 0xF7FAFC), Color(hex: 0xEFF8FA), Color(hex: 0xFFFBF3)],
-                    startPoint: .top,
-                    endPoint: .bottom
-                )
-                .ignoresSafeArea()
+                CommunityStyle.page.ignoresSafeArea()
             )
             .navigationBarTitleDisplayMode(.inline)
             .toolbar {
@@ -78,51 +75,28 @@ struct LoginView: View {
     }
 
     private var brandHeader: some View {
-        VStack(spacing: 12) {
+        VStack(alignment: .leading, spacing: 8) {
             EKitapligimBrandLogo()
-                .frame(maxWidth: 340)
-                .frame(height: 92)
+                .frame(width: 205, height: 58)
             Text(L10n.loginCommunityTagline)
                 .font(.subheadline)
-                .foregroundStyle(Color(hex: 0x657484))
-                .multilineTextAlignment(.center)
+                .foregroundStyle(Color(hex: 0x637671))
+                .multilineTextAlignment(.leading)
         }
-    }
-
-    private var signalRow: some View {
-        HStack(spacing: 10) {
-            loginSignal(L10n.loginSignalShelf, systemImage: "books.vertical.fill")
-            loginSignal(L10n.loginSignalChat, systemImage: "bubble.left.and.bubble.right.fill")
-            loginSignal(L10n.loginSignalPremium, systemImage: "crown.fill")
-        }
-    }
-
-    private func loginSignal(_ title: String, systemImage: String) -> some View {
-        VStack(spacing: 6) {
-            Image(systemName: systemImage)
-                .font(.footnote.weight(.semibold))
-                .foregroundStyle(Color(hex: 0x0E7C86))
-            Text(title)
-                .font(.caption2)
-                .foregroundStyle(Color(hex: 0x657484))
-                .multilineTextAlignment(.center)
-                .lineLimit(2)
-        }
-        .frame(maxWidth: .infinity)
-        .padding(.horizontal, 6)
-        .padding(.vertical, 10)
-        .background(Color.white.opacity(0.92), in: RoundedRectangle(cornerRadius: 16, style: .continuous))
+        .frame(maxWidth: .infinity, alignment: .leading)
     }
 
     private var authCard: some View {
         VStack(spacing: 14) {
             modeBadge
             Text(headingTitle)
-                .font(.title2.weight(.bold))
-                .foregroundStyle(Color(hex: 0x172033))
+                .font(.system(.largeTitle, design: .serif).bold())
+                .foregroundStyle(CommunityStyle.ink)
+                .multilineTextAlignment(.center)
+                .fixedSize(horizontal: false, vertical: true)
             Text(headingSubtitle)
                 .font(.footnote)
-                .foregroundStyle(Color(hex: 0x657484))
+                .foregroundStyle(Color(hex: 0x637671))
                 .multilineTextAlignment(.center)
 
             if let errorMessage {
@@ -132,11 +106,18 @@ struct LoginView: View {
                 notice(successMessage, isError: false)
             }
 
-            credentialsFields
-
             if mode != .passwordReset {
+                googleAuthSection
                 legalBlock
+                HStack(spacing: 12) {
+                    googleDividerLine
+                    Text(CommunityDesignL10n.text("auth.email")).font(.caption).foregroundStyle(CommunityStyle.muted)
+                        .fixedSize()
+                    googleDividerLine
+                }.accessibilityHidden(true)
             }
+
+            credentialsFields
 
             if mode == .login {
                 HStack {
@@ -146,7 +127,7 @@ struct LoginView: View {
                         clearMessages()
                     }
                     .font(.footnote.weight(.semibold))
-                    .foregroundStyle(Color(hex: 0x0E7C86))
+                    .foregroundStyle(Color(hex: 0x26756B))
                 }
             }
 
@@ -154,27 +135,27 @@ struct LoginView: View {
                 Task { await submit() }
             } label: {
                 Group {
-                    if isSubmitting {
+                    if isSubmitting || isGoogleSigningIn {
                         ProgressView().tint(.white)
                     } else {
                         Text(submitTitle)
                             .font(.body.weight(.bold))
+                            .multilineTextAlignment(.center)
+                            .fixedSize(horizontal: false, vertical: true)
                     }
                 }
                 .foregroundStyle(.white)
                 .frame(maxWidth: .infinity)
-                .frame(height: 54)
+                .padding(.horizontal, 12)
+                .padding(.vertical, 14)
+                .frame(minHeight: 54)
                 .background(
-                    canSubmit && !isSubmitting ? Color(hex: 0x0E7C86) : Color(hex: 0x0E7C86).opacity(0.45),
+                    canSubmit && !isSubmitting ? Color(hex: 0x26756B) : Color(hex: 0x26756B).opacity(0.45),
                     in: RoundedRectangle(cornerRadius: 16, style: .continuous)
                 )
             }
             .buttonStyle(.plain)
             .disabled(!canSubmit || isSubmitting)
-
-            if mode != .passwordReset {
-                googleAuthSection
-            }
 
             Button(switchTitle) {
                 switch mode {
@@ -193,15 +174,14 @@ struct LoginView: View {
             .foregroundStyle(Color(hex: 0x244C73))
             .padding(.top, 2)
         }
-        .padding(24)
+        .padding(22)
         .frame(maxWidth: .infinity)
         .background(
-            LinearGradient(colors: [.white, Color(hex: 0xFAFEFE)], startPoint: .top, endPoint: .bottom),
-            in: RoundedRectangle(cornerRadius: 12, style: .continuous)
+            Color.white, in: RoundedRectangle(cornerRadius: 26, style: .continuous)
         )
         .overlay {
-            RoundedRectangle(cornerRadius: 12, style: .continuous)
-                .stroke(Color.white, lineWidth: 1)
+            RoundedRectangle(cornerRadius: 26, style: .continuous)
+                .strokeBorder(CommunityStyle.border)
         }
     }
 
@@ -212,7 +192,7 @@ struct LoginView: View {
             Text(badgeTitle)
                 .font(.caption.weight(.bold))
         }
-        .foregroundStyle(Color(hex: 0x0E7C86))
+        .foregroundStyle(Color(hex: 0x26756B))
         .padding(.horizontal, 12)
         .padding(.vertical, 7)
         .background(Color(hex: 0xEFF8FA), in: Capsule())
@@ -260,7 +240,7 @@ struct LoginView: View {
     private var authSecureField: some View {
         HStack(spacing: 10) {
             Image(systemName: "lock.fill")
-                .foregroundStyle(Color(hex: 0x657484))
+                .foregroundStyle(Color(hex: 0x637671))
             Group {
                 if isPasswordVisible {
                     TextField(L10n.loginPasswordPlaceholder, text: $password)
@@ -271,11 +251,12 @@ struct LoginView: View {
             .textContentType(mode == .register ? .newPassword : .password)
             .textInputAutocapitalization(.never)
             .autocorrectionDisabled()
+            .accessibilityIdentifier("auth.password")
             Button {
                 isPasswordVisible.toggle()
             } label: {
                 Image(systemName: isPasswordVisible ? "eye.slash.fill" : "eye.fill")
-                    .foregroundStyle(Color(hex: 0x657484))
+                    .foregroundStyle(Color(hex: 0x637671))
             }
             .accessibilityLabel(isPasswordVisible ? L10n.loginHidePassword : L10n.loginShowPassword)
         }
@@ -284,7 +265,7 @@ struct LoginView: View {
         .background(Color.white, in: RoundedRectangle(cornerRadius: 16, style: .continuous))
         .overlay {
             RoundedRectangle(cornerRadius: 16, style: .continuous)
-                .stroke(Color(hex: 0xD7E3E6), lineWidth: 1)
+                .stroke(Color(hex: 0xDDE8E1), lineWidth: 1)
         }
     }
 
@@ -298,7 +279,7 @@ struct LoginView: View {
     ) -> some View {
         HStack(spacing: 10) {
             Image(systemName: systemImage)
-                .foregroundStyle(Color(hex: 0x657484))
+                .foregroundStyle(Color(hex: 0x637671))
             Group {
                 if isSecure {
                     SecureField(title, text: text)
@@ -310,13 +291,14 @@ struct LoginView: View {
             .keyboardType(keyboard)
             .textInputAutocapitalization(.never)
             .autocorrectionDisabled()
+            .accessibilityIdentifier(contentType == UITextContentType.username ? "auth.username" : "auth.credential")
         }
         .padding(.horizontal, 14)
         .padding(.vertical, 14)
         .background(Color.white, in: RoundedRectangle(cornerRadius: 16, style: .continuous))
         .overlay {
             RoundedRectangle(cornerRadius: 16, style: .continuous)
-                .stroke(Color(hex: 0xD7E3E6), lineWidth: 1)
+                .stroke(Color(hex: 0xDDE8E1), lineWidth: 1)
         }
     }
 
@@ -327,16 +309,15 @@ struct LoginView: View {
                     .font(.footnote)
                     .foregroundStyle(Color(hex: 0x435365))
             }
-            .tint(Color(hex: 0x0E7C86))
+            .tint(Color(hex: 0x26756B))
 
-            HStack(spacing: 12) {
-                Link(L10n.loginEULA, destination: legalTerms?.eulaUrl ?? container.config.eulaURL)
-                Link(L10n.settingsTerms, destination: legalTerms?.termsUrl ?? container.config.termsURL)
-                Link(L10n.settingsPrivacyPolicy, destination: legalTerms?.privacyUrl ?? container.config.privacyPolicyURL)
+            ViewThatFits(in: .horizontal) {
+                HStack(spacing: 12) { legalLinks }
+                    .fixedSize(horizontal: true, vertical: false)
+                VStack(alignment: .leading, spacing: 10) { legalLinks }
             }
             .font(.caption.weight(.semibold))
-            .foregroundStyle(Color(hex: 0x0E7C86))
-            .lineLimit(1)
+            .foregroundStyle(Color(hex: 0x26756B))
 
             if isLoadingLegalTerms {
                 ProgressView(L10n.loginLegalLoading)
@@ -348,17 +329,24 @@ struct LoginView: View {
 
             Text(L10n.loginCommunityRulesSummary)
                 .font(.caption2)
-                .foregroundStyle(Color(hex: 0x657484))
+                .foregroundStyle(Color(hex: 0x637671))
         }
         .padding(12)
         .frame(maxWidth: .infinity, alignment: .leading)
         .background(Color(hex: 0xF7FAFC), in: RoundedRectangle(cornerRadius: 16, style: .continuous))
     }
 
+    @ViewBuilder
+    private var legalLinks: some View {
+        Link(L10n.loginEULA, destination: legalTerms?.eulaUrl ?? container.config.eulaURL)
+        Link(L10n.settingsTerms, destination: legalTerms?.termsUrl ?? container.config.termsURL)
+        Link(L10n.settingsPrivacyPolicy, destination: legalTerms?.privacyUrl ?? container.config.privacyPolicyURL)
+    }
+
     private func notice(_ text: String, isError: Bool) -> some View {
         Text(text)
             .font(.footnote)
-            .foregroundStyle(isError ? Color(hex: 0xC53D3D) : Color(hex: 0x0E7C86))
+            .foregroundStyle(isError ? Color(hex: 0xC53D3D) : Color(hex: 0x26756B))
             .multilineTextAlignment(.center)
             .padding(12)
             .frame(maxWidth: .infinity)
@@ -418,36 +406,33 @@ struct LoginView: View {
 
     private var googleAuthSection: some View {
         VStack(spacing: 12) {
-            HStack(spacing: 10) {
-                googleDividerLine
-                Text(L10n.loginOrDivider)
-                    .font(.caption.weight(.semibold))
-                    .foregroundStyle(Color(hex: 0x657484))
-                googleDividerLine
-            }
-
             Button {
                 Task { await submitGoogle() }
             } label: {
                 HStack(spacing: 10) {
                     GoogleGMark()
-                    if isSubmitting {
+                    if isSubmitting || isGoogleSigningIn {
                         ProgressView()
                     } else {
                         Text(mode == .register ? L10n.loginGoogleRegister : L10n.loginGoogleSignIn)
                             .font(.body.weight(.bold))
+                            .multilineTextAlignment(.center)
+                            .fixedSize(horizontal: false, vertical: true)
                     }
                 }
-                .foregroundStyle(Color(hex: 0x172033))
+                .foregroundStyle(Color(hex: 0x193F43))
                 .frame(maxWidth: .infinity)
-                .frame(height: 54)
+                .padding(.horizontal, 12)
+                .padding(.vertical, 14)
+                .frame(minHeight: 54)
                 .background(Color.white, in: RoundedRectangle(cornerRadius: 16, style: .continuous))
                 .overlay {
                     RoundedRectangle(cornerRadius: 16, style: .continuous)
-                        .stroke(Color(hex: 0xD7E3E6), lineWidth: 1)
+                        .stroke(Color(hex: 0xDDE8E1), lineWidth: 1)
                 }
             }
             .buttonStyle(.plain)
+            .accessibilityIdentifier("auth.google")
             .disabled(!canSubmitGoogle || isSubmitting || isGoogleSigningIn)
             .opacity(canSubmitGoogle && !isSubmitting && !isGoogleSigningIn ? 1 : 0.55)
         }
@@ -456,7 +441,7 @@ struct LoginView: View {
 
     private var googleDividerLine: some View {
         Rectangle()
-            .fill(Color(hex: 0xD7E3E6))
+            .fill(Color(hex: 0xDDE8E1))
             .frame(height: 1)
     }
 

@@ -340,6 +340,8 @@ public struct MemberDTO: Decodable, Equatable, Identifiable, Sendable {
     public let canFollow: Bool
     public let roleLabel: String
     public let showVerifiedBadge: Bool
+    public let isPremium: Bool
+    public let roleType: String
     public let about: String
     public let location: String
     public let website: String
@@ -359,8 +361,14 @@ public struct MemberDTO: Decodable, Equatable, Identifiable, Sendable {
         self.isStaff = try container.decodeIfPresent(Bool.self, forKey: .isStaff) ?? false
         self.isFollowed = try container.decodeIfPresent(Bool.self, forKey: .isFollowed) ?? false
         self.canFollow = try container.decodeIfPresent(Bool.self, forKey: .canFollow) ?? false
-        self.roleLabel = try container.decodeIfPresent(String.self, forKey: .roleLabel) ?? ""
-        self.showVerifiedBadge = try container.decodeIfPresent(Bool.self, forKey: .showVerifiedBadge) ?? false
+        let role = try container.decodeIfPresent(UserRoleDTO.self, forKey: .role)
+        self.roleLabel = try container.decodeIfPresent(String.self, forKey: .roleLabel) ?? role?.roleLabel ?? ""
+        self.showVerifiedBadge = container.contains(.showVerifiedBadge)
+            ? container.decodeFlexibleBool(forKey: .showVerifiedBadge) : role?.showVerifiedBadge ?? false
+        self.roleType = try container.decodeIfPresent(String.self, forKey: .roleType) ?? role?.roleType ?? "member"
+        let premiumFlag = container.contains(.isPremium)
+            ? container.decodeFlexibleBool(forKey: .isPremium) : role?.isPremium ?? false
+        self.isPremium = premiumFlag || self.roleType.trimmingCharacters(in: .whitespacesAndNewlines).lowercased() == "premium"
         self.about = try container.decodeIfPresent(String.self, forKey: .about) ?? ""
         self.location = try container.decodeIfPresent(String.self, forKey: .location) ?? ""
         self.website = try container.decodeIfPresent(String.self, forKey: .website) ?? ""
@@ -383,6 +391,7 @@ public struct MemberDTO: Decodable, Equatable, Identifiable, Sendable {
         case canFollow
         case roleLabel
         case showVerifiedBadge
+        case isPremium, roleType, role
         case about
         case location
         case website
@@ -742,6 +751,30 @@ public struct BookCommentCreateDTO: Decodable, Equatable, Sendable {
     public let success: Bool
 }
 
+/// Decodes each element on its own and drops the ones that fail, so one bad item
+/// (missing field, wrong type) does not fail the surrounding response.
+public struct LossyDecodableArray<Element: Decodable>: Decodable {
+    public let elements: [Element]
+
+    public init(from decoder: Decoder) throws {
+        var container = try decoder.unkeyedContainer()
+        var result: [Element] = []
+        while !container.isAtEnd {
+            if let value = try? container.decode(Element.self) {
+                result.append(value)
+            } else {
+                // Advance past the bad element; a failed decode does not move the index.
+                _ = try? container.decode(SkippedElement.self)
+            }
+        }
+        elements = result
+    }
+
+    private struct SkippedElement: Decodable {
+        init(from decoder: Decoder) throws {}
+    }
+}
+
 public struct BooksPageDTO: Decodable, Equatable, Sendable {
     public let books: [BookDTO]
     public let currentPage: Int
@@ -750,8 +783,9 @@ public struct BooksPageDTO: Decodable, Equatable, Sendable {
 
     public init(from decoder: Decoder) throws {
         let container = try decoder.container(keyedBy: CodingKeys.self)
-        self.books = try container.decodeIfPresent([BookDTO].self, forKey: .books)
-            ?? container.decodeIfPresent([BookDTO].self, forKey: .items)
+        // One malformed record must not empty the whole catalog page.
+        self.books = try container.decodeIfPresent(LossyDecodableArray<BookDTO>.self, forKey: .books)?.elements
+            ?? container.decodeIfPresent(LossyDecodableArray<BookDTO>.self, forKey: .items)?.elements
             ?? []
 
         let pagination = try container.decodeIfPresent(BooksPaginationDTO.self, forKey: .pagination)

@@ -5,13 +5,16 @@ import EkitapligimCore
 struct ModernProfileBooksSection: View {
     @EnvironmentObject private var container: AppContainer
     @Environment(\.dynamicTypeSize) private var dynamicTypeSize
+    @ScaledMetric(relativeTo: .caption) private var minimumReadingCopyWidth = 160.0
     let onLibrary: (LibraryTab) -> Void
     let onDownloads: () -> Void
     let onComments: () -> Void
     let onJourney: () -> Void
 
     private var columns: [GridItem] {
-        Array(repeating: GridItem(.flexible(), spacing: 10), count: dynamicTypeSize.isAccessibilitySize ? 1 : 2)
+        dynamicTypeSize.isAccessibilitySize
+            ? [GridItem(.flexible())]
+            : [GridItem(.adaptive(minimum: 140), spacing: 10)]
     }
 
     var body: some View {
@@ -36,6 +39,7 @@ struct ModernProfileBooksSection: View {
             Button(action: onJourney) {
                 ViewThatFits(in: .horizontal) {
                     HStack(spacing: 12) { completedNote; Spacer(minLength: 0); journeyLabel }
+                        .fixedSize(horizontal: true, vertical: false)
                     VStack(alignment: .leading, spacing: 10) { completedNote; journeyLabel }
                 }
                 .padding(.vertical, 8).frame(minHeight: 48)
@@ -51,11 +55,13 @@ struct ModernProfileBooksSection: View {
     private var completedNote: some View {
         Label(ShellRefreshL10n.count(container.finishedBooks.count), systemImage: "clock")
             .font(.caption).foregroundStyle(EKitapligimPalette.muted)
+            .fixedSize(horizontal: false, vertical: true)
     }
 
     private var journeyLabel: some View {
         Label(ShellRefreshL10n.text("profileJourney"), systemImage: "arrow.right")
             .font(.caption.weight(.bold)).foregroundStyle(EKitapligimPalette.tealDark)
+            .fixedSize(horizontal: false, vertical: true)
     }
 
     private var continueCard: some View {
@@ -63,29 +69,22 @@ struct ModernProfileBooksSection: View {
             Text(ShellRefreshL10n.text("profileContinueEyebrow"))
                 .font(.caption2.weight(.bold)).tracking(0.8).foregroundStyle(EKitapligimPalette.tealDark)
             if let item = container.continueReadingItem {
-                let layout = dynamicTypeSize.isAccessibilitySize
-                    ? AnyLayout(VStackLayout(alignment: .leading, spacing: 13))
-                    : AnyLayout(HStackLayout(alignment: .center, spacing: 14))
-                layout {
-                    EKitapligimRemoteCover(urlString: item.coverUrl, title: item.title, author: item.author, accessibilityTitle: item.title)
-                        .frame(width: 69, height: 104).clipShape(RoundedRectangle(cornerRadius: 9))
-                        .shadow(color: EKitapligimPalette.teal.opacity(0.12), radius: 7, y: 5)
-                    VStack(alignment: .leading, spacing: 9) {
-                        Text(item.title).font(.headline).foregroundStyle(Color(hex: 0x173E48))
-                            .fixedSize(horizontal: false, vertical: true)
-                        Text(item.author).font(.caption).foregroundStyle(EKitapligimPalette.muted)
-                        ProgressView(value: Double(item.displayProgressPercent), total: 100)
-                            .tint(EKitapligimPalette.teal)
-                            .accessibilityValue(L10n.commonPercent(item.displayProgressPercent))
-                        Text(item.positionType == "epub" ? L10n.commonPercent(item.displayProgressPercent) : L10n.continueReadingFromPage(max(item.lastReadPage, 1)))
-                            .font(.caption).foregroundStyle(EKitapligimPalette.muted)
+                if dynamicTypeSize.isAccessibilitySize {
+                    VStack(alignment: .leading, spacing: 13) { readingCover(item); readingCopy(item) }
+                } else {
+                    ViewThatFits(in: .horizontal) {
+                        HStack(alignment: .center, spacing: 14) {
+                            readingCover(item)
+                            readingCopy(item).frame(minWidth: minimumReadingCopyWidth)
+                        }
+                        VStack(alignment: .leading, spacing: 13) { readingCover(item); readingCopy(item) }
                     }
-                    .frame(maxWidth: .infinity, alignment: .leading)
                 }
                 if let bookID = Int(item.bookId), bookID > 0 {
                     Button { container.open(route: .reader(bookID)) } label: {
                         Label(L10n.homeContinueAction, systemImage: "book.pages")
                             .font(.subheadline.weight(.bold)).foregroundStyle(.white)
+                            .fixedSize(horizontal: false, vertical: true)
                             .padding(.horizontal, 15).padding(.vertical, 13)
                             .frame(maxWidth: .infinity, minHeight: 48, alignment: .leading)
                             .background(LinearGradient(colors: [Color(hex: 0x37858A), Color(hex: 0x245A65)], startPoint: .leading, endPoint: .trailing), in: RoundedRectangle(cornerRadius: 14))
@@ -105,5 +104,27 @@ struct ModernProfileBooksSection: View {
         .padding(16).frame(maxWidth: .infinity, alignment: .leading)
         .background(Color(hex: 0xE9F2ED), in: RoundedRectangle(cornerRadius: 21))
         .overlay { RoundedRectangle(cornerRadius: 21).stroke(Color(hex: 0xD2E4DE)) }
+    }
+
+    private func readingCover(_ item: LibraryItemDTO) -> some View {
+        EKitapligimRemoteCover(urlString: item.coverUrl, title: item.title, author: item.author, accessibilityTitle: item.title)
+            .frame(width: 69, height: 104).clipShape(RoundedRectangle(cornerRadius: 9))
+            .shadow(color: EKitapligimPalette.teal.opacity(0.12), radius: 7, y: 5)
+    }
+
+    private func readingCopy(_ item: LibraryItemDTO) -> some View {
+        VStack(alignment: .leading, spacing: 9) {
+            Text(item.title).font(.headline).foregroundStyle(Color(hex: 0x173E48))
+                .fixedSize(horizontal: false, vertical: true)
+            Text(item.author).font(.caption).foregroundStyle(EKitapligimPalette.muted)
+                .fixedSize(horizontal: false, vertical: true)
+            ProgressView(value: Double(item.displayProgressPercent), total: 100)
+                .tint(EKitapligimPalette.teal)
+                .accessibilityValue(L10n.commonPercent(item.displayProgressPercent))
+            Text(item.positionType == "epub" ? L10n.commonPercent(item.displayProgressPercent) : L10n.continueReadingFromPage(max(item.lastReadPage, 1)))
+                .font(.caption).foregroundStyle(EKitapligimPalette.muted)
+                .fixedSize(horizontal: false, vertical: true)
+        }
+        .frame(maxWidth: .infinity, alignment: .leading)
     }
 }

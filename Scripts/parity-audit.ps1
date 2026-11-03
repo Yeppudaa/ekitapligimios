@@ -1,10 +1,15 @@
 param(
     [string]$BaseUrl = "https://ekitapligim.com/ios-api/v1/",
     [switch]$AllowInsecure,
-    [switch]$SkipNetwork
+    [switch]$SkipNetwork,
+    [switch]$ExerciseMutations,
+    [switch]$AllowProductionMutations
 )
 
 $ErrorActionPreference = "Stop"
+if ($ExerciseMutations -and ([Uri]$BaseUrl).Host -in @('ekitapligim.com', 'www.ekitapligim.com') -and -not $AllowProductionMutations) {
+    throw 'Production writes require explicit -AllowProductionMutations and a disposable test account.'
+}
 $root = Resolve-Path (Join-Path $PSScriptRoot "..")
 Set-Location $root
 . (Join-Path $PSScriptRoot "load-smoke-env.ps1") -Root $root
@@ -407,6 +412,7 @@ if (-not $SkipNetwork) {
         $ErrorActionPreference = $previousEAP
     }
 
+    if ($ExerciseMutations) {
     Write-Step "Probing live forum topic create route"
     try {
         $probeUri = Join-AuditUrl("forums/2/threads")
@@ -428,6 +434,8 @@ if (-not $SkipNetwork) {
         else {
             Add-Result "Live forum create POST" "FAIL" "Unexpected HTTP $status"
         }
+    }
+
     }
 
     Write-Step "Probing live thread posts route"
@@ -489,7 +497,7 @@ Add-Result "Auth UGC mutations" "WARN" "Requires EKITAPLIGIM_SMOKE_LOGIN/PASSWOR
 $smokeLogin = [string]$env:EKITAPLIGIM_SMOKE_LOGIN
 $smokePassword = [string]$env:EKITAPLIGIM_SMOKE_PASSWORD
 $smokeToken = [string]$env:EKITAPLIGIM_SMOKE_ACCESS_TOKEN
-if (-not $SkipNetwork -and (
+if ($ExerciseMutations -and -not $SkipNetwork -and (
         (-not [string]::IsNullOrWhiteSpace($smokeLogin) -and -not [string]::IsNullOrWhiteSpace($smokePassword)) -or
         -not [string]::IsNullOrWhiteSpace($smokeToken)
     )) {
@@ -497,6 +505,7 @@ if (-not $SkipNetwork -and (
     $ErrorActionPreference = "Continue"
     try {
         $mutationArgs = @{ BaseUrl = $BaseUrl; ExerciseMutations = $true }
+        if ($AllowProductionMutations) { $mutationArgs.AllowProductionMutations = $true }
         if ($AllowInsecure) { $mutationArgs.AllowInsecure = $true }
         if (-not [string]::IsNullOrWhiteSpace($smokeToken)) {
             $mutationArgs.BearerToken = $smokeToken
@@ -576,7 +585,7 @@ if (@($results | Where-Object { $_.Name -eq "Live forum create POST" -and $_.Sta
     Write-Host "- Verify deploy: .\Scripts\verify-ios-api-deploy.ps1 -BaseUrl `"$BaseUrl`""
 }
 if (@($results | Where-Object { $_.Name -eq "Auth UGC mutations" -and $_.Status -eq "WARN" }).Count -gt 0) {
-    Write-Host "- Copy .env.example to .env with EKITAPLIGIM_SMOKE_LOGIN/PASSWORD (or set env vars) and re-run parity-audit.ps1."
+    Write-Host "- Mutation checks are opt-in: use -ExerciseMutations with a disposable staging account. Credentials alone never enable writes."
 }
 if (@($results | Where-Object { $_.Name -eq "Visual screenshot parity" -and $_.Status -eq "WARN" }).Count -gt 0) {
     Write-Host "- Capture Mac/Xcode side-by-side screenshots vs Android reference for scoped UGC screens."

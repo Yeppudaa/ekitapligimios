@@ -36,6 +36,8 @@
 "chat.subtitle" = "Share your latest read and discover new stories.";
 "catalog.eyebrow" = "OPEN A PAGE. DISCOVER A NEW WORLD.";
 "catalog.title" = "Open a book, expand your world.";
+"catalog.title.lead" = "Open a book,";
+"catalog.title.emphasis" = "Expand your world.";
 "catalog.subtitle" = "Stories to love and new ideas to discover… Find your next book among thousands of e-books.";
 "catalog.explore" = "Explore books";
 "catalog.help" = "How do I read?";

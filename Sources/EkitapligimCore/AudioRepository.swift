@@ -71,8 +71,20 @@ public final class AudioRepository: AudioServing, Sendable {
     }
     public func mediaMetadata(bookID: Int, chapter: AudioChapterDTO, account: String) async throws -> AudioMediaMetadata {
         let url = try mediaURL(bookID: bookID, chapter: chapter)
+        let captured = try await tokens.loadSession()
+        guard captured?.username == account else { throw AudioError.authenticationRequired }
         let (_, response) = try await execute(url: url, account: account, method: "HEAD", media: true)
-        return try AudioMediaMetadata(response: response)
+        guard Self.sameAccount(captured, try await tokens.loadSession()) else { throw AudioError.accountChanged }
+        if try !AudioMediaMetadata.requiresRangeProbe(response: response) { return try AudioMediaMetadata(response: response) }
+        // A single authenticated byte determines the representation size without trusting an optional
+        // HEAD Content-Length or downloading a whole book. The transport rejects ignored/oversized ranges.
+        let (data, probe) = try await execute(url: url, account: account, method: "GET", media: true, range: 0...0)
+        guard Self.sameAccount(captured, try await tokens.loadSession()) else { throw AudioError.accountChanged }
+        let metadata = try AudioMediaMetadata(probeResponse: probe, dataCount: data.count)
+        if let length = response.value(forHTTPHeaderField: "Content-Length") {
+            guard Int64(length.trimmingCharacters(in: .whitespacesAndNewlines)) == metadata.length else { throw AudioError.invalidRange }
+        }
+        return metadata
     }
     public func mediaData(bookID: Int, chapter: AudioChapterDTO, account: String, start: Int64, end: Int64) async throws -> Data {
         guard start >= 0, end >= start, end - start < AudioRangePolicy.chunkSize else { throw AudioError.invalidRange }

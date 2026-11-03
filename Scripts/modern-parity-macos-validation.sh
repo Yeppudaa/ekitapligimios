@@ -41,6 +41,13 @@ printf '%s\n' "$core_status" > "$EVIDENCE/core-status.txt"
 xcodebuild -resolvePackageDependencies -project Ekitapligim.xcodeproj -scheme Ekitapligim \
   -clonedSourcePackagesDirPath .build/xcode-packages 2>&1 | tee "$EVIDENCE/package-resolution.log"
 
+if [ "${EKITAPLIGIM_FULL_RELEASE_REVIEW:-0}" = "1" ]; then
+  xcodebuild clean build -project Ekitapligim.xcodeproj -scheme Ekitapligim \
+    -configuration Development -destination 'generic/platform=iOS Simulator' \
+    -clonedSourcePackagesDirPath .build/xcode-packages -disableAutomaticPackageResolution \
+    CODE_SIGNING_ALLOWED=NO 2>&1 | tee "$EVIDENCE/development-clean-build.log"
+fi
+
 # Choose installed simulators rather than depending on an SDK-specific device name.
 xcrun simctl list devices available --json > "$EVIDENCE/available-simulators.json"
 python3 - "$EVIDENCE" <<'PY'
@@ -69,7 +76,10 @@ PY
 while IFS=$'\t' read -r label device; do
   test_status=0
   scheme=Ekitapligim
-  arguments=(-only-testing:EkitapligimUITests/ModernParityUITests)
+  arguments=(-only-testing:EkitapligimUITests/ModernParityUITests -only-testing:EkitapligimUITests/BookLibraryUITests)
+  if [ "${EKITAPLIGIM_FULL_RELEASE_REVIEW:-0}" = "1" ]; then
+    arguments=(-only-testing:EkitapligimUITests)
+  fi
   # Unit tests use a blank app host and never share a launch environment with UI tests.
   if [ "$label" = "native-unit" ]; then
     scheme=EkitapligimModernUnit

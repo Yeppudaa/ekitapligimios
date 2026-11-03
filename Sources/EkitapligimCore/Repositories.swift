@@ -19,8 +19,8 @@ public struct DirectoryRepository: Sendable {
         self.apiClient = apiClient
     }
 
-    public func items(kind: DirectoryKind, page: Int = 1, query: String? = nil) async throws -> DirectoryPageDTO {
-        try await apiClient.request(.directory(kind: kind, page: page, query: query), as: DirectoryPageDTO.self)
+    public func items(kind: DirectoryKind, page: Int = 1, query: String? = nil, perPage: Int? = nil) async throws -> DirectoryPageDTO {
+        try await apiClient.request(.directory(kind: kind, page: page, query: query, perPage: perPage), as: DirectoryPageDTO.self)
     }
 
     public func books(kind: DirectoryKind, slug: String, page: Int = 1) async throws -> BooksPageDTO {
@@ -131,6 +131,7 @@ public protocol BookRepositoryProtocol: Sendable {
     func updateProgress(bookID: Int, page: Int, percent: Double) async throws
     func library() async throws -> LibraryPageDTO
     func updateLibraryItem(bookID: Int, shelfState: String, progressPercent: Int, lastReadPage: Int) async throws
+    func setLibraryFavorite(bookID: Int, isFavorite: Bool) async throws
     func comments(bookID: Int, page: Int) async throws -> BookCommentsPageDTO
     func createComment(bookID: Int, message: String, rating: Int) async throws -> BookCommentCreateDTO
 }
@@ -191,7 +192,7 @@ public struct BookRepository: BookRepositoryProtocol, ReaderProgressRepositoryPr
     }
 
     public func updateLibraryItem(bookID: Int, shelfState: String, progressPercent: Int, lastReadPage: Int) async throws {
-        let _: SuccessResponse = try await apiClient.request(
+        let response: LibraryMutationAcknowledgement = try await apiClient.request(
             .updateLibraryItem(
                 bookID: bookID,
                 shelfState: shelfState,
@@ -199,6 +200,14 @@ public struct BookRepository: BookRepositoryProtocol, ReaderProgressRepositoryPr
                 lastReadPage: lastReadPage
             )
         )
+        try response.validate()
+    }
+
+    public func setLibraryFavorite(bookID: Int, isFavorite: Bool) async throws {
+        let response: LibraryMutationAcknowledgement = try await apiClient.request(
+            .setLibraryFavorite(bookID: bookID, isFavorite: isFavorite)
+        )
+        try response.validate()
     }
 
     public func comments(bookID: Int, page: Int = 1) async throws -> BookCommentsPageDTO {
@@ -314,6 +323,10 @@ public struct ProfileRepository: Sendable {
         try await apiClient.request(.myComments(page: page), as: MyCommentsPageDTO.self)
     }
 
+    public func audioComments(page: Int = 1) async throws -> MyAudioCommentsPageDTO {
+        try await apiClient.request(.myAudioComments(page: page), as: MyAudioCommentsPageDTO.self)
+    }
+
     public func uploadImage(kind: ProfileImageKind, fileName: String, mimeType: String, data: Data) async throws -> ProfileMediaDTO {
         try await apiClient.request(
             .uploadProfileImage(kind: kind, fileName: fileName, mimeType: mimeType, data: data),
@@ -390,6 +403,21 @@ public struct BookAgendaRepository: Sendable {
         self.apiClient = apiClient
     }
 
+    public func mediaCapabilities() async throws -> AgendaMediaCapabilitiesDTO {
+        try await apiClient.request(.agendaMediaCapabilities)
+    }
+
+    public func image(postID: String, attachment: BookAgendaAttachmentDTO) async throws -> Data {
+        if attachment.protectedImage {
+            guard Int(postID).map({ $0 > 0 }) == true, Int(attachment.id).map({ $0 > 0 }) == true else {
+                throw AgendaMediaError.invalidImage
+            }
+            return try await apiClient.agendaImage(.agendaImage(postID: postID, attachmentID: attachment.id))
+        }
+        guard let url = attachment.displayURL else { throw AgendaMediaError.invalidImage }
+        return try await apiClient.publicAgendaImage(url: url)
+    }
+
     public func feed(
         tab: BookAgendaTab = .agenda,
         filter: String? = nil,
@@ -415,10 +443,19 @@ public struct BookAgendaRepository: Sendable {
         rating: Int? = nil,
         pageNumber: Int? = nil,
         progressCurrent: Int? = nil,
-        progressTotal: Int? = nil
+        progressTotal: Int? = nil,
+        photo: Data? = nil
     ) async throws -> BookAgendaPostDTO {
-        try await apiClient.request(
-            .createBookAgendaPost(
+        var originalAuthorization: String?
+        if let photo {
+            guard !photo.isEmpty, photo.count <= AgendaMediaPolicy.maximumUploadBytes else { throw AgendaMediaError.invalidImage }
+            originalAuthorization = try await apiClient.captureWriteAuthorization()
+            // Older backends ignore unknown multipart fields. Never silently publish without the photo.
+            let capability = try await mediaCapabilities()
+            guard capability.canUploadImages else { throw AgendaMediaError.uploadUnavailable }
+            guard photo.count <= capability.maximumBytes else { throw AgendaMediaError.imageTooLarge }
+        }
+        let endpoint = APIEndpoint.createBookAgendaPost(
                 message: message,
                 postType: postType,
                 visibility: visibility,
@@ -427,10 +464,13 @@ public struct BookAgendaRepository: Sendable {
                 rating: rating,
                 pageNumber: pageNumber,
                 progressCurrent: progressCurrent,
-                progressTotal: progressTotal
-            ),
-            as: BookAgendaPostEnvelopeDTO.self
-        ).post
+                progressTotal: progressTotal,
+                photo: photo
+            )
+        if let originalAuthorization {
+            return try await apiClient.request(endpoint, authorizedBy: originalAuthorization, as: BookAgendaPostEnvelopeDTO.self).post
+        }
+        return try await apiClient.request(endpoint, as: BookAgendaPostEnvelopeDTO.self).post
     }
 
     public func updatePost(id: String, message: String, visibility: BookAgendaVisibility) async throws -> BookAgendaPostDTO {
@@ -998,20 +1038,64 @@ public struct LibraryPageDTO: Decodable, Equatable, Sendable {
 
     public init(from decoder: Decoder) throws {
         let container = try decoder.singleValueContainer()
+        let decoded: [LibraryItemDTO]
         if let directItems = try? container.decode([LibraryItemDTO].self) {
-            self.items = directItems
-            return
+            decoded = directItems
+        } else {
+            let keyed = try decoder.container(keyedBy: CodingKeys.self)
+            if let items = try keyed.decodeIfPresent([LibraryItemDTO].self, forKey: .items)
+                ?? keyed.decodeIfPresent([LibraryItemDTO].self, forKey: .library) {
+                decoded = items
+            } else if let nested = try keyed.decodeIfPresent(LibraryPageDTO.self, forKey: .data) {
+                decoded = nested.items
+            } else {
+                throw DecodingError.dataCorrupted(.init(codingPath: decoder.codingPath,
+                    debugDescription: "Library response is missing its item collection."))
+            }
         }
-        let keyed = try decoder.container(keyedBy: CodingKeys.self)
-        self.items = try keyed.decodeIfPresent([LibraryItemDTO].self, forKey: .items)
-            ?? keyed.decodeIfPresent([LibraryItemDTO].self, forKey: .library)
-            ?? []
+        guard decoded.allSatisfy({ !$0.bookId.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty }) else {
+            throw DecodingError.dataCorrupted(.init(codingPath: decoder.codingPath,
+                debugDescription: "Library response contains an item without a book identifier."))
+        }
+        self.items = decoded
     }
 
     private enum CodingKeys: String, CodingKey {
         case items
         case library
+        case data
     }
+}
+
+/// A library write requires an explicit acknowledgement, unlike best-effort legacy actions.
+/// HTTP 200 error envelopes and `success: false` must never be committed as local changes.
+private struct LibraryMutationAcknowledgement: Decodable {
+    let success: Bool
+    let errors: [APIErrorDetail]
+    let message: String?
+
+    init(from decoder: Decoder) throws {
+        let container = try decoder.container(keyedBy: CodingKeys.self)
+        success = container.decodeFlexibleBool(forKey: .success)
+        errors = try container.decodeIfPresent([APIErrorDetail].self, forKey: .errors) ?? []
+        message = try container.decodeIfPresent(String.self, forKey: .message)
+    }
+
+    func validate() throws {
+        if !errors.isEmpty {
+            throw APIClientError.httpStatus(200, APIErrorEnvelope(errors: errors))
+        }
+        guard success else {
+            if let message, !message.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty {
+                throw APIClientError.httpStatus(200, APIErrorEnvelope(errors: [
+                    APIErrorDetail(code: "library_update_rejected", message: message)
+                ]))
+            }
+            throw APIClientError.invalidResponse
+        }
+    }
+
+    private enum CodingKeys: String, CodingKey { case success, errors, message }
 }
 
 public struct BookEnvelope: Decodable, Equatable, Sendable {
@@ -1022,8 +1106,8 @@ public struct BookEnvelope: Decodable, Equatable, Sendable {
         let container = try decoder.container(keyedBy: CodingKeys.self)
         self.book = try container.decode(BookDTO.self, forKey: .book)
         let bookContainer = try container.nestedContainer(keyedBy: BookCodingKeys.self, forKey: .book)
-        self.similarBooks = try bookContainer.decodeIfPresent([BookDTO].self, forKey: .similarBooks)
-            ?? bookContainer.decodeIfPresent([BookDTO].self, forKey: .similarBooksCamel)
+        self.similarBooks = try bookContainer.decodeIfPresent(LossyDecodableArray<BookDTO>.self, forKey: .similarBooks)?.elements
+            ?? bookContainer.decodeIfPresent(LossyDecodableArray<BookDTO>.self, forKey: .similarBooksCamel)?.elements
             ?? []
     }
 

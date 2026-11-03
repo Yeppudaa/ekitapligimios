@@ -4,8 +4,7 @@ public struct ContentSafety: Sendable {
     private let blockedTerms: [String]
 
     public init(blockedTerms: [String]? = nil) {
-        self.blockedTerms = (blockedTerms ?? Self.defaultBlockedTerms)
-            .map { $0.lowercased(with: Locale(identifier: "tr_TR")) }
+        self.blockedTerms = (blockedTerms ?? Self.defaultBlockedTerms).map(Self.fold)
     }
 
     public func validateUserGeneratedText(_ text: String) -> ContentSafetyResult {
@@ -13,11 +12,20 @@ public struct ContentSafety: Sendable {
         if trimmed.isEmpty {
             return .rejected(reason: .empty)
         }
-        let folded = trimmed.lowercased(with: Locale(identifier: "tr_TR"))
+        let folded = Self.fold(trimmed)
         if blockedTerms.contains(where: { folded.contains($0) }) {
             return .rejected(reason: .blockedTerm)
         }
         return .accepted
+    }
+
+    /// Lowercases in Turkish and then drops the dotted/dotless and accent differences,
+    /// so "KISISEL", "kişisel" and "KİŞİSEL" all compare equal. Before, typing the
+    /// dotless capital (or plain ASCII) slipped past every Turkish blocked term.
+    static func fold(_ text: String) -> String {
+        text.lowercased(with: Locale(identifier: "tr_TR"))
+            .replacingOccurrences(of: "ı", with: "i")
+            .folding(options: [.diacriticInsensitive, .caseInsensitive], locale: Locale(identifier: "en_US_POSIX"))
     }
 
     private static let defaultBlockedTerms = [

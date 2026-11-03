@@ -43,7 +43,7 @@ def main():
         profile = plistlib.loads(subprocess.check_output(["security", "cms", "-D", "-i", str(app / "embedded.mobileprovision")]))
         permitted = profile["Entitlements"]
         assert info["CFBundleIdentifier"] == BUNDLE
-        assert info["CFBundleShortVersionString"] == "1.1.0"
+        assert info["CFBundleShortVersionString"] == "1.1.1"
         assert info["CFBundleVersion"] == os.environ["TESTFLIGHT_NEXT_BUILD_NUMBER"]
         assert info["EKITAPLIGIM_ENVIRONMENT"] == "production"
         assert info["EKITAPLIGIM_API_BASE_URL"] == "https://ekitapligim.com/ios-api/v1/"

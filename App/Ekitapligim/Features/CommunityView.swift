@@ -4,6 +4,8 @@ import EkitapligimCore
 @MainActor
 struct CommunityView: View {
     @EnvironmentObject private var container: AppContainer
+    var hostsAudioNavigation = false
+    var onOpenMenu: (() -> Void)? = nil
     @State private var showingBlockUser = false
     @State private var forums: [ForumDTO] = []
     @State private var isLoading = true
@@ -61,6 +63,8 @@ struct CommunityView: View {
             }
             .forumPageBackground()
             .navigationTitle(L10n.communityTitle)
+            .shellMenu(action: onOpenMenu)
+            .audioPageNavigation(enabled: hostsAudioNavigation)
             .task { await load() }
             .sheet(isPresented: $showingBlockUser) {
                 BlockMemberView()
@@ -117,6 +121,7 @@ struct CommunityView: View {
                     CommunityForumCard(forum: forum)
                 }
                 .buttonStyle(.plain)
+                .accessibilityIdentifier("forum.category.\(forum.id)")
             }
             }
         }
@@ -256,7 +261,7 @@ struct CommunityLiteraryHero: View {
                 .font(.caption2.weight(.semibold)).tracking(0.8)
                 .foregroundStyle(gold)
                 .padding(.horizontal, 11).padding(.vertical, 8)
-                .overlay(Capsule().stroke(gold.opacity(0.35)))
+                .overlay(RoundedRectangle(cornerRadius: dynamicType.isAccessibilitySize ? 12 : 999).stroke(gold.opacity(0.35)))
             VStack(alignment: .leading, spacing: 0) {
                 Text(title).foregroundStyle(Color(hex: 0xFFFAF0))
                 Text(emphasis).italic().foregroundStyle(gold)
@@ -358,10 +363,11 @@ struct CommunityScenicBanner: View {
 }
 
 private struct CommunityForumCard: View {
+    @Environment(\.dynamicTypeSize) private var dynamicTypeSize
     let forum: ForumDTO
     var body: some View {
         VStack(spacing: 0) {
-            HStack(alignment: .top, spacing: 12) {
+            (dynamicTypeSize.isAccessibilitySize ? AnyLayout(VStackLayout(alignment: .leading, spacing: 12)) : AnyLayout(HStackLayout(alignment: .top, spacing: 12))) {
                 Image(systemName: forum.isBookForum == true ? "books.vertical" : "text.bubble")
                     .font(.title3).foregroundStyle(Color(hex: 0x426374))
                     .frame(width: 42, height: 42)

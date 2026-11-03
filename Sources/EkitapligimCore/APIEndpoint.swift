@@ -59,12 +59,14 @@ public struct MultipartFile: Equatable, Sendable {
     public let fileName: String
     public let mimeType: String
     public let data: Data
+    public let fields: [String: String]
 
-    public init(field: String, fileName: String, mimeType: String, data: Data) {
+    public init(field: String, fileName: String, mimeType: String, data: Data, fields: [String: String] = [:]) {
         self.field = field
         self.fileName = fileName
         self.mimeType = mimeType
         self.data = data
+        self.fields = fields
     }
 }
 
@@ -130,8 +132,9 @@ public enum UGCReportReason: String, CaseIterable, Equatable, Hashable, Sendable
 public extension APIEndpoint {
     static let siteStats = APIEndpoint(method: .get, path: "book-stats")
 
-    static func directory(kind: DirectoryKind, page: Int = 1, query: String? = nil) -> APIEndpoint {
+    static func directory(kind: DirectoryKind, page: Int = 1, query: String? = nil, perPage: Int? = nil) -> APIEndpoint {
         var items = [URLQueryItem(name: "page", value: String(page))]
+        if let perPage { items.append(URLQueryItem(name: "per_page", value: String(min(100, max(1, perPage))))) }
         if let query, !query.isEmpty {
             items.append(URLQueryItem(name: "q", value: query))
         }
@@ -299,6 +302,11 @@ public extension APIEndpoint {
     }
 
     static let library = APIEndpoint(method: .get, path: "me/library", requiresAuthentication: true)
+    static func myAudioComments(page: Int = 1) -> APIEndpoint {
+        APIEndpoint(method: .get, path: "me/audio-comments",
+                    queryItems: [URLQueryItem(name: "page", value: String(max(1, page)))],
+                    requiresAuthentication: true)
+    }
     static func myComments(page: Int = 1) -> APIEndpoint {
         APIEndpoint(
             method: .get,
@@ -372,6 +380,16 @@ public extension APIEndpoint {
                 "progress_percent": String(progressPercent),
                 "last_read_page": String(lastReadPage)
             ]),
+            requiresAuthentication: true
+        )
+    }
+
+    /// Favorites are independent of reading shelves and reader progress.
+    static func setLibraryFavorite(bookID: Int, isFavorite: Bool) -> APIEndpoint {
+        APIEndpoint(
+            method: .put,
+            path: "me/library/\(bookID)",
+            body: .form(["is_favorite": isFavorite ? "1" : "0"]),
             requiresAuthentication: true
         )
     }
@@ -671,7 +689,8 @@ public extension APIEndpoint {
         rating: Int? = nil,
         pageNumber: Int? = nil,
         progressCurrent: Int? = nil,
-        progressTotal: Int? = nil
+        progressTotal: Int? = nil,
+        photo: Data? = nil
     ) -> APIEndpoint {
         var fields = [
             "message": message,
@@ -685,6 +704,12 @@ public extension APIEndpoint {
         if let pageNumber, pageNumber > 0 { fields["page_number"] = String(pageNumber) }
         if let progressCurrent, progressCurrent > 0 { fields["progress_current"] = String(progressCurrent) }
         if let progressTotal, progressTotal > 0 { fields["progress_total"] = String(progressTotal) }
+        if let photo {
+            fields["image_upload"] = "1"
+            return APIEndpoint(method: .post, path: "book-agenda", body: .multipart(MultipartFile(
+                field: "image", fileName: "agenda.jpg", mimeType: "image/jpeg", data: photo, fields: fields
+            )), requiresAuthentication: true)
+        }
         return APIEndpoint(method: .post, path: "book-agenda", body: .form(fields), requiresAuthentication: true)
     }
 

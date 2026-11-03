@@ -1,5 +1,48 @@
 # App Store Checklist
 
+## Agenda photos release gate (2026-11-03)
+
+- [ ] Install and verify the IosApi 1.0.40 review package on authorized HTTPS staging; exercise real image storage, moderation, read permissions and deletion with a reviewer account.
+- [ ] Run `Scripts/agenda-media-macos.sh`: clean Development build, unsigned Production build, native ImageIO/state/layout tests and UI tests on two iPhones and an iPad; inspect screenshots and run VoiceOver/real PhotosPicker checks, including iCloud/HEIC and failure retention.
+- [ ] Verify agenda photo display and publishing on a signed physical-device build before distribution. Windows Swift/PHP results alone do not satisfy this gate.
+
+See [scoped evidence](AGENDA_MEDIA_VALIDATION.md). No deployment/submission was performed by this change.
+
+## Author / publisher directory gate (2026-11-03)
+
+- [x] Android reference-based source update; 510 Core tests and 16 directory-model tests passed; static/accessibility-label/basic-secret and syntax checks passed.
+- [x] Existing directory-to-books implementation and Agenda verified unchanged.
+- [ ] Native Development/Production builds, directory layout/UI tests and screenshot review on iPhone/iPad; live API pagination verification.
+
+[Directory scope, evidence and runner](DIRECTORY_DESIGN_VALIDATION.md).
+
+## Profile editor and directory gate (2026-11-03)
+
+- [x] Android source inspected; native editor and directory query/paging correction implemented with existing navigation/endpoints.
+- [x] 510 normal and clean optimized Core tests, 21 actual-model portable tests, workspace/static accessibility-label/basic-secret checks and syntax checks passed.
+- [ ] Apple SDK Development/Production builds, three photo-encoding tests and four iPhone/iPad UI tests with screenshot review.
+- [ ] Live authorized save/upload and directory checks; normal/large text, keyboard, rotation and VoiceOver review.
+
+[Scope, evidence and macOS runner](PROFILE_DIRECTORY_VALIDATION.md). Earlier native evidence does not validate these changes.
+
+## Guest/community and notification gate (2026-11-03)
+
+- [x] Android reference inspection, native source changes, 504 normal/clean optimized Core tests, 10 push-state tests and offline APNs contract tests.
+- [x] Static/accessibility-label/basic-secret checks and normal/DEBUG syntax parsing.
+- [ ] Native Development/Production builds, iPhone/iPad visual/large-text/keyboard tests and live Google login/register.
+- [ ] Actual signed-build APNs → iPhone → popup evidence, including foreground/background/locked, cold-start taps and account replacement.
+
+The local display diagnostic does not close the APNs delivery gate. [Evidence and macOS runner](COMMUNITY_DESIGN_VALIDATION.md).
+
+## Book-opening animation gate (2026-11-03)
+
+- [x] Android source and saved transition frames inspected; native SwiftUI implementation and localized accessibility copy added.
+- [x] Second source review: 495 Core tests passed in normal and clean optimized builds, including geometry and reader-owned-presentation interruption; workspace/static/accessibility-label/basic-secret checks passed.
+- [ ] Apple SDK Development/Production builds and authored native/UI tests on small/large iPhone and iPad.
+- [ ] Inspect actual cover/hinge/paper frames, real PDF/EPUB restoration, VoiceOver/Reduce Motion, rotation and account-change/close/reopen behavior.
+
+This source change is not release approval. Evidence and the macOS runner: [READER_OPENING_VALIDATION.md](READER_OPENING_VALIDATION.md).
+
 ## Next version 1.1.0: modern design and audio gate (2026-10-17)
 
 - [x] Portable Swift suite: 416 tests passed; workspace/static/accessibility audits passed.

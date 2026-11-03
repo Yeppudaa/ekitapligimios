@@ -117,6 +117,26 @@ struct ReaderView: View {
         .toolbar(.hidden, for: .navigationBar)
         .statusBarHidden(!showsControls)
         .persistentSystemOverlays(showsControls ? .automatic : .hidden)
+        .safeAreaInset(edge: .bottom, spacing: 0) {
+            if readerURL != nil, !isLoading, let bookID, let message = container.libraryMutationErrors[bookID] {
+                HStack(spacing: 12) {
+                    Text(message)
+                        .font(.caption)
+                        .fixedSize(horizontal: false, vertical: true)
+                        .frame(maxWidth: .infinity, alignment: .leading)
+                    Button(L10n.commonRetry) {
+                        hasScheduledShelfPromotion = false
+                        scheduleShelfPromotion()
+                    }
+                    .font(.caption.weight(.semibold))
+                    .frame(minWidth: 44, minHeight: 44)
+                    .accessibilityIdentifier("reader.library.retry")
+                }
+                .foregroundStyle(paperTheme.ink)
+                .padding(.horizontal, 16)
+                .background(paperTheme.panel)
+            }
+        }
         .sheet(isPresented: $showsBookmarks) {
             ReaderBookmarksView(
                 bookmarks: bookmarks,
@@ -240,6 +260,7 @@ struct ReaderView: View {
                 }, onRestored: {
                     previewPresentation.markRestored()
                     applyPreviewDecision(makePreviewLimit(page: epubPosition))
+                    scheduleShelfPromotion()
                 })
         } else if let url = readerURL, let preparedPDF {
                 PDFReader(
@@ -259,6 +280,7 @@ struct ReaderView: View {
                     onRestored: {
                         previewPresentation.markRestored()
                         applyPreviewDecision(makePreviewLimit(page: progress.currentPage))
+                        scheduleShelfPromotion()
                     },
                     onToggleControls: toggleControls
                 )
@@ -405,29 +427,11 @@ struct ReaderView: View {
         guard !hasScheduledShelfPromotion, case .signedIn(let session) = container.authState else { return }
         hasScheduledShelfPromotion = true
         let username = session.username
-        let write = container.readerWrites.enqueue {
-            await promoteReadingShelfIfNeeded(username: username)
-        }
-        // Refresh may flush pending progress through readerWrites; never await it inside that queue.
         Task {
-            await write.value
             guard case .signedIn(let current) = container.authState, current.username == username else { return }
-            await container.refreshLibrary()
+            let acknowledged = await container.markBookReading(book: book)
+            if !acknowledged { hasScheduledShelfPromotion = false }
         }
-    }
-
-    private func promoteReadingShelfIfNeeded(username: String) async {
-        guard case .signedIn(let session) = container.authState, session.username == username, let bookID else { return }
-        let libraryItem = container.libraryItems.first(where: { $0.bookId == book.id })
-        let normalizedShelf = libraryItem?.normalizedShelfState ?? ""
-        guard normalizedShelf.isEmpty || normalizedShelf == "NONE" else { return }
-        let progress = libraryItem?.readingProgressForShelfUpdate ?? (percent: 0, page: 0)
-        try? await container.books.updateLibraryItem(
-            bookID: bookID,
-            shelfState: "OKUYORUM",
-            progressPercent: progress.percent,
-            lastReadPage: progress.page
-        )
     }
 
     private func loadReaderSession() async {
@@ -477,7 +481,6 @@ struct ReaderView: View {
                 readerFileType = localFile.fileType
                 preparedPDF = document
                 readerURL = localFile.url
-                scheduleShelfPromotion()
                 return
             }
             guard let url = ReaderSourcePolicy.nativeContentURL(
@@ -516,7 +519,6 @@ struct ReaderView: View {
             preparedPDF = document
             temporaryReaderURL = localURL
             readerURL = localURL
-            scheduleShelfPromotion()
         } catch let transferError as BookFileTransferError {
             guard !Task.isCancelled, loadGeneration == generation else { return }
             errorMessage = transferError.readerMessage
@@ -602,43 +604,54 @@ private struct ReaderPreviewLimitOverlay: View {
             Color.black.opacity(0.55)
                 .ignoresSafeArea()
                 .onTapGesture(perform: onDismiss)
-            VStack(spacing: 16) {
-                Image(systemName: "lock.fill")
-                    .font(.system(size: 28, weight: .semibold))
-                    .foregroundStyle(.white)
-                    .frame(width: 56, height: 56)
-                    .background(EKitapligimPalette.quotaPremiumGradient)
-                    .clipShape(Circle())
-                Text(L10n.readerPreviewLimitTitle)
-                    .font(.title3.weight(.bold))
-                    .foregroundStyle(EKitapligimPalette.ink)
-                    .multilineTextAlignment(.center)
-                Text(L10n.readerPreviewLimitMessage(pages: pageCount))
-                    .font(.subheadline)
-                    .foregroundStyle(EKitapligimPalette.muted)
-                    .multilineTextAlignment(.center)
-                Button(action: onUpgrade) {
-                    Text(L10n.readerPreviewLimitUpgrade)
-                        .font(.headline)
-                        .frame(maxWidth: .infinity)
-                        .padding(.vertical, 12)
-                }
-                .buttonStyle(.borderedProminent)
-                .tint(EKitapligimPalette.teal)
-                .accessibilityIdentifier("reader.previewLimit.premium")
-                Button(L10n.readerPreviewLimitDismiss, action: onDismiss)
-                    .font(.subheadline.weight(.semibold))
-                    .foregroundStyle(EKitapligimPalette.muted)
-                    .accessibilityIdentifier("reader.previewLimit.dismiss")
+            ViewThatFits(in: .vertical) {
+                previewCard.fixedSize(horizontal: false, vertical: true)
+                ScrollView { previewCard }
+                    .scrollBounceBehavior(.basedOnSize)
             }
-            .padding(24)
-            .background(EKitapligimPalette.paper, in: RoundedRectangle(cornerRadius: 24, style: .continuous))
+            .frame(maxWidth: 480)
             .padding(.horizontal, 28)
+            .padding(.vertical, 16)
         }
         .frame(maxWidth: .infinity, maxHeight: .infinity)
         .background(EKitapligimPalette.page)
         .accessibilityElement(children: .contain)
         .accessibilityIdentifier("reader.previewLimit.overlay")
+    }
+
+    private var previewCard: some View {
+        VStack(spacing: 16) {
+            Image(systemName: "lock.fill")
+                .font(.system(size: 28, weight: .semibold))
+                .foregroundStyle(.white)
+                .frame(width: 56, height: 56)
+                .background(EKitapligimPalette.quotaPremiumGradient)
+                .clipShape(Circle())
+            Text(L10n.readerPreviewLimitTitle)
+                .font(.title3.weight(.bold))
+                .foregroundStyle(EKitapligimPalette.ink)
+                .multilineTextAlignment(.center)
+            Text(L10n.readerPreviewLimitMessage(pages: pageCount))
+                .font(.subheadline)
+                .foregroundStyle(EKitapligimPalette.muted)
+                .multilineTextAlignment(.center)
+            Button(action: onUpgrade) {
+                Text(L10n.readerPreviewLimitUpgrade)
+                    .font(.headline)
+                    .frame(maxWidth: .infinity)
+                    .fixedSize(horizontal: false, vertical: true)
+                    .padding(.vertical, 12)
+            }
+            .buttonStyle(.borderedProminent)
+            .tint(EKitapligimPalette.teal)
+            .accessibilityIdentifier("reader.previewLimit.premium")
+            Button(L10n.readerPreviewLimitDismiss, action: onDismiss)
+                .font(.subheadline.weight(.semibold))
+                .foregroundStyle(EKitapligimPalette.muted)
+                .accessibilityIdentifier("reader.previewLimit.dismiss")
+        }
+        .padding(24)
+        .background(EKitapligimPalette.paper, in: RoundedRectangle(cornerRadius: 24, style: .continuous))
     }
 }
 

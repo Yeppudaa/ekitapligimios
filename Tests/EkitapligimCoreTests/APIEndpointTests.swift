@@ -90,6 +90,18 @@ final class APIEndpointTests: XCTestCase {
         XCTAssertEqual(books.queryItems.first?.value, "3")
     }
 
+    func testDirectoryCandidatePageSizeUsesSupportedBoundWithoutChangingDefaults() throws {
+        for kind in DirectoryKind.allCases {
+            let endpoint = APIEndpoint.directory(kind: kind, page: 4, query: "Ç", perPage: 100)
+            XCTAssertEqual(endpoint.queryItems.first { $0.name == "per_page" }?.value, "100")
+            XCTAssertEqual(endpoint.queryItems.first { $0.name == "page" }?.value, "4")
+            XCTAssertEqual(endpoint.queryItems.first { $0.name == "q" }?.value, "Ç")
+            XCTAssertNil(APIEndpoint.directory(kind: kind).queryItems.first { $0.name == "per_page" })
+            XCTAssertEqual(APIEndpoint.directory(kind: kind, perPage: 999).queryItems.first { $0.name == "per_page" }?.value, "100")
+            XCTAssertEqual(APIEndpoint.directory(kind: kind, perPage: 0).queryItems.first { $0.name == "per_page" }?.value, "1")
+        }
+    }
+
     func testBookRequestWriteEndpointsRequireAuthentication() {
         XCTAssertEqual(APIEndpoint.bookRequests.path, "book-requests")
         XCTAssertFalse(APIEndpoint.bookRequests.requiresAuthentication)

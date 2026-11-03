@@ -1,5 +1,33 @@
 # Android To iOS Feature Parity
 
+## Premium avatar frame (2026-11-03)
+
+The Android book-emblem gold frame is implemented in native SwiftUI on own profile, members and visited member profile. It uses the same geometry, 4.8-second continuous light sweep and 3.4-second sparkle timing. Premium verification follows the username. Visited membership comes from that member's existing server role. REA APK evidence, 535 passing core tests and pending native device checks are recorded in [PREMIUM_AVATAR_VALIDATION.md](PREMIUM_AVATAR_VALIDATION.md).
+
+## Agenda media update (2026-11-03)
+
+Native iOS now includes agenda photos on the home preview, feed and detail, plus a swipeable multi-image display. The existing composer adds a system photo picker, preview, replace/remove and atomic image+text publishing (including photo-only standard posts). The iOS-specific API 1.0.40 extends existing routes; shared Android code and agenda ordering are unchanged. Upload permissions/limits come from XenForo and server support fails closed. Source/offline regression coverage is recorded in [AGENDA_MEDIA_VALIDATION.md](AGENDA_MEDIA_VALIDATION.md); physical device and live server parity are not yet verified.
+
+## Author / publisher scenic design and matching batches (2026-11-03)
+
+The supplied Android screenshots and current `SiteDirectoryScreen.kt` now guide dedicated native scenic headers, integrated search/alphabet cards and illustrated directory rows. Letter loads collect at least 30 new matching entries or exhaust server pages, rather than stopping at the first one or two matches. Subsequent batches have no total-result cap; whole-page overflow is retained. Existing directory-to-books navigation is unchanged. Native screenshot/build verification is pending macOS; see [scoped validation](DIRECTORY_DESIGN_VALIDATION.md).
+
+## Profile editor and directory letters (2026-11-03)
+
+Android `ProfileEditScreen.kt` now guides the native profile editor's full-width cover, avatar, cream/green cards, labelled fields, activity switch and save button. Existing account navigation and endpoint contracts are preserved. Authors/publishers now send the selected initial through the existing search endpoint and page past nonmatching contains-search candidates; Turkish initials, query intersection, stale responses and retry are covered. 510 Core tests passed in normal/clean optimized runs and 21 actual-model tests passed with the portable Combine shim. Native build, rendering, PhotosPicker and UI tests remain pending macOS. [Evidence and runner](PROFILE_DIRECTORY_VALIDATION.md).
+
+## Guest/community screens and notification diagnostics (2026-11-03)
+
+Updated Android guest/login, messages and member/profile source/screenshots now guide the native cream/green SwiftUI screens. Google actions precede credentials; search/sort remain reachable for empty member results. Activity actor/book labels and cards route independently, including audiobook IDs. Notification permission now starts APNs registration from the settings screen, foreground rechecks it, and device status distinguishes banner permission, server registration and a local display test. Cold-start taps and token/account races are guarded. 504 Core and 10 portable manager tests passed; native rendering, Google flows and actual iOS push delivery remain pending. See [scope and evidence](COMMUNITY_DESIGN_VALIDATION.md).
+
+## Book-opening animation (2026-11-03)
+
+Book detail's signed-in read action now uses the native cover lift, left-edge perspective hinge, expanding theme-colored paper and 2160 ms reveal from Android `ReaderOpeningTransition.kt`. The displayed cover/window are captured transiently to keep the source image and position stable. A cancellable clock, account-change dismissal, close/VoiceOver escape and a reduced-motion crossfade protect the handoff into the existing PDF/EPUB reader. The second source review preserves an already mounted reader when a child notice interrupts the transition and guards empty/invalid layout measurements. 495 Core tests passed in normal and clean optimized builds, including the extracted geometry; native iPhone/iPad builds, authored visual/UI tests and device appearance remain pending on Windows. See [validation and native runner](READER_OPENING_VALIDATION.md).
+
+## Native personal audiobook comments (2026-10-18)
+
+Profile's audiobook-comments action now opens a native SwiftUI personal list and native audiobook detail pages. The server selector matches the website's `filter=comments&audio=1` semantics through AudioBooks `ProfileLibrary::comments`; generic forum history is not substituted. Requires IosApi 1.0.38 deployment. Core/controller/model tests run offline; iOS navigation and narrow-device UI checks remain pending. See [validation](AUDIO_COMMENTS_VALIDATION.md).
+
 ## Modern native design and audiobooks (2026-10-17)
 
 Current scope, protected purchase/authentication areas, native audiobook contracts and executed/pending validation are tracked in [MODERN_ANDROID_IOS_PARITY.md](MODERN_ANDROID_IOS_PARITY.md). Historical pass counts below do not validate this update. The new test-only Codemagic workflow captures real iPhone/iPad SwiftUI evidence without publishing.
@@ -100,7 +128,7 @@ Latest gate: **PASS=303 WARN=1 FAIL=0** (only WARN = Mac visual manifest). When 
 | Area | Android Evidence | iOS Target | Status |
 |---|---|---|---|
 | Home | `HomeScreen.kt`, stats API | Native SwiftUI home | Hero card, stats, continue reading, Keşif Merkezi, Kitap Gündemi rail, daily/newest/popular rails, chat preview, live activity card, and request center implemented |
-| Kitap Gündemi | `BookAgendaScreen.kt`, `/book-agenda` | Native feed, composer, comments, reactions | Native tabs/filters, post types, detail/comments, create/edit/delete, graceful follow-route fallback |
+| Kitap Gündemi | `BookAgendaScreen.kt`, `/book-agenda` | Native feed, composer, comments, reactions | Native tabs/filters, post types, detail/comments, create/edit/delete, detail follow action, explicit comment focus, account/query response isolation, server permission fidelity; [validation](BOOK_AGENDA_VALIDATION.md) |
 | Okur Sohbeti | `ChatScreen.kt`, `/chat/rooms` | Native room tabs and message bubbles | Native rooms, 5s poll, guest read-only mode, admin/mod badges |
 | Canlı Akış | `LiveActivityScreen.kt`, `/live-activity` | Native activity feed | Native cursor pagination and type-colored activity rows |
 | Navigation shell | `AppMobileMenu.kt`, 6-tab bottom bar | Matching menu and tabs | 6-tab bar (Ana Sayfa, Katalog, Yazarlar, İstekler, Forum, Profilim) plus 14-item drawer with unread badges |

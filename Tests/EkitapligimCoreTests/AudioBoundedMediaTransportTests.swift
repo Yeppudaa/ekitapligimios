@@ -110,6 +110,36 @@ final class AudioBoundedMediaTransportTests: XCTestCase {
             assertNoBodyAccepted(metrics)
         }
     }
+    func testHeadWithMissingMetadataReturnsOnlyValidAudioHeadersAndZeroBufferedBytes() async throws {
+        for headers in [["Content-Type": "audio/mpeg"],
+                        ["Content-Type": "audio/mpeg", "Accept-Ranges": "bytes"],
+                        ["Content-Type": "audio/mpeg", "Content-Length": "12345"]] {
+            let metrics = BoundedAudioMetricsLog()
+            BoundedAudioProtocol.plan = .init(status: 200, headers: headers,
+                chunks: [Data(repeating: 7, count: 16_384)], repeatChunks: 32_768, bodyDelay: 0, log: .init())
+            var request = try request(); request.httpMethod = "HEAD"
+            let (data, response) = try await transport(metrics: metrics).data(for: request, range: nil)
+            XCTAssertTrue(data.isEmpty); XCTAssertEqual(response.statusCode, 200)
+            assertNoBodyAccepted(metrics)
+        }
+    }
+    func testOneByteMetadataProbeKeepsItsExactBudgetAndRejectsIgnoredOrOversizedResponses() async throws {
+        let validMetrics = BoundedAudioMetricsLog()
+        BoundedAudioProtocol.plan = .init(status: 206,
+            headers: ["Content-Type": "audio/mpeg", "Content-Range": "bytes 0-0/536870912"],
+            chunks: [Data([42])], log: .init())
+        let (data, _) = try await transport(metrics: validMetrics).data(for: request(), range: 0...0)
+        XCTAssertEqual(data, Data([42])); XCTAssertEqual(validMetrics.latest?.maximumBufferedBytes, 1)
+        for (status, headers) in [(200, ["Content-Type": "audio/mpeg", "Content-Length": "536870912"]),
+                                  (206, ["Content-Range": "bytes 0-1/536870912"]),
+                                  (206, ["Content-Range": "bytes 0-0/536870912", "Content-Length": "536870912"])] {
+            let metrics = BoundedAudioMetricsLog()
+            BoundedAudioProtocol.plan = .init(status: status, headers: headers,
+                chunks: [Data(repeating: 7, count: 16_384)], repeatChunks: 32_768, bodyDelay: 0, log: .init())
+            await assertInvalidRange(range: 0...0, metrics: metrics)
+            assertNoBodyAccepted(metrics)
+        }
+    }
 
     func testCancellationReleasesPendingRequestAndDoesNotResumeTwice() async throws {
         let started = expectation(description: "Origin received range request")

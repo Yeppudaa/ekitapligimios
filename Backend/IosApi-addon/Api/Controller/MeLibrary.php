@@ -28,6 +28,11 @@ class MeLibrary extends \Ekitapligim\MobileApi\Api\Controller\AbstractMobileCont
             try { $book = $this->assertBook($id); }
             catch (\XF\Mvc\Reply\Exception $e) { continue; }
             $row = $progress[$id] ?? null;
+            $state = (string) ($item['shelf_state'] ?? $item['shelfState'] ?? 'NONE');
+            $favorite = !empty($item['is_favorite']) || !empty($item['isFavorite']) || $state === 'FAVORI';
+            $item['book_id'] = $item['bookId'] = (string) $id;
+            $item['shelf_state'] = $item['shelfState'] = $state;
+            $item['is_favorite'] = $item['isFavorite'] = $favorite;
             $page = $row && $row['position_type'] === 'pdf' && ctype_digit((string) $row['position_value']) ? (int) $row['position_value'] : 0;
             $item['last_read_page'] = $item['lastReadPage'] = $page;
             $item['progress_percent'] = $item['progressPercent'] = $row ? (int) round((float) $row['progress_percent']) : 0;

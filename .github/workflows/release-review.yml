@@ -1,0 +1,46 @@
+name: Full release review (no publishing)
+on:
+  workflow_dispatch:
+  push:
+    branches:
+      - 'codex/release-review-*'
+permissions:
+  contents: read
+jobs:
+  native:
+    name: Clean native builds and complete iPhone/iPad tests
+    runs-on: macos-15
+    timeout-minutes: 120
+    steps:
+      - uses: actions/checkout@v4
+      - name: Select App Store compatible Xcode
+        run: bash Scripts/select-ci-xcode.sh
+      - name: Complete native review
+        env:
+          EKITAPLIGIM_FULL_RELEASE_REVIEW: '1'
+        run: bash Scripts/modern-parity-macos-validation.sh
+      - name: Preserve results including failures
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: release-review-native
+          path: |
+            build/modern-parity-archives/
+            build/modern-parity-packaging.log
+          if-no-files-found: warn
+          retention-days: 14
+  backend:
+    name: Offline server contracts
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - name: Server contract tests
+        shell: bash
+        run: |
+          set -euo pipefail
+          for test in Tests/Backend/*Test.php; do
+            # This integration test needs an installed third-party server source.
+            if [[ "$test" == *ReaderDriveSourceTest.php ]]; then continue; fi
+            php "$test"
+          done
+          php Scripts/appstore-entitlement-policy-test.php

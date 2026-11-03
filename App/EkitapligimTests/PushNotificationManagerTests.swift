@@ -119,4 +119,64 @@ final class PushNotificationManagerTests: XCTestCase {
 
         XCTAssertEqual(readTarget, .conversation(12))
     }
+
+    func testTokenRotationDuringAnUploadDrainsLatestTokenWithoutWaitingForForeground() async {
+        let began = expectation(description: "first upload")
+        var gate: CheckedContinuation<Void, Never>?
+        var tokens: [String] = []
+        var removed: [String] = []
+        let manager = PushNotificationManager(registerToken: { token in
+            tokens.append(token)
+            if tokens.count == 1 { began.fulfill(); await withCheckedContinuation { gate = $0 } }
+        }, unregisterToken: { removed.append($0) })
+        let first = Task { await manager.didReceiveDeviceToken("first-device-token") }
+        await fulfillment(of: [began], timeout: 3)
+        let nextBegan = expectation(description: "new token arrived")
+        let second = Task { nextBegan.fulfill(); await manager.didReceiveDeviceToken("rotated-device-token") }
+        await fulfillment(of: [nextBegan], timeout: 3)
+        gate?.resume()
+        await first.value; await second.value
+        XCTAssertEqual(tokens, ["first-device-token", "rotated-device-token"])
+        XCTAssertEqual(removed, ["first-device-token"])
+        XCTAssertEqual(manager.registrationStatus, .registered)
+    }
+
+    func testSessionLossCannotBeUndoneByAnOldUploadResponse() async {
+        let began = expectation(description: "old account upload")
+        var gate: CheckedContinuation<Void, Never>?
+        var attempts = 0
+        let manager = PushNotificationManager(registerToken: { _ in
+            attempts += 1
+            if attempts == 1 { began.fulfill(); await withCheckedContinuation { gate = $0 } }
+        })
+        let old = Task { await manager.didReceiveDeviceToken("same-device-token") }
+        await fulfillment(of: [began], timeout: 3)
+        manager.forgetRegistrationAfterSessionLoss()
+        gate?.resume()
+        await old.value
+        XCTAssertEqual(manager.registrationStatus, .idle)
+        await manager.didReceiveDeviceToken("same-device-token")
+        XCTAssertEqual(attempts, 2, "The next account must upload the unchanged device token")
+        XCTAssertEqual(manager.registrationStatus, .registered)
+    }
+
+    func testNextAccountCanRegisterBeforeOldCancelledUploadFinishes() async {
+        let began = expectation(description: "old upload")
+        var gate: CheckedContinuation<Void, Never>?
+        var attempts = 0
+        let manager = PushNotificationManager(registerToken: { _ in
+            attempts += 1
+            if attempts == 1 { began.fulfill(); await withCheckedContinuation { gate = $0 } }
+        })
+        let old = Task { await manager.didReceiveDeviceToken("same-device-token") }
+        await fulfillment(of: [began], timeout: 3)
+        manager.forgetRegistrationAfterSessionLoss()
+        await manager.didReceiveDeviceToken("same-device-token")
+        gate?.resume()
+        await old.value
+        XCTAssertEqual(attempts, 2)
+        XCTAssertEqual(manager.registrationStatus, .registered)
+        await manager.didReceiveDeviceToken("same-device-token")
+        XCTAssertEqual(attempts, 2)
+    }
 }

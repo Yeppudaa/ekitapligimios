@@ -6,6 +6,7 @@ import EkitapligimCore
 struct ProfileView: View {
     @EnvironmentObject private var container: AppContainer
     @Environment(\.scenePhase) private var scenePhase
+    @Environment(\.dynamicTypeSize) private var dynamicTypeSize
 
     @State private var section: ProfileSection = .profile
     @State private var posts: [ForumPostDTO] = []
@@ -42,15 +43,14 @@ struct ProfileView: View {
         .navigationBarTitleDisplayMode(.inline)
         .toolbar {
             if container.isSignedIn, profile?.canEdit != false {
-                // The shell's menu occupies the trailing corner; keep Edit in its own slot.
+                // Keep Edit in a separate native slot from the shell menu.
                 ToolbarItem(placement: .topBarLeading) {
                     Button { route = .edit } label: {
                         Text(L10n.commonEdit)
                             .font(.caption.weight(.bold))
                             .foregroundStyle(EKitapligimPalette.profileTealDeep)
-                            .padding(.horizontal, 13)
-                            .padding(.vertical, 6)
-                            .background(EKitapligimPalette.profileTealSoft, in: Capsule())
+                            .padding(.horizontal, 8)
+                            .frame(minHeight: 44)
                     }
                     .accessibilityIdentifier("profile.edit")
                 }
@@ -67,6 +67,7 @@ struct ProfileView: View {
             case .downloads: DownloadsView()
             case .requests: BookRequestsView()
             case .comments: MyCommentsView()
+            case .audioComments: MyAudioCommentsView(repository: container.profile).id(container.sessionRevision)
             case .notifications: NotificationsView()
             case .messages: ConversationsView()
             case .premium: PremiumView()
@@ -128,6 +129,7 @@ struct ProfileView: View {
             .padding(.top, 6)
             .padding(.bottom, 34)
         }
+        .accessibilityIdentifier("profile.scroll")
     }
 
     // MARK: Sekmeler
@@ -181,7 +183,7 @@ struct ProfileView: View {
     }
 
     private var actionGrid: some View {
-        LazyVGrid(columns: [GridItem(.flexible(), spacing: 10), GridItem(.flexible(), spacing: 10)], spacing: 10) {
+        LazyVGrid(columns: Array(repeating: GridItem(.flexible(), spacing: 10), count: dynamicTypeSize.isAccessibilitySize ? 1 : 2), spacing: 10) {
             EKActionTile(title: L10n.profileActionBookRequests, systemImage: "sparkles") { route = .requests }
             EKActionTile(
                 title: L10n.profileActionNotifications,
@@ -199,24 +201,12 @@ struct ProfileView: View {
 
     @ViewBuilder private var audioProfileSection: some View {
         if let repository = container.audioRepository, let controller = container.audioPlayback {
-            AudioProfileSectionView(repository: repository, controller: controller, account: container.audioAccount, commentsURL: audioCommentsURL,
+            AudioProfileSectionView(repository: repository, controller: controller, account: container.audioAccount, onComments: { route = .audioComments },
                 onBook: { container.open(route: .audiobook($0)) },
                 onBrowse: { container.open(route: .audiobooks) },
                 onLibrary: { container.open(route: .audioLibrary(tab: "saved")) },
                 onTab: { container.open(route: .audioLibrary(tab: $0.rawValue)) })
         }
-    }
-
-    /// Matches Android's first-party, filtered profile-comments link; no session credential is put in the URL.
-    private var audioCommentsURL: URL? {
-        guard case .signedIn(let session) = container.authState else { return nil }
-        let identifier = session.userID ?? (profile?.username == session.username ? profile?.id : nil)
-        guard let identifier, let userID = Int(identifier), userID > 0, userID <= Int32.max else { return nil }
-        let baseURL = container.config.webBaseURL
-        guard baseURL.scheme?.lowercased() == "https", baseURL.user == nil, baseURL.password == nil else { return nil }
-        var components = URLComponents(url: baseURL.appendingPathComponent("kullanicilar/\(userID)/profile-posts/"), resolvingAgainstBaseURL: false)
-        components?.queryItems = [.init(name: "filter", value: "comments"), .init(name: "audio", value: "1")]
-        return components?.url
     }
 
     private var accountActions: some View {
@@ -260,7 +250,7 @@ struct ProfileView: View {
         VStack(alignment: .leading, spacing: 12) {
             ProfileSectionHeading(title: L10n.profileLibrarySectionTitle, subtitle: L10n.profileLibrarySectionSubtitle)
 
-            LazyVGrid(columns: [GridItem(.flexible(), spacing: 12), GridItem(.flexible(), spacing: 12)], spacing: 12) {
+            LazyVGrid(columns: Array(repeating: GridItem(.flexible(), spacing: 12), count: dynamicTypeSize.isAccessibilitySize ? 1 : 2), spacing: 12) {
                 LibraryShelfCard(title: L10n.profileStatReading, count: container.currentlyReading.count, systemImage: "book.pages.fill") {
                     route = .library(.reading)
                 }
@@ -436,6 +426,7 @@ private enum ProfileRoute: Hashable, Identifiable {
     case downloads
     case requests
     case comments
+    case audioComments
     case notifications
     case messages
     case premium
@@ -451,6 +442,7 @@ private enum ProfileRoute: Hashable, Identifiable {
 private struct ProfileHero: View {
     let profile: ProfileDTO?
     let subscription: SubscriptionDTO?
+    @Environment(\.dynamicTypeSize) private var dynamicTypeSize
 
     private var username: String { profile?.username ?? "" }
     private var isVerified: Bool { profile?.role?.showVerifiedBadge ?? false }
@@ -460,87 +452,135 @@ private struct ProfileHero: View {
     var body: some View {
         VStack(alignment: .leading, spacing: 0) {
             banner
-            VStack(alignment: .leading, spacing: 12) {
-                HStack(alignment: .center, spacing: 13) {
-                    EKAvatar(
-                        urlString: profile?.avatarUrl,
-                        username: username,
-                        size: 76,
-                        background: .white.opacity(0.16),
-                        foreground: .white
-                    )
-                    .overlay { Circle().stroke(.white.opacity(0.6), lineWidth: 2) }
+            VStack(alignment: .leading, spacing: 14) {
+                identity
 
-                    VStack(alignment: .leading, spacing: 5) {
-                        HStack(spacing: 6) {
-                            Text(username)
-                                .font(.title3.weight(.heavy))
-                                .foregroundStyle(.white)
-                                .lineLimit(1)
-                            if isVerified {
-                                Image(systemName: "checkmark.seal.fill")
-                                    .font(.footnote)
-                                    .foregroundStyle(EKitapligimPalette.profileGold)
-                                    .accessibilityLabel(L10n.profileVerifiedAccessibility)
-                            }
-                        }
-                        Text(profile?.displayTitle ?? L10n.profileMemberFallback)
-                            .font(.caption)
-                            .foregroundStyle(.white.opacity(0.82))
-                            .lineLimit(1)
-                        HStack(spacing: 7) {
-                            if isAdmin {
-                                heroChip(L10n.profileRoleAdmin, systemImage: "shield.fill")
-                            }
-                            if isPremium {
-                                heroChip(L10n.profileRolePremium, systemImage: "crown.fill")
-                            }
-                        }
+                if hasDates {
+                    Rectangle()
+                        .fill(.white.opacity(0.12))
+                        .frame(height: 1)
+                        .accessibilityHidden(true)
+                    ViewThatFits(in: .horizontal) {
+                        HStack(alignment: .top, spacing: 16) { dates }
+                        VStack(alignment: .leading, spacing: 8) { dates }
                     }
-                    Spacer(minLength: 0)
-                }
-
-                HStack(spacing: 16) {
-                    if let joined = EKitapligimFormat.date(profile?.registerDate ?? 0) {
-                        heroFootnote(L10n.profileJoinedOn(joined), systemImage: "calendar")
-                    }
-                    if let seen = EKitapligimFormat.date(profile?.lastActivity ?? 0) {
-                        heroFootnote(L10n.profileLastSeen(seen), systemImage: "clock")
-                    }
-                    Spacer(minLength: 0)
                 }
             }
-            .padding(16)
+            .padding(18)
         }
+        .frame(maxWidth: .infinity, alignment: .leading)
         .background(EKitapligimPalette.profileHeroGradient)
-        .clipShape(RoundedRectangle(cornerRadius: 22, style: .continuous))
+        .clipShape(RoundedRectangle(cornerRadius: 24, style: .continuous))
+        .overlay {
+            RoundedRectangle(cornerRadius: 24, style: .continuous)
+                .strokeBorder(.white.opacity(0.16))
+        }
+        .shadow(color: EKitapligimPalette.profileTealDeep.opacity(0.12), radius: 14, y: 6)
+        .accessibilityElement(children: .contain)
+        .accessibilityIdentifier("profile.hero")
     }
 
     private var banner: some View {
-        ZStack {
-            EKitapligimPalette.profileBannerGradient
-            Image("home_library_scene").resizable().scaledToFill().opacity(0.5)
-            if let bannerUrl = profile?.bannerUrl,
-               !bannerUrl.isEmpty,
-               let url = URL(string: bannerUrl),
-               url.scheme?.lowercased() == "https" {
-                AsyncImage(url: url) { phase in
-                    if case .success(let image) = phase {
-                        image.resizable().scaledToFill()
+        // Artwork decorates the measured card; its intrinsic width must never size the profile.
+        EKitapligimPalette.profileBannerGradient
+            .frame(height: 96)
+            .overlay {
+                GeometryReader { geometry in
+                    ZStack {
+                        ProfileBannerArtwork(image: Image("home_library_scene"))
+                            .opacity(0.5)
+                        if let bannerUrl = profile?.bannerUrl,
+                           !bannerUrl.isEmpty,
+                           let url = URL(string: bannerUrl),
+                           url.scheme?.lowercased() == "https" {
+                            AsyncImage(url: url) { phase in
+                                if case .success(let image) = phase {
+                                    ProfileBannerArtwork(image: image)
+                                }
+                            }
+                        }
                     }
+                    .frame(width: geometry.size.width, height: geometry.size.height)
+                    .clipped()
                 }
             }
+            .overlay {
+                LinearGradient(colors: [.clear, Color(hex: 0x0D3B42).opacity(0.72)],
+                               startPoint: .center, endPoint: .bottom)
+            }
+            .clipped()
+            .accessibilityHidden(true)
+    }
+
+    private var identity: some View {
+        let layout = dynamicTypeSize.isAccessibilitySize
+            ? AnyLayout(VStackLayout(alignment: .leading, spacing: 14))
+            : AnyLayout(HStackLayout(alignment: .center, spacing: 14))
+        return layout {
+            if isPremium {
+                PremiumAvatarFrame(size: 94) { diameter in
+                    EKAvatar(urlString: profile?.avatarUrl, username: username, size: diameter,
+                        background: Color(hex: 0xEAF3EF), foreground: EKitapligimPalette.profileTeal)
+                }
+            } else {
+                EKAvatar(urlString: profile?.avatarUrl, username: username, size: 76,
+                    background: .white.opacity(0.16), foreground: .white)
+                    .padding(4)
+                    .background(.white.opacity(0.12), in: Circle())
+                    .overlay { Circle().strokeBorder(.white.opacity(0.65), lineWidth: 1.5) }
+                    .shadow(color: .black.opacity(0.16), radius: 8, y: 4)
+            }
+
+            VStack(alignment: .leading, spacing: 6) {
+                PremiumMemberName(username: username, isPremium: isPremium, isVerified: isVerified,
+                    badgeColor: EKitapligimPalette.profileGold)
+                        .font(.title2.weight(.bold))
+                        .foregroundStyle(.white)
+                        .lineLimit(dynamicTypeSize.isAccessibilitySize ? nil : 2)
+                        .fixedSize(horizontal: false, vertical: true)
+                        .layoutPriority(1)
+                        .accessibilityIdentifier("profile.username")
+                Text(profile?.displayTitle ?? L10n.profileMemberFallback)
+                    .font(.caption)
+                    .foregroundStyle(.white.opacity(0.82))
+                    .fixedSize(horizontal: false, vertical: true)
+                if isAdmin || isPremium {
+                    ViewThatFits(in: .horizontal) {
+                        HStack(spacing: 7) { roleBadges }
+                        VStack(alignment: .leading, spacing: 6) { roleBadges }
+                    }
+                    .padding(.top, 2)
+                }
+            }
+            .frame(maxWidth: .infinity, alignment: .leading)
         }
-        .frame(height: 84)
-        .clipped()
-        .accessibilityHidden(true)
+    }
+
+    @ViewBuilder private var roleBadges: some View {
+        if isAdmin { heroChip(L10n.profileRoleAdmin, systemImage: "shield.fill") }
+        if isPremium { PremiumMemberPill() }
+    }
+
+    private var hasDates: Bool {
+        EKitapligimFormat.date(profile?.registerDate ?? 0) != nil
+            || EKitapligimFormat.date(profile?.lastActivity ?? 0) != nil
+    }
+
+    @ViewBuilder private var dates: some View {
+        if let joined = EKitapligimFormat.date(profile?.registerDate ?? 0) {
+            heroFootnote(L10n.profileJoinedOn(joined), systemImage: "calendar")
+        }
+        if let seen = EKitapligimFormat.date(profile?.lastActivity ?? 0) {
+            heroFootnote(L10n.profileLastSeen(seen), systemImage: "clock")
+        }
     }
 
     private func heroChip(_ title: String, systemImage: String) -> some View {
         HStack(spacing: 4) {
-            Image(systemName: systemImage).font(.system(size: 9, weight: .bold))
-            Text(title).font(.system(size: 10, weight: .heavy))
+            Image(systemName: systemImage).accessibilityHidden(true)
+            Text(title).fixedSize(horizontal: false, vertical: true)
         }
+        .font(.caption2.weight(.bold))
         .foregroundStyle(EKitapligimPalette.profileGold)
         .padding(.horizontal, 8)
         .padding(.vertical, 4)
@@ -549,73 +589,104 @@ private struct ProfileHero: View {
     }
 
     private func heroFootnote(_ text: String, systemImage: String) -> some View {
-        HStack(spacing: 4) {
-            Image(systemName: systemImage).font(.system(size: 9))
-            Text(text).font(.system(size: 10))
+        HStack(alignment: .firstTextBaseline, spacing: 5) {
+            Image(systemName: systemImage).accessibilityHidden(true)
+            Text(text).fixedSize(horizontal: false, vertical: true)
         }
+        .font(.caption2)
         .foregroundStyle(.white.opacity(0.75))
-        .lineLimit(1)
+        .accessibilityElement(children: .combine)
     }
 }
 
 // MARK: - İstatistik şeridi
 
 private struct ProfileStatsBand: View {
+    @Environment(\.dynamicTypeSize) private var dynamicTypeSize
     let profile: ProfileDTO?
     let readingCount: Int
     let finishedCount: Int
     let listedCount: Int
     let onShelfTap: (LibraryTab) -> Void
 
+    private var columnCount: Int {
+        if dynamicTypeSize >= .accessibility3 { return 1 }
+        return dynamicTypeSize.isAccessibilitySize ? 2 : 3
+    }
+
     var body: some View {
-        ScrollView(.horizontal, showsIndicators: false) {
-            HStack(spacing: 0) {
-                EKStatCell(value: EKitapligimFormat.count(profile?.messageCount ?? 0), label: L10n.profileStatMessages)
-                divider
-                EKStatCell(value: EKitapligimFormat.count(profile?.reactionScore ?? 0), label: L10n.profileStatReactions)
-                divider
-                EKStatCell(value: EKitapligimFormat.count(profile?.trophyPoints ?? 0), label: L10n.profileStatPoints)
-                divider
-                shelfCell(value: readingCount, label: L10n.profileStatReading, tab: .reading)
-                divider
-                shelfCell(value: finishedCount, label: L10n.profileStatRead, tab: .finished)
-                divider
-                shelfCell(value: listedCount, label: L10n.profileStatListed, tab: .wantToRead)
-            }
-            .padding(.vertical, 14)
+        LazyVGrid(
+            columns: Array(repeating: GridItem(.flexible(), spacing: 8, alignment: .top),
+                           count: columnCount),
+            alignment: .center,
+            spacing: 8
+        ) {
+            statCell(value: profile?.messageCount ?? 0, label: L10n.profileStatMessages)
+            statCell(value: profile?.reactionScore ?? 0, label: L10n.profileStatReactions)
+            statCell(value: profile?.trophyPoints ?? 0, label: L10n.profileStatPoints)
+            shelfCell(value: readingCount, label: L10n.profileStatReading, tab: .reading)
+            shelfCell(value: finishedCount, label: L10n.profileStatRead, tab: .finished)
+            shelfCell(value: listedCount, label: L10n.profileStatListed, tab: .wantToRead)
         }
-        .background(.white)
-        .clipShape(RoundedRectangle(cornerRadius: 18, style: .continuous))
-        .overlay { RoundedRectangle(cornerRadius: 18, style: .continuous).stroke(EKitapligimPalette.profileBorder) }
+        .padding(10)
+        .frame(maxWidth: .infinity)
+        .background(.white, in: RoundedRectangle(cornerRadius: 20, style: .continuous))
+        .overlay {
+            RoundedRectangle(cornerRadius: 20, style: .continuous)
+                .strokeBorder(EKitapligimPalette.profileBorder)
+        }
+        .accessibilityElement(children: .contain)
+        .accessibilityIdentifier("profile.stats")
     }
 
     private func shelfCell(value: Int, label: String, tab: LibraryTab) -> some View {
         Button { onShelfTap(tab) } label: {
-            EKStatCell(value: EKitapligimFormat.count(value), label: label)
+            statCell(value: value, label: label, isShelf: true)
         }
         .buttonStyle(.plain)
     }
 
-    private var divider: some View {
-        Rectangle()
-            .fill(EKitapligimPalette.profileBorder)
-            .frame(width: 1, height: 28)
+    private func statCell(value: Int, label: String, isShelf: Bool = false) -> some View {
+        VStack(spacing: 5) {
+            Text(EKitapligimFormat.count(value))
+                .font(.system(.title3, design: .rounded, weight: .bold))
+                .foregroundStyle(isShelf ? EKitapligimPalette.profileTealDeep : EKitapligimPalette.profileInk)
+                .monospacedDigit()
+                .lineLimit(1)
+                .minimumScaleFactor(0.65)
+            Text(label)
+                .font(.caption2)
+                .foregroundStyle(EKitapligimPalette.profileMuted)
+                .multilineTextAlignment(.center)
+                .fixedSize(horizontal: false, vertical: true)
+        }
+        .padding(.horizontal, 6)
+        .padding(.vertical, 10)
+        .frame(maxWidth: .infinity, minHeight: 68, alignment: .top)
+        .background(isShelf ? EKitapligimPalette.profileTealSoft : Color.clear,
+                    in: RoundedRectangle(cornerRadius: 13, style: .continuous))
+        .contentShape(RoundedRectangle(cornerRadius: 13, style: .continuous))
+        .accessibilityElement(children: .combine)
     }
 }
 
 // MARK: - Okuma özeti ve hedef
 
 private struct ReadingSummaryStrip: View {
+    @Environment(\.dynamicTypeSize) private var dynamicTypeSize
     let readingCount: Int
     let finishedCount: Int
     let listedCount: Int
 
     var body: some View {
-        HStack(alignment: .top, spacing: 0) {
+        let layout = dynamicTypeSize.isAccessibilitySize
+            ? AnyLayout(VStackLayout(spacing: 14))
+            : AnyLayout(HStackLayout(alignment: .top, spacing: 0))
+        layout {
             cell(value: readingCount, label: L10n.profileSummaryReading)
-            divider
+            if !dynamicTypeSize.isAccessibilitySize { divider }
             cell(value: finishedCount, label: L10n.profileSummaryRead)
-            divider
+            if !dynamicTypeSize.isAccessibilitySize { divider }
             cell(value: listedCount, label: L10n.profileSummaryListed)
         }
         .padding(.vertical, 15)
@@ -627,10 +698,10 @@ private struct ReadingSummaryStrip: View {
     private func cell(value: Int, label: String) -> some View {
         VStack(spacing: 3) {
             Text(EKitapligimFormat.count(value))
-                .font(.system(size: 19, weight: .heavy))
+                .font(.title3.weight(.heavy))
                 .foregroundStyle(EKitapligimPalette.profileTealDeep)
             Text(label)
-                .font(.system(size: 10))
+                .font(.caption2)
                 .foregroundStyle(EKitapligimPalette.profileMuted)
                 .multilineTextAlignment(.center)
                 .fixedSize(horizontal: false, vertical: true)
@@ -647,12 +718,16 @@ private struct ReadingSummaryStrip: View {
 }
 
 private struct ReadingAchievementCard: View {
+    @Environment(\.dynamicTypeSize) private var dynamicTypeSize
     let stats: ReadingStatsDTO
     let onOpenStats: () -> Void
 
     var body: some View {
         VStack(alignment: .leading, spacing: 14) {
-            HStack(alignment: .center, spacing: 14) {
+            let headerLayout = dynamicTypeSize.isAccessibilitySize
+                ? AnyLayout(VStackLayout(alignment: .leading, spacing: 12))
+                : AnyLayout(HStackLayout(alignment: .center, spacing: 14))
+            headerLayout {
                 EKProgressRing(progress: Double(stats.goalProgressPercent) / 100)
 
                 VStack(alignment: .leading, spacing: 4) {
@@ -675,7 +750,10 @@ private struct ReadingAchievementCard: View {
                 )
             }
 
-            HStack(spacing: 0) {
+            let metricLayout = dynamicTypeSize.isAccessibilitySize
+                ? AnyLayout(VStackLayout(spacing: 14))
+                : AnyLayout(HStackLayout(alignment: .top, spacing: 8))
+            metricLayout {
                 metric(L10n.readingGoalTotalPages, value: L10n.readingGoalPageCount(stats.totalPages))
                 metric(L10n.readingGoalDuration, value: EKitapligimFormat.readingMinutes(stats.totalMinutes))
                 metric(L10n.readingGoalStreak, value: L10n.readingGoalDayCount(stats.streakCount))
@@ -708,7 +786,7 @@ private struct ReadingAchievementCard: View {
                 .multilineTextAlignment(.center)
                 .fixedSize(horizontal: false, vertical: true)
             Text(label)
-                .font(.system(size: 10))
+                .font(.caption2)
                 .foregroundStyle(EKitapligimPalette.profileMuted)
                 .multilineTextAlignment(.center)
                 .fixedSize(horizontal: false, vertical: true)
@@ -845,6 +923,7 @@ private struct ContinueReadingCard: View {
 // MARK: - Premium kart
 
 private struct PremiumMembershipCard: View {
+    @Environment(\.dynamicTypeSize) private var dynamicTypeSize
     let subscription: SubscriptionDTO?
     let isPremium: Bool
     let onTap: () -> Void
@@ -852,7 +931,10 @@ private struct PremiumMembershipCard: View {
     var body: some View {
         Button(action: onTap) {
             VStack(alignment: .leading, spacing: 11) {
-                HStack(spacing: 10) {
+                let headerLayout = dynamicTypeSize.isAccessibilitySize
+                    ? AnyLayout(VStackLayout(alignment: .leading, spacing: 10))
+                    : AnyLayout(HStackLayout(alignment: .center, spacing: 10))
+                headerLayout {
                     Image(systemName: "crown.fill")
                         .font(.headline)
                         .foregroundStyle(EKitapligimPalette.profileGold)
@@ -863,7 +945,7 @@ private struct PremiumMembershipCard: View {
                         Text(detail)
                             .font(.caption)
                             .foregroundStyle(.white.opacity(0.85))
-                            .lineLimit(2)
+                            .fixedSize(horizontal: false, vertical: true)
                             .multilineTextAlignment(.leading)
                     }
                     Spacer(minLength: 0)
@@ -875,13 +957,10 @@ private struct PremiumMembershipCard: View {
                         .background(EKitapligimPalette.profileGold, in: Capsule())
                 }
 
-                HStack(spacing: 8) {
-                    benefitPill(L10n.premiumCardReadPerk, systemImage: "book.fill")
-                    benefitPill(L10n.premiumCardDownloadPerk, systemImage: "arrow.down.circle.fill")
-                    Spacer(minLength: 0)
-                    Text(L10n.premiumCardDiscover)
-                        .font(.caption2.weight(.bold))
-                        .foregroundStyle(.white)
+                ViewThatFits(in: .horizontal) {
+                    HStack(spacing: 8) { benefits }
+                        .fixedSize(horizontal: true, vertical: false)
+                    VStack(alignment: .leading, spacing: 8) { benefits }
                 }
             }
             .padding(16)
@@ -900,10 +979,20 @@ private struct PremiumMembershipCard: View {
         return L10n.premiumCardActiveNote
     }
 
+    @ViewBuilder private var benefits: some View {
+        benefitPill(L10n.premiumCardReadPerk, systemImage: "book.fill")
+        benefitPill(L10n.premiumCardDownloadPerk, systemImage: "arrow.down.circle.fill")
+        Text(L10n.premiumCardDiscover)
+            .font(.caption2.weight(.bold))
+            .foregroundStyle(.white)
+            .fixedSize(horizontal: false, vertical: true)
+    }
+
     private func benefitPill(_ title: String, systemImage: String) -> some View {
         HStack(spacing: 4) {
             Image(systemName: systemImage).font(.system(size: 9, weight: .bold))
-            Text(title).font(.system(size: 10, weight: .bold))
+            Text(title).font(.caption2.weight(.bold))
+                .fixedSize(horizontal: false, vertical: true)
         }
         .foregroundStyle(.white)
         .padding(.horizontal, 9)
@@ -915,10 +1004,14 @@ private struct PremiumMembershipCard: View {
 // MARK: - Metrikler ve üyelik bilgileri
 
 private struct ProfileMetricsRow: View {
+    @Environment(\.dynamicTypeSize) private var dynamicTypeSize
     let profile: ProfileDTO?
 
     var body: some View {
-        HStack(spacing: 10) {
+        let layout = dynamicTypeSize.isAccessibilitySize
+            ? AnyLayout(VStackLayout(spacing: 10))
+            : AnyLayout(HStackLayout(alignment: .top, spacing: 10))
+        layout {
             metric(L10n.profileMetricComments, value: profile?.messageCount ?? 0, systemImage: "text.bubble.fill")
             metric(L10n.profileMetricReactions, value: profile?.reactionScore ?? 0, systemImage: "hand.thumbsup.fill")
             metric(L10n.profileMetricPoints, value: profile?.trophyPoints ?? 0, systemImage: "star.fill")
@@ -934,7 +1027,7 @@ private struct ProfileMetricsRow: View {
                 .font(.subheadline.weight(.heavy))
                 .foregroundStyle(EKitapligimPalette.profileInk)
             Text(label)
-                .font(.system(size: 10))
+                .font(.caption2)
                 .foregroundStyle(EKitapligimPalette.profileMuted)
                 .multilineTextAlignment(.center)
                 .fixedSize(horizontal: false, vertical: true)
@@ -947,6 +1040,7 @@ private struct ProfileMetricsRow: View {
 }
 
 private struct ProfileInfoCard: View {
+    @Environment(\.dynamicTypeSize) private var dynamicTypeSize
     let profile: ProfileDTO?
 
     private var profileOnlineStatusValue: String {
@@ -957,7 +1051,10 @@ private struct ProfileInfoCard: View {
 
     var body: some View {
         VStack(alignment: .leading, spacing: 11) {
-            HStack(alignment: .top) {
+            let headerLayout = dynamicTypeSize.isAccessibilitySize
+                ? AnyLayout(VStackLayout(alignment: .leading, spacing: 10))
+                : AnyLayout(HStackLayout(alignment: .top, spacing: 8))
+            headerLayout {
                 VStack(alignment: .leading, spacing: 3) {
                     Text(L10n.profileInfoTitle)
                         .font(.subheadline.weight(.heavy))
@@ -1010,16 +1107,21 @@ private struct ProfileInfoCard: View {
 // MARK: - Gönderi satırı
 
 private struct ProfilePostRow: View {
+    @Environment(\.dynamicTypeSize) private var dynamicTypeSize
     let post: ForumPostDTO
 
     var body: some View {
         VStack(alignment: .leading, spacing: 7) {
-            HStack(spacing: 8) {
+            let headerLayout = dynamicTypeSize.isAccessibilitySize
+                ? AnyLayout(VStackLayout(alignment: .leading, spacing: 8))
+                : AnyLayout(HStackLayout(alignment: .center, spacing: 8))
+            headerLayout {
                 EKPill(title: L10n.profilePostBadge)
                 Text(post.threadTitle ?? L10n.profileForumPost)
                     .font(.caption.weight(.bold))
                     .foregroundStyle(EKitapligimPalette.profileInk)
-                    .lineLimit(1)
+                    .lineLimit(dynamicTypeSize.isAccessibilitySize ? nil : 2)
+                    .fixedSize(horizontal: false, vertical: true)
                 Spacer(minLength: 0)
                 Text(EKitapligimFormat.relativeTime(post.postDate))
                     .font(.caption2)
@@ -1028,7 +1130,8 @@ private struct ProfilePostRow: View {
             Text(EKitapligimFormat.plainText(post.message))
                 .font(.subheadline)
                 .foregroundStyle(EKitapligimPalette.profileInk)
-                .lineLimit(4)
+                .lineLimit(dynamicTypeSize.isAccessibilitySize ? nil : 4)
+                .fixedSize(horizontal: false, vertical: true)
                 .multilineTextAlignment(.leading)
         }
         .padding(14)
@@ -1038,12 +1141,16 @@ private struct ProfilePostRow: View {
 }
 
 private struct ProfileBadgeRow: View {
+    @Environment(\.dynamicTypeSize) private var dynamicTypeSize
     let badge: ProfileBadgeDTO
 
     var body: some View {
-        HStack(spacing: 12) {
+        let layout = dynamicTypeSize.isAccessibilitySize
+            ? AnyLayout(VStackLayout(alignment: .leading, spacing: 12))
+            : AnyLayout(HStackLayout(alignment: .center, spacing: 12))
+        layout {
             Image(systemName: "rosette")
-                .font(.headline)
+                .font(.system(size: 22, weight: .semibold))
                 .foregroundStyle(EKitapligimPalette.amber)
                 .frame(width: 42, height: 42)
                 .background(EKitapligimPalette.amberSoft)
@@ -1055,7 +1162,7 @@ private struct ProfileBadgeRow: View {
                 Text(badge.description.isEmpty ? L10n.profileBadgeEarnedMessage : badge.description)
                     .font(.caption)
                     .foregroundStyle(EKitapligimPalette.profileMuted)
-                    .lineLimit(2)
+                    .fixedSize(horizontal: false, vertical: true)
                     .multilineTextAlignment(.leading)
                 if let date = EKitapligimFormat.date(badge.awardDate) {
                     Text(L10n.profileBadgeEarnedOn(date))
@@ -1073,305 +1180,6 @@ private struct ProfileBadgeRow: View {
         .padding(13)
         .frame(maxWidth: .infinity, alignment: .leading)
         .ekitapligimCard(radius: 15)
-        .accessibilityElement(children: .combine)
-    }
-}
-
-// MARK: - Misafir görünümü
-
-private struct GuestProfilePrompt: View {
-    var statusMessage: String?
-    let onLogin: () -> Void
-    let onRegister: () -> Void
-
-    var body: some View {
-        ScrollView {
-            ZStack {
-                Color(hex: 0xFCFEFE)
-                RadialGradient(
-                    colors: [Color(hex: 0x0F9AA1).opacity(0.17), .clear],
-                    center: UnitPoint(x: 0.08, y: 0.05),
-                    startRadius: 0,
-                    endRadius: 260
-                )
-                RadialGradient(
-                    colors: [Color(hex: 0xE0A02B).opacity(0.14), .clear],
-                    center: UnitPoint(x: 0.92, y: 0.9),
-                    startRadius: 0,
-                    endRadius: 280
-                )
-
-                VStack(spacing: 0) {
-                    guestHeader
-                    GuestLogoShowcase()
-                        .padding(.top, 18)
-                    Text(L10n.profileGuestTitle)
-                        .font(.system(size: 27, weight: .heavy))
-                        .foregroundStyle(Color(hex: 0x0E1B2B))
-                        .multilineTextAlignment(.center)
-                        .padding(.top, 24)
-                    Text(L10n.profileGuestSubtitle)
-                        .font(.system(size: 15))
-                        .foregroundStyle(Color(hex: 0x687385))
-                        .multilineTextAlignment(.center)
-                        .padding(.horizontal, 8)
-                        .padding(.top, 10)
-                    if let statusMessage {
-                        Text(statusMessage)
-                            .font(.system(size: 14, weight: .semibold))
-                            .foregroundStyle(Color(hex: 0xB45309))
-                            .multilineTextAlignment(.center)
-                            .padding(.horizontal, 12)
-                            .padding(.top, 12)
-                    }
-
-                    LazyVGrid(
-                        columns: [GridItem(.flexible(), spacing: 12), GridItem(.flexible(), spacing: 12)],
-                        spacing: 12
-                    ) {
-                        GuestBenefitTile(
-                            title: L10n.profileGuestShelfSync,
-                            subtitle: L10n.profileGuestShelfSyncSubtitle,
-                            systemImage: "books.vertical.fill",
-                            accent: Color(hex: 0x07888B),
-                            background: Color(hex: 0xF0FBFB),
-                            border: Color(hex: 0xCDEEEE)
-                        )
-                        GuestBenefitTile(
-                            title: L10n.profileGuestLimits,
-                            subtitle: L10n.profileGuestLimitsSubtitle,
-                            systemImage: "chart.line.uptrend.xyaxis",
-                            accent: Color(hex: 0xD99500),
-                            background: Color(hex: 0xFFFAED),
-                            border: Color(hex: 0xF6E1AC)
-                        )
-                        GuestBenefitTile(
-                            title: L10n.profileGuestFavorites,
-                            subtitle: L10n.profileGuestFavoritesSubtitle,
-                            systemImage: "heart",
-                            accent: Color(hex: 0xF05268),
-                            background: Color(hex: 0xFFF3F5),
-                            border: Color(hex: 0xFFD4DA)
-                        )
-                        GuestBenefitTile(
-                            title: L10n.profileGuestSecure,
-                            subtitle: L10n.profileGuestSecureSubtitle,
-                            systemImage: "lock.shield.fill",
-                            accent: Color(hex: 0x3F63D8),
-                            background: Color(hex: 0xF2F5FF),
-                            border: Color(hex: 0xD5DEFF)
-                        )
-                    }
-                    .padding(.top, 22)
-
-                    Button(action: onLogin) {
-                        HStack(spacing: 10) {
-                            Image(systemName: "rectangle.portrait.and.arrow.right")
-                                .font(.system(size: 20, weight: .semibold))
-                            Text(L10n.commonLogin)
-                                .font(.system(size: 17, weight: .bold))
-                                .lineLimit(1)
-                        }
-                        .foregroundStyle(.white)
-                        .frame(maxWidth: .infinity)
-                        .frame(height: 60)
-                        .background(
-                            LinearGradient(
-                                colors: [Color(hex: 0x108D92), Color(hex: 0x056970)],
-                                startPoint: .leading,
-                                endPoint: .trailing
-                            ),
-                            in: RoundedRectangle(cornerRadius: 10, style: .continuous)
-                        )
-                    }
-                    .buttonStyle(.plain)
-                    .padding(.top, 22)
-
-                    Button(action: onRegister) {
-                        HStack(spacing: 9) {
-                            Image(systemName: "person.badge.plus")
-                                .font(.system(size: 20, weight: .semibold))
-                            Text(L10n.loginModeRegister)
-                                .font(.system(size: 17, weight: .bold))
-                                .lineLimit(1)
-                        }
-                        .foregroundStyle(Color(hex: 0x05646A))
-                        .frame(maxWidth: .infinity)
-                        .frame(height: 58)
-                        .background(
-                            Color.white.opacity(0.62),
-                            in: RoundedRectangle(cornerRadius: 10, style: .continuous)
-                        )
-                        .overlay {
-                            RoundedRectangle(cornerRadius: 10, style: .continuous)
-                                .stroke(Color(hex: 0x05646A), lineWidth: 1.5)
-                        }
-                    }
-                    .buttonStyle(.plain)
-                    .padding(.top, 12)
-
-                    HStack(spacing: 6) {
-                        Image(systemName: "lock")
-                            .font(.system(size: 12, weight: .medium))
-                        Text(L10n.profileGuestFooter)
-                            .font(.system(size: 12))
-                            .multilineTextAlignment(.center)
-                    }
-                    .foregroundStyle(Color(hex: 0x687385).opacity(0.86))
-                    .padding(.top, 16)
-                }
-                .padding(.horizontal, 18)
-                .padding(.vertical, 20)
-            }
-            .clipShape(RoundedRectangle(cornerRadius: 12, style: .continuous))
-            .overlay {
-                RoundedRectangle(cornerRadius: 12, style: .continuous)
-                    .stroke(Color(hex: 0xE0EAEB), lineWidth: 1)
-            }
-            .padding(.horizontal, 18)
-            .padding(.vertical, 14)
-        }
-    }
-
-    private var guestHeader: some View {
-        VStack(spacing: 10) {
-            HStack(alignment: .center, spacing: 12) {
-                VStack(alignment: .leading, spacing: 3) {
-                    Text(L10n.profileScreenTitle)
-                        .font(.system(size: 30, weight: .heavy))
-                        .foregroundStyle(Color(hex: 0x0E1B2B))
-                    Text(L10n.profileGuestManageSubtitle)
-                        .font(.system(size: 15))
-                        .foregroundStyle(Color(hex: 0x687385))
-                }
-                Spacer(minLength: 0)
-                Image(systemName: "person.crop.circle.fill")
-                    .font(.system(size: 31))
-                    .foregroundStyle(.white)
-                    .frame(width: 58, height: 58)
-                    .background(Color(hex: 0x087A80), in: Circle())
-            }
-            .padding(.horizontal, 4)
-
-            GuestHeaderWave()
-                .frame(height: 34)
-        }
-    }
-}
-
-private struct GuestHeaderWave: View {
-    var body: some View {
-        Canvas { context, size in
-            var path = Path()
-            path.move(to: CGPoint(x: 0, y: size.height * 0.20))
-            path.addCurve(
-                to: CGPoint(x: size.width, y: size.height * 0.20),
-                control1: CGPoint(x: size.width * 0.22, y: size.height * 1.10),
-                control2: CGPoint(x: size.width * 0.62, y: size.height * 0.02)
-            )
-            context.stroke(path, with: .color(Color(hex: 0x087A80).opacity(0.62)), lineWidth: 2)
-        }
-        .accessibilityHidden(true)
-    }
-}
-
-private struct GuestLogoShowcase: View {
-    var body: some View {
-        VStack(spacing: 8) {
-            Image("EKitapligimWideLogo")
-                .resizable()
-                .scaledToFit()
-                .frame(maxWidth: 360, maxHeight: 74)
-                .accessibilityLabel("Ekitaplığım")
-            GuestLogoBars()
-        }
-        .padding(.horizontal, 24)
-        .padding(.vertical, 18)
-        .frame(maxWidth: .infinity)
-        .frame(height: 132)
-        .background(
-            LinearGradient(
-                colors: [.white, Color(hex: 0xFAFDFD), Color(hex: 0xF7FBFB)],
-                startPoint: .topLeading,
-                endPoint: .bottomTrailing
-            ),
-            in: RoundedRectangle(cornerRadius: 12, style: .continuous)
-        )
-        .overlay {
-            RoundedRectangle(cornerRadius: 12, style: .continuous)
-                .stroke(Color(hex: 0xE6EBEC), lineWidth: 1)
-        }
-        .overlay(alignment: .topLeading) {
-            RadialGradient(
-                colors: [Color(hex: 0x087A80).opacity(0.09), .clear],
-                center: UnitPoint(x: 0.12, y: 0.18),
-                startRadius: 0,
-                endRadius: 130
-            )
-            .clipShape(RoundedRectangle(cornerRadius: 12, style: .continuous))
-            .allowsHitTesting(false)
-        }
-    }
-}
-
-private struct GuestLogoBars: View {
-    private let colors: [UInt32] = [0x07888B, 0x4F9EA0, 0x6D5078, 0xE67E15, 0xE3A900]
-
-    var body: some View {
-        HStack(spacing: 10) {
-            ForEach(colors, id: \.self) { hex in
-                Capsule()
-                    .fill(
-                        LinearGradient(
-                            colors: [Color(hex: hex).opacity(0.86), Color(hex: hex)],
-                            startPoint: .leading,
-                            endPoint: .trailing
-                        )
-                    )
-                    .frame(width: 26, height: 8)
-            }
-        }
-        .accessibilityHidden(true)
-    }
-}
-
-private struct GuestBenefitTile: View {
-    let title: String
-    let subtitle: String
-    let systemImage: String
-    let accent: Color
-    let background: Color
-    let border: Color
-
-    var body: some View {
-        VStack(spacing: 0) {
-            Image(systemName: systemImage)
-                .font(.system(size: 22, weight: .semibold))
-                .foregroundStyle(accent)
-                .frame(width: 54, height: 54)
-                .background(Color.white.opacity(0.88), in: Circle())
-            Text(title)
-                .font(.system(size: 16, weight: .bold))
-                .foregroundStyle(Color(hex: 0x0E1B2B))
-                .multilineTextAlignment(.center)
-                .lineLimit(1)
-                .padding(.top, 12)
-            Text(subtitle)
-                .font(.system(size: 12))
-                .foregroundStyle(Color(hex: 0x687385))
-                .multilineTextAlignment(.center)
-                .lineLimit(2)
-                .padding(.top, 7)
-        }
-        .padding(.horizontal, 12)
-        .padding(.vertical, 17)
-        .frame(maxWidth: .infinity)
-        .frame(minHeight: 178)
-        .background(background, in: RoundedRectangle(cornerRadius: 12, style: .continuous))
-        .overlay {
-            RoundedRectangle(cornerRadius: 12, style: .continuous)
-                .stroke(border, lineWidth: 1)
-        }
         .accessibilityElement(children: .combine)
     }
 }

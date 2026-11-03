@@ -99,7 +99,7 @@ struct ReaderLoadingView: View {
                                 .foregroundStyle(theme.ink.opacity(0.65)).accessibilityIdentifier("reader.loading.bytes")
                         }
                         Rectangle().fill(theme.ink.opacity(0.08)).frame(height: 1)
-                        if dynamicTypeSize.isAccessibilitySize {
+                        if dynamicTypeSize > .xLarge {
                             VStack(alignment: .leading, spacing: 12) { steps }
                         } else { HStack(spacing: 0) { steps } }
                     }
@@ -126,11 +126,12 @@ struct ReaderLoadingView: View {
             .foregroundStyle(index <= step ? theme.accent : theme.ink.opacity(0.45))
             .accessibilityElement(children: .combine)
             .accessibilityValue(ReaderL10n.text(index < step ? "loading.done" : (index == step ? "loading.current" : "loading.next")))
-            if index < 2 && !dynamicTypeSize.isAccessibilitySize { Spacer(minLength: 4) }
+            if index < 2 && dynamicTypeSize <= .xLarge { Spacer(minLength: 4) }
         }
     }
 }
 struct ReaderChrome: View {
+    @Environment(\.dynamicTypeSize) private var dynamicTypeSize
     let title: String
     let detail: String
     let theme: ReaderPaperTheme
@@ -151,8 +152,9 @@ struct ReaderChrome: View {
                 ReaderIconButton(icon: "chevron.left", label: L10n.commonClose, theme: theme, action: close)
                     .accessibilityIdentifier("reader.close")
                 VStack(alignment: .leading, spacing: 4) {
-                    Text(title).font(.subheadline.weight(.bold)).lineLimit(1)
-                    Text(detail).font(.caption2.monospacedDigit()).foregroundStyle(theme.ink.opacity(0.65)).lineLimit(1)
+                    Text(title).font(.subheadline.weight(.bold)).lineLimit(dynamicTypeSize.isAccessibilitySize ? 2 : 1)
+                    Text(detail).font(.caption2.monospacedDigit()).foregroundStyle(theme.ink.opacity(0.65))
+                        .fixedSize(horizontal: false, vertical: true)
                 }.frame(maxWidth: .infinity, alignment: .leading)
                 ReaderIconButton(icon: "arrow.up.left.and.arrow.down.right", label: ReaderL10n.text("focus"), theme: theme, action: focus)
                     .accessibilityIdentifier("reader.focus")
@@ -190,6 +192,7 @@ struct ReaderIconButton: View {
 }
 
 struct ReaderPageControls: View {
+    @Environment(\.dynamicTypeSize) private var dynamicTypeSize
     let progress: ReadingProgress
     let accessiblePageLimit: Int
     let hasLockedContent: Bool
@@ -218,11 +221,14 @@ struct ReaderPageControls: View {
                 ReaderIconButton(icon: "chevron.right", label: L10n.readerNextPage, theme: theme) { onRequestPage(progress.currentPage + 1) }
                     .disabled(!hasLockedContent && progress.currentPage >= progress.totalPages)
             }
-            HStack {
-                Text(detail).lineLimit(2)
-                Spacer(minLength: 8)
+            let detailLayout = dynamicTypeSize > .xLarge
+                ? AnyLayout(VStackLayout(alignment: .leading, spacing: 6))
+                : AnyLayout(HStackLayout(spacing: 8))
+            detailLayout {
+                Text(detail).fixedSize(horizontal: false, vertical: true)
+                    .frame(maxWidth: .infinity, alignment: .leading)
                 Label(syncLabel, systemImage: syncFailed ? "icloud.slash" : "checkmark.icloud")
-                    .lineLimit(1).accessibilityIdentifier("reader.sync")
+                    .fixedSize(horizontal: false, vertical: true).accessibilityIdentifier("reader.sync")
             }.font(.caption2).foregroundStyle(theme.ink.opacity(0.65)).padding(.horizontal, 8).padding(.bottom, 6)
         }.padding(8).frame(maxWidth: 760).background(theme.panel, in: RoundedRectangle(cornerRadius: 22))
             .overlay(RoundedRectangle(cornerRadius: 22).strokeBorder(theme.ink.opacity(0.08)))
@@ -232,6 +238,7 @@ struct ReaderPageControls: View {
 }
 
 struct ReaderEPUBProgress: View {
+    @Environment(\.dynamicTypeSize) private var dynamicTypeSize
     let percent: Double
     let detail: String
     let syncLabel: String
@@ -242,11 +249,14 @@ struct ReaderEPUBProgress: View {
         VStack(spacing: 12) {
             ProgressView(value: min(100, max(0, percent)), total: 100)
                 .tint(theme.accent).accessibilityLabel(detail)
-            HStack {
-                Text(detail).monospacedDigit().lineLimit(2)
-                Spacer(minLength: 8)
+            let detailLayout = dynamicTypeSize > .xLarge
+                ? AnyLayout(VStackLayout(alignment: .leading, spacing: 6))
+                : AnyLayout(HStackLayout(spacing: 8))
+            detailLayout {
+                Text(detail).monospacedDigit().fixedSize(horizontal: false, vertical: true)
+                    .frame(maxWidth: .infinity, alignment: .leading)
                 Label(syncLabel, systemImage: syncFailed ? "icloud.slash" : "checkmark.icloud")
-                    .lineLimit(1).accessibilityIdentifier("reader.sync")
+                    .fixedSize(horizontal: false, vertical: true).accessibilityIdentifier("reader.sync")
             }.font(.caption2).foregroundStyle(theme.ink.opacity(0.65))
         }
         .padding(16).frame(maxWidth: 760).background(theme.panel, in: RoundedRectangle(cornerRadius: 22))

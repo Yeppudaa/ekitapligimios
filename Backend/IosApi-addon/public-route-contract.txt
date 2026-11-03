@@ -43,6 +43,7 @@ me/:value
 me/account-deletion-request
 me/blocked-members
 me/comments
+me/audio-comments
 me/conversations/:value/read
 me/email
 me/library

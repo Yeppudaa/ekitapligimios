@@ -8,13 +8,17 @@ struct LiveActivityView: View {
     @Environment(\.scenePhase) private var scenePhase
     var userID: String?
 
-    @State private var items: [LiveActivityItemDTO] = []
-    @State private var nextBefore: Int?
-    @State private var hasMore = false
-    @State private var isLoading = false
-    @State private var isLoadingMore = false
-    @State private var errorMessage: String?
-    @State private var loadRevision = UUID()
+    @StateObject private var model = LiveActivityModel()
+
+    private struct Lifecycle: Hashable {
+        let isActive: Bool
+        let sessionID: UUID
+        let userID: String?
+    }
+
+    private var lifecycle: Lifecycle {
+        Lifecycle(isActive: scenePhase == .active, sessionID: container.sessionRevision, userID: userID)
+    }
 
     var body: some View {
         ZStack {
@@ -38,127 +42,72 @@ struct LiveActivityView: View {
                 .padding(.horizontal, 18)
                 .padding(.vertical, 12)
             }
-            .refreshable { await load(reset: true) }
+            .refreshable { await model.load(reset: true) }
+            .accessibilityIdentifier("live.scroll")
             }
         }
         .navigationTitle(L10n.liveActivityTitle)
         .navigationBarTitleDisplayMode(.inline)
         .toolbar {
             ToolbarItem(placement: .topBarTrailing) {
-                Button { Task { await load(reset: true) } } label: {
+                Button { Task { await model.load(reset: true) } } label: {
                     Image(systemName: "arrow.clockwise").frame(minWidth: 44, minHeight: 44)
-                }.disabled(isLoading).accessibilityLabel(L10n.commonRefresh)
+                }.disabled(model.isLoading).accessibilityLabel(L10n.commonRefresh)
+                    .accessibilityIdentifier("live.refresh")
             }
         }
-        .task(id: scenePhase) {
+        .task(id: lifecycle) {
+            model.configure(repository: container.liveActivity, sessionID: container.sessionRevision, userID: userID)
             guard scenePhase == .active else { return }
-            await load(reset: true)
+            await model.load(reset: true)
             while !Task.isCancelled {
                 do { try await Task.sleep(for: .seconds(20)) } catch { return }
                 guard !Task.isCancelled else { return }
-                await refreshLatest()
+                await model.refreshLatest()
             }
         }
         .onReceive(NotificationCenter.default.publisher(for: .audioActivityChanged)) { _ in
             guard scenePhase == .active else { return }
-            Task { await refreshLatest() }
+            Task { await model.refreshLatest() }
+        }
+        .onReceive(NotificationCenter.default.publisher(for: .libraryActivityChanged)) { _ in
+            guard scenePhase == .active else { return }
+            Task { await model.refreshLatest() }
         }
     }
 
     @ViewBuilder private var content: some View {
-        if isLoading && items.isEmpty {
+        if model.isLoading && model.items.isEmpty {
             EKSkeletonCard(height: 74)
             EKSkeletonCard(height: 74)
             EKSkeletonCard(height: 74)
-        } else if let errorMessage, items.isEmpty {
+        } else if let errorMessage = model.errorMessage, model.items.isEmpty {
             EKStateCard(
                 title: L10n.liveActivityErrorTitle,
                 message: errorMessage,
                 retryTitle: L10n.commonRetry
             ) {
-                Task { await load(reset: true) }
+                Task { await model.load(reset: true) }
             }
-        } else if items.isEmpty {
+        } else if model.items.isEmpty {
             EKStateCard(title: L10n.liveActivityEmptyTitle, message: L10n.liveActivityEmptySubtitle)
         } else {
             VStack(alignment: .leading, spacing: 0) {
-                ForEach(Array(items.enumerated()), id: \.element.id) { index, item in
-                    LiveActivityRow(item: item, style: .timeline, showsConnector: index < items.count - 1)
+                ForEach(Array(model.items.enumerated()), id: \.element.id) { index, item in
+                    LiveActivityRow(item: item, style: .timeline, showsConnector: index < model.items.count - 1)
                 }
             }
-            if let errorMessage {
+            if let errorMessage = model.errorMessage {
                 EKInlineError(message: errorMessage)
             }
-            if hasMore {
-                EKLoadMoreButton(isLoading: isLoadingMore, tint: EKitapligimPalette.liveRed) {
-                    Task { await load(reset: false) }
+            if model.hasMore {
+                EKLoadMoreButton(isLoading: model.isLoadingMore, tint: EKitapligimPalette.liveRed) {
+                    Task { await model.load(reset: false) }
                 }
             }
         }
     }
 
-    private func load(reset: Bool) async {
-        if reset {
-            guard !isLoading else { return }
-            loadRevision = UUID()
-            isLoading = true
-        } else {
-            guard !isLoading, !isLoadingMore, hasMore, nextBefore != nil else { return }
-            isLoadingMore = true
-        }
-        let revision = loadRevision
-        defer {
-            if loadRevision == revision {
-                isLoading = false
-                isLoadingMore = false
-            }
-        }
-
-        errorMessage = nil
-        do {
-            let page = try await container.liveActivity.activity(
-                limit: 20,
-                before: reset ? nil : nextBefore,
-                userID: userID
-            )
-            guard loadRevision == revision, !Task.isCancelled else { return }
-            if reset {
-                items = page.items
-            } else {
-                let existing = Set(items.map(\.id))
-                items += page.items.filter { !existing.contains($0.id) }
-            }
-            nextBefore = page.nextBefore
-            hasMore = page.hasMore && page.nextBefore != nil
-        } catch is CancellationError {
-            return
-        } catch {
-            guard loadRevision == revision, !Task.isCancelled else { return }
-            errorMessage = L10n.liveActivityLoadFailed
-        }
-    }
-
-    /// A visible feed keeps older paged rows while reconciling the newest server activity.
-    private func refreshLatest() async {
-        guard !isLoading, !isLoadingMore else { return }
-        let revision = loadRevision
-        do {
-            let latest = try await container.liveActivity.activity(limit: 20, before: nil, userID: userID)
-            guard loadRevision == revision, !Task.isCancelled else { return }
-            let incomingIDs = Set(latest.items.map(\.id))
-            let wasEmpty = items.isEmpty
-            items = latest.items + items.filter { !incomingIDs.contains($0.id) }
-            if wasEmpty {
-                nextBefore = latest.nextBefore
-                hasMore = latest.hasMore && latest.nextBefore != nil
-            }
-            errorMessage = nil
-        } catch is CancellationError {
-            return
-        } catch {
-            // A transient refresh error keeps the already visible timeline usable.
-        }
-    }
 }
 
 // MARK: - Aktivite satırı
@@ -171,6 +120,7 @@ enum LiveActivityRowStyle {
 
 struct LiveActivityRow: View {
     @EnvironmentObject private var container: AppContainer
+    @Environment(\.dynamicTypeSize) private var dynamicTypeSize
     let item: LiveActivityItemDTO
     var style: LiveActivityRowStyle = .standard
     var showsChevron: Bool = true
@@ -179,22 +129,12 @@ struct LiveActivityRow: View {
     private var kind: LiveActivityKind { LiveActivityKind(rawValue: item.type) }
 
     var body: some View {
-        Button {
-            openActivity()
-        } label: {
-            Group {
-                switch style {
-                case .timeline:
-                    timelineRowContent
-                case .compact, .standard:
-                    rowContent
-                }
+        Group {
+            switch style {
+            case .timeline: timelineRowContent
+            case .compact, .standard: rowContent
             }
-        }
-        .buttonStyle(LiveActivityRowButtonStyle())
-        .disabled(!hasDestination)
-        .accessibilityLabel(hasDestination ? item.message : item.message)
-        .accessibilityHint(kind.title)
+        }.accessibilityElement(children: .contain)
     }
 
     private var timelineRowContent: some View {
@@ -265,31 +205,44 @@ struct LiveActivityRow: View {
             }
         }
         .shadow(color: style == .compact ? .clear : EKitapligimPalette.ink.opacity(0.04), radius: 8, y: 3)
-        .accessibilityElement(children: .combine)
+        .accessibilityElement(children: .contain)
     }
 
     private var activityBody: some View {
         VStack(alignment: .leading, spacing: 4) {
-            HStack(spacing: 6) {
-                Text(kind.title)
-                    .font(.system(size: 9, weight: .heavy))
-                    .foregroundStyle(kind.tint)
-                    .padding(.horizontal, 7)
-                    .padding(.vertical, 3)
-                    .background(kind.tint.opacity(0.12), in: Capsule())
+            (dynamicTypeSize.isAccessibilitySize ? AnyLayout(VStackLayout(alignment: .leading, spacing: 6)) : AnyLayout(HStackLayout(spacing: 6))) {
+                Button(action: openActivity) {
+                    Text(kind.title).font(.caption2.weight(.heavy)).foregroundStyle(kind.tint)
+                        .padding(.horizontal, 9).padding(.vertical, 5)
+                        .background(kind.tint.opacity(0.12), in: Capsule()).frame(minHeight: 44)
+                }.buttonStyle(.plain).disabled(!hasDestination)
+                    .accessibilityLabel(EKitapligimFormat.plainText(item.message))
+                    .accessibilityIdentifier("live.activity.\(item.id)")
                 Spacer(minLength: 0)
                 Text(EKitapligimFormat.relativeTime(item.eventDate))
                     .font(.caption2)
                     .foregroundStyle(EKitapligimPalette.muted)
             }
 
-            Text(EKitapligimFormat.plainText(item.message))
+            if let actor = item.actor, let route = item.memberDestination {
+                Button { container.open(route: route) } label: {
+                    HStack(spacing: 9) {
+                        EKAvatar(urlString: actor.avatarUrl, username: actor.username, size: 30)
+                        Text(actor.username).font(.subheadline.weight(.bold))
+                            .foregroundStyle(CommunityStyle.teal).fixedSize(horizontal: false, vertical: true)
+                    }.frame(minHeight: 44)
+                }.buttonStyle(.plain).accessibilityIdentifier("live.member.\(item.id)")
+                    .accessibilityHint(CommunityDesignL10n.text("activity.member"))
+            }
+            linkedMessage
                 .font(style == .compact ? .caption : .subheadline)
                 .foregroundStyle(EKitapligimPalette.ink)
-                .multilineTextAlignment(.leading)
-                .fixedSize(horizontal: false, vertical: true)
+                .multilineTextAlignment(.leading).fixedSize(horizontal: false, vertical: true)
 
             if let book = item.book, !book.title.isEmpty {
+                Button {
+                    if let route = item.bookDestination { container.open(route: route) }
+                } label: {
                 HStack(spacing: 8) {
                     EKitapligimRemoteCover(urlString: book.coverUrl ?? "", title: book.title, author: book.author)
                         .frame(width: 26, height: 38)
@@ -298,12 +251,12 @@ struct LiveActivityRow: View {
                         Text(book.title)
                             .font(.caption2.weight(.bold))
                             .foregroundStyle(EKitapligimPalette.ink)
-                            .lineLimit(1)
+                            .lineLimit(dynamicTypeSize.isAccessibilitySize ? nil : 2)
                         if !book.author.isEmpty {
                             Text(book.author)
-                                .font(.system(size: 10))
+                                .font(.caption2)
                                 .foregroundStyle(EKitapligimPalette.muted)
-                                .lineLimit(1)
+                                .lineLimit(dynamicTypeSize.isAccessibilitySize ? nil : 2)
                         }
                     }
                     Spacer(minLength: 0)
@@ -311,12 +264,39 @@ struct LiveActivityRow: View {
                 .padding(8)
                 .background(EKitapligimPalette.surfaceAlt)
                 .clipShape(RoundedRectangle(cornerRadius: 9, style: .continuous))
+                }.buttonStyle(.plain).disabled(item.bookDestination == nil)
+                    .accessibilityIdentifier("live.book.\(item.id)")
+                    .accessibilityHint(CommunityDesignL10n.text("activity.book"))
             }
+
         }
     }
 
+    private var linkedMessage: some View {
+        let runs = ActivityLinks.runs(message: EKitapligimFormat.plainText(item.message),
+                                     actor: item.actor?.username ?? "", memberRoute: item.memberDestination,
+                                     book: item.book?.title ?? "", bookRoute: item.bookDestination)
+        var attributed = AttributedString()
+        var routes: [URL: AppRoute] = [:]
+        for run in runs {
+            var text = AttributedString(run.text)
+            if let route = run.route, let url = URL(string: "ekitapligim://" + route.nativeRoute) {
+                text.link = url
+                routes[url] = route
+            }
+            attributed.append(text)
+        }
+        let destinations = routes
+        return Text(attributed).tint(CommunityStyle.teal)
+            .environment(\.openURL, OpenURLAction { url in
+                guard let route = destinations[url] else { return .discarded }
+                container.open(route: route)
+                return .handled
+            })
+    }
+
     private var hasDestination: Bool {
-        resolvedRoute != nil || bookID != nil
+        resolvedRoute != nil || item.bookDestination != nil
     }
 
     private var resolvedRoute: AppRoute? {
@@ -326,20 +306,19 @@ struct LiveActivityRow: View {
     private func openActivity() {
         if let route = resolvedRoute {
             container.open(route: route)
-        } else if let bookID {
-            container.open(route: .bookDetail(bookID))
+        } else if let route = item.bookDestination {
+            container.open(route: route)
         }
     }
 
-    private var bookID: Int? {
-        guard let raw = item.book?.id else { return nil }
-        return Int(raw)
-    }
+
 }
 
 /// Android renders one colour and label per activity type; unknown types fall back to a neutral style.
 enum LiveActivityKind {
     case reading
+    case wantToRead
+    case favorite
     case listening
     case audioFavorite
     case audioSaved
@@ -364,7 +343,9 @@ enum LiveActivityKind {
         case "audio_completed", "audiobook_completed": self = .audioCompleted
         case "premium", "premium_upgrade", "user_upgrade": self = .premium
         case "reading", "reading_progress", "progress": self = .reading
-        case "finished", "book_finished", "completed": self = .finished
+        case "want_to_read": self = .wantToRead
+        case "favorite", "favorite_added", "book_favorite": self = .favorite
+        case "read", "finished", "book_finished", "completed": self = .finished
         case "review", "book_review", "rating": self = .review
         case "comment", "book_comment", "post": self = .comment
         case "agenda", "book_agenda", "agenda_post": self = .agenda
@@ -384,6 +365,8 @@ enum LiveActivityKind {
         case .audioCompleted: CommunityRefreshL10n.text("activity.audioCompleted")
         case .premium: CommunityRefreshL10n.text("activity.premium")
         case .reading: L10n.liveActivityTypeReading
+        case .wantToRead: L10n.libraryTabWantToRead
+        case .favorite: L10n.libraryShelfFavorites
         case .finished: L10n.liveActivityTypeRead
         case .review: L10n.liveActivityTypeReview
         case .comment: L10n.liveActivityTypeComment
@@ -404,6 +387,8 @@ enum LiveActivityKind {
         case .audioCompleted: "checkmark.circle.fill"
         case .premium: "crown.fill"
         case .reading: "book.pages.fill"
+        case .wantToRead: "clock.fill"
+        case .favorite: "heart.fill"
         case .finished: "checkmark.seal.fill"
         case .review: "star.fill"
         case .comment: "bubble.right.fill"
@@ -423,6 +408,8 @@ enum LiveActivityKind {
         case .audioCompleted: EKitapligimPalette.success
         case .premium: EKitapligimPalette.gold
         case .reading: EKitapligimPalette.teal
+        case .wantToRead: EKitapligimPalette.teal
+        case .favorite: EKitapligimPalette.liveRed
         case .finished: EKitapligimPalette.success
         case .review: EKitapligimPalette.gold
         case .comment: EKitapligimPalette.agendaPurple
@@ -432,13 +419,5 @@ enum LiveActivityKind {
         case .request: EKitapligimPalette.liveRed
         case .other: EKitapligimPalette.muted
         }
-    }
-}
-
-private struct LiveActivityRowButtonStyle: ButtonStyle {
-    func makeBody(configuration: Configuration) -> some View {
-        configuration.label
-            .scaleEffect(configuration.isPressed ? 0.985 : 1)
-            .animation(.easeOut(duration: 0.12), value: configuration.isPressed)
     }
 }

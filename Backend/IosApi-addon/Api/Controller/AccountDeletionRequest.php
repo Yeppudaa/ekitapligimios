@@ -33,6 +33,7 @@ class AccountDeletionRequest extends \Ekitapligim\MobileApi\Api\Controller\Abstr
 			// A previous response may have been lost, or the user may have signed
 			// back in while deletion is pending. Revoke those sessions as well.
 			MobileSession::revokeUserSessions((int) $visitor->user_id);
+			$this->removeDeviceTokens((int) $visitor->user_id);
 			$appleRevocationPending = $hasAppleAuthorization
 				&& !AppleAuthorization::revokeForUser((int) $visitor->user_id);
 			return $this->deletionRequestResult(
@@ -44,11 +45,32 @@ class AccountDeletionRequest extends \Ekitapligim\MobileApi\Api\Controller\Abstr
 
 		$requestId = $this->recordDeletionRequest($visitor, $reason, $currentPassword !== '');
 		MobileSession::revokeUserSessions((int) $visitor->user_id);
+		$this->removeDeviceTokens((int) $visitor->user_id);
 		$appleRevocationPending = $hasAppleAuthorization
 			&& !AppleAuthorization::revokeForUser((int) $visitor->user_id);
 		$this->sendDeletionRequestMail($visitor, $reason, $requestId);
 
 		return $this->deletionRequestResult($requestId, false, $appleRevocationPending);
+	}
+
+	/**
+	 * The app cannot unregister its APNs token after this request: the sessions it would
+	 * authenticate with were just revoked. Stop notifications for the account here.
+	 */
+	protected function removeDeviceTokens(int $userId): void
+	{
+		try
+		{
+			$this->app()->db()->delete('xf_ios_device_tokens', 'user_id = ?', $userId);
+		}
+		catch (\Throwable $e)
+		{
+			// Best effort: the deletion request itself has already been recorded.
+			if (class_exists(\XF::class, false))
+			{
+				\XF::logException($e, false, 'IosApi device token cleanup failed: ');
+			}
+		}
 	}
 
 	protected function deletionRequestResult(int $requestId, bool $alreadyPending, bool $appleRevocationPending)

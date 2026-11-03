@@ -1,0 +1,16 @@
+"photo.title" = "Bir fotoğraf ekle";
+"photo.add" = "Fotoğraf seç";
+"photo.replace" = "Fotoğrafı değiştir";
+"photo.remove" = "Fotoğrafı kaldır";
+"photo.preview" = "Paylaşılacak fotoğrafın önizlemesi";
+"photo.preparing" = "Fotoğraf hazırlanıyor…";
+"photo.checking" = "Fotoğraf paylaşımı kontrol ediliyor";
+"photo.hint" = "Kitabını veya okuma anını paylaş. Fotoğraf paylaşımınla birlikte yüklenecek.";
+"photo.unavailable" = "Fotoğraf paylaşımı şu an kullanılamıyor. Biraz sonra yeniden deneyebilirsin.";
+"photo.tooLarge" = "Fotoğraf sunucunun boyut sınırını aşıyor. Daha küçük bir fotoğraf seçebilirsin.";
+"selection.failed" = "Fotoğraf hazırlanamadı. Farklı bir fotoğraf seç veya fotoğrafı kaldırıp devam et.";
+"image.failed" = "Fotoğraf yüklenemedi";
+"image.loading" = "Fotoğraf yükleniyor";
+"image.retry" = "Yeniden dene";
+"images.gallery" = "Paylaşım fotoğrafları; diğer fotoğraflar için kaydır";
+"images.count" = "%d fotoğraf";

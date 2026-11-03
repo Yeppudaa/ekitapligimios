@@ -4,6 +4,7 @@ import EkitapligimCore
 @MainActor
 struct BlockedMembersView: View {
     @EnvironmentObject private var container: AppContainer
+    @Environment(\.dynamicTypeSize) private var dynamicTypeSize
 
     @State private var members: [BlockedMemberDTO] = []
     @State private var isLoading = false
@@ -25,12 +26,13 @@ struct BlockedMembersView: View {
                 ContentUnavailableView(L10n.blockedMembersEmptyTitle, systemImage: "hand.raised")
             } else {
                 List(members) { member in
-                    HStack(spacing: 12) {
+                    (dynamicTypeSize.isAccessibilitySize ? AnyLayout(VStackLayout(alignment: .leading, spacing: 12)) : AnyLayout(HStackLayout(spacing: 12))) {
                         MemberProfileLink(memberID: member.id) {
                             HStack(spacing: 12) {
                                 EKAvatar(urlString: member.avatarUrl, username: member.username, size: 40, cornerRadius: 20)
                                 Text(member.username)
                                     .font(.body.weight(.semibold))
+                                    .fixedSize(horizontal: false, vertical: true)
                             }
                         }
                         Spacer()
@@ -38,6 +40,7 @@ struct BlockedMembersView: View {
                             Task { await unblock(member) }
                         }
                         .font(.subheadline.weight(.bold))
+                        .fixedSize(horizontal: false, vertical: true)
                     }
                     .padding(.vertical, 4)
                 }

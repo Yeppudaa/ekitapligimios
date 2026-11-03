@@ -64,6 +64,7 @@ jobs:
         run: ./Scripts/appstore-preflight.ps1 -AllowPlaceholders
 
   ios-build:
+    if: ${{ !startsWith(github.ref, 'refs/heads/codex/release-review-') }}
     name: iOS build and tests (${{ matrix.device }})
     runs-on: macos-15
     timeout-minutes: 45
@@ -79,11 +80,8 @@ jobs:
             resultBundle: TestResults-iPad.xcresult
     steps:
       - uses: actions/checkout@v4
-      - name: Select and verify Xcode 16.4
-        run: |
-          sudo xcode-select -s /Applications/Xcode_16.4.app/Contents/Developer
-          xcodebuild -version
-          xcodebuild -version | grep -q 'Xcode 16.4'
+      - name: Select App Store compatible Xcode
+        run: bash Scripts/select-ci-xcode.sh
       - name: Install XcodeGen
         run: brew install xcodegen
       - name: Generate Xcode project
@@ -186,15 +184,14 @@ jobs:
           retention-days: 14
 
   app-store-screenshots:
+    if: ${{ !startsWith(github.ref, 'refs/heads/codex/release-review-') }}
     name: Accurate App Store screenshots
     runs-on: macos-15
     timeout-minutes: 30
     steps:
       - uses: actions/checkout@v4
-      - name: Select and verify Xcode 16.4
-        run: |
-          sudo xcode-select -s /Applications/Xcode_16.4.app/Contents/Developer
-          xcodebuild -version
+      - name: Select App Store compatible Xcode
+        run: bash Scripts/select-ci-xcode.sh
       - name: Install XcodeGen
         run: brew install xcodegen
       - name: Generate Xcode project

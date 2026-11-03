@@ -8,6 +8,7 @@ struct NotificationsView: View {
     @EnvironmentObject private var container: AppContainer
     @Environment(\.scenePhase) private var scenePhase
     @Environment(\.openURL) private var openURL
+    @Environment(\.dynamicTypeSize) private var dynamicTypeSize
 
     @State private var notifications: [NotificationDTO] = []
     @State private var counts: NotificationCountsDTO?
@@ -17,6 +18,9 @@ struct NotificationsView: View {
     @State private var optimisticallyReadIDs: Set<Int> = []
     @State private var deliverySettings: UNNotificationSettings?
     @State private var requestingPermission = false
+    @State private var isSchedulingTest = false
+    @State private var displayTestMessage: String?
+    private let displayTester = NotificationDisplayTestService()
 
     var body: some View {
         EKitapligimScreen {
@@ -66,7 +70,7 @@ struct NotificationsView: View {
     }
 
     private var notificationBanner: some View {
-        HStack(alignment: .top, spacing: 15) {
+        (dynamicTypeSize.isAccessibilitySize ? AnyLayout(VStackLayout(alignment: .leading, spacing: 15)) : AnyLayout(HStackLayout(alignment: .top, spacing: 15))) {
             Image(systemName: "bell.badge.fill").font(.title2).foregroundStyle(Color(hex: 0xFFF3CC))
                 .frame(width: 52, height: 52).background(.white.opacity(0.12), in: RoundedRectangle(cornerRadius: 17))
                 .accessibilityHidden(true)
@@ -108,7 +112,7 @@ struct NotificationsView: View {
     }
 
     private func notificationCountsCard(_ counts: NotificationCountsDTO) -> some View {
-        LazyVGrid(columns: [GridItem(.adaptive(minimum: 130), spacing: 10)], spacing: 10) {
+        LazyVGrid(columns: dynamicTypeSize.isAccessibilitySize ? [GridItem(.flexible())] : [GridItem(.adaptive(minimum: 130), spacing: 10)], spacing: 10) {
             countTile(L10n.notificationsUnread, value: counts.unread, icon: "envelope.badge", tint: EKitapligimPalette.teal)
             countTile(L10n.notificationsNew, value: counts.unviewed ?? 0, icon: "sparkles", tint: EKitapligimPalette.amber)
         }
@@ -133,6 +137,21 @@ struct NotificationsView: View {
                 .fixedSize(horizontal: false, vertical: true)
             Text(deliveryMessage).font(.subheadline).foregroundStyle(Color(hex: 0x526B70))
                 .fixedSize(horizontal: false, vertical: true)
+            PushRegistrationStatusView(manager: container.pushManager, allowsRegistration: hasDeliveryPermission)
+            if deliveryEnabled {
+                Button {
+                    Task { await scheduleDisplayTest() }
+                } label: {
+                    Label(CommunityDesignL10n.text("notifications.testAction"), systemImage: "bell.badge")
+                        .font(.subheadline.weight(.semibold)).frame(maxWidth: .infinity, minHeight: 48)
+                }.buttonStyle(.bordered).tint(CommunityStyle.teal).disabled(isSchedulingTest)
+                    .accessibilityIdentifier("notifications.delivery.test")
+                Text(CommunityDesignL10n.text("notifications.testNote")).font(.caption).foregroundStyle(CommunityStyle.muted)
+            }
+            if let displayTestMessage {
+                Text(displayTestMessage).font(.footnote).foregroundStyle(CommunityStyle.ink)
+                    .accessibilityIdentifier("notifications.delivery.testStatus")
+            }
             if deliverySettings?.authorizationStatus == .notDetermined {
                 Button {
                     Task { await requestNotificationPermission() }
@@ -163,11 +182,16 @@ struct NotificationsView: View {
 
     private var deliveryEnabled: Bool {
         guard let settings = deliverySettings else { return false }
-        return settings.authorizationStatus == .authorized || settings.authorizationStatus == .provisional || settings.authorizationStatus == .ephemeral
+        return NotificationDisplayTestService.bannersEnabled(settings)
+    }
+    private var hasDeliveryPermission: Bool {
+        guard let settings = deliverySettings else { return false }
+        return settings.authorizationStatus == .authorized || settings.authorizationStatus == .provisional
+            || settings.authorizationStatus == .ephemeral
     }
     private var visibleAlertsDisabled: Bool {
-        guard let settings = deliverySettings, deliveryEnabled else { return false }
-        return settings.alertSetting == .disabled && settings.notificationCenterSetting == .disabled && settings.lockScreenSetting == .disabled
+        guard let settings = deliverySettings, settings.authorizationStatus == .authorized else { return false }
+        return !NotificationDisplayTestService.bannersEnabled(settings)
     }
     private var deliveryTitle: String {
         guard let status = deliverySettings?.authorizationStatus else { return CommunityRefreshL10n.text("notifications.checking") }
@@ -175,7 +199,7 @@ struct NotificationsView: View {
         case .notDetermined: return CommunityRefreshL10n.text("notifications.notAskedTitle")
         case .denied: return CommunityRefreshL10n.text("notifications.disabledTitle")
         case .provisional, .ephemeral: return CommunityRefreshL10n.text("notifications.quietTitle")
-        case .authorized: return CommunityRefreshL10n.text(visibleAlertsDisabled ? "notifications.surfacesDisabledTitle" : "notifications.enabledTitle")
+        case .authorized: return CommunityDesignL10n.text(visibleAlertsDisabled ? "notifications.bannerDisabledTitle" : "notifications.bannerEnabledTitle")
         @unknown default: return CommunityRefreshL10n.text("notifications.settingsAction")
         }
     }
@@ -185,7 +209,7 @@ struct NotificationsView: View {
         case .notDetermined: return CommunityRefreshL10n.text("notifications.notAskedBody")
         case .denied: return CommunityRefreshL10n.text("notifications.disabledBody")
         case .provisional, .ephemeral: return CommunityRefreshL10n.text("notifications.quietBody")
-        case .authorized: return CommunityRefreshL10n.text(visibleAlertsDisabled ? "notifications.surfacesDisabledBody" : "notifications.enabledBody")
+        case .authorized: return CommunityDesignL10n.text(visibleAlertsDisabled ? "notifications.bannerDisabledBody" : "notifications.bannerEnabledBody")
         @unknown default: return CommunityRefreshL10n.text("notifications.unknownBody")
         }
     }
@@ -200,10 +224,18 @@ struct NotificationsView: View {
         guard !requestingPermission, deliverySettings?.authorizationStatus == .notDetermined else { return }
         requestingPermission = true
         defer { requestingPermission = false }
+        await container.pushManager.requestPermissionAndRegister()
+        await readDeliverySettings()
+    }
+
+    private func scheduleDisplayTest() async {
+        guard !isSchedulingTest else { return }
+        isSchedulingTest = true
+        defer { isSchedulingTest = false }
         do {
-            _ = try await UNUserNotificationCenter.current().requestAuthorization(options: [.alert, .badge, .sound])
-            await readDeliverySettings()
-        } catch { navigationError = CommunityRefreshL10n.text("notifications.permissionFailed") }
+            try await displayTester.scheduleTest()
+            displayTestMessage = CommunityDesignL10n.text("notifications.testScheduled")
+        } catch { displayTestMessage = error.localizedDescription }
     }
     private func openNotificationSettings() {
         guard let url = URL(string: UIApplication.openNotificationSettingsURLString) else { return }

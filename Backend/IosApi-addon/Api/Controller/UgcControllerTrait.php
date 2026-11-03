@@ -93,16 +93,23 @@ trait UgcControllerTrait
 		{
 			$payload['comment'] = $this->flagAgendaItemViewer($payload['comment']);
 		}
-		if ($visitorId > 0)
+		// The shared serializer evaluates XenForo permissions. Authentication
+		// or ownership alone must never replace an explicit permission denial.
+		$canCreate = $payload['capabilities']['can_create']
+			?? $payload['capabilities']['canCreate']
+			?? $payload['can_create']
+			?? $payload['canCreate']
+			?? null;
+		if ($canCreate !== null)
 		{
-			$payload['can_create'] = true;
-			$payload['canCreate'] = true;
+			$payload['can_create'] = (bool) $canCreate;
+			$payload['canCreate'] = (bool) $canCreate;
 			if (!isset($payload['capabilities']) || !is_array($payload['capabilities']))
 			{
 				$payload['capabilities'] = [];
 			}
-			$payload['capabilities']['can_create'] = true;
-			$payload['capabilities']['canCreate'] = true;
+			$payload['capabilities']['can_create'] = (bool) $canCreate;
+			$payload['capabilities']['canCreate'] = (bool) $canCreate;
 		}
 		$result->setResult($payload);
 		return $reply;
@@ -110,20 +117,27 @@ trait UgcControllerTrait
 
 	protected function flagAgendaItemViewer(array $item): array
 	{
-		$visitorId = (string) \XF::visitor()->user_id;
-		$actorId = (string) ($item['actor']['id'] ?? $item['user_id'] ?? $item['userId'] ?? '');
-		if ($visitorId === '' || $visitorId === '0' || $actorId !== $visitorId)
+		if (!isset($item['viewer']) || !is_array($item['viewer']))
 		{
 			return $item;
 		}
-		if (!isset($item['viewer']) || !is_array($item['viewer']))
+		foreach ([
+			'can_react' => 'canReact',
+			'can_comment' => 'canComment',
+			'can_edit' => 'canEdit',
+			'can_delete' => 'canDelete',
+			'following_actor' => 'followingActor',
+		] AS $snakeCase => $camelCase)
 		{
-			$item['viewer'] = [];
+			if (array_key_exists($snakeCase, $item['viewer']))
+			{
+				$item['viewer'][$camelCase] = $item['viewer'][$snakeCase];
+			}
+			elseif (array_key_exists($camelCase, $item['viewer']))
+			{
+				$item['viewer'][$snakeCase] = $item['viewer'][$camelCase];
+			}
 		}
-		$item['viewer']['can_edit'] = true;
-		$item['viewer']['canEdit'] = true;
-		$item['viewer']['can_delete'] = true;
-		$item['viewer']['canDelete'] = true;
 		return $item;
 	}
 }

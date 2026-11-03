@@ -124,4 +124,9 @@ class Setup extends AbstractSetup
 		\Ekitapligim\IosApi\Service\AppStoreTransactionStore::ensureTables();
 		\Ekitapligim\IosApi\Service\IosMembershipSynchronizer::syncAll();
 	}
+
+	public function upgrade1000037Step1(): void
+	{
+		// Library mutations use the existing BookThreads shelves/favorites; no schema migration.
+	}
 }

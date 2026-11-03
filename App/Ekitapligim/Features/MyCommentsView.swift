@@ -4,6 +4,7 @@ import EkitapligimCore
 @MainActor
 struct MyCommentsView: View {
     @EnvironmentObject private var container: AppContainer
+    @Environment(\.dynamicTypeSize) private var dynamicTypeSize
     @State private var comments: [ForumPostDTO] = []
     @State private var page = 1
     @State private var lastPage = 1
@@ -36,7 +37,8 @@ struct MyCommentsView: View {
                                         Text(comment.threadTitle ?? L10n.myCommentsForumTitle)
                                             .font(.headline)
                                             .foregroundStyle(EKitapligimPalette.ink)
-                                            .lineLimit(1)
+                                            .lineLimit(dynamicTypeSize.isAccessibilitySize ? nil : 2)
+                                            .fixedSize(horizontal: false, vertical: true)
                                         Text(comment.message)
                                             .font(.subheadline)
                                             .foregroundStyle(EKitapligimPalette.muted)

@@ -10,15 +10,42 @@ final class ReaderBookmarkStore: ObservableObject {
     private let storageKey: String
     private let encoder = JSONEncoder()
 
+    private var activeAccount: String?
+
+    /// Bookmarks belong to the signed-in account. Nothing is shown or saved until
+    /// `activate(account:)` names one, so a second account never sees the first's notes.
     init(defaults: UserDefaults = .standard, storageKey: String = "reader.bookmarks.v1") {
         self.defaults = defaults
         self.storageKey = storageKey
-        if let data = defaults.data(forKey: storageKey),
+        collection = ReaderBookmarks()
+    }
+
+    func activate(account: String?) {
+        guard account != activeAccount else { return }
+        activeAccount = account
+        collection = load(account: account)
+    }
+
+    private func accountKey(_ account: String?) -> String? {
+        guard let account, !account.isEmpty else { return nil }
+        return storageKey + ".account." + account
+    }
+
+    private func load(account: String?) -> ReaderBookmarks {
+        guard let key = accountKey(account) else { return ReaderBookmarks() }
+        if let data = defaults.data(forKey: key),
            let stored = try? JSONDecoder().decode(ReaderBookmarks.self, from: data) {
-            collection = stored
-        } else {
-            collection = ReaderBookmarks()
+            return stored
         }
+        // Bookmarks saved before accounts were separated move once to the first
+        // account that signs in after the update (normally the device owner).
+        if let legacy = defaults.data(forKey: storageKey),
+           let stored = try? JSONDecoder().decode(ReaderBookmarks.self, from: legacy) {
+            defaults.set(legacy, forKey: key)
+            defaults.removeObject(forKey: storageKey)
+            return stored
+        }
+        return ReaderBookmarks()
     }
 
     func bookmarks(for bookID: Int) -> [ReaderBookmark] {
@@ -40,7 +67,8 @@ final class ReaderBookmarkStore: ObservableObject {
     }
 
     private func persist() {
-        guard let data = try? encoder.encode(collection) else { return }
-        defaults.set(data, forKey: storageKey)
+        guard let key = accountKey(activeAccount),
+              let data = try? encoder.encode(collection) else { return }
+        defaults.set(data, forKey: key)
     }
 }

@@ -55,7 +55,7 @@ targets:
     settings:
       base:
         INFOPLIST_FILE: App/Ekitapligim/Support/Info.plist
-        MARKETING_VERSION: "1.1.0"
+        MARKETING_VERSION: "1.1.1"
         CURRENT_PROJECT_VERSION: "44"
         CODE_SIGN_STYLE: Automatic
         DEVELOPMENT_TEAM: QA67383767
@@ -72,6 +72,11 @@ targets:
       path: App/Ekitapligim/Support/Ekitapligim.entitlements
       properties:
         aps-environment: $(APS_ENVIRONMENT)
+        # XcodeGen rewrites the entitlements file from these properties; without this
+        # key the signed app shipped without Universal Links.
+        com.apple.developer.associated-domains:
+          - applinks:ekitapligim.com
+          - applinks:www.ekitapligim.com
       configs:
         Development:
           PRODUCT_BUNDLE_IDENTIFIER: com.ekitapligim.app

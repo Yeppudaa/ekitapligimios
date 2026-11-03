@@ -250,6 +250,14 @@ public struct BookAgendaAttachmentDTO: Decodable, Equatable, Identifiable, Senda
     public let id: String
     public let url: String
     public let thumbnailUrl: String?
+    public let width: Int
+    public let height: Int
+    public let protectedImage: Bool
+
+    public var displayURL: URL? { AgendaMediaPolicy.imageURL(url) ?? AgendaMediaPolicy.imageURL(thumbnailUrl) }
+    public var aspectRatio: Double {
+        width > 0 && height > 0 ? Double(width) / Double(height) : 4.0 / 3.0
+    }
 
     public init(from decoder: Decoder) throws {
         let container = try decoder.container(keyedBy: CodingKeys.self)
@@ -258,6 +266,9 @@ public struct BookAgendaAttachmentDTO: Decodable, Equatable, Identifiable, Senda
             ?? container.decodeFlexibleStringIfPresent(forKey: .imageUrl)
             ?? ""
         self.thumbnailUrl = try container.decodeIfPresent(String.self, forKey: .thumbnailUrl)
+        self.width = max(0, container.decodeFlexibleInt(forKey: .width))
+        self.height = max(0, container.decodeFlexibleInt(forKey: .height))
+        self.protectedImage = container.decodeFlexibleBool(forKey: .protectedImage)
     }
 
     private enum CodingKeys: String, CodingKey {
@@ -266,6 +277,7 @@ public struct BookAgendaAttachmentDTO: Decodable, Equatable, Identifiable, Senda
         case url
         case imageUrl
         case thumbnailUrl
+        case width, height, protectedImage
     }
 }
 
@@ -415,7 +427,9 @@ public struct BookAgendaPostDTO: Decodable, Equatable, Identifiable, Sendable {
         self.actor = try container.decodeIfPresent(BookAgendaActorDTO.self, forKey: .actor)
             ?? BookAgendaActorDTO(id: "", username: "")
         self.book = try container.decodeIfPresent(BookAgendaBookDTO.self, forKey: .book)
-        self.attachments = try container.decodeIfPresent([BookAgendaAttachmentDTO].self, forKey: .attachments) ?? []
+        let decodedAttachments = try container.decodeIfPresent(LossyDecodableArray<BookAgendaAttachmentDTO>.self, forKey: .attachments)?.elements ?? []
+        var attachmentIDs = Set<String>()
+        self.attachments = decodedAttachments.filter { !$0.id.isEmpty && attachmentIDs.insert($0.id).inserted }
         self.quotedPost = try container.decodeIfPresent(BookAgendaQuotedPostDTO.self, forKey: .quotedPost)
         self.viewer = try container.decodeIfPresent(BookAgendaViewerDTO.self, forKey: .viewer) ?? BookAgendaViewerDTO()
         self.appRoute = try container.decodeIfPresent(String.self, forKey: .appRoute)

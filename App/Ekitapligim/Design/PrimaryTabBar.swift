@@ -26,7 +26,7 @@ struct PrimaryTabBar: View {
                         .fill(Color(red: 226 / 255, green: 232 / 255, blue: 234 / 255))
                         .frame(height: 1)
                 }
-                .ignoresSafeArea(edges: .bottom)
+                .ignoresSafeArea(.container, edges: .bottom)
         }
     }
 
@@ -71,6 +71,7 @@ struct PrimaryTabBar: View {
         .contentShape(Rectangle())
         .accessibilityIdentifier(tab.accessibilityIdentifier)
         .accessibilityLabel(accessibilityTitle)
+        .accessibilityAddTraits(isSelected ? .isSelected : [])
     }
 }
 

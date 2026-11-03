@@ -3,7 +3,27 @@ import UserNotifications
 
 final class AppDelegate: NSObject, UIApplicationDelegate, UNUserNotificationCenterDelegate {
 
-    weak var pushManager: PushNotificationManager?
+    @MainActor weak var pushManager: PushNotificationManager? {
+        didSet { if notificationStartupComplete { completeNotificationStartup() } }
+    }
+    @MainActor private var pendingNotificationTap: [AnyHashable: Any]?
+    @MainActor private var notificationStartupComplete = false
+
+    @MainActor func completeNotificationStartup() {
+        notificationStartupComplete = true
+        if let payload = pendingNotificationTap, let pushManager {
+            pendingNotificationTap = nil
+            pushManager.handleNotificationTap(userInfo: payload)
+        }
+    }
+
+    @MainActor func routeNotificationTap(_ payload: [AnyHashable: Any]) {
+        guard notificationStartupComplete, let pushManager else {
+            pendingNotificationTap = payload
+            return
+        }
+        pushManager.handleNotificationTap(userInfo: payload)
+    }
 
     func application(
         _ application: UIApplication,
@@ -29,9 +49,9 @@ final class AppDelegate: NSObject, UIApplicationDelegate, UNUserNotificationCent
         _ application: UIApplication,
         didFailToRegisterForRemoteNotificationsWithError error: Error
     ) {
-        // Token registration failed -- nothing to do beyond logging in debug.
+        Task { @MainActor in pushManager?.didFailRemoteRegistration() }
         #if DEBUG
-        print("[Push] Registration failed: \(error.localizedDescription)")
+        print("[Push] Remote notification registration failed.")
         #endif
     }
 
@@ -56,7 +76,7 @@ final class AppDelegate: NSObject, UIApplicationDelegate, UNUserNotificationCent
         willPresent notification: UNNotification,
         withCompletionHandler completionHandler: @escaping (UNNotificationPresentationOptions) -> Void
     ) {
-        completionHandler([.banner, .badge, .sound])
+        completionHandler([.banner, .list, .badge, .sound])
     }
 
     /// Called when the user taps a notification.
@@ -67,7 +87,7 @@ final class AppDelegate: NSObject, UIApplicationDelegate, UNUserNotificationCent
     ) {
         let userInfo = response.notification.request.content.userInfo
         Task { @MainActor in
-            pushManager?.handleNotificationTap(userInfo: userInfo)
+            routeNotificationTap(userInfo)
         }
         completionHandler()
     }

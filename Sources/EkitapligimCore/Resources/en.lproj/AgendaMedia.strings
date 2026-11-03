@@ -1,0 +1,16 @@
+"photo.title" = "Add a photo";
+"photo.add" = "Choose photo";
+"photo.replace" = "Change photo";
+"photo.remove" = "Remove photo";
+"photo.preview" = "Preview of the photo to share";
+"photo.preparing" = "Preparing photo…";
+"photo.checking" = "Checking photo sharing";
+"photo.hint" = "Share your book or reading moment. The photo will upload with your post.";
+"photo.unavailable" = "Photo sharing is currently unavailable. You can try again shortly.";
+"photo.tooLarge" = "This photo exceeds the server's size limit. Choose a smaller photo.";
+"selection.failed" = "The photo could not be prepared. Choose another photo, or remove it to continue.";
+"image.failed" = "Photo could not load";
+"image.loading" = "Loading photo";
+"image.retry" = "Try again";
+"images.gallery" = "Post photos; swipe for more photos";
+"images.count" = "%d photos";

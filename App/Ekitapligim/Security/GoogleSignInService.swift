@@ -20,6 +20,13 @@ enum GoogleSignInService {
     )
   }
 
+  /// Forget the Google account on logout so the next person gets the account chooser
+  /// instead of silently reusing the previous user's Google session.
+  @MainActor
+  static func signOut() {
+    GIDSignIn.sharedInstance.signOut()
+  }
+
   static func handle(_ url: URL) -> Bool {
     configureIfNeeded()
     return GIDSignIn.sharedInstance.handle(url)

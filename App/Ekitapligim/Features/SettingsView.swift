@@ -29,10 +29,17 @@ struct SettingsView: View {
         Section {
             switch container.authState {
             case .signedIn(let session):
-                HStack {
-                    Text(L10n.settingsUser)
-                    Spacer()
-                    Text(session.username).foregroundStyle(.secondary)
+                ViewThatFits(in: .horizontal) {
+                    HStack(alignment: .firstTextBaseline) {
+                        Text(L10n.settingsUser).fixedSize()
+                        Spacer(minLength: 12)
+                        Text(session.username).foregroundStyle(.secondary).fixedSize()
+                    }
+                    VStack(alignment: .leading, spacing: 6) {
+                        Text(L10n.settingsUser)
+                        Text(session.username).foregroundStyle(.secondary)
+                    }
+                    .fixedSize(horizontal: false, vertical: true)
                 }
                 Button(L10n.settingsSignOut, role: .destructive) { Task { await container.logout() } }
             case .authenticating:

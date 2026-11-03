@@ -1,5 +1,25 @@
 # Privacy Data Inventory
 
+## Agenda photos (2026-11-03)
+
+PhotosPicker returns only the image explicitly selected by the user; no broad library or camera permission is added. A bounded, orientation-correct 2048px JPEG is prepared in memory without copying EXIF/GPS metadata. The file is uploaded to the existing first-party agenda POST only when Share is pressed, stored as XenForo Social user content, and follows the post's existing visibility/moderation/deletion policy. Failed creation cleans its pending attachment. Drafts and decoded images are memory-only; account change clears the selected draft and restarts image loading.
+
+Authenticated attachments use the first-party API with read permissions and `private, no-store`. External HTTPS inline images may contact their original image host, which sees the ordinary network request/IP; these requests carry neither the API bearer nor web cookies. No photo analytics, tracking or new SDK is added. The existing manifest declaration `PhotosorVideos`, linked to the user for AppFunctionality, covers selected agenda photos as well as profile images. Existing entitlements/StoreKit settings and directory-based project source inclusion need no change. Native PhotosPicker/ImageIO/device validation remains pending macOS; see [evidence](AGENDA_MEDIA_VALIDATION.md).
+
+## Profile editor and directory filters (2026-11-03)
+
+Directory performance follow-up: up to six query/initial result snapshots, each at most 2,000 entries, are retained in the current screen/account model's memory for 120 seconds. They are never written to disk or sent to another recipient, and the existing session-bound view identity discards them on account replacement. No collected-data category, permission, SDK or manifest change is introduced. [Validation](DIRECTORY_PERFORMANCE_VALIDATION.md).
+
+Profile fields and chosen media continue to use the existing authenticated first-party profile endpoints. PhotosPicker-selected data is decoded/re-encoded to JPEG in memory before upload, subject to the existing 12 MB limit; no additional photo-library authorization or data recipient is added. Unsaved text remains view-model memory and resets on account replacement. Directory initial/search queries use existing public first-party `q` requests. No new SDK, tracking, permission category, required-reason API or collected-data category is introduced; existing manifest/entitlements remain applicable. [Validation](PROFILE_DIRECTORY_VALIDATION.md).
+
+## Community design and notification diagnostics (2026-11-03)
+
+The redesign reuses existing public member, conversation and activity data. Notification settings are read on device; registration uses the existing authenticated device-token service. Only an explicit test-button tap schedules a local notification with localized synthetic text, no account identifiers/private content/route, and no network call. A cold-start notification tap is kept in memory until session restoration and consumed once. Diagnostics never log token/payload values. No new SDK, tracking, data recipient, permission category or collected-data category is introduced; existing notification declarations/entitlements remain applicable. [Validation](COMMUNITY_DESIGN_VALIDATION.md).
+
+## Book-opening transition (2026-11-03)
+
+The book-detail read action creates a transient in-memory image of its own presenting window and crops the visible cover for the native transition. These UI pixels may include already displayed account content. They are not written to disk, logged, uploaded, analyzed or sent to another service; references are discarded at transition completion/cancellation, dismissal or account replacement. This adds no collected-data category, permission, required-reason API, tracking or recipient. The existing local reader-theme preference and privacy manifest remain applicable. DEBUG-only native test attachments use synthetic offline content. See [validation](READER_OPENING_VALIDATION.md).
+
 ## Native audio and profile visit addition (2026-10-17)
 
 First-party audio requests use the existing Keychain bearer session. Account-linked audio shelf, chapter position, listening progress/credit, speed, bookmark labels and optional note/quote text are sent to the same site for app functionality. Public live activity may expose the server-permitted audio event and book/member identity. Profile visits use the same server privacy/preference policy as Android/web. These use the existing UserID, ProductInteraction and OtherUserContent declarations; no advertising/tracking SDK or new third-party recipient is introduced.

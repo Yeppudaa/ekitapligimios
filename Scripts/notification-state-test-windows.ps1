@@ -42,6 +42,11 @@ public struct UNAuthorizationOptions: OptionSet, Sendable {
 public final class UNUserNotificationCenter: Sendable {
     public static func current() -> UNUserNotificationCenter { UNUserNotificationCenter() }
     public func requestAuthorization(options: UNAuthorizationOptions) async throws -> Bool { true }
+    public func notificationSettings() async -> UNNotificationSettings { UNNotificationSettings() }
+}
+public enum UNAuthorizationStatus: Sendable { case notDetermined, denied, authorized, provisional, ephemeral }
+public struct UNNotificationSettings: Sendable {
+    public var authorizationStatus: UNAuthorizationStatus { .authorized }
 }
 '@
 # These test-only modules permit the actual manager's injected transport tests on

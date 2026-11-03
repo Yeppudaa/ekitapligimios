@@ -1,309 +1,199 @@
 import SwiftUI
 import EkitapligimCore
 
-private let turkishAlphabet = ["#", "A", "B", "C", "Ç", "D", "E", "F", "G", "Ğ", "H", "I", "İ", "J", "K", "L", "M", "N", "O", "Ö", "P", "R", "S", "Ş", "T", "U", "Ü", "V", "Y", "Z"]
-
 @MainActor
 struct DirectoryView: View {
     @EnvironmentObject private var container: AppContainer
     let kind: DirectoryKind
 
-    @State private var items: [DirectoryItemDTO] = []
+    var body: some View {
+        DirectoryContent(kind: kind)
+            .id(kind.rawValue + container.sessionRevision.uuidString)
+    }
+}
+
+@MainActor
+private struct DirectoryContent: View {
+    @EnvironmentObject private var container: AppContainer
+    @Environment(\.dynamicTypeSize) private var dynamicTypeSize
+    @FocusState private var searchFocused: Bool
+    let kind: DirectoryKind
+    @StateObject private var model = DirectoryListModel()
     @State private var query = ""
     @State private var selectedLetter = "#"
     @State private var sortAscending = true
-    @State private var currentPage = 0
-    @State private var lastPage = 1
-    @State private var totalEntries = 0
-    @State private var totalBooks = 0
-    @State private var isLoading = true
-    @State private var loadGeneration = UUID()
-    @State private var errorMessage: String?
-
-    private var filteredItems: [DirectoryItemDTO] {
-        var result = items
-        if selectedLetter != "#" {
-            result = result.filter { directoryFirstLetter($0.name) == selectedLetter }
-        }
-        result.sort { sortAscending ? $0.name.localizedCompare($1.name) == .orderedAscending : $0.name.localizedCompare($1.name) == .orderedDescending }
-        return result
-    }
-
-    private var entryStatTitle: String {
-        kind == .author ? L10n.homeAuthors : L10n.homePublishers
-    }
-
-    private var entryStatImage: String {
-        kind == .author ? "person.2.fill" : "building.2.fill"
-    }
+    private var filter: DirectoryFilter { DirectoryFilter(query: query, letter: selectedLetter) }
+    private var filteredItems: [DirectoryItemDTO] { filter.sorted(model.items, ascending: sortAscending) }
+    private var title: String { kind == .author ? L10n.directoryAuthorsTitle : L10n.directoryPublishersTitle }
+    private var accent: Color { DirectoryStyle.accent(kind) }
 
     var body: some View {
-        EKitapligimScreen {
-            Group {
-                if isLoading && items.isEmpty {
-                    EKLoadingState(message: L10n.directoryLoading)
-                } else if let errorMessage, items.isEmpty {
-                    EKErrorState(title: L10n.directoryUnavailableTitle, message: errorMessage) {
-                        Task { await load(reset: true) }
-                    }
-                } else {
-                    ScrollView {
-                        LazyVStack(alignment: .leading, spacing: 14) {
-                            heroCard
-                            statsRow
-                            alphabetChips
-                            sortChip
-                            Text(CommunityRefreshL10n.count("directory.results", filteredItems.count))
-                                .font(.caption).foregroundStyle(EKitapligimPalette.muted)
-                            if filteredItems.isEmpty {
-                                EKStateCard(title: L10n.directoryEmptyTitle, message: L10n.directoryEmptyDescription)
-                            } else {
-                                ForEach(filteredItems) { item in
-                                    NavigationLink {
-                                        DirectoryBooksView(kind: kind, item: item)
-                                    } label: {
-                                        DirectoryCard(kind: kind, item: item)
-                                    }
-                                    .buttonStyle(.plain)
-                                }
-                                if currentPage < lastPage {
-                                    EKLoadMoreButton(isLoading: isLoading) {
-                                        Task { await load(reset: false) }
-                                    }
-                                }
-                            }
+        ScrollView {
+            LazyVStack(alignment: .leading, spacing: 18) {
+                DirectoryScenicHeader(kind: kind, totalEntries: model.totalEntries, totalBooks: model.totalBooks)
+                filterCard
+                resultsHeading
+                if model.isLoading && model.items.isEmpty {
+                    ProgressView(DirectoryDesignL10n.text("results.loading"))
+                        .tint(accent).font(.subheadline).frame(maxWidth: .infinity).padding(.vertical, 24)
+                } else if model.items.isEmpty && model.errorMessage == nil {
+                    VStack(spacing: 14) {
+                        EKStateCard(title: L10n.directoryEmptyTitle, message: L10n.directoryEmptyDescription)
+                        if !filter.isUnfiltered {
+                            Button(DirectoryDesignL10n.text("results.reset")) { query = ""; selectedLetter = "#" }
+                                .buttonStyle(CommunityButtonStyle(primary: false))
+                                .accessibilityIdentifier("directory.reset")
                         }
-                        .padding(.horizontal, 18)
-                        .padding(.vertical, 12)
                     }
                 }
+                ForEach(filteredItems) { item in
+                    NavigationLink {
+                        DirectoryBooksView(kind: kind, item: item)
+                    } label: {
+                        DirectoryEntryCard(kind: kind, item: item)
+                    }
+                    .buttonStyle(.plain)
+                    .accessibilityIdentifier("directory.item.\(item.id)")
+                }
+                if let error = model.errorMessage {
+                    EKErrorState(title: L10n.directoryUnavailableTitle, message: error) {
+                        Task { await load(reset: model.currentPage == 0) }
+                    }
+                } else if model.isLoading || model.hasMore {
+                    Button { Task { await load(reset: false) } } label: {
+                        HStack(spacing: 10) {
+                            if model.isLoading { ProgressView().tint(accent) }
+                            else { Image(systemName: "arrow.down") }
+                            Text(model.isLoading ? DirectoryDesignL10n.text("results.loading") : L10n.commonLoadMore)
+                        }
+                    }
+                    .buttonStyle(CommunityButtonStyle(primary: false))
+                    .disabled(model.isLoading)
+                    .accessibilityIdentifier("directory.loadMore")
+                }
+            }
+            .frame(maxWidth: 760)
+            .padding(.horizontal, 18).padding(.vertical, 16)
+            .frame(maxWidth: .infinity)
+        }
+        .accessibilityIdentifier("directory.scroll")
+        .background { CommunityStyle.page.ignoresSafeArea() }
+        .navigationTitle(title)
+        .navigationBarTitleDisplayMode(.inline)
+        .scrollDismissesKeyboard(.interactively)
+        .toolbar {
+            ToolbarItemGroup(placement: .keyboard) {
+                Spacer()
+                Button(DirectoryDesignL10n.text("search.done")) { searchFocused = false }
             }
         }
-        .navigationTitle(kind == .author ? L10n.directoryAuthorsTitle : L10n.directoryPublishersTitle)
-        .navigationBarTitleDisplayMode(.large)
-        .searchable(text: $query, prompt: L10n.directorySearchPrompt)
-        .task { await load(reset: true) }
-        .onSubmit(of: .search) { Task { await load(reset: true) } }
-        .refreshable { await load(reset: true) }
+        .task(id: filter) {
+            let selection = filter
+            let queryChanged = model.filter.query != selection.query
+            model.select(selection)
+            if queryChanged, !selection.query.isEmpty, !model.hasFreshSnapshot(for: selection) {
+                do { try await Task.sleep(for: .milliseconds(300)) } catch { return }
+            }
+            guard !Task.isCancelled else { return }
+            await load(reset: true)
+        }
+        .task {
+            model.configure(kind: kind, repository: container.directories, site: container.site)
+            await model.loadStatistics()
+        }
+        .refreshable { await load(reset: true, forceRefresh: true) }
+        .onDisappear { model.cancelLoading() }
     }
 
-    private var heroCard: some View {
-        ModernHeroView(
-            artwork: kind == .author ? "directory_authors_hero" : "directory_publishers_hero",
-            eyebrow: CommunityRefreshL10n.text(kind == .author ? "directory.authorsEyebrow" : "directory.publishersEyebrow"),
-            title: CommunityRefreshL10n.text(kind == .author ? "directory.authorsTitle" : "directory.publishersTitle"),
-            subtitle: CommunityRefreshL10n.text(kind == .author ? "directory.authorsBody" : "directory.publishersBody"),
-            accent: kind == .author ? EKitapligimPalette.teal : EKitapligimPalette.amber,
-            minHeight: 250
-        )
-    }
-    private var statsRow: some View {
-        LazyVGrid(columns: [GridItem(.adaptive(minimum: 130), spacing: 10)], spacing: 10) {
-            DirectoryStatTile(title: entryStatTitle, value: EKitapligimFormat.count(totalEntries), systemImage: entryStatImage)
-            DirectoryStatTile(title: L10n.directoryStatBooks, value: EKitapligimFormat.count(totalBooks), systemImage: "books.vertical.fill")
+    private var filterCard: some View {
+        CommunityCard(padding: 16) {
+            VStack(alignment: .leading, spacing: 14) {
+                Label(title, systemImage: DirectoryStyle.symbol(kind))
+                    .font(.system(.title3, design: .serif).weight(.semibold)).foregroundStyle(DirectoryStyle.ink)
+                HStack(spacing: 10) {
+                    Image(systemName: "magnifyingglass").foregroundStyle(accent).accessibilityHidden(true)
+                    TextField(DirectoryDesignL10n.text(kind == .author ? "authors.search" : "publishers.search"), text: $query)
+                        .font(.body).foregroundStyle(DirectoryStyle.ink).tint(accent)
+                        .textInputAutocapitalization(.never).autocorrectionDisabled()
+                        .focused($searchFocused).submitLabel(.search)
+                        .onSubmit { searchFocused = false }
+                        .accessibilityIdentifier("directory.search")
+                    if !query.isEmpty {
+                        Button { query = "" } label: {
+                            Image(systemName: "xmark.circle.fill").foregroundStyle(DirectoryStyle.muted)
+                                .frame(width: 44, height: 44)
+                        }
+                        .buttonStyle(.plain).accessibilityLabel(DirectoryDesignL10n.text("search.clear"))
+                        .accessibilityIdentifier("directory.clearSearch")
+                    }
+                }
+                .padding(.leading, 14).padding(.trailing, query.isEmpty ? 14 : 4).padding(.vertical, 5)
+                .frame(minHeight: 54)
+                .background(DirectoryStyle.cream.opacity(0.6), in: RoundedRectangle(cornerRadius: 15))
+                .overlay { RoundedRectangle(cornerRadius: 15).strokeBorder(searchFocused ? accent : DirectoryStyle.border, lineWidth: searchFocused ? 1.5 : 1) }
+                alphabetChips
+            }
         }
     }
 
     private var alphabetChips: some View {
         ScrollView(.horizontal, showsIndicators: false) {
             HStack(spacing: 8) {
-                ForEach(turkishAlphabet, id: \.self) { letter in
-                    EKChip(
-                        title: letter,
-                        isSelected: selectedLetter == letter,
-                        selectedBackground: kind == .author ? EKitapligimPalette.teal : EKitapligimPalette.amber
-                    ) {
+                ForEach(DirectoryFilter.letters, id: \.self) { letter in
+                    Button {
                         selectedLetter = letter
+                        searchFocused = false
+                    } label: {
+                        Text(letter == "#" ? DirectoryDesignL10n.text("all") : letter)
+                            .font(.subheadline.weight(selectedLetter == letter ? .bold : .medium))
+                            .foregroundStyle(selectedLetter == letter ? .white : DirectoryStyle.ink)
+                            .padding(.horizontal, 13).padding(.vertical, 11).frame(minWidth: 44, minHeight: 44)
+                            .background(selectedLetter == letter ? accent : .white, in: RoundedRectangle(cornerRadius: 13))
+                            .overlay { RoundedRectangle(cornerRadius: 13).strokeBorder(selectedLetter == letter ? .clear : Color(hex: 0xE5D3B5)) }
                     }
+                    .buttonStyle(.plain)
+                    .accessibilityIdentifier("directory.letter.\(letter)")
+                    .accessibilityAddTraits(selectedLetter == letter ? .isSelected : [])
                 }
+            }.padding(.vertical, 2)
+        }.accessibilityIdentifier("directory.alphabet")
+    }
+
+    private var resultsHeading: some View {
+        let layout = dynamicTypeSize.isAccessibilitySize
+            ? AnyLayout(VStackLayout(alignment: .leading, spacing: 12))
+            : AnyLayout(HStackLayout(alignment: .center, spacing: 12))
+        return layout {
+            VStack(alignment: .leading, spacing: 5) {
+                Text((selectedLetter == "#" ? "" : selectedLetter + " · ") + DirectoryDesignL10n.resultCount(
+                    kind: kind, count: model.items.count, complete: !model.hasMore && !model.isLoading && model.errorMessage == nil))
+                    .font(.system(.headline, design: .serif)).foregroundStyle(DirectoryStyle.ink)
+                    .fixedSize(horizontal: false, vertical: true).accessibilityIdentifier("directory.results")
+                Text(DirectoryDesignL10n.text(model.isLoading ? "results.loading" : model.hasMore || model.errorMessage != nil ? "results.more" : "results.complete"))
+                    .font(.caption).foregroundStyle(DirectoryStyle.muted).fixedSize(horizontal: false, vertical: true)
+            }.frame(maxWidth: .infinity, alignment: .leading)
+            Button { sortAscending.toggle() } label: {
+                Label(DirectoryDesignL10n.text(sortAscending ? "sort.ascending" : "sort.descending"), systemImage: "arrow.up.arrow.down")
+                    .font(.subheadline.weight(.semibold)).foregroundStyle(accent)
+                    .padding(.horizontal, 13).padding(.vertical, 10).frame(minHeight: 44)
+                    .background(.white, in: RoundedRectangle(cornerRadius: 13))
+                    .overlay { RoundedRectangle(cornerRadius: 13).strokeBorder(DirectoryStyle.border) }
             }
+            .buttonStyle(.plain).accessibilityIdentifier("directory.sort")
+            .accessibilityLabel(sortAscending ? L10n.directorySortAscending : L10n.directorySortDescending)
         }
     }
 
-    private var sortChip: some View {
-        Button {
-            sortAscending.toggle()
-        } label: {
-            Label(
-                sortAscending ? L10n.directorySortAscending : L10n.directorySortDescending,
-                systemImage: "arrow.up.arrow.down"
-            )
-            .font(.caption.weight(.bold))
-            .foregroundStyle(EKitapligimPalette.tealDark)
-            .padding(.horizontal, 12)
-            .padding(.vertical, 8)
-            .frame(minHeight: 44)
-            .background(EKitapligimPalette.tealSoft, in: Capsule())
-        }
-        .buttonStyle(.plain)
-    }
-
-    private func load(reset: Bool) async {
-        guard !isLoading || reset else { return }
-        let generation = UUID()
-        loadGeneration = generation
-        isLoading = true
-        errorMessage = nil
-        defer { if loadGeneration == generation { isLoading = false } }
-        let trimmedQuery = query.trimmingCharacters(in: .whitespacesAndNewlines)
-        let page = reset ? 1 : currentPage + 1
-        do {
-            async let directoryRequest = container.directories.items(
-                kind: kind,
-                page: page,
-                query: trimmedQuery.nilIfEmpty
-            )
-            async let statsRequest = loadSiteStatsIfNeeded(reset)
-
-            let result = try await directoryRequest
-            let stats = await statsRequest
-            guard loadGeneration == generation, !Task.isCancelled else { return }
-            items = reset ? result.items : items + result.items.filter { newItem in
-                !items.contains(where: { $0.id == newItem.id })
-            }
-            currentPage = result.currentPage
-            lastPage = result.lastPage
-            applyDirectoryTotals(result: result, stats: stats, isSearching: !trimmedQuery.isEmpty)
-        } catch {
-            guard loadGeneration == generation, !Task.isCancelled else { return }
-            if reset { errorMessage = L10n.directoryLoadFailed }
-        }
-    }
-
-    private func loadSiteStatsIfNeeded(_ reset: Bool) async -> SiteStatsDTO? {
-        guard reset else { return nil }
-        return try? await container.site.stats()
-    }
-
-    private func applyDirectoryTotals(result: DirectoryPageDTO, stats: SiteStatsDTO?, isSearching: Bool) {
-        let totals = result.displayTotals(
-            kind: kind,
-            stats: stats,
-            loadedBookCount: items.reduce(0) { $0 + $1.bookCount },
-            existingBookTotal: totalBooks,
-            isSearching: isSearching
-        )
-        totalEntries = totals.entries
-        totalBooks = totals.books
-    }
-
-    private func directoryFirstLetter(_ name: String) -> String {
-        let trimmed = name.trimmingCharacters(in: .whitespacesAndNewlines)
-        guard let first = trimmed.first else { return "#" }
-        let upper = String(first).uppercased(with: Locale(identifier: "tr_TR"))
-        return turkishAlphabet.contains(upper) ? upper : "#"
-    }
-}
-
-@MainActor
-private struct DirectoryStatTile: View {
-    let title: String
-    let value: String
-    var systemImage: String = "books.vertical.fill"
-
-    var body: some View {
-        HStack(spacing: 10) {
-            Image(systemName: systemImage)
-                .font(.caption.weight(.bold))
-                .foregroundStyle(EKitapligimPalette.teal)
-                .frame(width: 30, height: 30)
-                .background(EKitapligimPalette.tealSoft, in: RoundedRectangle(cornerRadius: 9, style: .continuous))
-            VStack(alignment: .leading, spacing: 2) {
-                Text(value).font(.headline.weight(.heavy)).foregroundStyle(EKitapligimPalette.ink)
-                Text(title).font(.caption2).foregroundStyle(EKitapligimPalette.muted)
-            }
-            Spacer(minLength: 0)
-        }
-        .frame(maxWidth: .infinity, alignment: .leading)
-        .padding(12)
-        .background(.white.opacity(0.82), in: RoundedRectangle(cornerRadius: 12, style: .continuous))
-        .overlay {
-            RoundedRectangle(cornerRadius: 12, style: .continuous)
-                .stroke(EKitapligimPalette.border)
-        }
-    }
-}
-
-@MainActor
-private struct DirectoryCard: View {
-    let kind: DirectoryKind
-    let item: DirectoryItemDTO
-
-    private var accent: Color { kind == .author ? EKitapligimPalette.teal : EKitapligimPalette.amber }
-    private var accentSoft: Color { kind == .author ? EKitapligimPalette.tealSoft : EKitapligimPalette.amberSoft }
-
-    var body: some View {
-        HStack(spacing: 0) {
-            RoundedRectangle(cornerRadius: 2, style: .continuous)
-                .fill(
-                    LinearGradient(
-                        colors: [accent, accent.opacity(0.55)],
-                        startPoint: .top,
-                        endPoint: .bottom
-                    )
-                )
-                .frame(width: 4)
-                .padding(.vertical, 10)
-
-            HStack(spacing: 14) {
-                ZStack {
-                    Circle()
-                        .fill(
-                            LinearGradient(
-                                colors: [accentSoft, .white],
-                                startPoint: .topLeading,
-                                endPoint: .bottomTrailing
-                            )
-                        )
-                    Text(directoryInitials(item.name))
-                        .font(.subheadline.weight(.heavy))
-                        .foregroundStyle(accent)
-                }
-                .frame(width: 50, height: 50)
-
-                VStack(alignment: .leading, spacing: 4) {
-                    Text(item.name)
-                        .font(.headline.weight(.bold))
-                        .foregroundStyle(EKitapligimPalette.ink)
-                        .lineLimit(2)
-                    Text(L10n.directoryBookCount(item.bookCount))
-                        .font(.caption)
-                        .foregroundStyle(EKitapligimPalette.muted)
-                }
-                Spacer(minLength: 0)
-                Text(EKitapligimFormat.count(item.bookCount))
-                    .font(.caption.weight(.heavy))
-                    .foregroundStyle(accent)
-                    .padding(.horizontal, 10)
-                    .padding(.vertical, 6)
-                    .background(accentSoft, in: Capsule())
-                Image(systemName: "chevron.right")
-                    .font(.caption2.weight(.bold))
-                    .foregroundStyle(EKitapligimPalette.muted)
-            }
-            .padding(.horizontal, 14)
-            .padding(.vertical, 12)
-        }
-        .background(EKitapligimPalette.paper)
-        .clipShape(RoundedRectangle(cornerRadius: 16, style: .continuous))
-        .overlay {
-            RoundedRectangle(cornerRadius: 16, style: .continuous)
-                .stroke(EKitapligimPalette.border)
-        }
-        .shadow(color: EKitapligimPalette.ink.opacity(0.05), radius: 10, y: 4)
-    }
-
-    private func directoryInitials(_ name: String) -> String {
-        let parts = name.split(separator: " ").prefix(2)
-        let initials = parts.compactMap(\.first)
-        let value = String(initials)
-        return value.isEmpty ? "#" : value.uppercased(with: Locale(identifier: "tr_TR"))
+    private func load(reset: Bool, forceRefresh: Bool = false) async {
+        model.configure(kind: kind, repository: container.directories, site: container.site)
+        await model.load(filter: filter, reset: reset, forceRefresh: forceRefresh)
     }
 }
 
 @MainActor
 struct DirectoryBooksView: View {
     @EnvironmentObject private var container: AppContainer
+    @Environment(\.dynamicTypeSize) private var dynamicTypeSize
     let kind: DirectoryKind
     let item: DirectoryItemDTO
 
@@ -314,7 +204,11 @@ struct DirectoryBooksView: View {
     @State private var isLoading = true
     @State private var errorMessage: String?
 
-    private let columns = [GridItem(.adaptive(minimum: 140, maximum: 220), spacing: 16)]
+    private var columns: [GridItem] {
+        dynamicTypeSize.isAccessibilitySize
+            ? [GridItem(.flexible())]
+            : [GridItem(.adaptive(minimum: 140, maximum: 220), spacing: 16)]
+    }
 
     var body: some View {
         EKitapligimScreen {
@@ -393,6 +287,7 @@ struct DirectoryBooksView: View {
 
 @MainActor
 private struct DirectoryBookGridCard: View {
+    @Environment(\.dynamicTypeSize) private var dynamicTypeSize
     let book: BookDTO
     let kind: DirectoryKind
 
@@ -405,11 +300,13 @@ private struct DirectoryBookGridCard: View {
             Text(book.title)
                 .font(.subheadline.weight(.semibold))
                 .foregroundStyle(EKitapligimPalette.ink)
-                .lineLimit(2)
+                .lineLimit(dynamicTypeSize.isAccessibilitySize ? nil : 2)
+                .fixedSize(horizontal: false, vertical: true)
             Text(kind == .author ? book.publisher : book.author)
                 .font(.caption)
                 .foregroundStyle(EKitapligimPalette.muted)
-                .lineLimit(1)
+                .lineLimit(dynamicTypeSize.isAccessibilitySize ? nil : 1)
+                .fixedSize(horizontal: false, vertical: true)
             if let rating = book.rating, rating > 0 {
                 Label(rating.formatted(.number.precision(.fractionLength(1))), systemImage: "star.fill")
                     .font(.caption2.weight(.bold))

@@ -1,5 +1,15 @@
 # Scripts
 
+## Agenda photos validation (2026-11-03)
+
+`agenda-state-test-windows.ps1` now includes six real `AgendaPhotoModel` tests alongside the existing feed/detail suites (Combine storage shim only). `swift-test-windows.ps1` covers the core capability/multipart/media transport contracts. `build-ios-api-addon.ps1` packages 1.0.40 and runs the agenda media and viewer-permission PHP suites. `agenda-media-macos.sh` performs clean Development/unsigned Production builds and native photo processor/layout/state/UI checks on two iPhones plus an iPad, exporting screenshot attachments. macOS execution is still required; see [validation](../AGENDA_MEDIA_VALIDATION.md).
+
+`community-design-macos.sh` runs native build, community/Google/notification unit checks and community/keyboard UI checks on two iPhones and iPad, exporting XCTest screenshots. It was syntax-checked only on Windows. Device-local notification tests and offline APNs tests do not establish real iPhone push delivery. See [community design validation](../COMMUNITY_DESIGN_VALIDATION.md).
+
+`reader-opening-macos.sh` validates the book-detail cover-opening animation with clean Development and unsigned Production iOS builds, focused native/UI plus existing reader-experience/resume tests on two iPhones and iPad, and exports XCTest image attachments. It requires macOS/Xcode, XcodeGen, Python 3 and installed simulators. Windows has only syntax-checked this runner; see [reader-opening evidence and native gates](../READER_OPENING_VALIDATION.md).
+
+Library/favorite checks: `Scripts/library-mutation-state-test-windows.ps1` executes the current AppContainer mutation methods against local test transports; `Scripts/live-activity-state-test-windows.ps1` executes the feed model's asynchronous state cases. These portable harnesses do not validate native SwiftUI/Combine, Keychain or iOS rendering. The macOS parity runner includes `BookLibraryUITests` alongside `ModernParityUITests`. See [library/activity evidence and the required backend upgrade](../LIBRARY_ACTIVITY_VALIDATION.md).
+
 Offline chat integration checks can load a local XenForo/Siropu source tree without bootstrapping its configured app or connecting to its database. Set `CHAT_SYNC_XF_SOURCE_ROOT` if the tree is not at `C:/xampp/htdocs/ekitapligim/src`, then run `php Tests/Integration/ChatReactionSyncTest.php` and `php Tests/Integration/ChatRouteTest.php`. These checks exercise the real reaction repository, entity, web action logger and route sorter against in-memory storage. They require the proprietary source tree and are separate from the portable backend unit tests.
 
 ## `validate-workspace.ps1`
@@ -61,6 +71,19 @@ Checks reviewed 1.0.33 through 1.0.35 ZIPs against the fixed 1.0.32 baseline, ex
 `php Tests/Integration/IosApiUpgradeCompatibilityTest.php` loads the actual local XF upgrade trait without bootstrapping its app/database and verifies that upgrades from 1.0.32/33 select no new setup mutation. Pass the XF `src` directory as its first argument if the default local path is unavailable.
 
 `php Tests/Backend/ApnsTransportContractTest.php` requires a PHP runtime with OpenSSL and cURL constants (Windows example: `C:\xampp\php\php.exe`). It verifies the actual JWT signature and transport construction/response parsing using a temporary generated test key and mocked cURL functions; no APNs requests occur. The preferred PATH PHP in this workspace lacks cURL, so use the installed XAMPP PHP for this particular check.
+
+## Keyboard layout validation
+
+`keyboard-layout-macos.sh` runs the offline `KeyboardLayoutUITests` through the actual root shell on small/older/current iPhones and iPad, plus iOS 17 baseline coverage. Missing devices/runtime or missing software keyboard fail validation. It saves XCTest bundles, result counts and failure screenshots. See [keyboard layout validation](../KEYBOARD_LAYOUT_VALIDATION.md); this script has only had its Bash syntax checked on Windows.
+
+## `agenda-state-test-windows.ps1`
+
+`agenda-state-test-windows.ps1` compiles the actual `BookAgendaFeedModel` and `BookAgendaDetailModel` with their XCTest cases. It covers filter/pagination races, account changes, duplicate submissions, drafts, comment counts and error recovery. Like the chat harness, its Combine shim validates storage and concurrency only. `BookAgendaUITests` requires macOS/Xcode for real SwiftUI focus and software-keyboard checks; use a simulator with its hardware keyboard disconnected.
+
+```powershell
+.\Scripts\agenda-state-test-windows.ps1
+php Tests/Backend/BookAgendaViewerPermissionsTest.php
+```
 
 ## `chat-state-test-windows.ps1`
 
@@ -191,6 +214,12 @@ For controlled mutation evidence, use a disposable account, an administrator-con
 
 The mutation command is refused against production unless `-AllowProductionMutations` is explicitly provided. Reports are intentionally left in the moderation queue as evidence and must only use a disposable/controlled environment.
 
+### Safe API smoke defaults
+
+API/parity smoke checks no longer enable writes merely because credentials are available. Profile visits, terms acceptance, presence, read receipts and write probes require `-ExerciseMutations`; production additionally requires `-AllowProductionMutations`. Use a disposable staging account. Authentication may create a session but does not accept new terms in read-only mode. `Scripts/smoke-readonly-contract-test.ps1` verifies this with mocked HTTP.
+
+For a complete, non-publishing native review, push a `codex/release-review-*` branch or dispatch `.github/workflows/release-review.yml`. It selects Xcode 26+, clean-builds Development and Production, runs all native tests and all UI suites on two iPhones and an iPad, and preserves results even on failure. Physical-device/APNs/Sandbox and authorized server deployment checks remain separate.
+
 ## `appstore-preflight.ps1`
 
 Checks App Store metadata and reviewer-note readiness:
@@ -301,6 +330,12 @@ Compares every Swift `APIEndpoint` path template with `Backend/IosApi-addon/publ
 ```powershell
 .\Scripts\api-route-contract-audit.ps1
 ```
+
+## Profile editor and directory validation
+
+`profile-directory-state-test-windows.ps1` compiles the actual profile/directory models and their XCTest cases using the existing portable Core package and a test-only Combine storage shim. It does not validate Apple Combine, PhotosPicker or native rendering.
+
+`bash Scripts/profile-directory-macos.sh` runs clean Development/unsigned Production builds and the targeted model, photo-encoding and UI tests on two iPhones and iPad, exporting screenshots and result bundles. It does not publish. See [scope and evidence](../PROFILE_DIRECTORY_VALIDATION.md).
 
 ## `generate-placeholder-appicon.ps1`
 
