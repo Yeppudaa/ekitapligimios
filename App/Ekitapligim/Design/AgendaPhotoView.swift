@@ -51,6 +51,7 @@ struct AgendaPhotoView: View {
                         if allowsRetry {
                             Button(AgendaMediaL10n.text("image.retry")) { retry += 1 }
                                 .font(.caption.weight(.semibold)).frame(minHeight: 44)
+                                .accessibilityIdentifier("agenda.image.retry.\(postID).\(attachment.id)")
                         }
                     }.padding(10).foregroundStyle(.secondary)
                 } else {
@@ -60,6 +61,7 @@ struct AgendaPhotoView: View {
             .frame(width: geometry.size.width, height: geometry.size.height)
         }
         .clipShape(RoundedRectangle(cornerRadius: 14, style: .continuous))
+        .accessibilityElement(children: .contain)
         .accessibilityLabel(L10n.agendaPostImage)
         .accessibilityIdentifier("agenda.image.\(postID).\(attachment.id)")
         .task(id: "\(container.sessionRevision):\(postID):\(attachment.id):\(attachment.url):\(retry)") {

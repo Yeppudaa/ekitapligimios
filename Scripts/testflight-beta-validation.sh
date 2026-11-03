@@ -3,6 +3,21 @@ set -euo pipefail
 cd "$(dirname "$0")/.."
 evidence="$PWD/build/testflight-beta"
 mkdir -p "$evidence"
+# Preserve machine-readable results and original screenshots even when xcodebuild fails.
+export_results() {
+  local status=$?
+  trap - EXIT
+  set +e
+  for name in native ui-smoke; do
+    if [ -d "$evidence/$name.xcresult" ]; then
+      xcrun xcresulttool get test-results summary --path "$evidence/$name.xcresult" > "$evidence/$name-summary.json"
+      mkdir -p "$evidence/$name-screenshots"
+      xcrun xcresulttool export attachments --path "$evidence/$name.xcresult" --output-path "$evidence/$name-screenshots" > "$evidence/$name-attachments.log" 2>&1
+    fi
+  done
+  exit "$status"
+}
+trap export_results EXIT
 git rev-parse HEAD > "$evidence/revision.txt"
 xcodebuild -version > "$evidence/xcode-version.txt"
 python3 Scripts/test_release_version.py

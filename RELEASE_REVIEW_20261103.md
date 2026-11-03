@@ -68,3 +68,10 @@ Eski `parity-audit.ps1` güncel mimari/renk/sekme düzenini tanımayan regex idd
 Eski parity betiğini çalıştırırken otomatik yazma davranışı önceden fark edilmedi. Yerel olarak yapılandırılmış test hesabıyla canlı sunucuda profil ziyareti, şart kabulü, presence ve okuyucu oturum kayıtları oluştu; 39444 numaralı kitabın ilerlemesine `%1 / sayfa 1` yazıldı. Sonraki kütüphane isteği HTTP 400 verdiği için yorum/sohbet/gündem/forum paylaşımı aşamasına ulaşılmadı. Bu durum kullanıcıya açıklandı. Önceki ilerleme bilinmediğinden tahmin ederek geri yazılmadı. Tekrarını engelleyen varsayılan salt okunur davranış ve regresyon testi eklendi.
 
 Bu inceleme sunucu kurmadı, TestFlight yüklemedi ve App Store'a göndermedi. Kaynak/CI başarısı tek başına mağaza yayınına hazır olunduğu anlamına gelmez.
+
+
+## TestFlight beta ikinci çalışma ve düzeltmeler
+
+[Codemagic 6ae9d29157e81944fbc19b00](https://codemagic.io/app/6a5221a644ecae83eeea61ec/build/6ae9d29157e81944fbc19b00), kaynak 337b72a: 538 Core ve 259/259 güncel native test geçti (atlama yok). 11 ses testi yukarıdaki gerçek GitHub sonuçlarıyla doğrulandı. 25 UI testinden 16 geçti, 9 başarısız; gönderim imzalama/yükleme öncesinde durdu.
+
+İndirilen xcresult ve erişilebilirlik ağacı şu nedenleri gösterdi: DEBUG üye profili verisi `member-detail` yerine eski `members` adresini dinliyordu; mesaj katılımcılarında zorunlu `is_active` eksikti. Paylaşım kartının üst kimliği görselin alt kimliklerine yayılıyordu. Fotoğraf seç/kaldır testleri sabit paylaşım çubuğunun örttüğü koordinata dokunuyordu. Fixture adres/alanları, erişilebilirlik kapsayıcıları ve görünür içerikte kısa yönlü kaydırma düzeltildi. Üye testleri gerçek adı bekler; standart üye ve uzun isim testleri boş profil üzerinde yanlış başarı veremez. Önizleme kaldırma ve seçiciden dönüş kontrolleri bounded bekleme kullanır. Başarısızlık halinde de xcresult özeti/ekleri saklanır. Bu düzeltmelerin Codemagic sonucu henüz alınmadı.

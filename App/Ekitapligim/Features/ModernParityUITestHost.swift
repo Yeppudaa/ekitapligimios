@@ -501,10 +501,10 @@ private enum ModernParityPayload {
             let items: [[String: Any]] = [
                 ["id": "980001", "title": "Okuma önerileri", "starter_username": "Ada", "last_message_username": "Ada",
                  "last_message_date": timestamp, "is_unread": true, "reply_count": 3,
-                 "participants": [["id": "900002", "username": "Ada", "avatar_url": ""]],
+                 "participants": [["id": "900002", "username": "Ada", "avatar_url": "", "is_active": true]],
                  "preview": "Bir sonraki kitabımızı birlikte seçelim."],
                 ["id": "980002", "title": "Okuma notları", "starter_username": "Deniz", "last_message_date": timestamp - 500,
-                 "participants": [["id": "900003", "username": "Deniz", "avatar_url": ""]], "preview": "Bu bölümün ayrıntıları üzerine konuşalım."]
+                 "participants": [["id": "900003", "username": "Deniz", "avatar_url": "", "is_active": true]], "preview": "Bu bölümün ayrıntıları üzerine konuşalım."]
             ]
             return ["items": items, "pagination": ["page": 1, "pages": 1, "total": 2]]
         }
@@ -536,7 +536,7 @@ private enum ModernParityPayload {
             }
             return ["book": book(2)]
         }
-        if path.contains("/members/") {
+        if path.contains("/member-detail/") || path.contains("/members/") {
             var member: [String: Any] = ["id": "900002", "username": "Ada", "role_label": "Topluluk üyesi", "avatar_url": "",
                 "can_view_profile": true, "can_follow": true, "can_converse": true, "can_block": true,
                 "message_count": 128, "reaction_score": 356, "reading_count": 4, "read_count": 28,

@@ -20,11 +20,25 @@ final class AgendaMediaUITests: XCTestCase {
     private func reveal(_ element: XCUIElement, in app: XCUIApplication, scrollID: String) {
         let scroll = app.scrollViews[scrollID]
         XCTAssertTrue(scroll.waitForExistence(timeout: 6))
-        for _ in 0..<12 {
-            if element.isHittable { return }
-            scroll.swipeUp()
+        for _ in 0..<20 {
+            // ScrollView's accessibility frame includes the fixed submit bar.
+            // Keep the actual tap point inside unobscured content, not just hittable.
+            var bounds = scroll.frame.intersection(app.frame).insetBy(dx: 0, dy: 80)
+            let submit = app.buttons["agenda.composer.submit"]
+            if scrollID == "agenda.composer.scroll", submit.exists {
+                bounds.size.height = max(100, min(bounds.maxY, submit.frame.minY - 130) - bounds.minY)
+            }
+            var movingUp = true
+            if element.exists {
+                let frame = element.frame
+                if element.isHittable, bounds.contains(CGPoint(x: frame.midX, y: frame.midY)) { return }
+                movingUp = frame.midY >= bounds.midY
+            }
+            let start = scroll.coordinate(withNormalizedOffset: CGVector(dx: 0.5, dy: movingUp ? 0.65 : 0.3))
+            let end = scroll.coordinate(withNormalizedOffset: CGVector(dx: 0.5, dy: movingUp ? 0.3 : 0.65))
+            start.press(forDuration: 0.05, thenDragTo: end)
         }
-        XCTAssertTrue(element.isHittable)
+        XCTFail("Could not reveal \(element.identifier) in unobscured content: \(app.debugDescription)")
     }
 
     private func capture(_ app: XCUIApplication, _ name: String) {
@@ -63,9 +77,10 @@ final class AgendaMediaUITests: XCTestCase {
     func testPhotoFailureOffersRetryInsteadOfBookCoverPlaceholder() {
         let app = launch("agenda-detail", mode: "failure")
         defer { app.terminate() }
-        let retry = app.buttons["Yeniden dene"].firstMatch
+        let retry = app.buttons["agenda.image.retry.940001.21"]
         reveal(retry, in: app, scrollID: "agenda.detail.scroll")
         XCTAssertTrue(retry.isEnabled)
+        XCTAssertEqual(retry.label, "Yeniden dene")
         capture(app, "agenda-photo-failure")
     }
 
@@ -80,7 +95,7 @@ final class AgendaMediaUITests: XCTestCase {
         let cancel = app.buttons.matching(NSPredicate(format: "label IN %@", ["İptal", "Vazgeç", "Cancel"])).firstMatch
         XCTAssertTrue(cancel.waitForExistence(timeout: 8))
         cancel.tap()
-        XCTAssertTrue(app.buttons["agenda.composer.submit"].exists)
+        XCTAssertTrue(app.buttons["agenda.composer.submit"].waitForExistence(timeout: 8))
     }
 
     func testFailedPhotoUploadRetainsPreviewAndCanBeRemoved() {
@@ -96,7 +111,8 @@ final class AgendaMediaUITests: XCTestCase {
         let remove = app.buttons["agenda.composer.photo.remove"]
         reveal(remove, in: app, scrollID: "agenda.composer.scroll")
         remove.tap()
-        XCTAssertFalse(preview.exists)
+        let removed = XCTNSPredicateExpectation(predicate: NSPredicate(format: "exists == false"), object: preview)
+        XCTAssertEqual(XCTWaiter.wait(for: [removed], timeout: 8), .completed)
     }
 
     func testPhotoOnlyPostUsesAtomicMultipartAndClosesComposer() {

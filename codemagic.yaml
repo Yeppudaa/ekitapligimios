@@ -48,6 +48,7 @@ workflows:
       - build/testflight-beta/*.xml
       - build/testflight-beta/*.txt
       - build/testflight-beta/*.xcresult
+      - build/testflight-beta/*-screenshots/**
     publishing:
       app_store_connect:
         auth: integration

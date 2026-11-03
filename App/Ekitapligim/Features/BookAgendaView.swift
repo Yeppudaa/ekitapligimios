@@ -457,6 +457,7 @@ struct BookAgendaPostCard: View {
             }
             .contentShape(Rectangle())
             .onTapGesture(perform: onOpen)
+            .accessibilityElement(children: .contain)
             .accessibilityIdentifier("agenda.post.\(post.id)")
             actionsRow.disabled(isBusy)
         }

@@ -4,6 +4,12 @@ import XCTest
 final class PremiumAvatarUITests: XCTestCase {
     override func setUpWithError() throws { continueAfterFailure = false }
 
+    private func waitForMember(_ name: XCUIElement, large: Bool = false) {
+        let expected = large ? "Kitaplarla Yeni Dünyalar Keşfeden Deniz" : "Ada"
+        let loaded = XCTNSPredicateExpectation(predicate: NSPredicate(format: "exists == true AND label == %@", expected), object: name)
+        XCTAssertEqual(XCTWaiter.wait(for: [loaded], timeout: 10), .completed)
+    }
+
     private func launch(_ screen: String, viewerPremium: Bool, memberPremium: Bool, large: Bool = false) -> XCUIApplication {
         let app = XCUIApplication()
         app.launchArguments = ["-modern-parity-ui-fixture", "-AppleLanguages", "(tr)", "-AppleLocale", "tr_TR"]
@@ -31,7 +37,7 @@ final class PremiumAvatarUITests: XCTestCase {
         let app = launch("member-profile", viewerPremium: false, memberPremium: true)
         defer { app.terminate() }
         let name = app.staticTexts["member.username"]
-        XCTAssertTrue(name.waitForExistence(timeout: 8))
+        waitForMember(name)
         XCTAssertEqual(name.label, "Ada")
         XCTAssertEqual(name.value as? String, "Onaylı premium üye")
         let frame = app.descendants(matching: .any)["premium.avatar.frame"].firstMatch
@@ -43,7 +49,7 @@ final class PremiumAvatarUITests: XCTestCase {
     func testPremiumViewerDoesNotGiveStandardMemberAFrame() {
         let app = launch("member-profile", viewerPremium: true, memberPremium: false)
         defer { app.terminate() }
-        XCTAssertTrue(app.staticTexts["member.username"].waitForExistence(timeout: 8))
+        waitForMember(app.staticTexts["member.username"])
         XCTAssertFalse(app.descendants(matching: .any)["premium.avatar.frame"].firstMatch.exists)
         XCTAssertNotEqual(app.staticTexts["member.username"].value as? String, "Onaylı premium üye")
     }
@@ -58,7 +64,7 @@ final class PremiumAvatarUITests: XCTestCase {
         }
         XCTAssertTrue(member.isHittable)
         member.tap()
-        XCTAssertTrue(app.staticTexts["member.username"].waitForExistence(timeout: 8))
+        waitForMember(app.staticTexts["member.username"])
         XCTAssertEqual(app.staticTexts["member.username"].value as? String, "Onaylı premium üye")
     }
 
@@ -66,7 +72,7 @@ final class PremiumAvatarUITests: XCTestCase {
         let app = launch("member-profile", viewerPremium: false, memberPremium: true, large: true)
         defer { app.terminate() }
         let name = app.staticTexts["member.username"]
-        XCTAssertTrue(name.waitForExistence(timeout: 8))
+        waitForMember(name, large: true)
         XCTAssertGreaterThanOrEqual(name.frame.minX, 0)
         XCTAssertLessThanOrEqual(name.frame.maxX, app.frame.maxX)
         capture(app, name: "premium-profile-large-text")

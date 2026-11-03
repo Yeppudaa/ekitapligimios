@@ -34,6 +34,12 @@ final class CommunityDesignUITests: XCTestCase {
         add(attachment)
     }
 
+    private func waitForMember(_ app: XCUIApplication) {
+        let loaded = XCTNSPredicateExpectation(predicate: NSPredicate(format: "exists == true AND label == %@", "Ada"),
+                                               object: app.staticTexts["member.username"])
+        XCTAssertEqual(XCTWaiter.wait(for: [loaded], timeout: 10), .completed)
+    }
+
     private func assertGoogleAboveCredentials(_ app: XCUIApplication) {
         let google = app.buttons["auth.google"]
         let username = app.textFields["auth.username"]
@@ -69,7 +75,7 @@ final class CommunityDesignUITests: XCTestCase {
         search.typeText("\n")
         let member = app.buttons["members.member.900002"]
         reveal(member, app: app); member.tap()
-        XCTAssertTrue(app.staticTexts["member.username"].waitForExistence(timeout: 10))
+        waitForMember(app)
         XCTAssertEqual(app.staticTexts["member.username"].label, "Ada")
         capture(app, "member-profile-new-design")
         let library = app.buttons["member.tab.library"]
@@ -96,7 +102,7 @@ final class CommunityDesignUITests: XCTestCase {
         let app = launch("live", navigation: true)
         let member = app.buttons["live.member.930001"]
         reveal(member, app: app); member.tap()
-        XCTAssertTrue(app.staticTexts["member.username"].waitForExistence(timeout: 10), app.debugDescription)
+        waitForMember(app)
         XCTAssertEqual(app.staticTexts["member.username"].label, "Ada")
     }
 
