@@ -5,6 +5,7 @@ import EkitapligimCore
 struct HomeView: View {
     @EnvironmentObject private var container: AppContainer
     @Environment(\.dynamicTypeSize) private var dynamicTypeSize
+    @Environment(\.colorScheme) private var colorScheme
     @ScaledMetric(relativeTo: .body) private var bookRailCardWidth = 172.0
     var hostsAudioNavigation = false
     var onOpenMenu: (() -> Void)? = nil
@@ -463,61 +464,76 @@ struct HomeView: View {
     // MARK: - Kitap Gündemi rayı
 
     private var agendaRail: some View {
-        VStack(alignment: .leading, spacing: 12) {
-            VStack(alignment: .leading, spacing: 4) {
-                ModernSectionHeading(title: L10n.menuBookAgenda, actionTitle: L10n.homeSeeAll) {
-                    container.open(route: .bookAgenda)
+        let style = ReadingRoomStyle(scheme: colorScheme)
+        return VStack(alignment: .leading, spacing: 0) {
+            HomeAgendaWelcome { container.open(route: .bookAgenda) }
+            Rectangle().fill(style.border).frame(height: 1).padding(.horizontal, 18)
+                .accessibilityHidden(true)
+            VStack(alignment: .leading, spacing: 12) {
+                ViewThatFits(in: .horizontal) {
+                    HStack(alignment: .center, spacing: 12) {
+                        Text(ReadingRoomL10n.text("agenda.latest"))
+                            .font(.system(.title3, design: .serif, weight: .semibold))
+                            .foregroundStyle(style.ink).fixedSize(horizontal: false, vertical: true)
+                            .accessibilityAddTraits(.isHeader)
+                        Spacer(minLength: 0)
+                        agendaSeeAll
+                    }
+                    VStack(alignment: .leading, spacing: 8) {
+                        Text(ReadingRoomL10n.text("agenda.latest"))
+                            .font(.system(.title3, design: .serif, weight: .semibold))
+                            .foregroundStyle(style.ink).accessibilityAddTraits(.isHeader)
+                        agendaSeeAll
+                    }
                 }
-                Text(L10n.homeAgendaRailSubtitle)
-                    .font(.caption)
-                    .foregroundStyle(EKitapligimPalette.muted)
-                    .fixedSize(horizontal: false, vertical: true)
-            }
-            .padding(.horizontal, 16)
+            }.padding(.horizontal, 18).padding(.top, 14).padding(.bottom, 12)
 
             if agendaPosts.isEmpty {
-                HStack(alignment: .top, spacing: 14) {
-                    Image(systemName: "text.quote")
-                        .font(.title2)
-                        .foregroundStyle(HomeAgendaStyle.accent)
-                        .accessibilityHidden(true)
-                    Text(L10n.homeAgendaRailEmpty)
-                        .font(.subheadline)
-                        .foregroundStyle(HomeAgendaStyle.muted)
-                        .fixedSize(horizontal: false, vertical: true)
-                }
-                .frame(maxWidth: .infinity, alignment: .leading)
-                .padding(20)
-                .background(HomeAgendaStyle.paper, in: RoundedRectangle(cornerRadius: 24))
-                .padding(.horizontal, 16)
+                Text(L10n.homeAgendaRailEmpty).font(.subheadline).foregroundStyle(style.muted)
+                    .fixedSize(horizontal: false, vertical: true)
+                    .frame(maxWidth: .infinity, alignment: .leading).padding(20)
             } else if dynamicTypeSize.isAccessibilitySize {
-                // Larger typography uses the page width while retaining a short post preview.
                 VStack(alignment: .leading, spacing: 14) {
                     ForEach(agendaPosts.prefix(4)) { post in
                         homeAgendaCard(post, layout: .adaptive)
                     }
-                }
-                .padding(.horizontal, 16)
+                }.padding(.horizontal, 16).padding(.bottom, 16)
             } else {
                 ScrollView(.horizontal, showsIndicators: false) {
                     HStack(alignment: .top, spacing: 12) {
                         ForEach(agendaPosts.prefix(4)) { post in
                             homeAgendaCard(post, layout: .rail)
-                            .containerRelativeFrame(.horizontal) { length, _ in
-                                min(340, max(1, length - 52))
-                            }
+                                .containerRelativeFrame(.horizontal) { length, _ in
+                                    min(340, max(1, length - 36))
+                                }
                         }
                     }
                     .fixedSize(horizontal: false, vertical: true)
-                    .padding(.horizontal, 16)
-                    .padding(.vertical, 8)
+                    .padding(.horizontal, 16).padding(.bottom, 16)
                 }
             }
         }
+        .background(style.paper, in: RoundedRectangle(cornerRadius: 24, style: .continuous))
+        .clipShape(RoundedRectangle(cornerRadius: 24, style: .continuous))
+        .overlay { RoundedRectangle(cornerRadius: 24).strokeBorder(style.border) }
+        .padding(.horizontal, 16)
+        .accessibilityElement(children: .contain)
+        .accessibilityIdentifier("home.agenda.section")
+    }
+
+    private var agendaSeeAll: some View {
+        Button {
+            container.open(route: .bookAgenda)
+        } label: {
+            Label(L10n.homeSeeAll, systemImage: "arrow.right")
+                .font(.caption.weight(.semibold)).fixedSize(horizontal: false, vertical: true)
+                .frame(minHeight: 44)
+        }.buttonStyle(.plain).foregroundStyle(ReadingRoomStyle(scheme: colorScheme).accent)
+            .accessibilityIdentifier("home.agenda.seeAll")
     }
 
     private func homeAgendaCard(_ post: BookAgendaPostDTO, layout: HomeAgendaCardLayout) -> some View {
-        HomeAgendaCard(post: post, layout: layout, includesPhotosInRail: agendaPosts.prefix(4).contains { !$0.attachments.isEmpty }) {
+        HomeAgendaCard(post: post, layout: layout) {
             guard let postID = Int(post.id), postID > 0 else { return }
             container.open(route: .bookAgendaPost(postID))
         }
@@ -784,14 +800,14 @@ enum HomeAgendaCardLayout {
 struct HomeAgendaCard: View {
     @Environment(\.dynamicTypeSize) private var dynamicTypeSize
     @ScaledMetric(relativeTo: .body) private var scaledRailHeight: CGFloat = HomeAgendaCard.railHeight
-    @ScaledMetric(relativeTo: .body) private var mediaRailExtra: CGFloat = 120
+    @ScaledMetric(relativeTo: .body) private var mediaHeight: CGFloat = 138
+    @Environment(\.colorScheme) private var scheme
     let post: BookAgendaPostDTO
     var layout: HomeAgendaCardLayout = .adaptive
-    var includesPhotosInRail = false
     let onOpen: () -> Void
-    private var style: AgendaCardPalette { AgendaCardPalette(type: post.type) }
+    private var style: ReadingRoomStyle { ReadingRoomStyle(scheme: scheme) }
 
-    static let railHeight: CGFloat = 300
+    static let railHeight: CGFloat = 368
     private var isRailLayout: Bool { layout == .rail }
 
     private var isQuotation: Bool { post.type == "quotation" }
@@ -852,78 +868,78 @@ struct HomeAgendaCard: View {
     }
 
     var body: some View {
-        VStack(alignment: .leading, spacing: 12) {
-            header
-            Button(action: onOpen) {
-                cardButtonContent
-            }
-            .buttonStyle(.plain)
-            .accessibilityElement(children: .combine)
-            .accessibilityLabel(postAccessibilityLabel)
-            .accessibilityValue(post.attachments.isEmpty ? "" : AgendaMediaL10n.imageCount(post.attachments.count))
-            .accessibilityHint(L10n.homeAgendaOpenPost)
-            .accessibilityIdentifier("agenda.open.\(post.id)")
-            .frame(maxHeight: isRailLayout ? .infinity : nil, alignment: .topLeading)
+        VStack(alignment: .leading, spacing: 0) {
+            Button(action: onOpen) { media }
+                .buttonStyle(.plain)
+                .accessibilityLabel(postAccessibilityLabel)
+                .accessibilityHint(L10n.homeAgendaOpenPost)
+                .accessibilityIdentifier("agenda.media.\(post.id)")
+            VStack(alignment: .leading, spacing: 10) {
+                header
+                Button(action: onOpen) { cardButtonContent }
+                    .buttonStyle(.plain)
+                    .accessibilityElement(children: .combine)
+                    .accessibilityLabel(postAccessibilityLabel)
+                    .accessibilityValue(post.attachments.isEmpty ? "" : AgendaMediaL10n.imageCount(post.attachments.count))
+                    .accessibilityHint(L10n.homeAgendaOpenPost)
+                    .accessibilityIdentifier("agenda.open.\(post.id)")
+                    .frame(maxHeight: isRailLayout ? .infinity : nil, alignment: .topLeading)
+            }.padding(14)
         }
-        .foregroundStyle(style.ink)
-        .multilineTextAlignment(.leading)
-        .padding(14)
+        .foregroundStyle(style.ink).multilineTextAlignment(.leading)
         .frame(maxWidth: .infinity, alignment: .topLeading)
-        // Home is a preview: long posts open in detail instead of growing every carousel card.
-        .frame(height: isRailLayout ? scaledRailHeight + (includesPhotosInRail || !post.attachments.isEmpty ? mediaRailExtra : 0) : nil, alignment: .topLeading)
+        .frame(height: isRailLayout ? scaledRailHeight : nil, alignment: .topLeading)
         .fixedSize(horizontal: false, vertical: !isRailLayout)
-        .background {
-            RoundedRectangle(cornerRadius: 20, style: .continuous)
-                .fill(LinearGradient(
-                    colors: [style.paper, .white],
-                    startPoint: .topLeading, endPoint: .bottomTrailing
-                ))
-                .overlay(alignment: .topTrailing) {
-                    Circle()
-                        .fill(style.badge.opacity(0.5))
-                        .frame(width: 100, height: 100)
-                        .offset(x: 42, y: -55)
-                }
-                .clipShape(RoundedRectangle(cornerRadius: 20, style: .continuous))
-                .overlay {
-                    RoundedRectangle(cornerRadius: 20, style: .continuous)
-                        .strokeBorder(style.border, lineWidth: 1)
-                }
-                .shadow(color: style.accent.opacity(0.07), radius: 6, y: 3)
-        }
+        .background(style.card)
+        .clipShape(RoundedRectangle(cornerRadius: 20, style: .continuous))
+        .overlay { RoundedRectangle(cornerRadius: 20).strokeBorder(style.border) }
         .contentShape(RoundedRectangle(cornerRadius: 20, style: .continuous))
         .accessibilityElement(children: .contain)
     }
 
-    private var cardButtonContent: some View {
-        VStack(alignment: .leading, spacing: post.attachments.isEmpty ? 12 : 8) {
-            if let attachment = post.attachments.first {
-                AgendaPhotoView(postID: post.id, attachment: attachment, allowsRetry: false)
-                    .frame(height: isRailLayout ? 160 : 220)
-                    .overlay(alignment: .bottomTrailing) {
-                        if post.attachments.count > 1 {
-                            Label("\(post.attachments.count)", systemImage: "square.on.square")
-                                .font(.caption2.weight(.semibold)).padding(6)
-                                .foregroundStyle(.white).background(.black.opacity(0.65), in: Capsule()).padding(6)
-                        }
+    @ViewBuilder private var media: some View {
+        if let attachment = post.attachments.first {
+            AgendaPhotoView(postID: post.id, attachment: attachment, allowsRetry: false)
+                .frame(height: isRailLayout ? mediaHeight : 220)
+                .overlay(alignment: .bottomTrailing) {
+                    if post.attachments.count > 1 {
+                        Label("\(post.attachments.count)", systemImage: "square.on.square")
+                            .font(.caption2.weight(.semibold)).padding(6)
+                            .foregroundStyle(.white).background(.black.opacity(0.65), in: Capsule()).padding(8)
                     }
-            }
+                }
+        } else if let book = post.book, !plainText(book.title).isEmpty {
+            bookContext(book)
+                .padding(14)
+                .frame(maxWidth: .infinity, minHeight: isRailLayout ? mediaHeight : 150, alignment: .leading)
+                .background(style.soft)
+        } else {
+            ReadingRoomArtwork(name: isQuotation || post.type == "quote" ? "home_section_daily_selection" : "catalog_scenic_reading",
+                               height: isRailLayout ? mediaHeight : 170)
+                .overlay(alignment: .bottomLeading) {
+                    Label(typeTitle, systemImage: typeIcon)
+                        .font(.caption2.weight(.semibold)).foregroundStyle(style.accent)
+                        .padding(.horizontal, 10).padding(.vertical, 8)
+                        .background(style.card, in: RoundedRectangle(cornerRadius: 10)).padding(12)
+                }
+        }
+    }
+
+    private var cardButtonContent: some View {
+        VStack(alignment: .leading, spacing: 10) {
             Text(preview)
-                .font(isQuotation ? .system(.callout, design: .serif, weight: .regular) : .subheadline)
-                .lineSpacing(2)
-                .lineLimit(post.attachments.isEmpty ? 3 : 1, reservesSpace: !dynamicTypeSize.isAccessibilitySize)
+                .font(.system(.subheadline, design: .serif))
+                .lineSpacing(3)
+                .lineLimit(3, reservesSpace: !dynamicTypeSize.isAccessibilitySize)
                 .truncationMode(.tail)
                 .fixedSize(horizontal: false, vertical: true)
-
-            if isRailLayout {
-                Spacer(minLength: 0)
-            }
-            if let book = post.book, !plainText(book.title).isEmpty {
-                bookContext(book)
-            } else if post.type == "quote", let quoted = post.quotedPost {
+            if isRailLayout { Spacer(minLength: 0) }
+            if !post.attachments.isEmpty, let book = post.book {
+                Text(plainText(book.title)).font(.caption).foregroundStyle(style.accent)
+                    .lineLimit(dynamicTypeSize.isAccessibilitySize ? nil : 1)
+            } else if !isRailLayout, post.type == "quote", let quoted = post.quotedPost {
                 quotedContext(quoted)
             }
-
             footer
         }
         .frame(maxWidth: .infinity, maxHeight: isRailLayout ? .infinity : nil, alignment: .topLeading)
@@ -942,7 +958,7 @@ struct HomeAgendaCard: View {
                 .fixedSize(horizontal: false, vertical: true)
                 .padding(.horizontal, 9)
                 .padding(.vertical, 5)
-                .background(style.badge, in: Capsule())
+                .background(style.soft, in: Capsule())
         }
     }
 
@@ -996,20 +1012,20 @@ struct HomeAgendaCard: View {
             .fixedSize(horizontal: false, vertical: true)
             .frame(maxWidth: .infinity, alignment: .leading)
             .padding(8)
-            .background(style.badge.opacity(0.5), in: RoundedRectangle(cornerRadius: 12))
+            .background(style.soft.opacity(0.5), in: RoundedRectangle(cornerRadius: 12))
         }
     }
 
     private func bookContext(_ book: BookAgendaBookDTO) -> some View {
         HStack(alignment: .center, spacing: 10) {
             EKitapligimRemoteCover(urlString: book.coverUrl ?? "", title: book.title, author: book.author)
-                .frame(width: 32, height: 46)
+                .frame(width: 60, height: 92)
                 .clipShape(RoundedRectangle(cornerRadius: 5))
                 .accessibilityHidden(true)
             VStack(alignment: .leading, spacing: 3) {
                 Text(plainText(book.title))
-                    .font(.caption.weight(.semibold))
-                    .lineLimit(2)
+                    .font(.system(.headline, design: .serif))
+                    .lineLimit(dynamicTypeSize.isAccessibilitySize ? nil : 2)
                 if !plainText(book.author).isEmpty {
                     Text(plainText(book.author))
                         .font(.caption2)
@@ -1021,7 +1037,7 @@ struct HomeAgendaCard: View {
             .frame(maxWidth: .infinity, alignment: .leading)
         }
         .padding(8)
-        .background(.white.opacity(0.8), in: RoundedRectangle(cornerRadius: 12))
+        .background(style.card, in: RoundedRectangle(cornerRadius: 12))
         .overlay {
             RoundedRectangle(cornerRadius: 12)
                 .strokeBorder(style.border.opacity(0.75), lineWidth: 1)
@@ -1088,7 +1104,7 @@ struct HomeAgendaCard: View {
             .font(.system(size: 16, weight: .semibold))
             .foregroundStyle(style.accent)
             .frame(width: 32, height: 32)
-            .background(style.badge, in: Circle())
+            .background(style.soft, in: Circle())
             .accessibilityHidden(true)
     }
 

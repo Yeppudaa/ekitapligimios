@@ -27,3 +27,4 @@
 "paper.note" = "Sepya, beyaz veya gece görünümünü seç. Tema değişikliği okuma konumunu sıfırlamaz.";
 "preview" = "Önizleme";
 "opening.title" = "Kitap açılıyor…";
+"positionReset" = "Kaldığın yer bu kitap dosyasında bulunamadı; kitap baştan açıldı. Sayfa çevirdiğinde yeni yerin kaydedilir.";

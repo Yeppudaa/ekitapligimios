@@ -344,7 +344,8 @@ struct BookAgendaView: View {
                     },
                     isSignedIn: container.isSignedIn,
                     currentUserID: container.profileState?.id,
-                    isBusy: model.isMutating(postID: post.id)
+                    isBusy: model.isMutating(postID: post.id),
+                    collapsedPreview: true
                 )
             }
             if let errorMessage = model.errorMessage, !model.posts.isEmpty {
@@ -427,6 +428,9 @@ struct BookAgendaPostCard: View {
     var currentUserID: String? = nil
     var showsCommentAction: Bool = true
     var isBusy: Bool = false
+    /// Feed cards show a short preview with "Devamını gör"; the detail screen shows the whole post.
+    var collapsedPreview: Bool = false
+    @State private var messageTruncated = false
 
     private var canManagePost: Bool {
         isSignedIn && (post.viewer.canEdit || post.viewer.canDelete)
@@ -628,11 +632,35 @@ struct BookAgendaPostCard: View {
     }
 
     private var messageText: some View {
-        Text(EKitapligimFormat.plainText(post.message))
-            .font(.subheadline)
+        VStack(alignment: .leading, spacing: 8) {
+            AgendaPreviewText(
+                text: EKitapligimFormat.plainText(post.message),
+                font: .subheadline,
+                lineLimit: collapsedPreview ? 6 : nil,
+                isTruncated: $messageTruncated
+            )
             .foregroundStyle(EKitapligimPalette.agendaInk)
             .frame(maxWidth: .infinity, alignment: .leading)
-            .multilineTextAlignment(.leading)
+            readMoreButton
+        }
+    }
+
+    @ViewBuilder private var readMoreButton: some View {
+        if collapsedPreview && messageTruncated {
+            Button(action: onOpen) {
+                HStack(spacing: 5) {
+                    Text(L10n.agendaReadMore)
+                    Image(systemName: "arrow.right")
+                        .font(.caption.weight(.bold))
+                }
+                .font(.subheadline.weight(.bold))
+                .foregroundStyle(EKitapligimPalette.agendaPurple)
+                .frame(minHeight: 32, alignment: .leading)
+                .contentShape(Rectangle())
+            }
+            .buttonStyle(.plain)
+            .accessibilityIdentifier("agenda.readMore.\(post.id)")
+        }
     }
 
     private var quotationBody: some View {
@@ -641,11 +669,15 @@ struct BookAgendaPostCard: View {
                 Image(systemName: "quote.opening")
                     .font(.caption)
                     .foregroundStyle(EKitapligimPalette.agendaPurple)
-                Text(EKitapligimFormat.plainText(post.message))
-                    .font(.subheadline.italic())
-                    .foregroundStyle(EKitapligimPalette.agendaInk)
-                    .multilineTextAlignment(.leading)
+                AgendaPreviewText(
+                    text: EKitapligimFormat.plainText(post.message),
+                    font: .subheadline.italic(),
+                    lineLimit: collapsedPreview ? 5 : nil,
+                    isTruncated: $messageTruncated
+                )
+                .foregroundStyle(EKitapligimPalette.agendaInk)
             }
+            readMoreButton
             if post.pageNumber > 0 {
                 Text(L10n.agendaPageLabel(post.pageNumber))
                     .font(.caption2.weight(.semibold))
@@ -966,7 +998,7 @@ struct BookAgendaDetailView: View {
             pendingCommentDeletion = nil
             Task { await load() }
         }
-        .onDisappear { commentFocused = false; model.invalidate(clear: false) }
+        .onDisappear { commentFocused = false }
     }
 
     private var postDeletionBinding: Binding<Bool> {
@@ -2072,5 +2104,53 @@ private struct BookAgendaCommentEditView: View {
         } catch {
             errorMessage = L10n.agendaCommentUpdateFailed
         }
+    }
+}
+
+/// Line-limited text that reports whether the limit actually hid any content,
+/// so "Devamını gör" only appears for posts that are really cut.
+private struct AgendaPreviewText: View {
+    let text: String
+    let font: Font
+    let lineLimit: Int?
+    @Binding var isTruncated: Bool
+    @State private var shownHeight: CGFloat = 0
+    @State private var fullHeight: CGFloat = 0
+
+    var body: some View {
+        Text(text)
+            .font(font)
+            .lineLimit(lineLimit)
+            .truncationMode(.tail)
+            .multilineTextAlignment(.leading)
+            .fixedSize(horizontal: false, vertical: true)
+            .background(heightReader { shownHeight = $0 })
+            .background {
+                if lineLimit != nil {
+                    Text(text)
+                        .font(font)
+                        .multilineTextAlignment(.leading)
+                        .fixedSize(horizontal: false, vertical: true)
+                        .hidden()
+                        .background(heightReader { fullHeight = $0 })
+                        .accessibilityHidden(true)
+                }
+            }
+            .onChange(of: shownHeight) { _, _ in update() }
+            .onChange(of: fullHeight) { _, _ in update() }
+            .onChange(of: lineLimit) { _, _ in update() }
+    }
+
+    private func heightReader(_ store: @escaping (CGFloat) -> Void) -> some View {
+        GeometryReader { proxy in
+            Color.clear
+                .onAppear { store(proxy.size.height) }
+                .onChange(of: proxy.size.height) { _, height in store(height) }
+        }
+    }
+
+    private func update() {
+        let truncated = lineLimit != nil && fullHeight > shownHeight + 1
+        if truncated != isTruncated { isTruncated = truncated }
     }
 }

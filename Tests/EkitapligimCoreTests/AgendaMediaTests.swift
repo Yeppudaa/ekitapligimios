@@ -106,6 +106,48 @@ final class AgendaMediaTests: XCTestCase {
         XCTAssertEqual(data, Data([1, 2, 3]))
     }
 
+    func testPrivateConversationImageUsesAuthorizedBoundedTransport() async throws {
+        AgendaMediaProtocol.handler = { request in
+            XCTAssertEqual(request.url?.path, "/ios-api/v1/conversation-detail/7")
+            XCTAssertEqual(request.url?.query, "image_id=21")
+            XCTAssertEqual(request.value(forHTTPHeaderField: "Authorization"), "Bearer test-session")
+            XCTAssertNil(request.value(forHTTPHeaderField: "Cookie"))
+            XCTAssertEqual(request.cachePolicy, .reloadIgnoringLocalCacheData)
+            return (200, "image/jpeg", Data([1, 2, 3]))
+        }
+        let data = try await conversationRepository().image(conversationID: "7", imageID: "21")
+        XCTAssertEqual(data, Data([1, 2, 3]))
+    }
+
+    func testConversationImagePermissionDenialAndHTMLNeverBecomePixels() async throws {
+        for (status, mime) in [(403, "application/json"), (200, "text/html")] {
+            AgendaMediaProtocol.handler = { _ in (status, mime, Data("Denied".utf8)) }
+            do { _ = try await conversationRepository().image(conversationID: "7", imageID: "21"); XCTFail("Invalid private image accepted") }
+            catch APIClientError.httpStatus(403, _) { XCTAssertEqual(status, 403) }
+            catch AgendaMediaError.invalidImage { XCTAssertEqual(status, 200) }
+        }
+    }
+
+    func testPublicConversationImageNeverUsesAccountHeaders() async throws {
+        AgendaMediaProtocol.handler = { request in
+            XCTAssertNil(request.value(forHTTPHeaderField: "Authorization"))
+            XCTAssertNil(request.value(forHTTPHeaderField: "Cookie"))
+            return (200, "image/png", Data([1, 2]))
+        }
+        let url = try XCTUnwrap(URL(string: "https://ekitapligim.com/data/photo.png"))
+        let data = try await conversationRepository().publicImage(url: url)
+        XCTAssertEqual(data.count, 2)
+    }
+
+    private func conversationRepository() throws -> ConversationsRepository {
+        let config = AppConfig(environment: .production,
+            apiBaseURL: try XCTUnwrap(URL(string: "https://example.com/ios-api/v1/")),
+            webBaseURL: try XCTUnwrap(URL(string: "https://example.com")))
+        let configuration = URLSessionConfiguration.ephemeral
+        configuration.protocolClasses = [AgendaMediaProtocol.self]
+        return ConversationsRepository(apiClient: APIClient(config: config, session: URLSession(configuration: configuration), tokenProvider: AgendaMediaTokens()))
+    }
+
     func testSupportedServerPublishesPhotoOnlyWithFileAndReturnsItsAttachment() async throws {
         AgendaMediaProtocol.handler = { request in
             if request.httpMethod == "GET" {

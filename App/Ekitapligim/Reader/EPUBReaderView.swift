@@ -13,6 +13,7 @@ struct EPUBReaderView: View {
     var initialPosition: ReaderPositionDTO? = nil
     var paperTheme: ReaderPaperTheme = .sepia
     var onPositionChange: (ReaderPositionDTO) -> Void = { _ in }
+    var onSavedPositionUnavailable: () -> Void = {}
     var onFlush: () async -> Void = {}
     var onCaptureFailure: () -> Void = {}
     var onRestored: () -> Void = {}
@@ -37,7 +38,8 @@ struct EPUBReaderView: View {
         }
         .task(id: sourceURL) {
             await model.open(sourceURL: sourceURL, initialPosition: initialPosition,
-                onPositionChange: onPositionChange, onCaptureFailure: onCaptureFailure, onRestored: onRestored, paperTheme: paperTheme)
+                onPositionChange: onPositionChange, onCaptureFailure: onCaptureFailure, onRestored: onRestored,
+                onSavedPositionUnavailable: onSavedPositionUnavailable, paperTheme: paperTheme)
         }
         .onChange(of: paperTheme) { _, theme in model.applyTheme(theme) }
         .onChange(of: model.progressPercent) { _, value in progressPercent = value }
@@ -81,6 +83,7 @@ private final class EPUBReaderModel: NSObject, ObservableObject, EPUBNavigatorDe
     private var onPositionChange: (ReaderPositionDTO) -> Void = { _ in }
     private var onCaptureFailure: () -> Void = {}
     private var onRestored: () -> Void = {}
+    private var onSavedPositionUnavailable: () -> Void = {}
 
     override init() {
         let httpClient = DefaultHTTPClient()
@@ -105,7 +108,8 @@ private final class EPUBReaderModel: NSObject, ObservableObject, EPUBNavigatorDe
     }
 
     func open(sourceURL: URL, initialPosition: ReaderPositionDTO?, onPositionChange: @escaping (ReaderPositionDTO) -> Void,
-              onCaptureFailure: @escaping () -> Void, onRestored: @escaping () -> Void = {}, paperTheme: ReaderPaperTheme = .sepia) async {
+              onCaptureFailure: @escaping () -> Void, onRestored: @escaping () -> Void = {},
+              onSavedPositionUnavailable: @escaping () -> Void = {}, paperTheme: ReaderPaperTheme = .sepia) async {
         self.paperTheme = paperTheme
         // A preview/settings presentation can restart SwiftUI's task without ending this reading
         // session. Reuse the navigator at its current CFI instead of restoring the original CFI again.
@@ -113,9 +117,11 @@ private final class EPUBReaderModel: NSObject, ObservableObject, EPUBNavigatorDe
             self.onPositionChange = onPositionChange
             self.onCaptureFailure = onCaptureFailure
             self.onRestored = onRestored
+            self.onSavedPositionUnavailable = onSavedPositionUnavailable
             applyTheme(paperTheme)
             return
         }
+        self.onSavedPositionUnavailable = onSavedPositionUnavailable
         guard sourceURL.scheme?.lowercased() == "https" || sourceURL.isFileURL else {
             fail(with: L10n.readerAtsLinkMissing)
             return
@@ -145,7 +151,16 @@ private final class EPUBReaderModel: NSObject, ObservableObject, EPUBNavigatorDe
             guard publication.conforms(to: .epub) else {
                 throw EPUBReaderError.unsupportedPublication
             }
-            let initialLocator = try adapter.initialLocator(initialPosition, publication: publication)
+            let initialLocator: Locator?
+            do {
+                initialLocator = try adapter.initialLocator(initialPosition, publication: publication)
+            } catch {
+                // The saved CFI does not exist in this file (e.g. the server replaced the edition).
+                // Open at the start without writing anything; the record changes only when the reader moves.
+                initialLocator = nil
+                savedPosition = nil
+                onSavedPositionUnavailable()
+            }
             let navigator = try EPUBNavigatorViewController(
                 publication: publication,
                 initialLocation: initialLocator,
@@ -195,7 +210,14 @@ private final class EPUBReaderModel: NSObject, ObservableObject, EPUBNavigatorDe
             Task {
                 do {
                     if let savedPosition, initialLocator != nil {
-                        try await adapter.restore(savedPosition, navigator: navigator)
+                        do {
+                            try await adapter.restore(savedPosition, navigator: navigator)
+                        } catch {
+                            // The chapter exists but the saved point does not. Stay at the chapter start;
+                            // the anchor below is established without writing it back to the server.
+                            self.savedPosition = nil
+                            onSavedPositionUnavailable()
+                        }
                     }
                     // Establish the rendered starting anchor without writing it back to the server.
                     let current = try await adapter.current(locator: navigator.currentLocation ?? locator, navigator: navigator)

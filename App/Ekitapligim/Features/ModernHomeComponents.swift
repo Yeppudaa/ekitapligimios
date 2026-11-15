@@ -460,12 +460,39 @@ struct ModernHomeLibraryBanner: View {
         }
     }
 
+    /// Fallback when the three stats cannot sit side by side (small phones, larger Dynamic Type).
+    /// Short rows keep the card compact; the old centered full-width columns produced a tall, gappy block.
     private var verticalStatistics: some View {
-        VStack(spacing: 10) {
-            statistic(stats?.totalBooks, label: "libraryBanner.books", icon: "book.pages", action: onBooks)
-            statistic(stats?.totalAuthors, label: "libraryBanner.authors", icon: "pencil", action: onAuthors)
-            statistic(stats?.totalCategories, label: "libraryBanner.categories", icon: "person.2", action: onCategories)
+        VStack(spacing: 8) {
+            compactStatistic(stats?.totalBooks, label: "libraryBanner.books", icon: "book.pages", action: onBooks)
+            compactStatistic(stats?.totalAuthors, label: "libraryBanner.authors", icon: "pencil", action: onAuthors)
+            compactStatistic(stats?.totalCategories, label: "libraryBanner.categories", icon: "person.2", action: onCategories)
         }
+    }
+
+    private func compactStatistic(_ value: Int?, label: String, icon: String, action: @escaping () -> Void) -> some View {
+        Button(action: action) {
+            HStack(alignment: .center, spacing: 12) {
+                Image(systemName: icon).font(.system(size: 18)).foregroundStyle(EKitapligimPalette.teal)
+                    .frame(width: 38, height: 38).background(.white.opacity(0.92), in: Circle())
+                    .accessibilityHidden(true)
+                VStack(alignment: .leading, spacing: 2) {
+                    Text(value.flatMap { $0 >= 0 ? EKitapligimFormat.count($0) : nil } ?? "—")
+                        .font(.system(.title3, design: .serif, weight: .bold)).monospacedDigit()
+                        .foregroundStyle(EKitapligimPalette.ink)
+                    Text(HomeRefreshL10n.text(label)).font(.caption)
+                        .foregroundStyle(EKitapligimPalette.muted)
+                }
+                .fixedSize(horizontal: false, vertical: true)
+                .frame(maxWidth: .infinity, alignment: .leading)
+            }
+            .multilineTextAlignment(.leading)
+            .padding(.horizontal, 12).padding(.vertical, 8).frame(maxWidth: .infinity, minHeight: 48, alignment: .leading)
+            .background(.white.opacity(0.55), in: RoundedRectangle(cornerRadius: 13))
+            .contentShape(RoundedRectangle(cornerRadius: 13))
+        }
+        .buttonStyle(.plain)
+        .accessibilityElement(children: .combine)
     }
 
     private func statistic(_ value: Int?, label: String, icon: String, action: @escaping () -> Void) -> some View {

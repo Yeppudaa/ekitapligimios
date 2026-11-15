@@ -1,5 +1,11 @@
 # Scripts
 
+## Reading-room design validation (2026-11-15)
+
+`reading-room-macos.sh` runs clean Development and unsigned Production builds plus 38 targeted native/UI checks per device on two iPhones and one iPad. It exports screenshots and rejects incomplete, failed or skipped test results. Coverage includes social models, agenda comment races, older private-message pages and authorized image display. It does not publish or sign for distribution. macOS execution and screenshot review remain pending. See [deep review](../DEEP_REVIEW_20261115.md).
+
+`social-state-test-windows.ps1` compiles the actual `BookRequestsModel` and `ConversationModels` with a storage-only Combine shim and runs 13 offline XCTest cases. It checks stale responses, duplicate sends, edited drafts, account changes, quota rejection, false acknowledgements and pagination. It does not validate Apple Combine publication, SwiftUI layout or a real authenticated server account.
+
 ## Agenda photos validation (2026-11-03)
 
 `agenda-state-test-windows.ps1` now includes six real `AgendaPhotoModel` tests alongside the existing feed/detail suites (Combine storage shim only). `swift-test-windows.ps1` covers the core capability/multipart/media transport contracts. `build-ios-api-addon.ps1` packages 1.0.40 and runs the agenda media and viewer-permission PHP suites. `agenda-media-macos.sh` performs clean Development/unsigned Production builds and native photo processor/layout/state/UI checks on two iPhones plus an iPad, exporting screenshot attachments. macOS execution is still required; see [validation](../AGENDA_MEDIA_VALIDATION.md).

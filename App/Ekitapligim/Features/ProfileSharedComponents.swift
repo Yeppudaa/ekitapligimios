@@ -143,13 +143,17 @@ struct ProfileActivityList: View {
                 }
             }
         }
-        .task { await load() }
+        // Keyed by member: after an account switch the previous member's activity must not remain.
+        .task(id: userID) { await load() }
     }
 
     private func load() async {
-        guard let userID, !userID.isEmpty, items.isEmpty, !isLoading else { return }
+        items = []
+        guard let userID, !userID.isEmpty else { return }
         isLoading = true
         defer { isLoading = false }
-        items = (try? await container.liveActivity.activity(limit: 12, userID: userID).items) ?? []
+        let loaded = (try? await container.liveActivity.activity(limit: 12, userID: userID).items) ?? []
+        guard userID == self.userID, !Task.isCancelled else { return }
+        items = loaded
     }
 }

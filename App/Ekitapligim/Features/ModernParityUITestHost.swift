@@ -196,6 +196,15 @@ private final class ModernParityProtocol: URLProtocol, @unchecked Sendable {
     override class func canonicalRequest(for request: URLRequest) -> URLRequest { request }
     override func startLoading() {
         guard let url = request.url else { client?.urlProtocol(self, didFailWithError: URLError(.badURL)); return }
+        if ProcessInfo.processInfo.environment["READING_ROOM_RICH_MESSAGES"] == "1",
+           url.path.hasSuffix("/conversation-detail/980001"),
+           URLComponents(url: url, resolvingAgainstBaseURL: false)?.queryItems?.contains(.init(name: "image_id", value: "21")) == true {
+            let authorized = request.value(forHTTPHeaderField: "Authorization") == "Bearer ms_at_offline_fixture_never_send_to_network"
+            deliver(url: url, status: authorized ? 200 : 403,
+                    headers: ["Content-Type": authorized ? "image/png" : "application/json", "Cache-Control": "no-store"],
+                    data: authorized ? ModernParityAgendaMediaFixture.photo : Data())
+            return
+        }
         if let media = ModernParityAgendaMediaFixture.response(for: request) {
             deliver(url: url, status: media.status, headers: ["Content-Type": media.mime, "Cache-Control": "no-store"], data: media.data)
             return
@@ -411,7 +420,16 @@ private enum ModernParityPayload {
             }
             return value
         }
-        if path.hasSuffix("/book-requests") { return ["items": requests] }
+        if path.hasSuffix("/book-requests") {
+            let mode = ProcessInfo.processInfo.environment["READING_ROOM_REQUEST_ACCESS"] ?? ""
+            if mode == "membership" || mode == "exhausted" {
+                let premium = mode == "exhausted"
+                return ["items": requests, "request_quota": ["is_premium": premium,
+                    "limit": premium ? 5 : 0, "used": premium ? 5 : 0, "remaining": 0,
+                    "can_request": false, "resets_at": 1796072400, "timezone": "Europe/Istanbul"]]
+            }
+            return ["items": requests]
+        }
         if path.hasSuffix("/chat/rooms") { return ["items": [room], "capabilities": ["authenticated": true, "can_use": true]] }
         if path.contains("/chat/rooms/") {
             let after = query.first { $0.name == "after_id" }?.value
@@ -498,6 +516,13 @@ private enum ModernParityPayload {
             return ["members": matches, "pagination": ["page": 1, "pages": 1, "total": matches.count]]
         }
         if path.hasSuffix("/conversations") {
+            if ProcessInfo.processInfo.environment["READING_ROOM_RICH_MESSAGES"] == "1" {
+                return ["items": [["id": "980001", "title": "Okuma önerileri", "starter_username": "Ada",
+                    "last_message_username": "Ada", "last_message_date": timestamp, "is_unread": true,
+                    "participants": [["id": "900002", "username": "Ada", "avatar_url": "", "is_active": true]],
+                    "preview": "Birlikte okuyalım. [EMBED content=\"thread-900002\"]https://ekitapligim.com/konular/kitap.900002/[/EMBED]"]],
+                    "pagination": ["page": 1, "pages": 1, "total": 1]]
+            }
             let items: [[String: Any]] = [
                 ["id": "980001", "title": "Okuma önerileri", "starter_username": "Ada", "last_message_username": "Ada",
                  "last_message_date": timestamp, "is_unread": true, "reply_count": 3,
@@ -511,6 +536,16 @@ private enum ModernParityPayload {
         if path.hasSuffix("/conversation-detail/980001") {
             let conversation: [String: Any] = ["id": "980001", "title": "Okuma önerileri",
                 "starter_username": "Ada", "can_reply": true, "reply_count": 3]
+            if ProcessInfo.processInfo.environment["READING_ROOM_RICH_MESSAGES"] == "1" {
+                let page = query.first { $0.name == "page" }?.value == "1" ? 1 : 2
+                let message: [String: Any] = ["id": String(980100 + page), "conversation_id": 980001,
+                    "user_id": 900002, "username": "Ada", "message": page == 1 ? "Önceki sayfadaki mesaj." : "Paylaşılan fotoğraf.",
+                    "message_raw": page == 1 ? "Önceki sayfadaki mesaj." : "[ATTACH]21[/ATTACH]",
+                    "images": page == 1 ? [] : [["id": "21", "filename": "photo.png"]],
+                    "message_date": timestamp + page, "is_mine": false]
+                return ["conversation": conversation, "messages": [message],
+                        "pagination": ["page": page, "pages": 2, "total": 51]]
+            }
             let messages: [[String: Any]] = (1...4).map { value in
                 ["id": String(980100 + value), "conversation_id": 980001, "user_id": 900002,
                  "username": "Ada", "message": "Çevrimdışı özel mesaj \(value).",

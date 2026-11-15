@@ -9,6 +9,8 @@ struct BlockedMembersView: View {
     @State private var members: [BlockedMemberDTO] = []
     @State private var isLoading = false
     @State private var errorMessage: String?
+    @State private var actionError: String?
+    @State private var unblockingID: String?
 
     var body: some View {
         Group {
@@ -39,6 +41,7 @@ struct BlockedMembersView: View {
                         Button(L10n.membersUnblock) {
                             Task { await unblock(member) }
                         }
+                        .disabled(unblockingID != nil)
                         .font(.subheadline.weight(.bold))
                         .fixedSize(horizontal: false, vertical: true)
                     }
@@ -49,6 +52,13 @@ struct BlockedMembersView: View {
         }
         .navigationTitle(L10n.blockedMembersTitle)
         .task { await load() }
+        // A failed unblock keeps the list visible; only a failed list load replaces it.
+        .alert(L10n.membersActionFailed, isPresented: Binding(
+            get: { actionError != nil },
+            set: { if !$0 { actionError = nil } }
+        )) {
+            Button(L10n.commonClose, role: .cancel) { actionError = nil }
+        }
     }
 
     private func load() async {
@@ -65,13 +75,15 @@ struct BlockedMembersView: View {
     }
 
     private func unblock(_ member: BlockedMemberDTO) async {
-        guard let id = Int(member.id) else { return }
+        guard let id = Int(member.id), unblockingID == nil else { return }
+        unblockingID = member.id
+        defer { unblockingID = nil }
         do {
             _ = try await container.safety.unblockMember(userID: id)
             container.forgetBlockedUser(id)
             await load()
         } catch {
-            errorMessage = L10n.membersActionFailed
+            actionError = L10n.membersActionFailed
         }
     }
 }

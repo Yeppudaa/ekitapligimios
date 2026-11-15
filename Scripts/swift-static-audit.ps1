@@ -82,7 +82,11 @@ foreach ($requiredEPUBControl in @(
 
 Write-Step "Checking common accidental localhost references in app config"
 $configFindings = Find-TextMatches -Pattern "localhost|127\.0\.0\.1|http://" -Paths App/Ekitapligim/Config, App/Ekitapligim/App, App/Ekitapligim/Features, App/Ekitapligim/Downloads, App/Ekitapligim/Security, App/Ekitapligim/Purchases, Sources |
-    Where-Object { $_ -notmatch "^Sources\\EkitapligimCore\\AppConfig\.swift:" }
+    Where-Object {
+        $_ -notmatch "^Sources\\EkitapligimCore\\AppConfig\.swift:" -and
+        # An exact deny-list expression is not an endpoint. Other lines in this file remain scanned.
+        $_ -notmatch '^Sources\\EkitapligimCore\\ConversationContentPresentation\.swift:\d+:\s*!host\.hasSuffix\("\.local"\), !host\.hasSuffix\("\.localhost"\), !host\.hasSuffix\("\.internal"\),$'
+    }
 if ($configFindings) {
     Fail "Runtime source/config contains localhost or insecure URL:`n$configFindings"
 }

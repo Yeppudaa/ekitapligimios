@@ -23,6 +23,17 @@ final class DeepLinkParserTests: XCTestCase {
         XCTAssertNil(DeepLinkParser().parse("https://example.com/books/foo.1/"))
     }
 
+    func testRejectsMisplacedAndRepeatedWWWInHost() {
+        let parser = DeepLinkParser()
+        for host in ["ekitapligim.www.com", "www.www.ekitapligim.com", "www.ekitapligim.com.example.org"] {
+            XCTAssertNil(parser.parse("https://\(host)/books/foo.1/"))
+        }
+    }
+
+    func testAcceptsCaseInsensitiveExactFirstPartyHost() {
+        XCTAssertEqual(DeepLinkParser().parse("https://WWW.EKITAPLIGIM.COM/books/foo.1/"), .bookDetail(1))
+    }
+
     func testNativeNotificationRoutes() {
         let parser = DeepLinkParser()
 

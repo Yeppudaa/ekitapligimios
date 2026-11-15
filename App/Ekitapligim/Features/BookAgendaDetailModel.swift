@@ -18,15 +18,19 @@ final class BookAgendaDetailModel: ObservableObject {
 
     private var generation = UUID()
     private var commentsRevision = UUID()
+    private var loadRevision = UUID()
+    private var blockedActorIDs: Set<String> = []
 
     func invalidate(clear: Bool = true) {
         generation = UUID()
         commentsRevision = UUID()
+        loadRevision = UUID()
         isLoading = false
         isLoadingComments = false
         isSubmitting = false
         isPerformingAction = false
         if clear {
+            blockedActorIDs = []
             post = nil
             comments = []
             draft = ""
@@ -40,20 +44,22 @@ final class BookAgendaDetailModel: ObservableObject {
         fetchPost: @escaping @Sendable () async throws -> BookAgendaPostDTO,
         fetchComments: @escaping @Sendable () async throws -> [BookAgendaCommentDTO]
     ) async {
-        invalidate(clear: false)
+        guard !isSubmitting, !isPerformingAction, !Task.isCancelled else { return }
+        cancelReads()
         let generation = self.generation
+        let revision = loadRevision
         isLoading = true
         errorMessage = nil
-        defer { if generation == self.generation { isLoading = false } }
+        defer { if generation == self.generation, revision == loadRevision { isLoading = false } }
         do {
             let loaded = try await fetchPost()
-            guard generation == self.generation, !Task.isCancelled else { return }
+            guard generation == self.generation, revision == loadRevision, !Task.isCancelled else { return }
             post = loaded
             comments = unique(loaded.comments)
             // Always fetch the dedicated list: the post payload may contain only a preview.
             await loadComments(fetch: fetchComments)
         } catch {
-            guard generation == self.generation, !Task.isCancelled else { return }
+            guard generation == self.generation, revision == loadRevision, !Task.isCancelled else { return }
             errorMessage = L10n.agendaDetailErrorMessage
         }
     }
@@ -84,6 +90,7 @@ final class BookAgendaDetailModel: ObservableObject {
         let submittedDraft = draft
         let message = submittedDraft.trimmingCharacters(in: .whitespacesAndNewlines)
         guard let post, post.viewer.canComment, !message.isEmpty, !isSubmitting, !isPerformingAction else { return false }
+        cancelReads()
         let generation = self.generation
         isSubmitting = true
         actionMessage = nil
@@ -111,6 +118,8 @@ final class BookAgendaDetailModel: ObservableObject {
         refresh: @escaping @Sendable () async throws -> BookAgendaPostDTO
     ) async {
         guard !isPerformingAction, !isSubmitting else { return }
+        cancelReads()
+        let expectedID = post?.id
         let generation = self.generation
         isPerformingAction = true
         actionMessage = nil
@@ -120,6 +129,7 @@ final class BookAgendaDetailModel: ObservableObject {
             guard generation == self.generation, !Task.isCancelled else { return }
             let refreshed = try await refresh()
             guard generation == self.generation, !Task.isCancelled else { return }
+            guard expectedID == nil || expectedID == refreshed.id else { throw APIClientError.invalidResponse }
             post = refreshed.updating(comments: comments)
         } catch {
             guard generation == self.generation, !Task.isCancelled else { return }
@@ -130,6 +140,7 @@ final class BookAgendaDetailModel: ObservableObject {
     @discardableResult
     func deletePost(delete: @escaping @Sendable () async throws -> Void) async -> Bool {
         guard !isPerformingAction, !isSubmitting else { return false }
+        cancelReads()
         let generation = self.generation
         isPerformingAction = true
         actionMessage = nil
@@ -148,6 +159,7 @@ final class BookAgendaDetailModel: ObservableObject {
 
     func deleteComment(_ comment: BookAgendaCommentDTO, delete: @escaping @Sendable () async throws -> Void) async {
         guard !isPerformingAction, !isSubmitting else { return }
+        cancelReads()
         let generation = self.generation
         isPerformingAction = true
         actionMessage = nil
@@ -168,17 +180,19 @@ final class BookAgendaDetailModel: ObservableObject {
 
     func updatePost(_ updated: BookAgendaPostDTO) {
         guard post == nil || updated.id == post?.id else { return }
+        cancelReads()
         post = updated.updating(comments: comments)
     }
 
     func updateComment(_ updated: BookAgendaCommentDTO) {
-        invalidateCommentsLoad()
+        cancelReads()
         guard let index = comments.firstIndex(where: { $0.id == updated.id }) else { return }
         comments[index] = updated
         synchronizeComments()
     }
 
     func removeComments(actorID: String) {
+        blockedActorIDs.insert(actorID)
         comments.removeAll { $0.actor.id == actorID }
         synchronizeComments()
     }
@@ -188,12 +202,18 @@ final class BookAgendaDetailModel: ObservableObject {
         isLoadingComments = false
     }
 
+    private func cancelReads() {
+        loadRevision = UUID()
+        isLoading = false
+        invalidateCommentsLoad()
+    }
+
     private func synchronizeComments() {
         post = post?.updating(comments: comments)
     }
 
     private func unique(_ values: [BookAgendaCommentDTO]) -> [BookAgendaCommentDTO] {
         var ids = Set<String>()
-        return values.filter { ids.insert($0.id).inserted }
+        return values.filter { !blockedActorIDs.contains($0.actor.id) && ids.insert($0.id).inserted }
     }
 }

@@ -1,5 +1,11 @@
 # Privacy Data Inventory
 
+## Reading-room presentation (2026-11-15)
+
+Local request illustrations are bundled assets reused from Android. Message book cards read metadata through the existing book repository; content is held in view state and the inbox is recreated on account revision. Message formatting is local, with no analytics or new upload. Linked images load inline only for HTTPS public images on the existing `ekitapligim.com`/`www.ekitapligim.com` hosts, without adding an Authorization header. External links require an explicit user tap and open through the system URL handler.
+
+Private conversation image attachments use the existing authorized conversation-detail endpoint and server membership checks. Their bounded image transport disables redirects, cookies and persistent cache; display pixels are downsampled to 2048px and held only in memory. Account/source changes clear the displayed image and invalidate pending results. No Files export, photo-library write, new upload, tracker or SDK was added. Existing user-content/PhotosorVideos declarations, privacy manifest and entitlements remain applicable and unchanged. Native ImageIO/SwiftUI validation is pending; [deep review](DEEP_REVIEW_20261115.md).
+
 ## Agenda photos (2026-11-03)
 
 PhotosPicker returns only the image explicitly selected by the user; no broad library or camera permission is added. A bounded, orientation-correct 2048px JPEG is prepared in memory without copying EXIF/GPS metadata. The file is uploaded to the existing first-party agenda POST only when Share is pressed, stored as XenForo Social user content, and follows the post's existing visibility/moderation/deletion policy. Failed creation cleans its pending attachment. Drafts and decoded images are memory-only; account change clears the selected draft and restarts image loading.

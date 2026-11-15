@@ -97,8 +97,8 @@ public struct DeepLinkParser: Sendable {
 
     public func parse(_ rawURL: String) -> AppRoute? {
         guard let url = URL(string: rawURL) else { return nil }
-        let host = (url.host ?? "").replacingOccurrences(of: "www.", with: "")
-        if !host.isEmpty, host.lowercased() != "ekitapligim.com" { return nil }
+        let host = (url.host ?? "").lowercased()
+        if !host.isEmpty, !["ekitapligim.com", "www.ekitapligim.com"].contains(host) { return nil }
         let segments = url.path.split(separator: "/").map(String.init)
         guard let first = segments.first?.lowercased() else { return host.isEmpty ? nil : .home }
         let id = segments.last.flatMap(Self.trailingID)

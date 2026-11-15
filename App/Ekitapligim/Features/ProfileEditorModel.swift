@@ -69,13 +69,21 @@ final class ProfileEditorModel: ObservableObject {
         }
     }
 
+    /// The server only accepts http(s) URLs. "www.example.com" would be rejected outright,
+    /// so a bare host gets an https scheme; anything else is sent unchanged for validation.
+    static func normalizedWebsite(_ raw: String) -> String {
+        let value = String(raw.trimmingCharacters(in: .whitespacesAndNewlines).prefix(200))
+        guard !value.isEmpty, !value.contains("://"), !value.contains(" "), value.contains(".") else { return value }
+        return String(("https://" + value).prefix(200))
+    }
+
     func save() async -> ProfileDTO? {
         guard canSave, let saveProfile else { return nil }
         let requestID = generation
         let fields = ProfileEditorFields(
             about: String(about.prefix(5_000)).trimmingCharacters(in: .whitespacesAndNewlines),
             location: String(location.prefix(100)).trimmingCharacters(in: .whitespacesAndNewlines),
-            website: String(website.prefix(200)).trimmingCharacters(in: .whitespacesAndNewlines),
+            website: Self.normalizedWebsite(website),
             activityVisible: activityVisible)
         isSaving = true
         errorMessage = nil

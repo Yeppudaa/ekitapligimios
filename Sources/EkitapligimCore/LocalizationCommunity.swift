@@ -373,6 +373,7 @@ public extension L10n {
     static var agendaPostOptions: String { tr("agenda.postOptions", "Paylaşım seçenekleri") }
     static var agendaCommentOptions: String { tr("agenda.commentOptions", "Yorum seçenekleri") }
     static var agendaFollowing: String { tr("agenda.following", "Takipte") }
+    static var agendaReadMore: String { tr("agenda.readMore", "Devamını gör") }
     static var agendaProgressLabel: String { tr("agenda.progressLabel", "Okuma ilerlemesi") }
     static func agendaPageLabel(_ page: Int) -> String { String(format: tr("agenda.pageLabel", "Sayfa %d"), page) }
     static func agendaQuotedFrom(_ username: String) -> String {

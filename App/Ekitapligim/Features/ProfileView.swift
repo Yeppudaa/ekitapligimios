@@ -11,11 +11,10 @@ struct ProfileView: View {
     @State private var section: ProfileSection = .profile
     @State private var posts: [ForumPostDTO] = []
     @State private var isLoadingPosts = false
+    @State private var postsFailed = false
+    @State private var postsSession: UUID?
     @State private var errorMessage: String?
-    @State private var statusMessage: String?
     @State private var authSheetMode: AuthFormMode?
-    @State private var showingDeleteConfirmation = false
-    @State private var isSubmittingDeletion = false
     @State private var route: ProfileRoute?
     @State private var libraryRefreshSession: UUID?
 
@@ -73,6 +72,7 @@ struct ProfileView: View {
             case .premium: PremiumView()
             case .settings: SettingsView()
             case .blockedMembers: BlockedMembersView()
+            case .deleteAccount: DeleteAccountView()
             case .security:
                 AccountSecurityView(currentEmail: profile?.email ?? "") {
                     Task { await container.refreshSessionData() }
@@ -85,6 +85,7 @@ struct ProfileView: View {
             container.pendingProfileLibraryTab = nil
         }
         .task(id: container.sessionRevision) {
+            resetAccountScopedState()
             await initialLoad()
             await refreshLibraryIfNeeded()
         }
@@ -92,14 +93,17 @@ struct ProfileView: View {
             if phase == .active { Task { await refreshLibraryIfNeeded() } }
         }
         .refreshable { await refresh() }
-        .alert(L10n.profileDeleteRequest, isPresented: $showingDeleteConfirmation) {
-            Button(L10n.commonDismiss, role: .cancel) {}
-            Button(L10n.profileDeleteRequestConfirm, role: .destructive) {
-                Task { await submitDeletionRequest() }
-            }
-        } message: {
-            Text(L10n.profileDeleteRequestMessage)
-        }
+    }
+
+    /// Posts belong to one account; signing in as someone else must never show them.
+    private func resetAccountScopedState() {
+        guard postsSession != container.sessionRevision else { return }
+        postsSession = container.sessionRevision
+        posts = []
+        postsFailed = false
+        isLoadingPosts = false
+        errorMessage = nil
+        section = .profile
     }
 
     private var signedInContent: some View {
@@ -109,9 +113,6 @@ struct ProfileView: View {
                     EKInlineError(message: errorMessage, retryTitle: L10n.commonRetry) {
                         Task { await refresh() }
                     }
-                }
-                if let statusMessage {
-                    successBanner(statusMessage)
                 }
 
                 ProfileHero(profile: profile, subscription: subscription)
@@ -229,17 +230,18 @@ struct ProfileView: View {
             }
             .buttonStyle(.plain)
 
+            // The server requires the current password for password accounts; the dedicated
+            // screen collects it with an explicit confirmation instead of sending an empty request.
             Button {
-                showingDeleteConfirmation = true
+                route = .deleteAccount
             } label: {
-                Text(isSubmittingDeletion ? L10n.commonLoading : L10n.profileDeleteRequest)
+                Text(L10n.profileDeleteRequest)
                     .font(.caption.weight(.semibold))
                     .foregroundStyle(EKitapligimPalette.danger)
-                    .frame(maxWidth: .infinity)
-                    .padding(.vertical, 8)
+                    .frame(maxWidth: .infinity, minHeight: 44)
             }
             .buttonStyle(.plain)
-            .disabled(isSubmittingDeletion)
+            .accessibilityIdentifier("profile.deleteAccount")
         }
         .padding(.top, 4)
     }
@@ -285,6 +287,10 @@ struct ProfileView: View {
             if isLoadingPosts && posts.isEmpty {
                 EKSkeletonCard(height: 90)
                 EKSkeletonCard(height: 90)
+            } else if postsFailed && posts.isEmpty {
+                EKInlineError(message: L10n.profileLoadFailed, retryTitle: L10n.commonRetry) {
+                    Task { await loadPostsIfNeeded() }
+                }
             } else if posts.isEmpty {
                 ProfileEmptyState(message: L10n.profilePostsEmpty)
             } else {
@@ -338,20 +344,6 @@ struct ProfileView: View {
         }
     }
 
-    private func successBanner(_ message: String) -> some View {
-        HStack(spacing: 10) {
-            Image(systemName: "checkmark.circle.fill")
-                .foregroundStyle(EKitapligimPalette.successInk)
-            Text(message)
-                .font(.caption)
-                .foregroundStyle(EKitapligimPalette.successInk)
-            Spacer(minLength: 0)
-        }
-        .padding(12)
-        .background(EKitapligimPalette.successSoft)
-        .clipShape(RoundedRectangle(cornerRadius: 13, style: .continuous))
-    }
-
     // MARK: Veri
 
     /// Falls back to the stats embedded in the profile payload when `me/reading-stats` is not deployed.
@@ -383,19 +375,17 @@ struct ProfileView: View {
 
     private func loadPostsIfNeeded() async {
         guard container.isSignedIn, posts.isEmpty, !isLoadingPosts else { return }
+        let session = container.sessionRevision
         isLoadingPosts = true
-        defer { isLoadingPosts = false }
-        posts = (try? await container.profile.comments(page: 1).comments) ?? []
-    }
-
-    private func submitDeletionRequest() async {
-        isSubmittingDeletion = true
-        defer { isSubmittingDeletion = false }
+        postsFailed = false
+        defer { if session == container.sessionRevision { isLoadingPosts = false } }
         do {
-            try await container.requestAccountDeletion(currentPassword: nil, reason: nil)
-            statusMessage = L10n.profileDeleteRequestSent
+            let loaded = try await container.profile.comments(page: 1).comments
+            guard session == container.sessionRevision, !Task.isCancelled else { return }
+            posts = loaded
         } catch {
-            errorMessage = L10n.profileDeleteRequestFailed
+            guard session == container.sessionRevision, !Task.isCancelled else { return }
+            postsFailed = true
         }
     }
 }
@@ -433,6 +423,7 @@ private enum ProfileRoute: Hashable, Identifiable {
     case settings
     case security
     case blockedMembers
+    case deleteAccount
 
     var id: String { String(describing: self) }
 }

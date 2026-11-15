@@ -184,17 +184,20 @@ public struct BookRequestDTO: Decodable, Equatable, Identifiable, Sendable {
 
 public struct BookRequestsPageDTO: Decodable, Equatable, Sendable {
     public let items: [BookRequestDTO]
+    public let requestQuota: BookRequestQuotaDTO?
 
     public init(from decoder: Decoder) throws {
         let container = try decoder.container(keyedBy: CodingKeys.self)
         self.items = try container.decodeIfPresent([BookRequestDTO].self, forKey: .bookRequests)
             ?? container.decodeIfPresent([BookRequestDTO].self, forKey: .items)
             ?? []
+        self.requestQuota = try container.decodeIfPresent(BookRequestQuotaDTO.self, forKey: .requestQuota)
     }
 
     private enum CodingKeys: String, CodingKey {
         case bookRequests
         case items
+        case requestQuota
     }
 }
 
@@ -235,6 +238,39 @@ public struct ConversationMessageDTO: Decodable, Equatable, Identifiable, Sendab
     public let messageDate: Int
     public let avatarUrl: String
     public let isMine: Bool
+    public let richMessage: String?
+    public let images: [ConversationImageDTO]
+
+    public init(from decoder: Decoder) throws {
+        let values = try decoder.container(keyedBy: CodingKeys.self)
+        id = try values.decodeFlexibleString(forKey: .id, fallbackKeys: [.messageId])
+        conversationId = values.decodeFlexibleInt(forKey: .conversationId)
+        userId = values.decodeFlexibleInt(forKey: .userId)
+        username = try values.decodeIfPresent(String.self, forKey: .username) ?? ""
+        message = try values.decodeIfPresent(String.self, forKey: .message) ?? ""
+        messageDate = try values.decodeIfPresent(Int.self, forKey: .messageDate) ?? 0
+        avatarUrl = try values.decodeIfPresent(String.self, forKey: .avatarUrl) ?? ""
+        isMine = try values.decodeIfPresent(Bool.self, forKey: .isMine) ?? false
+        richMessage = try values.decodeIfPresent(String.self, forKey: .messageRaw)
+            ?? values.decodeIfPresent(String.self, forKey: .richMessage)
+        images = (try? values.decode([ConversationImageDTO].self, forKey: .images)) ?? []
+    }
+
+    private enum CodingKeys: String, CodingKey {
+        case id, messageId, conversationId, userId, username, message, messageDate, avatarUrl, isMine
+        case messageRaw, richMessage, images
+    }
+}
+
+public struct ConversationImageDTO: Decodable, Equatable, Identifiable, Sendable {
+    public let id: String
+    public let filename: String
+    public init(from decoder: Decoder) throws {
+        let values = try decoder.container(keyedBy: CodingKeys.self)
+        id = try values.decodeFlexibleString(forKey: .id)
+        filename = try values.decodeIfPresent(String.self, forKey: .filename) ?? ""
+    }
+    private enum CodingKeys: String, CodingKey { case id, filename }
 }
 
 public struct ConversationDTO: Decodable, Equatable, Identifiable, Sendable {
@@ -311,6 +347,22 @@ public struct ConversationsPageDTO: Decodable, Equatable, Sendable {
 public struct ConversationDetailDTO: Decodable, Equatable, Sendable {
     public let conversation: ConversationDTO
     public let messages: [ConversationMessageDTO]
+    public let currentPage: Int
+    public let lastPage: Int
+
+    public init(conversation: ConversationDTO, messages: [ConversationMessageDTO], currentPage: Int = 1, lastPage: Int = 1) {
+        self.conversation = conversation; self.messages = messages
+        self.currentPage = currentPage; self.lastPage = lastPage
+    }
+    public init(from decoder: Decoder) throws {
+        let values = try decoder.container(keyedBy: CodingKeys.self)
+        conversation = try values.decode(ConversationDTO.self, forKey: .conversation)
+        messages = try values.decodeIfPresent([ConversationMessageDTO].self, forKey: .messages) ?? []
+        let pagination = try values.decodeIfPresent(DirectoryPaginationDTO.self, forKey: .pagination)
+        currentPage = max(1, pagination?.page ?? 1)
+        lastPage = max(currentPage, pagination?.pages ?? 1)
+    }
+    private enum CodingKeys: String, CodingKey { case conversation, messages, pagination }
 }
 
 public struct ConversationReplyDTO: Decodable, Equatable, Sendable {

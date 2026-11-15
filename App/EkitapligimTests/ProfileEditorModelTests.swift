@@ -198,6 +198,22 @@ final class ProfileEditorModelTests: XCTestCase {
         XCTAssertNil(model.errorMessage)
     }
 
+    func testBareWebsiteHostGetsHTTPSBecauseServerRejectsSchemelessURLs() async throws {
+        let account = try profile()
+        let box = ProfileEditorFieldsBox()
+        let model = ProfileEditorModel()
+        model.configure(profile: account, sessionID: UUID(), save: { box.fields = $0; return account }, upload: { _, _ in })
+        for (typed, sent) in [("  www.example.com/kitap ", "https://www.example.com/kitap"),
+                              ("example.com", "https://example.com"),
+                              ("http://example.com", "http://example.com"),
+                              ("https://example.com", "https://example.com"),
+                              ("", ""), ("not a site", "not a site")] {
+            model.website = typed
+            _ = await model.save()
+            XCTAssertEqual(box.fields?.website, sent, typed)
+        }
+    }
+
     private func configure(_ model: ProfileEditorModel, profile: ProfileDTO?, session: UUID) {
         model.configure(profile: profile, sessionID: session, save: { _ in
             guard let profile else { throw ProfileEditorTestError.offline }; return profile
@@ -234,3 +250,5 @@ private actor ProfileSaveGate {
     func run() async -> ProfileDTO { await withCheckedContinuation { continuation = $0; started.fulfill() } }
     func release() { continuation?.resume(returning: value); continuation = nil }
 }
+
+private final class ProfileEditorFieldsBox: @unchecked Sendable { var fields: ProfileEditorFields? }

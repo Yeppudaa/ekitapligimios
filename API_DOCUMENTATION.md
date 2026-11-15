@@ -1,5 +1,15 @@
 # iOS API Documentation
 
+## Reading-room presentation (2026-11-15)
+
+The existing `GET book-requests` response can include `request_quota`: `is_premium`, `limit`, `used`, `remaining`, `can_request`, `resets_at` (Unix seconds), and `timezone` (IANA identifier). iOS displays the server's allowance and renewal date without updating membership or enforcing a local monthly counter. Absent quota preserves the legacy request form. This route already delegates to MobileApi; no server code or endpoint was changed in this design pass.
+
+Conversation messages decode the deployed `message_raw` field first, then optional `rich_message`; legacy `message` and inbox `preview` remain fallbacks. The presentation layer converts book embeds, URL/IMG BBCode and HTML anchors into plain copy and native cards. Book metadata uses the existing book repository and permission checks. Only HTTPS links are actionable; supported first-party book links open native details. First-party public image URLs can display inline without a bearer; external images stay explicit browser links. URLs beyond the ten-card rendering limit remain in selectable message text.
+
+The existing `GET conversation-detail/{id}` returns the latest page by default. Optional `page=N` requests earlier pages; `pagination.page` and `pagination.pages` drive the native load-earlier action. The client validates conversation/page identities and merges message IDs chronologically. `images: [{id, filename}]` entries use `GET conversation-detail/{id}?image_id={attachment_id}` through the authorized first-party transport. The existing server checks conversation membership and exact message/attachment association. Redirects, cookies and persistent cache are disabled; bytes are capped at 20 MiB and image MIME is validated. No new route or server implementation was introduced.
+
+Message replies and request votes require an explicit successful acknowledgement. Drafts survive failures and typing during an in-flight request. Account changes and stale refreshes cannot overwrite current state. A `book_request_monthly_limit` rejection refreshes the real quota; no client-side renewal date is invented. See [deep review and verification](DEEP_REVIEW_20261115.md).
+
 ## Premium profile decoration (2026-11-03)
 
 `MemberDTO` now reads existing `is_premium` and `role_type` fields, including nested `role` fallback, for the visited member's premium frame. A premium flag or `role_type=premium` enables decoration. The username, custom title, staff flag and verification badge alone do not imply premium. Existing own-profile subscription precedence applies. [Validation](PREMIUM_AVATAR_VALIDATION.md).

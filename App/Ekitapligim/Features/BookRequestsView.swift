@@ -3,29 +3,22 @@ import EkitapligimCore
 
 @MainActor
 struct BookRequestsView: View {
+    @StateObject private var model = BookRequestsModel()
+    @State private var pendingAccess: BookRequestAccessPresentation?
     @EnvironmentObject private var container: AppContainer
     @Environment(\.dynamicTypeSize) private var dynamicTypeSize
 
-    @State private var items: [BookRequestDTO] = []
-    @State private var isLoading = true
-    @State private var errorMessage: String?
-    @State private var operationError: String?
-    @State private var createError: String?
-    @State private var statusMessage: String?
     @State private var showCreateSheet = false
     @State private var showLoginAlert = false
     @State private var showingLogin = false
-    @State private var isSubmitting = false
-    @State private var votingID: String?
-    @State private var draftTitle = ""
-    @State private var draftAuthor = ""
-    @State private var draftISBN = ""
     @State private var query = ""
     @State private var selectedStatus = ""
+    @State private var accessPresentation: BookRequestAccessPresentation?
+    @State private var routeAfterAccess: AppRoute?
 
     private var visibleItems: [BookRequestDTO] {
         let search = query.trimmingCharacters(in: .whitespacesAndNewlines)
-        return items.filter { item in
+        return model.items.filter { item in
             (item.userId.map { !container.blockedUserIDs.contains($0) } ?? true)
             && (selectedStatus.isEmpty || item.status.uppercased() == selectedStatus)
             && (search.isEmpty || item.title.localizedStandardContains(search) || item.author.localizedStandardContains(search))
@@ -33,7 +26,7 @@ struct BookRequestsView: View {
     }
 
     private var featuredRequest: BookRequestDTO? {
-        items.filter { item in
+        model.items.filter { item in
             item.allowsVote && (item.userId.map { !container.blockedUserIDs.contains($0) } ?? true)
         }.max { $0.voteCount < $1.voteCount }
     }
@@ -41,9 +34,9 @@ struct BookRequestsView: View {
     var body: some View {
         EKitapligimScreen {
             Group {
-                if isLoading && items.isEmpty {
+                if model.isLoading && model.items.isEmpty {
                     EKLoadingState(message: L10n.bookRequestsLoading)
-                } else if let errorMessage, items.isEmpty {
+                } else if let errorMessage = model.errorMessage, model.items.isEmpty {
                     EKErrorState(
                         title: L10n.bookRequestsUnavailableTitle,
                         message: errorMessage,
@@ -70,23 +63,30 @@ struct BookRequestsView: View {
                 .accessibilityIdentifier("requests.create.open")
             }
         }
-        .task { await load() }
+        .task(id: container.sessionRevision) {
+            configureModel()
+            await load()
+        }
+        .onChange(of: container.sessionRevision) { _, _ in
+            configureModel()
+            accessPresentation = nil; pendingAccess = nil; routeAfterAccess = nil; showCreateSheet = false
+        }
         .refreshable { await load() }
         .alert(L10n.commonSuccess, isPresented: Binding(
-            get: { statusMessage != nil },
-            set: { if !$0 { statusMessage = nil } }
+            get: { model.statusMessage != nil && !showCreateSheet },
+            set: { if !$0 { model.statusMessage = nil } }
         )) {
-            Button(L10n.commonClose) { statusMessage = nil }
+            Button(L10n.commonClose) { model.statusMessage = nil }
         } message: {
-            Text(statusMessage ?? "")
+            Text(model.statusMessage ?? "")
         }
         .alert(L10n.bookRequestsActionFailedTitle, isPresented: Binding(
-            get: { operationError != nil },
-            set: { if !$0 { operationError = nil } }
+            get: { model.operationError != nil },
+            set: { if !$0 { model.operationError = nil } }
         )) {
-            Button(L10n.commonClose) { operationError = nil }
+            Button(L10n.commonClose) { model.operationError = nil }
         } message: {
-            Text(operationError ?? L10n.bookRequestsActionFailedMessage)
+            Text(model.operationError ?? L10n.bookRequestsActionFailedMessage)
         }
         .alert(L10n.bookRequestsLoginRequiredTitle, isPresented: $showLoginAlert) {
             Button(L10n.commonCancel, role: .cancel) {}
@@ -95,14 +95,28 @@ struct BookRequestsView: View {
             Text(L10n.bookRequestsLoginRequiredMessage)
         }
         .sheet(isPresented: $showingLogin) { LoginView() }
-        .sheet(isPresented: $showCreateSheet) {
+        .sheet(item: $accessPresentation, onDismiss: {
+            if let route = routeAfterAccess {
+                routeAfterAccess = nil
+                container.open(route: route)
+            }
+        }) { presentation in
+            BookRequestAccessView(presentation: presentation,
+                onClose: { accessPresentation = nil },
+                onPremium: { closeAccess(opening: .premium) },
+                onCatalog: { closeAccess(opening: .catalog) },
+                onAudio: { closeAccess(opening: .audiobooks) })
+        }
+        .sheet(isPresented: $showCreateSheet, onDismiss: {
+            if let pendingAccess { accessPresentation = pendingAccess; self.pendingAccess = nil }
+        }) {
             BookRequestCreateSheet(
-                title: $draftTitle,
-                author: $draftAuthor,
-                isbn: $draftISBN,
+                title: $model.draftTitle,
+                author: $model.draftAuthor,
+                isbn: $model.draftISBN,
                 isSignedIn: container.isSignedIn,
-                isSubmitting: isSubmitting,
-                errorMessage: createError,
+                isSubmitting: model.isSubmitting,
+                errorMessage: model.createError,
                 onCancel: { showCreateSheet = false },
                 onSubmit: { Task { await submitRequest() } }
             )
@@ -135,26 +149,26 @@ struct BookRequestsView: View {
                         VStack(alignment: .leading, spacing: 12) {
                             Label(CommunityRefreshL10n.text("requests.featured"), systemImage: "star")
                                 .font(.caption2.weight(.semibold)).foregroundStyle(Color(hex: 0x867142))
-                            BookRequestRow(item: featuredRequest, isVoting: votingID == featuredRequest.id) {
+                            BookRequestRow(item: featuredRequest, isVoting: model.votingID != nil) {
                                 Task { await vote(on: featuredRequest) }
                             } onBlocked: {
-                                if let userID = featuredRequest.userId { items.removeAll { $0.userId == userID } }
+                                if let userID = featuredRequest.userId { model.removeUser(userID) }
                             }
                         }
                         .padding(14).background(Color(hex: 0xF4F3E3), in: RoundedRectangle(cornerRadius: 20))
                     }
                     collectionHeader.id("request-collection")
                     requestFilters
-                    if let errorMessage { EKInlineError(message: errorMessage) }
+                    if let errorMessage = model.errorMessage { EKInlineError(message: errorMessage) }
                     if visibleItems.isEmpty {
                         EKStateCard(title: L10n.bookRequestsEmptyTitle, message: CommunityRefreshL10n.count("requests.count", 0))
                     } else {
                         LazyVGrid(columns: dynamicTypeSize.isAccessibilitySize ? [GridItem(.flexible())] : [GridItem(.adaptive(minimum: 230), spacing: 14)], spacing: 14) {
                         ForEach(visibleItems) { item in
-                            BookRequestRow(item: item, isVoting: votingID == item.id) {
+                            BookRequestRow(item: item, isVoting: model.votingID != nil) {
                                 Task { await vote(on: item) }
                             } onBlocked: {
-                                if let userID = item.userId { items.removeAll { $0.userId == userID } }
+                                if let userID = item.userId { model.removeUser(userID) }
                             }
                         }
                         }
@@ -175,10 +189,10 @@ struct BookRequestsView: View {
 
     private var requestStats: some View {
         let metrics: [(String, Int, String)] = [
-            ("requests.pending", items.filter { $0.allowsVote }.count, "hourglass"),
-            ("requests.acquired", items.filter { $0.isAcquired }.count, "checkmark"),
-            ("requests.rejected", items.filter { $0.status.uppercased() == "REJECTED" }.count, "shield"),
-            ("requests.support", items.reduce(0) { $0 + $1.voteCount }, "heart")
+            ("requests.pending", model.items.filter { $0.allowsVote }.count, "hourglass"),
+            ("requests.acquired", model.items.filter { $0.isAcquired }.count, "checkmark"),
+            ("requests.rejected", model.items.filter { $0.status.uppercased() == "REJECTED" }.count, "shield"),
+            ("requests.support", model.items.reduce(0) { $0 + $1.voteCount }, "heart")
         ]
         return LazyVGrid(columns: dynamicTypeSize.isAccessibilitySize ? [GridItem(.flexible())] : [GridItem(.adaptive(minimum: 130), spacing: 10)], spacing: 10) {
             ForEach(metrics.indices, id: \.self) { index in
@@ -232,7 +246,7 @@ struct BookRequestsView: View {
                 Label(L10n.bookRequestsRequestAction, systemImage: "plus")
                     .font(.subheadline.weight(.semibold)).frame(maxWidth: .infinity, minHeight: 48)
                     .foregroundStyle(.white).background(Color(hex: 0x2B7569), in: RoundedRectangle(cornerRadius: 12))
-            }.buttonStyle(.plain).disabled(isSubmitting)
+            }.buttonStyle(.plain).disabled(model.isSubmitting)
         }
     }
 
@@ -267,57 +281,40 @@ struct BookRequestsView: View {
             showLoginAlert = true
             return
         }
-        draftTitle = ""
-        draftAuthor = ""
-        draftISBN = ""
-        createError = nil
+        configureModel()
+        if let explanation = model.prepareCreation() {
+            accessPresentation = explanation
+            return
+        }
         showCreateSheet = true
     }
 
-    private func load() async {
-        errorMessage = nil
-        isLoading = true
-        defer { isLoading = false }
-        do {
-            items = try await container.bookRequests.requests().items
-        } catch {
-            errorMessage = L10n.bookRequestsLoadFailed
-        }
+    private func closeAccess(opening route: AppRoute) {
+        routeAfterAccess = route
+        accessPresentation = nil
     }
 
+    private func configureModel() {
+        model.configure(BookRequestsDependencies(repository: container.bookRequests),
+                        session: container.sessionRevision, signedIn: container.isSignedIn)
+    }
+
+    private func load() async { configureModel(); await model.load() }
+
     private func submitRequest() async {
-        let title = draftTitle.trimmed
-        let author = draftAuthor.trimmed
-        guard !title.isEmpty, !author.trimmed.isEmpty else { return }
-        guard container.isSignedIn else { return }
-        isSubmitting = true
-        createError = nil
-        defer { isSubmitting = false }
-        do {
-            _ = try await container.bookRequests.create(title: title, author: author, isbn: draftISBN.trimmed)
+        configureModel()
+        if await model.submit() {
             showCreateSheet = false
-            statusMessage = L10n.bookRequestsCreated
-            await load()
-        } catch {
-            createError = L10n.bookRequestsCreateFailed
+        } else if let explanation = model.accessExplanation {
+            pendingAccess = explanation
+            showCreateSheet = false
         }
     }
 
     private func vote(on item: BookRequestDTO) async {
-        guard item.allowsVote else { return }
-        guard container.isSignedIn else {
-            showLoginAlert = true
-            return
-        }
-        votingID = item.id
-        defer { votingID = nil }
-        do {
-            _ = try await container.bookRequests.toggleVote(id: item.id)
-            statusMessage = L10n.bookRequestsVoteSaved
-            await load()
-        } catch {
-            operationError = L10n.bookRequestsVoteFailed
-        }
+        guard container.isSignedIn else { showLoginAlert = true; return }
+        configureModel()
+        await model.vote(item)
     }
 }
 

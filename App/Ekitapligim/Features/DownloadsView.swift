@@ -12,7 +12,26 @@ struct DownloadsView: View {
 
 @MainActor
 private struct DownloadsContent: View {
+    @EnvironmentObject private var container: AppContainer
     @ObservedObject var manager: DownloadManager
+    /// Titles looked up from the public catalog for files not in the library. Display only.
+    @State private var fetchedTitles: [String: String] = [:]
+    @State private var pendingRemoval: PendingRemoval?
+
+    private struct PendingRemoval: Identifiable {
+        let bookID: String
+        let fileName: String
+        let title: String
+        var id: String { bookID }
+    }
+
+    private var downloadedIDs: [String] { manager.states.keys.sorted() }
+
+    private func title(for bookID: String) -> String? {
+        if let title = container.libraryItems.first(where: { $0.bookId == bookID })?.title
+            .trimmingCharacters(in: .whitespacesAndNewlines), !title.isEmpty { return title }
+        return fetchedTitles[bookID]
+    }
 
     var body: some View {
         EKitapligimScreen {
@@ -26,20 +45,13 @@ private struct DownloadsContent: View {
                 } else {
                     ScrollView {
                         LazyVStack(spacing: 12) {
-                            ForEach(manager.states.keys.sorted(), id: \.self) { bookID in
+                            ForEach(downloadedIDs, id: \.self) { bookID in
                                 let state = manager.states[bookID] ?? .notDownloaded
-                                DownloadStateRow(bookID: bookID, state: state, progress: manager.transferProgress[bookID])
-                                    .padding(14)
-                                    .ekitapligimCard(radius: 14)
+                                row(bookID: bookID, state: state)
                                     .contextMenu {
                                         if case .downloaded(let fileName) = state {
                                             Button(role: .destructive) {
-                                                Task {
-                                                    await manager.remove(
-                                                        bookID: bookID,
-                                                        fileExtension: URL(fileURLWithPath: fileName).pathExtension
-                                                    )
-                                                }
+                                                confirmRemoval(bookID: bookID, fileName: fileName)
                                             } label: {
                                                 Label(L10n.commonRemove, systemImage: "trash")
                                             }
@@ -54,21 +66,95 @@ private struct DownloadsContent: View {
             }
         }
         .navigationTitle(L10n.downloadsTitle)
+        .task(id: downloadedIDs) { await loadMissingTitles() }
+        .confirmationDialog(
+            L10n.commonRemove,
+            isPresented: Binding(get: { pendingRemoval != nil }, set: { if !$0 { pendingRemoval = nil } }),
+            titleVisibility: .visible,
+            presenting: pendingRemoval
+        ) { removal in
+            Button(L10n.commonRemove, role: .destructive) {
+                pendingRemoval = nil
+                Task {
+                    // Same removal path as before; only the confirmation is new.
+                    await manager.remove(bookID: removal.bookID,
+                                         fileExtension: URL(fileURLWithPath: removal.fileName).pathExtension)
+                }
+            }
+            Button(L10n.commonCancel, role: .cancel) { pendingRemoval = nil }
+        } message: { removal in
+            Text(removal.title)
+        }
+    }
+
+    /// The open link and the remove button are siblings, never nested, so each tap has one target.
+    private func row(bookID: String, state: DownloadState) -> some View {
+        HStack(alignment: .center, spacing: 10) {
+            details(bookID: bookID, state: state)
+            if case .downloaded(let fileName) = state {
+                Button {
+                    confirmRemoval(bookID: bookID, fileName: fileName)
+                } label: {
+                    Image(systemName: "trash")
+                        .font(.body.weight(.semibold))
+                        .foregroundStyle(EKitapligimPalette.danger)
+                        .frame(width: 44, height: 44)
+                }
+                .buttonStyle(.plain)
+                .accessibilityLabel(L10n.commonRemove)
+                .accessibilityIdentifier("downloads.remove.\(bookID)")
+            }
+        }
+        .padding(14)
+        .ekitapligimCard(radius: 14)
+    }
+
+    @ViewBuilder
+    private func details(bookID: String, state: DownloadState) -> some View {
+        let content = DownloadStateRow(title: title(for: bookID) ?? L10n.commonBookNumber(bookID),
+                                       state: state, progress: manager.transferProgress[bookID])
+        if Int(bookID).map({ $0 > 0 }) == true {
+            // Opens the normal book detail; reading still goes through the existing reader flow.
+            NavigationLink { BookDetailDestination(bookIDString: bookID) } label: {
+                content.contentShape(Rectangle())
+            }
+            .buttonStyle(.plain)
+            .accessibilityIdentifier("downloads.open.\(bookID)")
+        } else {
+            content
+        }
+    }
+
+    private func confirmRemoval(bookID: String, fileName: String) {
+        pendingRemoval = PendingRemoval(bookID: bookID, fileName: fileName,
+                                        title: title(for: bookID) ?? L10n.commonBookNumber(bookID))
+    }
+
+    private func loadMissingTitles() async {
+        let repository = container.books
+        for bookID in downloadedIDs where title(for: bookID) == nil {
+            guard !Task.isCancelled, let id = Int(bookID), id > 0 else { continue }
+            // Offline or unavailable books simply keep their number; nothing else depends on this.
+            guard let book = try? await repository.book(id: id), !Task.isCancelled else { continue }
+            let name = book.title.trimmingCharacters(in: .whitespacesAndNewlines)
+            if !name.isEmpty { fetchedTitles[bookID] = name }
+        }
     }
 }
 
 @MainActor
 private struct DownloadStateRow: View {
-    let bookID: String
+    let title: String
     let state: DownloadState
     let progress: BookTransferProgress?
 
     var body: some View {
         HStack {
             VStack(alignment: .leading, spacing: 4) {
-                Text(L10n.commonBookNumber(bookID))
+                Text(title)
                     .font(.headline)
                     .foregroundStyle(EKitapligimPalette.ink)
+                    .multilineTextAlignment(.leading)
                 Text(statusText)
                     .font(.caption)
                     .foregroundStyle(EKitapligimPalette.muted)

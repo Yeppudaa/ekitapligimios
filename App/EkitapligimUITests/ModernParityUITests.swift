@@ -468,9 +468,9 @@ final class ModernParityUITests: XCTestCase {
         XCTAssertTrue(firstCard.exists)
         let secondCard = app.descendants(matching: .any)["home.agenda.940002"].firstMatch
         XCTAssertTrue(secondCard.waitForExistence(timeout: 5), "Both eager agenda cards must have their real layout frames")
-        XCTAssertEqual(firstCard.frame.height, 300, accuracy: 1,
+        XCTAssertEqual(firstCard.frame.height, 368, accuracy: 1,
             "Home previews must stay compact even when the review contains a long message")
-        XCTAssertEqual(secondCard.frame.height, 300, accuracy: 1)
+        XCTAssertEqual(secondCard.frame.height, 368, accuracy: 1)
         XCTAssertEqual(firstCard.frame.width, secondCard.frame.width, accuracy: 1,
             "A long review and a short note must use equal rail card widths")
         XCTAssertEqual(firstCard.frame.height, secondCard.frame.height, accuracy: 1,

@@ -40,6 +40,7 @@ struct ReaderView: View {
     @State private var showsPreviewLimitDialog = false
     @State private var previewPresentation = ReaderPreviewPresentation()
     @State private var pendingPremiumAfterLimitDismiss = false
+    @State private var showsPositionResetNotice = false
 
     init(book: BookDTO, onPremium: (() -> Void)? = nil) {
         self.book = book
@@ -110,6 +111,24 @@ struct ReaderView: View {
                             .accessibilityIdentifier("reader.focusProgress")
                     }
                 }
+            }
+        }
+        .overlay(alignment: .top) {
+            if showsPositionResetNotice, readerURL != nil, !isLoading, errorMessage == nil {
+                Text(ReaderL10n.text("positionReset"))
+                    .font(.footnote.weight(.medium))
+                    .foregroundStyle(paperTheme.ink)
+                    .multilineTextAlignment(.center)
+                    .fixedSize(horizontal: false, vertical: true)
+                    .padding(.horizontal, 16).padding(.vertical, 10)
+                    .background(paperTheme.panel, in: RoundedRectangle(cornerRadius: 14))
+                    .padding(.horizontal, 24).padding(.top, 64)
+                    .onTapGesture { showsPositionResetNotice = false }
+                    .accessibilityIdentifier("reader.positionReset")
+                    .task {
+                        try? await Task.sleep(for: .seconds(6))
+                        showsPositionResetNotice = false
+                    }
             }
         }
         .background(paperTheme.paper)
@@ -253,7 +272,8 @@ struct ReaderView: View {
             }
         } else if let url = readerURL, readerFileType == "epub" {
             EPUBReaderView(sourceURL: url, progressPercent: $epubProgressPercent, position: $epubPosition,
-                initialPosition: initialPosition, paperTheme: paperTheme, onPositionChange: recordPosition, onFlush: {
+                initialPosition: initialPosition, paperTheme: paperTheme, onPositionChange: recordPosition,
+                onSavedPositionUnavailable: { showsPositionResetNotice = true }, onFlush: {
                     if let bookID { await container.readerProgressSync.flush(bookID: bookID) }
                 }, onCaptureFailure: {
                     if let bookID { container.readerProgressSync.captureFailed(bookID: bookID) }
@@ -453,6 +473,7 @@ struct ReaderView: View {
         previewPresentation = ReaderPreviewPresentation()
         showsPreviewLimitDialog = false
         pendingPremiumAfterLimitDismiss = false
+        showsPositionResetNotice = false
         preparedPDF = nil
         defer { if loadGeneration == generation { isLoading = false } }
         do {
@@ -475,7 +496,7 @@ struct ReaderView: View {
             guard !Task.isCancelled, loadGeneration == generation else { return }
 
             if let localFile = container.downloadManager.localFile(for: book.id) {
-                try validateInitialPosition(fileType: localFile.fileType)
+                discardUnusableInitialPosition(fileType: localFile.fileType)
                 let document = try await preparePDFIfNeeded(at: localFile.url, fileType: localFile.fileType)
                 guard !Task.isCancelled, loadGeneration == generation else { return }
                 readerFileType = localFile.fileType
@@ -506,8 +527,7 @@ struct ReaderView: View {
                 return
             }
             let resolvedType = DownloadFilePolicy.sniffedFileExtension(at: localURL) ?? fileType
-            do { try validateInitialPosition(fileType: resolvedType) }
-            catch { container.readerContentLoader.removePreparedFile(at: localURL); throw error }
+            discardUnusableInitialPosition(fileType: resolvedType)
             let document: PreparedPDFDocument?
             do { document = try await preparePDFIfNeeded(at: localURL, fileType: resolvedType) }
             catch { container.readerContentLoader.removePreparedFile(at: localURL); throw error }
@@ -537,10 +557,14 @@ struct ReaderView: View {
         }
     }
 
-    private func validateInitialPosition(fileType: String) throws {
-        if let initialPosition, !initialPosition.isValid || initialPosition.positionType != fileType {
-            throw EPUBPositionError.invalidCFI
-        }
+    /// A saved position that cannot be used with this file (corrupt, or saved for another format after the
+    /// server replaced the file) used to block the book permanently. Open from the start instead.
+    /// Opening writes nothing: PDF and EPUB record a position only after the reader actually moves,
+    /// so the saved record is never overwritten automatically.
+    private func discardUnusableInitialPosition(fileType: String) {
+        guard let position = initialPosition, !position.isValid || position.positionType != fileType else { return }
+        initialPosition = nil
+        showsPositionResetNotice = true
     }
 
     private func preparePDFIfNeeded(at url: URL, fileType: String) async throws -> PreparedPDFDocument? {

@@ -52,7 +52,12 @@ final class AgendaMediaUITests: XCTestCase {
         let card = app.buttons["agenda.open.940001"]
         reveal(card, in: app, scrollID: "home.scroll")
         XCTAssertEqual(card.value as? String, "1 fotoğraf")
-        XCTAssertGreaterThan(card.frame.height, 300)
+        let media = app.buttons["agenda.media.940001"]
+        let wholeCard = app.descendants(matching: .any)["home.agenda.940001"].firstMatch
+        XCTAssertTrue(media.exists)
+        XCTAssertGreaterThan(media.frame.height, 130)
+        XCTAssertGreaterThan(wholeCard.frame.height, 300)
+        XCTAssertLessThanOrEqual(card.frame.maxY, wholeCard.frame.maxY + 1)
         capture(app, "agenda-photo-home")
         card.tap()
         XCTAssertTrue(app.scrollViews["agenda.detail.scroll"].waitForExistence(timeout: 8))

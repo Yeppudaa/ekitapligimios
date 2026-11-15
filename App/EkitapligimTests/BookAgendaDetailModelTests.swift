@@ -4,6 +4,65 @@ import EkitapligimCore
 
 @MainActor
 final class BookAgendaDetailModelTests: XCTestCase {
+    func testPendingPostRefreshCannotOverwriteEditedComment() async throws {
+        let model = BookAgendaDetailModel()
+        let original = try Self.comment()
+        let post = try Self.post(comments: [original])
+        await model.load(fetchPost: { post }, fetchComments: { [original] })
+        let started = expectation(description: "Pending refresh before edit")
+        let pending = AgendaDetailSuspendedRequest(value: post, started: started)
+        let refresh = Task { await model.load(fetchPost: { await pending.run() }, fetchComments: { [original] }) }
+        await fulfillment(of: [started], timeout: 3)
+        let edited = try Self.comment(message: "Düzenlenmiş yorum")
+        model.updateComment(edited)
+        await pending.release(); await refresh.value
+        XCTAssertEqual(model.comments.first?.message, "Düzenlenmiş yorum")
+        XCTAssertEqual(model.post?.comments.first?.message, "Düzenlenmiş yorum")
+    }
+
+    func testRefreshDuringCommentSubmissionDoesNotUnlockSecondSubmission() async throws {
+        let model = BookAgendaDetailModel(); let original = try Self.post()
+        model.updatePost(original); model.draft = "Pending comment"
+        let started = expectation(description: "Pending comment")
+        let pending = AgendaDetailSuspendedRequest(value: try Self.comment(), started: started)
+        let send = Task { await model.submitComment { _ in await pending.run() } }
+        await fulfillment(of: [started], timeout: 3)
+        await model.load(fetchPost: { original }, fetchComments: { [] })
+        XCTAssertTrue(model.isSubmitting)
+        let counter = AgendaDetailMutationCounter()
+        let duplicate = await model.submitComment { _ in await counter.record(); return try Self.comment() }
+        let calls = await counter.calls
+        XCTAssertFalse(duplicate); XCTAssertEqual(calls, 0)
+        await pending.release(); let success = await send.value
+        XCTAssertTrue(success); XCTAssertEqual(model.comments.count, 1)
+    }
+
+    func testRefreshStartedBeforeNewCommentCannotEraseAcknowledgement() async throws {
+        let model = BookAgendaDetailModel(); let original = try Self.post()
+        model.updatePost(original)
+        let started = expectation(description: "Pending post read")
+        let pending = AgendaDetailSuspendedRequest(value: original, started: started)
+        let refresh = Task { await model.load(fetchPost: { await pending.run() }, fetchComments: { [] }) }
+        await fulfillment(of: [started], timeout: 3)
+        model.draft = "Saved comment"; let comment = try Self.comment()
+        let success = await model.submitComment { _ in comment }
+        await pending.release(); await refresh.value
+        XCTAssertTrue(success); XCTAssertEqual(model.comments.map(\.id), [comment.id])
+        XCTAssertEqual(model.post?.commentCount, 1)
+    }
+
+    func testBlockedCommentsAreNotReintroducedByPendingRefresh() async throws {
+        let model = BookAgendaDetailModel(); let comment = try Self.comment()
+        model.updatePost(try Self.post())
+        let started = expectation(description: "Pending comments")
+        let pending = AgendaDetailSuspendedRequest(value: [comment], started: started)
+        let refresh = Task { await model.loadComments { await pending.run() } }
+        await fulfillment(of: [started], timeout: 3)
+        model.removeComments(actorID: comment.actor.id)
+        await pending.release(); await refresh.value
+        XCTAssertTrue(model.comments.isEmpty)
+    }
+
     func testSecondaryCommentsFailureKeepsPostAndExposesRetryError() async throws {
         let model = BookAgendaDetailModel()
         let post = try Self.post(commentCount: 2)
@@ -258,10 +317,10 @@ final class BookAgendaDetailModelTests: XCTestCase {
             .updating(comments: comments)
     }
 
-    nonisolated private static func comment(id: String = "6") throws -> BookAgendaCommentDTO {
+    nonisolated private static func comment(id: String = "6", message: String = "Bu kitabı okudum.") throws -> BookAgendaCommentDTO {
         let data = try JSONSerialization.data(withJSONObject: [
             "id": id,
-            "message": "Bu kitabı okudum.",
+            "message": message,
             "actor": ["id": "7", "username": "Okur"],
             "viewer": ["can_edit": true, "can_delete": true]
         ])

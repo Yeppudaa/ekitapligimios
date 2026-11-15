@@ -731,18 +731,11 @@ struct BookDetailView: View {
     private var similarSection: some View {
         if !similarBooks.isEmpty {
             VStack(alignment: .leading, spacing: 12) {
-                HStack(spacing: 8) {
-                    Text(L10n.bookDetailSimilarBooks)
-                        .font(.system(.title3, design: .serif).weight(.heavy))
-                        .foregroundStyle(Color(hex: 0x0D3037))
-                    Spacer(minLength: 0)
-                    Text(L10n.homeSeeAll)
-                        .font(.subheadline.weight(.semibold))
-                        .foregroundStyle(Color(hex: 0x0D3037))
-                    Image(systemName: "chevron.right")
-                        .font(.subheadline.weight(.semibold))
-                        .foregroundStyle(Color(hex: 0x7D8A8F))
-                }
+                // No "see all" destination exists; a non-interactive "see all ›" label looked tappable.
+                Text(L10n.bookDetailSimilarBooks)
+                    .font(.system(.title3, design: .serif).weight(.heavy))
+                    .foregroundStyle(Color(hex: 0x0D3037))
+                    .accessibilityAddTraits(.isHeader)
                 ScrollView(.horizontal, showsIndicators: false) {
                     HStack(spacing: 12) {
                         ForEach(similarBooks.prefix(8)) { similar in
@@ -1007,6 +1000,12 @@ struct BookDetailView: View {
             )
         } catch {
             guard container.sessionRevision == sessionRevision, !Task.isCancelled else { return }
+            // A dropped connection or server outage is not a membership problem; the server had
+            // already allowed this download above.
+            if Self.isConnectionFailure(error) {
+                downloadStatusMessage = ReaderL10n.text("error.connection")
+                return
+            }
             if !container.isPremium {
                 showingDownloadPremiumAlert = true
                 return
@@ -1026,6 +1025,12 @@ struct BookDetailView: View {
         default:
             downloadStatusMessage = L10n.bookDetailDownloadStarted
         }
+    }
+
+    static func isConnectionFailure(_ error: Error) -> Bool {
+        if error is URLError { return true }
+        if case APIClientError.httpStatus(let status, _) = error { return status >= 500 || status == 408 }
+        return false
     }
 
     private func presentDeviceExport(for book: BookDTO) {

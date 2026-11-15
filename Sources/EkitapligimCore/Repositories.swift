@@ -62,8 +62,21 @@ public struct ConversationsRepository: Sendable {
         try await apiClient.request(.conversations(page: page), as: ConversationsPageDTO.self)
     }
 
-    public func conversation(id: String) async throws -> ConversationDetailDTO {
-        try await apiClient.request(.conversation(id: id), as: ConversationDetailDTO.self)
+    public func conversation(id: String, page: Int? = nil) async throws -> ConversationDetailDTO {
+        try await apiClient.request(.conversation(id: id, page: page), as: ConversationDetailDTO.self)
+    }
+
+    public func image(conversationID: String, imageID: String) async throws -> Data {
+        guard Int(conversationID).map({ $0 > 0 }) == true, Int(imageID).map({ $0 > 0 }) == true else {
+            throw AgendaMediaError.invalidImage
+        }
+        return try await apiClient.agendaImage(.conversationImage(id: conversationID, imageID: imageID))
+    }
+
+    public func publicImage(url: URL) async throws -> Data {
+        let link = ConversationContentPresentation("[IMG]\(url.absoluteString)[/IMG]").links.first
+        guard link?.inlineImageURL == url else { throw AgendaMediaError.invalidImage }
+        return try await apiClient.publicAgendaImage(url: url)
     }
 
     public func reply(id: String, message: String) async throws -> ConversationReplyDTO {

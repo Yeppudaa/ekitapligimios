@@ -9,16 +9,14 @@ struct ConversationsView: View {
 
 @MainActor
 private struct ConversationInboxView: View {
+    @Environment(\.colorScheme) private var scheme
+    private var style: ReadingRoomStyle { ReadingRoomStyle(scheme: scheme) }
     @EnvironmentObject private var container: AppContainer
-    @State private var conversations: [ConversationDTO] = []
-    @State private var currentPage = 0
-    @State private var lastPage = 1
-    @State private var isLoading = false
+    @StateObject private var model = ConversationInboxModel()
     @State private var showComposer = false
-    @State private var errorMessage: String?
 
     private var visibleConversations: [ConversationDTO] {
-        conversations.filter { conversation in
+        model.conversations.filter { conversation in
             let blocked = conversation.participants.contains { participant in
                 Int(participant.id).map(container.blockedUserIDs.contains) == true
             }
@@ -31,63 +29,55 @@ private struct ConversationInboxView: View {
             LazyVStack(alignment: .leading, spacing: 16) {
                 VStack(alignment: .leading, spacing: 15) {
                     Label(CommunityDesignL10n.text("messages.eyebrow"), systemImage: "envelope.fill")
-                        .font(.caption2.weight(.bold)).tracking(1.5).foregroundStyle(CommunityStyle.teal)
+                        .font(.caption2.weight(.bold)).tracking(1.5).foregroundStyle(style.accent)
                     Text(CommunityDesignL10n.text("messages.hero"))
-                        .font(.system(.largeTitle, design: .serif).bold()).foregroundStyle(CommunityStyle.ink)
+                        .font(.system(.largeTitle, design: .serif).bold()).foregroundStyle(style.ink)
                         .fixedSize(horizontal: false, vertical: true)
                     Text(CommunityDesignL10n.text("messages.subtitle"))
-                        .font(.subheadline).foregroundStyle(CommunityStyle.muted)
+                        .font(.subheadline).foregroundStyle(style.muted)
                 }
                 .padding(22).frame(maxWidth: .infinity, alignment: .leading)
-                .background(LinearGradient(colors: [CommunityStyle.soft, CommunityStyle.cream],
+                .background(LinearGradient(colors: [style.soft, style.paper],
                                            startPoint: .topLeading, endPoint: .bottomTrailing),
                             in: RoundedRectangle(cornerRadius: 26))
-                .overlay { RoundedRectangle(cornerRadius: 26).strokeBorder(CommunityStyle.border) }
+                .overlay { RoundedRectangle(cornerRadius: 26).strokeBorder(style.border) }
 
-                if isLoading && conversations.isEmpty {
+                if model.isLoading && model.conversations.isEmpty {
                     ProgressView(L10n.conversationsLoading).frame(maxWidth: .infinity).padding(24)
-                } else if let errorMessage, conversations.isEmpty {
+                } else if let errorMessage = model.errorMessage, model.conversations.isEmpty {
                     EKErrorState(title: L10n.conversationsUnavailableTitle, message: errorMessage) {
                         Task { await load(reset: true) }
                     }
                 } else if visibleConversations.isEmpty {
-                    CommunityCard {
-                        VStack(alignment: .leading, spacing: 14) {
-                            Text(L10n.conversationsEmptyTitle).font(.title3.bold()).foregroundStyle(CommunityStyle.ink)
-                            Text(L10n.conversationsEmptyDescription).font(.subheadline).foregroundStyle(CommunityStyle.muted)
+                    VStack(alignment: .leading, spacing: 14) {
+                            Text(L10n.conversationsEmptyTitle).font(.title3.bold()).foregroundStyle(style.ink)
+                            Text(L10n.conversationsEmptyDescription).font(.subheadline).foregroundStyle(style.muted)
                             Button { showComposer = true } label: {
                                 Label(L10n.conversationsNew, systemImage: "square.and.pencil")
-                            }.buttonStyle(CommunityButtonStyle())
-                        }
-                    }
+                            }.buttonStyle(ReadingRoomButtonStyle())
+                    }.padding(20).frame(maxWidth: .infinity, alignment: .leading)
+                        .background(style.card, in: RoundedRectangle(cornerRadius: 24))
+                        .overlay { RoundedRectangle(cornerRadius: 24).strokeBorder(style.border) }
                 } else {
                     ForEach(visibleConversations) { conversation in
                         ZStack(alignment: .topTrailing) {
-                            NavigationLink {
-                                ConversationDetailView(conversationID: conversation.id)
-                            } label: {
-                                ConversationRow(conversation: conversation)
-                            }
-                            .buttonStyle(.plain)
-                            .accessibilityIdentifier("messages.conversation.\(conversation.id)")
+                            ConversationRow(conversation: conversation)
                             if let message = conversation.lastMessage, !message.isMine, let contentID = Int(message.id) {
                                 UGCSafetyMenu(type: .conversationMessage, contentID: contentID, userID: message.userId) {
-                                    conversations.removeAll { item in
-                                        item.participants.contains { Int($0.id) == message.userId }
-                                    }
+                                    model.removeParticipant(message.userId)
                                 }.padding(12)
                             }
                         }
                     }
                 }
-                if let errorMessage, !conversations.isEmpty { EKInlineError(message: errorMessage) }
-                if currentPage < lastPage {
-                    EKLoadMoreButton(isLoading: isLoading) { Task { await load(reset: false) } }
+                if let errorMessage = model.errorMessage, !model.conversations.isEmpty { EKInlineError(message: errorMessage) }
+                if model.hasMore {
+                    EKLoadMoreButton(isLoading: model.isLoading) { Task { await load(reset: false) } }
                 }
             }
             .frame(maxWidth: 760).padding(18).frame(maxWidth: .infinity)
         }
-        .background(CommunityStyle.page.ignoresSafeArea())
+        .background(style.page.ignoresSafeArea())
         .refreshable { await load(reset: true) }
         .navigationTitle(L10n.conversationsTitle)
         .navigationBarTitleDisplayMode(.inline)
@@ -95,17 +85,20 @@ private struct ConversationInboxView: View {
             ToolbarItemGroup(placement: .topBarTrailing) {
                 Button { Task { await load(reset: true) } } label: {
                     Image(systemName: "arrow.clockwise").frame(width: 44, height: 44)
-                }.disabled(isLoading).accessibilityLabel(L10n.commonRefresh).accessibilityIdentifier("messages.refresh")
+                }.disabled(model.isLoading).accessibilityLabel(L10n.commonRefresh).accessibilityIdentifier("messages.refresh")
                 Button { showComposer = true } label: {
                     Image(systemName: "square.and.pencil").frame(width: 44, height: 44)
                 }.accessibilityLabel(L10n.conversationsNew).accessibilityIdentifier("messages.compose")
             }
         }
         .task { await load(reset: true) }
+        .onChange(of: container.sessionRevision) { _, _ in model.invalidate(); showComposer = false }
         .sheet(isPresented: $showComposer) {
             NewConversationView { recipient, title, message in
+                let revision = container.sessionRevision
                 do {
-                    _ = try await container.conversations.create(recipient: recipient, title: title, message: message)
+                    let result = try await container.conversations.create(recipient: recipient, title: title, message: message)
+                    guard revision == container.sessionRevision, !Task.isCancelled, result.success else { return false }
                     await load(reset: true)
                     return true
                 } catch { return false }
@@ -114,30 +107,22 @@ private struct ConversationInboxView: View {
     }
 
     private func load(reset: Bool) async {
-        guard !isLoading else { return }
-        let revision = container.sessionRevision
-        isLoading = true
-        errorMessage = nil
-        defer { isLoading = false }
-        do {
-            let result = try await container.conversations.conversations(page: reset ? 1 : currentPage + 1)
-            guard revision == container.sessionRevision, !Task.isCancelled else { return }
-            conversations = reset ? result.items : conversations + result.items.filter { item in
-                !conversations.contains(where: { $0.id == item.id })
-            }
-            currentPage = result.currentPage
-            lastPage = result.lastPage
-        } catch {
-            guard revision == container.sessionRevision, !Task.isCancelled else { return }
-            errorMessage = L10n.conversationsLoadFailed
-        }
+        let repository = container.conversations
+        await model.load(reset: reset) { try await repository.conversations(page: $0) }
     }
 }
 
 @MainActor
 private struct ConversationRow: View {
     @Environment(\.dynamicTypeSize) private var dynamicTypeSize
+    @Environment(\.colorScheme) private var scheme
     let conversation: ConversationDTO
+    private var style: ReadingRoomStyle { ReadingRoomStyle(scheme: scheme) }
+    private var preview: String {
+        if let rich = conversation.lastMessage?.richMessage, !rich.isEmpty { return rich }
+        if let message = conversation.lastMessage?.message, !message.isEmpty { return message }
+        return conversation.preview
+    }
 
     private var hasSafetyMenu: Bool {
         guard let message = conversation.lastMessage else { return false }
@@ -146,53 +131,56 @@ private struct ConversationRow: View {
 
     var body: some View {
         VStack(alignment: .leading, spacing: 15) {
+            NavigationLink { ConversationDetailView(conversationID: conversation.id) } label: {
             (dynamicTypeSize.isAccessibilitySize
                 ? AnyLayout(VStackLayout(alignment: .leading, spacing: 12))
                 : AnyLayout(HStackLayout(alignment: .top, spacing: 13))) {
                 EKAvatar(urlString: avatarURL, username: avatarName, size: 52, cornerRadius: 18,
-                         background: CommunityStyle.soft, foreground: CommunityStyle.teal)
+                         background: style.soft, foreground: style.accent)
                     .accessibilityHidden(true)
                 VStack(alignment: .leading, spacing: 6) {
                     Text(conversation.title).font(.headline.weight(conversation.isUnread ? .bold : .semibold))
-                        .foregroundStyle(CommunityStyle.ink)
+                        .foregroundStyle(style.ink)
                         .lineLimit(dynamicTypeSize.isAccessibilitySize ? nil : 2)
                     if !participantLine.isEmpty {
-                        Text(participantLine).font(.subheadline.weight(.medium)).foregroundStyle(CommunityStyle.teal)
+                        Text(participantLine).font(.subheadline.weight(.medium)).foregroundStyle(style.accent)
                             .lineLimit(dynamicTypeSize.isAccessibilitySize ? nil : 2)
                     }
                 }.frame(maxWidth: .infinity, alignment: .leading)
                     .padding(.trailing, hasSafetyMenu ? 44 : 0)
             }
-            if !conversation.preview.isEmpty {
-                Text(EKitapligimFormat.plainText(conversation.preview)).font(.subheadline)
-                    .foregroundStyle(CommunityStyle.muted).lineLimit(dynamicTypeSize.isAccessibilitySize ? nil : 3)
-            }
+            }.buttonStyle(.plain)
+                .accessibilityIdentifier("messages.conversation.\(conversation.id)")
+            ConversationRichContent(raw: preview, previewConversationID: conversation.id,
+                                    images: conversation.lastMessage?.images ?? [])
+            NavigationLink { ConversationDetailView(conversationID: conversation.id) } label: {
             ViewThatFits(in: .horizontal) {
                 HStack(spacing: 10) { metadata }
                 VStack(alignment: .leading, spacing: 7) { metadata }
-            }
+            }.frame(minHeight: 44, alignment: .leading)
+            }.buttonStyle(.plain)
         }
         .padding(19).frame(maxWidth: .infinity, alignment: .leading)
-        .background(.white, in: RoundedRectangle(cornerRadius: 24))
+        .background(style.card, in: RoundedRectangle(cornerRadius: 24))
         .overlay {
             RoundedRectangle(cornerRadius: 24)
-                .strokeBorder(conversation.isUnread ? CommunityStyle.teal.opacity(0.36) : CommunityStyle.border,
+                .strokeBorder(conversation.isUnread ? style.accent.opacity(0.6) : style.border,
                               lineWidth: conversation.isUnread ? 1.5 : 1)
         }
-        .accessibilityElement(children: .combine)
+        .accessibilityElement(children: .contain)
     }
 
     @ViewBuilder private var metadata: some View {
         if conversation.isUnread {
             Label(L10n.notificationsUnread, systemImage: "circle.fill")
-                .font(.caption.weight(.semibold)).foregroundStyle(CommunityStyle.teal)
+                .font(.caption.weight(.semibold)).foregroundStyle(style.accent)
         }
         if conversation.lastMessageDate > 0 {
             Text(EKitapligimFormat.relativeTime(conversation.lastMessageDate)).font(.caption)
-                .foregroundStyle(CommunityStyle.muted)
+                .foregroundStyle(style.muted)
         }
         if conversation.replyCount > 0 {
-            Text(L10n.conversationsReplyCount(conversation.replyCount)).font(.caption).foregroundStyle(CommunityStyle.muted)
+            Text(L10n.conversationsReplyCount(conversation.replyCount)).font(.caption).foregroundStyle(style.muted)
         }
         if conversation.isStarred {
             Image(systemName: "star.fill").foregroundStyle(EKitapligimPalette.amber)
@@ -238,33 +226,39 @@ private struct ConversationContentView: View {
     @Environment(\.dynamicTypeSize) private var dynamicTypeSize
     @Environment(\.replyViewportHeight) private var replyViewportHeight
     let conversationID: String
+    @Environment(\.colorScheme) private var scheme
+    private var style: ReadingRoomStyle { ReadingRoomStyle(scheme: scheme) }
 
-    @State private var detail: ConversationDetailDTO?
-    @State private var replyText = ""
-    @State private var isLoading = false
-    @State private var isSending = false
-    @State private var errorMessage: String?
+    @StateObject private var model = ConversationDetailModel()
     @FocusState private var isReplyFocused: Bool
 
     private var visibleMessages: [ConversationMessageDTO] {
-        (detail?.messages ?? []).filter { message in
+        (model.detail?.messages ?? []).filter { message in
             !container.blockedUserIDs.contains(message.userId)
         }
     }
 
     var body: some View {
-        EKitapligimScreen {
+        ZStack {
+            style.page.ignoresSafeArea()
             Group {
-                if isLoading && detail == nil {
+                if model.isLoading && model.detail == nil {
                     EKLoadingState(message: L10n.conversationsLoading)
-                } else if let errorMessage, detail == nil {
+                } else if let errorMessage = model.errorMessage, model.detail == nil {
                     EKErrorState(title: L10n.conversationsUnavailableTitle, message: errorMessage) {
                         Task { await load() }
                     }
-                } else if let detail {
+                } else if let detail = model.detail {
                     ScrollView {
                         LazyVStack(spacing: 12) {
                             conversationHero(detail.conversation)
+                            if model.hasEarlier {
+                                Button(ReadingRoomL10n.text("message.earlier")) {
+                                    Task { await load(earlier: true) }
+                                }.buttonStyle(ReadingRoomButtonStyle())
+                                    .disabled(model.isLoadingEarlier)
+                                    .accessibilityIdentifier("messages.earlier")
+                            }
                             ForEach(visibleMessages) { message in
                                 ConversationMessageCard(message: message)
                             }
@@ -283,7 +277,7 @@ private struct ConversationContentView: View {
                 }
             }
         }
-        .navigationTitle(detail?.conversation.title ?? L10n.conversationsMessageTitle)
+        .navigationTitle(model.detail?.conversation.title ?? L10n.conversationsMessageTitle)
         .navigationBarTitleDisplayMode(.inline)
         .toolbar {
             ToolbarItemGroup(placement: .keyboard) {
@@ -293,17 +287,19 @@ private struct ConversationContentView: View {
             }
         }
         .task { await load() }
+        .onChange(of: container.sessionRevision) { _, _ in model.invalidate() }
         .onDisappear { isReplyFocused = false }
         .alert(
-            L10n.conversationsSendFailedTitle,
+            // One alert reports both a failed reply and a failed earlier-page load.
+            model.errorMessage == L10n.conversationsSendFailed ? L10n.conversationsSendFailedTitle : L10n.conversationsUnavailableTitle,
             isPresented: Binding(
-                get: { errorMessage != nil && detail != nil },
-                set: { if !$0 { errorMessage = nil } }
+                get: { model.errorMessage != nil && model.detail != nil },
+                set: { if !$0 { model.errorMessage = nil } }
             )
         ) {
-            Button(L10n.commonClose) { errorMessage = nil }
+            Button(L10n.commonClose) { model.errorMessage = nil }
         } message: {
-            Text(errorMessage ?? L10n.conversationsSendFailed)
+            Text(model.errorMessage ?? L10n.conversationsSendFailed)
         }
     }
 
@@ -313,7 +309,7 @@ private struct ConversationContentView: View {
                 .font(.system(size: 28, weight: .semibold))
                 .foregroundStyle(EKitapligimPalette.teal)
                 .frame(width: 58, height: 58)
-                .background(EKitapligimPalette.tealSoft, in: RoundedRectangle(cornerRadius: 20, style: .continuous))
+                .background(style.soft, in: RoundedRectangle(cornerRadius: 20, style: .continuous))
                 .overlay {
                     RoundedRectangle(cornerRadius: 20, style: .continuous)
                         .stroke(Color(hex: 0xD9C79F), lineWidth: 1)
@@ -323,34 +319,34 @@ private struct ConversationContentView: View {
             VStack(alignment: .leading, spacing: 6) {
                 Text(conversation.title)
                     .font(.system(.title3, design: .serif).weight(.heavy))
-                    .foregroundStyle(EKitapligimPalette.ink)
+                    .foregroundStyle(style.ink)
                     .multilineTextAlignment(.leading)
                     .fixedSize(horizontal: false, vertical: true)
                 if !conversationParticipantLine(conversation).isEmpty {
                     Text(conversationParticipantLine(conversation))
                         .font(.subheadline.weight(.medium))
-                        .foregroundStyle(EKitapligimPalette.tealDark)
+                        .foregroundStyle(style.accent)
                         .fixedSize(horizontal: false, vertical: true)
                 }
                 Text(L10n.conversationsReplyCount(conversation.replyCount))
                     .font(.caption)
-                    .foregroundStyle(EKitapligimPalette.muted)
+                    .foregroundStyle(style.muted)
             }
             Spacer(minLength: 0)
         }
         .padding(16)
-        .background(CommunityStyle.soft, in: RoundedRectangle(cornerRadius: 24))
-        .overlay { RoundedRectangle(cornerRadius: 24).strokeBorder(CommunityStyle.border) }
+        .background(style.soft, in: RoundedRectangle(cornerRadius: 24))
+        .overlay { RoundedRectangle(cornerRadius: 24).strokeBorder(style.border) }
     }
 
     private var usesCompactReply: Bool { replyViewportHeight < 300 }
 
     private var replyComposer: some View {
         VStack(alignment: .leading, spacing: 10) {
-            if !usesCompactReply && dynamicTypeSize.isAccessibilitySize && replyText.trimmed.isEmpty {
+            if !usesCompactReply && dynamicTypeSize.isAccessibilitySize && model.draft.trimmed.isEmpty {
                 Text(L10n.conversationsReplyPlaceholder)
                     .font(.body)
-                    .foregroundStyle(EKitapligimPalette.muted)
+                    .foregroundStyle(style.muted)
                     .fixedSize(horizontal: false, vertical: true)
                     .accessibilityHidden(true)
             }
@@ -361,9 +357,9 @@ private struct ConversationContentView: View {
                 replyEditor
                 HStack(alignment: .center) {
                     if !usesCompactReply {
-                        Text("\(replyText.count)")
+                        Text("\(model.draft.count)")
                             .font(.caption2.weight(.semibold))
-                            .foregroundStyle(EKitapligimPalette.muted)
+                            .foregroundStyle(style.muted)
                             .accessibilityHidden(true)
                         Spacer(minLength: 0)
                     }
@@ -373,37 +369,38 @@ private struct ConversationContentView: View {
             }
         }
         .padding(usesCompactReply ? 8 : 12)
-        .background(.white)
+        .background(style.paper)
         .overlay(alignment: .top) {
-            Rectangle().fill(EKitapligimPalette.border).frame(height: 1)
+            Rectangle().fill(style.border).frame(height: 1)
         }
     }
 
     private var replyEditor: some View {
-        TextEditor(text: $replyText)
+        TextEditor(text: $model.draft)
+            .foregroundStyle(style.ink)
             .focused($isReplyFocused)
             .accessibilityLabel(L10n.conversationsReplyPlaceholder)
             .accessibilityIdentifier("conversation-reply-input")
             .ekPinnedReplyEditor()
             .padding(usesCompactReply ? 4 : 10)
             .scrollContentBackground(.hidden)
-            .background(.white, in: RoundedRectangle(cornerRadius: 16, style: .continuous))
+            .background(style.card, in: RoundedRectangle(cornerRadius: 16, style: .continuous))
             .overlay {
                 RoundedRectangle(cornerRadius: 16, style: .continuous)
-                    .stroke(isReplyFocused ? CommunityStyle.teal : CommunityStyle.border, lineWidth: 1)
+                    .stroke(isReplyFocused ? style.accent : style.border, lineWidth: 1)
             }
             .overlay(alignment: .topLeading) {
-                if !usesCompactReply && !dynamicTypeSize.isAccessibilitySize && replyText.trimmed.isEmpty {
+                if !usesCompactReply && !dynamicTypeSize.isAccessibilitySize && model.draft.trimmed.isEmpty {
                     Text(L10n.conversationsReplyPlaceholder)
                         .font(.body)
-                        .foregroundStyle(EKitapligimPalette.muted)
+                        .foregroundStyle(style.muted)
                         .padding(.horizontal, 16)
                         .padding(.vertical, 18)
                         .allowsHitTesting(false)
                         .accessibilityHidden(true)
                 }
             }
-            .onChange(of: replyText) { _, value in replyText = String(value.prefix(10_000)) }
+            .onChange(of: model.draft) { _, value in model.draft = String(value.prefix(10_000)) }
             .frame(maxWidth: .infinity)
     }
 
@@ -412,7 +409,7 @@ private struct ConversationContentView: View {
             Task { await sendReply() }
         } label: {
             Group {
-                if isSending {
+                if model.isSending {
                     ProgressView().tint(.white)
                 } else if usesCompactReply {
                     Image(systemName: "paperplane.fill")
@@ -429,52 +426,37 @@ private struct ConversationContentView: View {
             .frame(minWidth: 44, minHeight: 44)
         }
         .background(
-            (isSending || replyText.trimmed.isEmpty)
+            (model.isSending || model.draft.trimmed.isEmpty)
                 ? EKitapligimPalette.teal.opacity(0.45)
                 : EKitapligimPalette.teal,
             in: RoundedRectangle(cornerRadius: 20, style: .continuous)
         )
-        .disabled(replyText.trimmed.isEmpty || isSending)
+        .disabled(model.draft.trimmed.isEmpty || model.isSending)
         .accessibilityLabel(L10n.commonSubmit)
         .accessibilityIdentifier("conversation-reply-send")
     }
 
-    private func load() async {
-        guard !isLoading else { return }
+    private func load(earlier: Bool = false) async {
+        let repository = container.conversations
         let revision = container.sessionRevision
-        isLoading = true
-        errorMessage = nil
-        defer { isLoading = false }
-        do {
-            let result = try await container.conversations.conversation(id: conversationID)
-            guard revision == container.sessionRevision, !Task.isCancelled else { return }
-            detail = result
-            if let id = Int(conversationID) {
-                try? await container.notificationReadSync.markConversationRead(id)
-            }
-        } catch {
-            guard revision == container.sessionRevision, !Task.isCancelled else { return }
-            errorMessage = L10n.conversationsLoadFailed
+        let loaded = await model.load(id: conversationID, earlier: earlier) {
+            try await repository.conversation(id: conversationID, page: $0)
+        }
+        if loaded, !earlier, revision == container.sessionRevision, !Task.isCancelled, let id = Int(conversationID) {
+            try? await container.notificationReadSync.markConversationRead(id)
         }
     }
 
     private func sendReply() async {
-        let message = replyText.trimmed
-        guard !message.isEmpty, !isSending else { return }
-        isSending = true
-        defer { isSending = false }
-        do {
-            _ = try await container.conversations.reply(id: conversationID, message: message)
-            replyText = ""
-            await load()
-        } catch {
-            errorMessage = L10n.conversationsSendFailed
-        }
+        let repository = container.conversations
+        await model.send(id: conversationID) { try await repository.reply(id: conversationID, message: $0) }
     }
 }
 
 @MainActor
 private struct ConversationMessageCard: View {
+    @Environment(\.colorScheme) private var scheme
+    private var style: ReadingRoomStyle { ReadingRoomStyle(scheme: scheme) }
     @Environment(\.dynamicTypeSize) private var dynamicTypeSize
     let message: ConversationMessageDTO
 
@@ -493,7 +475,7 @@ private struct ConversationMessageCard: View {
                             (dynamicTypeSize.isAccessibilitySize ? AnyLayout(VStackLayout(alignment: .leading, spacing: 6)) : AnyLayout(HStackLayout(spacing: 6))) {
                                 Text(ForumMessageFormatting.displayUsername(message.username))
                                     .font(.subheadline.weight(.bold))
-                                    .foregroundStyle(EKitapligimPalette.ink)
+                                    .foregroundStyle(style.ink)
                                     .lineLimit(dynamicTypeSize.isAccessibilitySize ? nil : 2)
                                 if message.isMine {
                                     EKPill(
@@ -506,7 +488,7 @@ private struct ConversationMessageCard: View {
                             if message.messageDate > 0 {
                                 Text(EKitapligimFormat.relativeTime(message.messageDate))
                                     .font(.caption)
-                                    .foregroundStyle(EKitapligimPalette.muted)
+                                    .foregroundStyle(style.muted)
                             }
                         }
                     }
@@ -522,22 +504,22 @@ private struct ConversationMessageCard: View {
             }
 
             Rectangle()
-                .fill(CommunityStyle.border)
+                .fill(style.border)
                 .frame(height: 1)
                 .padding(.vertical, 14)
 
-            ForumMessageBody(message: message.message)
-                .textSelection(.enabled)
+            ConversationRichContent(raw: message.richMessage.flatMap { $0.isEmpty ? nil : $0 } ?? message.message,
+                                    conversationID: String(message.conversationId), images: message.images)
         }
         .padding(16)
         .frame(maxWidth: .infinity, alignment: .leading)
         .background(
-            message.isMine ? EKitapligimPalette.tealSoft.opacity(0.55) : EKitapligimPalette.paper,
+            message.isMine ? style.soft : style.card,
             in: RoundedRectangle(cornerRadius: 20, style: .continuous)
         )
         .overlay {
             RoundedRectangle(cornerRadius: 20, style: .continuous)
-                .stroke(message.isMine ? EKitapligimPalette.teal.opacity(0.18) : EKitapligimPalette.border)
+                .stroke(style.border)
         }
     }
 }
@@ -618,12 +600,13 @@ private struct NewConversationView: View {
                     .padding(.vertical, 12)
                 }
                 .scrollDismissesKeyboard(.interactively)
+                .disabled(isSending)
             }
             .navigationTitle(L10n.conversationsNew)
             .navigationBarTitleDisplayMode(.inline)
             .toolbar {
                 ToolbarItem(placement: .cancellationAction) {
-                    Button(L10n.commonCancel) { dismiss() }
+                    Button(L10n.commonCancel) { dismiss() }.disabled(isSending)
                 }
                 ToolbarItem(placement: .confirmationAction) {
                     Button(isSending ? L10n.conversationsSending : L10n.commonSubmit) {
@@ -646,6 +629,7 @@ private struct NewConversationView: View {
                 }
             }
         }
+        .interactiveDismissDisabled(isSending)
         .onDisappear { focusedField = nil }
     }
 

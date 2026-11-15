@@ -1,5 +1,11 @@
 # App Store Metadata Draft
 
+## Unreleased design notes — 2026-11-15
+
+Draft Turkish release copy: “Kitap Gündemi artık görselli, bütünleşik bir alanda. Mesajlarda kitap önizlemeleri, paylaşılan görseller ve önceki mesajlara erişimi geliştirdik. Kitap isteği bilgilendirmelerini yeniledik; yorum ve mesaj gönderimindeki hata durumlarını iyileştirdik.”
+
+These changes are local source work. Version/build identifiers, subscription products and purchase copy are unchanged. Native iOS builds, updated screenshots and device/UI validation are still required; this is not a submitted or release-ready build. [Design evidence](ANDROID_DESIGN_REFRESH_20261115.md), [deep review](DEEP_REVIEW_20261115.md). The 15 November public GET probe observes agenda `image_upload_version=1`; authenticated uploads and device behavior remain unverified in this review.
+
 ## Current candidate 1.1.2 — 2026-11-03
 
 Draft only: the source is under [general release review](RELEASE_REVIEW_20261103.md). New device screenshots, signed-device authentication/APNs/purchase tests and the photo API deployment remain required. Earlier descriptions of submitted builds and attached recordings refer to those historical versions, not this candidate.

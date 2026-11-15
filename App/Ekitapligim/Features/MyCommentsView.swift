@@ -39,7 +39,7 @@ struct MyCommentsView: View {
                                             .foregroundStyle(EKitapligimPalette.ink)
                                             .lineLimit(dynamicTypeSize.isAccessibilitySize ? nil : 2)
                                             .fixedSize(horizontal: false, vertical: true)
-                                        Text(comment.message)
+                                        Text(EKitapligimFormat.plainText(comment.message))
                                             .font(.subheadline)
                                             .foregroundStyle(EKitapligimPalette.muted)
                                             .lineLimit(3)
@@ -91,7 +91,8 @@ struct MyCommentsView: View {
             page = result.currentPage ?? requestedPage
             lastPage = result.lastPage ?? page
         } catch {
-            errorMessage = error.localizedDescription
+            // Never show raw transport/decoding errors (English, technical) to readers.
+            errorMessage = L10n.profileLoadFailed
         }
         isLoading = false
     }

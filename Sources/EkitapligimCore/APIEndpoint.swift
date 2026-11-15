@@ -175,8 +175,15 @@ public extension APIEndpoint {
         )
     }
 
-    static func conversation(id: String) -> APIEndpoint {
-        APIEndpoint(method: .get, path: "conversation-detail/\(id)", requiresAuthentication: true)
+    static func conversation(id: String, page: Int? = nil) -> APIEndpoint {
+        APIEndpoint(method: .get, path: "conversation-detail/\(id)",
+                    queryItems: page.map { [URLQueryItem(name: "page", value: String(max(1, $0)))] } ?? [],
+                    requiresAuthentication: true)
+    }
+
+    static func conversationImage(id: String, imageID: String) -> APIEndpoint {
+        APIEndpoint(method: .get, path: "conversation-detail/\(id)",
+                    queryItems: [URLQueryItem(name: "image_id", value: imageID)], requiresAuthentication: true)
     }
 
     static func replyToConversation(id: String, message: String) -> APIEndpoint {
