@@ -71,7 +71,7 @@ def main():
                   "apsEnvironment": ent["aps-environment"], "associatedDomains": sorted(DOMAINS),
                   "debugEntitlementAbsent": True, "profileSupportsEntitlements": True,
                   "ipaSHA256": hashlib.sha256(ipa.read_bytes()).hexdigest(),
-                  "destination": "TestFlight only"}
+                  "signingDistribution": "app-store"}
         out = root / "build/testflight-reviewed"
         out.mkdir(parents=True, exist_ok=True)
         (out / "signed-ipa-verification.json").write_text(json.dumps(report, indent=2), encoding="utf-8")

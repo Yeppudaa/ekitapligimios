@@ -1,0 +1,6 @@
+Ekitaplığım 1.1.3 is an update to the native SwiftUI iPhone and iPad app. This version refreshes Book Agenda and book requests, improves conversation history, shared images and book previews, and includes reader, download, profile and navigation fixes.
+
+Please sign in using the existing review account. Book Agenda is available from Home. Conversations and book requests are accessible from the app menu. Existing Apple In-App Purchase and restore flows are unchanged.
+
+Public HTTPS API: https://ekitapligim.com/ios-api/v1/
+Support: https://ekitapligim.com/diger/iletisim

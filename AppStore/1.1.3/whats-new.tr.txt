@@ -1,0 +1,4 @@
+Kitap Gündemi ve kitap isteği ekranlarını yeniledik.
+Mesajlarda kitap önizlemeleri, paylaşılan görseller ve önceki mesajlara erişimi geliştirdik.
+Yorum, mesaj ve kitap isteği işlemlerinin güvenilirliğini artırdık.
+Okuyucu, indirmeler, profil ve gezinme deneyiminde iyileştirmeler yaptık.

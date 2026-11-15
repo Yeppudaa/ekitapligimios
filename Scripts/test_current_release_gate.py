@@ -1,6 +1,6 @@
 import copy
 import unittest
-from current_release_gate import GROUPS, PROTECTED, project_digest, verify
+from current_release_gate import GROUPS, IPAD_ONLY_TEST, PROTECTED, project_digest, verify
 
 PROJECT = 'MARKETING_VERSION: "1.1.2"\nCURRENT_PROJECT_VERSION: "50"\nDependency: exact-version\n'
 
@@ -46,6 +46,16 @@ class CurrentReleaseGateTests(unittest.TestCase):
 
     def test_unreviewed_visuals_prevent_publication(self):
         self.evidence['screenshotsReviewed'].remove('iPad')
+        with self.assertRaises(ValueError): verify(self.evidence, self.objects, PROJECT)
+
+    def test_ipad_only_case_may_skip_phones_only_when_it_passes_on_ipad(self):
+        phone = self.evidence['groups']['iPhone-compact']
+        phone['summary'].update(passedTests=11, skippedTests=1)
+        phone['skippedTestIdentifiers'] = [IPAD_ONLY_TEST]
+        with self.assertRaises(ValueError): verify(self.evidence, self.objects, PROJECT)
+        self.evidence['groups']['iPad']['passedPlatformSpecificTests'] = [IPAD_ONLY_TEST]
+        verify(self.evidence, self.objects, PROJECT)
+        phone['skippedTestIdentifiers'] = ['UnrelatedTests/testMissingCoverage()']
         with self.assertRaises(ValueError): verify(self.evidence, self.objects, PROJECT)
 
 

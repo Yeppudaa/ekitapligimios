@@ -8,6 +8,7 @@ import subprocess
 ROOT = Path(__file__).resolve().parent.parent
 EVIDENCE_SHA256 = "unverified"
 GROUPS = {"native-unit", "iPhone-compact", "iPhone-large", "iPad"}
+IPAD_ONLY_TEST = "KeyboardLayoutUITests/testCurrentIPadWindowAtLargeTextRestoresAfterKeyboardAndSheetDismissal()"
 PROTECTED = ("App", "Sources", "Tests", "Backend", "Package.swift",
              "Scripts/modern-parity-macos-validation.sh", "Scripts/select-ci-xcode.sh",
              ".github/workflows/release-review.yml")
@@ -44,8 +45,15 @@ def verify(evidence, current_objects, current_project):
         total = result.get("totalTestCount", 0)
         if not isinstance(total, int) or total < group.get("minimumTests", 1) or total <= 0:
             raise ValueError(name + ": incomplete test execution")
-        if result.get("passedTests") != total or result.get("failedTests") != 0 or result.get("skippedTests") != 0:
-            raise ValueError(name + ": failed or skipped tests")
+        skipped = group.get("skippedTestIdentifiers", [])
+        allowed_skips = {IPAD_ONLY_TEST} if name in {"iPhone-compact", "iPhone-large"} else set()
+        if len(skipped) != len(set(skipped)) or not set(skipped).issubset(allowed_skips):
+            raise ValueError(name + ": unexpected skipped tests")
+        if result.get("passedTests") != total - len(skipped) or result.get("failedTests") != 0 or result.get("skippedTests") != len(skipped):
+            raise ValueError(name + ": failed, skipped or incomplete tests")
+        # This test explicitly skips phones in the unchanged test source. It must really pass on iPad.
+        if skipped and IPAD_ONLY_TEST not in groups["iPad"].get("passedPlatformSpecificTests", []):
+            raise ValueError("The phone-only exclusion requires successful iPad execution")
         if not re.fullmatch(r"[a-f0-9]{64}", group.get("artifactSHA256", "")):
             raise ValueError(name + ": missing original artifact digest")
         if not group.get("url", "").startswith("https://github.com/Yeppudaa/ekitapligimios/actions/runs/"):
