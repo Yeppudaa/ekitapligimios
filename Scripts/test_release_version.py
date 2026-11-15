@@ -9,7 +9,7 @@ class ReleaseVersionTests(unittest.TestCase):
         return [{"attributes": {"versionString": version, "appStoreState": state}}]
 
     def test_current_source_has_one_marketing_version_and_build_floor(self):
-        self.assertEqual(project_version(), ("1.1.2", 50))
+        self.assertEqual(project_version(), ("1.1.3", 51))
 
     def test_build_exceeds_both_apple_channels_and_source_floor(self):
         for flight, store, expected in [("49", "49", 50), ("56", "49", 57), ("49", "80", 81), ("1", "2", 50)]:

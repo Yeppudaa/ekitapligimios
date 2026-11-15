@@ -1,0 +1,4 @@
+Refreshed Book Agenda and book request screens.
+Improved book previews, shared images, and access to earlier private messages.
+Made comments, messages, and book request actions more reliable.
+Improved the reader, downloads, profile, and navigation experience.

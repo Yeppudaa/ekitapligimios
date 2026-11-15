@@ -1,4 +1,62 @@
 workflows:
+  ios-appstore-current:
+    name: Ekitapligim iOS App Store 1.1.3
+    max_build_duration: 60
+    instance_type: mac_mini_m2
+    integrations:
+      app_store_connect: Ekitapligim Codemagic
+    environment:
+      xcode: 26.3
+      ios_signing:
+        distribution_type: app_store
+        bundle_identifier: com.ekitapligim.app
+      vars:
+        APP_STORE_APPLE_ID: "6789584323"
+        APPLE_TEAM_ID: QA67383767
+    cache:
+      cache_paths:
+        - .build/xcode-packages
+    scripts:
+      - name: Require successful current-source native and device reviews
+        script: python3 Scripts/current_release_gate.py
+      - name: Check current Apple version and unused build number
+        script: bash Scripts/prepare-release-version.sh
+      - name: Generate native project and run the Core regression suite
+        script: |
+          set -euo pipefail
+          if ! command -v xcodegen >/dev/null 2>&1; then brew install xcodegen; fi
+          xcodegen generate
+          python3 Scripts/test_release_version.py
+          python3 Scripts/test_current_release_gate.py
+          mkdir -p build/current-release
+          swift test --xunit-output build/current-release/core-tests.xml 2>&1 | tee build/current-release/core-tests.log
+          xcodebuild -resolvePackageDependencies -project Ekitapligim.xcodeproj -scheme Ekitapligim \
+            -clonedSourcePackagesDirPath .build/xcode-packages 2>&1 | tee build/current-release/packages.log
+      - name: Configure the existing App Store signing profiles
+        script: xcode-project use-profiles --archive-method app-store
+      - name: Recheck Apple and assign the increasing build number
+        script: bash Scripts/prepare-release-version.sh --apply
+      - name: Build the signed Production IPA
+        script: |
+          set -euo pipefail
+          xcodebuild clean -project Ekitapligim.xcodeproj -scheme Ekitapligim -configuration Production \
+            2>&1 | tee build/current-release/clean.log
+          xcode-project build-ipa --project Ekitapligim.xcodeproj --scheme Ekitapligim \
+            2>&1 | tee build/current-release/archive.log
+      - name: Verify actual IPA version, production endpoints, signature and entitlements
+        script: python3 Scripts/verify-testflight-ipa.py
+    artifacts:
+      - build/ios/ipa/*.ipa
+      - build/current-release/**
+      - build/release-version/version-plan.json
+      - build/testflight-reviewed/signed-ipa-verification.json
+    publishing:
+      app_store_connect:
+        auth: integration
+        submit_to_testflight: true
+        submit_to_app_store: true
+        release_type: AFTER_APPROVAL
+
   ios-testflight-beta:
     name: Ekitapligim iOS TestFlight Beta 1.1.2
     max_build_duration: 120
