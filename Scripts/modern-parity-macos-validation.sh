@@ -18,6 +18,13 @@ finish_evidence() {
   local command_status="$1" final_status="$1" packaging_status=0
   trap - EXIT
   set +e
+  if [ "${keyboard_preference_changed:-0}" -eq 1 ]; then
+    if [ -n "$previous_hardware_keyboard" ]; then
+      defaults write com.apple.iphonesimulator ConnectHardwareKeyboard -bool "$previous_hardware_keyboard"
+    else
+      defaults delete com.apple.iphonesimulator ConnectHardwareKeyboard 2>/dev/null || true
+    fi
+  fi
   if [ "$result" -ne 0 ] && [ "$final_status" -eq 0 ]; then final_status=1; fi
   printf '%s\n' "$final_status" > "$EVIDENCE/result-code.txt"
   python3 "$PWD/Scripts/package-modern-parity-evidence.py" \
@@ -101,10 +108,42 @@ while IFS=$'\t' read -r label device; do
   if [ "${EKITAPLIGIM_FULL_RELEASE_REVIEW:-0}" = "1" ]; then
     arguments=(-only-testing:EkitapligimUITests)
   fi
+  if [ -n "${EKITAPLIGIM_REVIEW_TEST_CASES:-}" ]; then
+    if [ "$label" = "native-unit" ]; then
+      printf 'UI diagnostic selections cannot be applied to the native unit group\n' >&2
+      exit 1
+    fi
+    python3 - "$EVIDENCE" <<'PY'
+import json, os, re, sys
+from pathlib import Path
+selection = json.loads(os.environ['EKITAPLIGIM_REVIEW_TEST_CASES'])
+if not isinstance(selection, list) or not selection or len(selection) != len(set(selection)):
+    raise SystemExit('Expected a nonempty list of distinct UI test identifiers')
+if any(not isinstance(item, str) or not re.fullmatch(r'EkitapligimUITests/[A-Za-z_][A-Za-z0-9_]*(/[A-Za-z_][A-Za-z0-9_]*)?', item) for item in selection):
+    raise SystemExit('Invalid UI diagnostic test selection')
+root = Path(sys.argv[1])
+(root / 'diagnostic-selection.json').write_text(json.dumps(selection, indent=2))
+(root / 'diagnostic-selection.txt').write_text('\n'.join(selection) + '\n')
+PY
+    arguments=()
+    while IFS= read -r selected_test; do
+      arguments+=("-only-testing:$selected_test")
+    done < "$EVIDENCE/diagnostic-selection.txt"
+  fi
   # Unit tests use a blank app host and never share a launch environment with UI tests.
   if [ "$label" = "native-unit" ]; then
     scheme=EkitapligimModernUnit
     arguments=(-only-testing:EkitapligimTests)
+  else
+    # UI keyboard assertions require the same software keyboard configuration as the
+    # dedicated keyboard regression runner. This is an ephemeral CI simulator.
+    if [ "${keyboard_preference_changed:-0}" -eq 0 ]; then
+      previous_hardware_keyboard="$(defaults read com.apple.iphonesimulator ConnectHardwareKeyboard 2>/dev/null || true)"
+      keyboard_preference_changed=1
+    fi
+    defaults write com.apple.iphonesimulator ConnectHardwareKeyboard -bool false
+    xcrun simctl boot "$device" > /dev/null 2>&1 || true
+    xcrun simctl bootstatus "$device" -b 2>&1 | tee "$EVIDENCE/$label-boot.log"
   fi
   xcodebuild test -project Ekitapligim.xcodeproj -scheme "$scheme" \
     -configuration Development -destination "platform=iOS Simulator,id=$device" \

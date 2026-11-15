@@ -1371,8 +1371,17 @@ struct BookAgendaComposerView: View {
             .accessibilityIdentifier("agenda.composer.scroll")
             .background(palette.page)
             .safeAreaInset(edge: .bottom, spacing: 0) { submitBar }
-            .toolbar(.hidden, for: .navigationBar)
+            .toolbar(.visible, for: .navigationBar)
+            .navigationBarTitleDisplayMode(.inline)
+            .toolbarBackground(palette.page, for: .navigationBar)
+            .toolbarBackground(.visible, for: .navigationBar)
             .toolbar {
+                ToolbarItem(placement: .topBarLeading) {
+                    Label(L10n.menuBookAgenda, systemImage: "square.and.pencil")
+                        .font(.caption2.weight(.semibold))
+                        .foregroundStyle(palette.accent)
+                }
+                ToolbarItem(placement: .topBarTrailing) { composerCloseButton }
                 ToolbarItemGroup(placement: .keyboard) {
                     Spacer()
                     Button(L10n.commonClose) { focusedField = nil }
@@ -1475,38 +1484,32 @@ struct BookAgendaComposerView: View {
 
     private var composerHeader: some View {
         VStack(alignment: .leading, spacing: 12) {
-            HStack(alignment: .top, spacing: 12) {
-                VStack(alignment: .leading, spacing: 8) {
-                    Label(L10n.menuBookAgenda, systemImage: "square.and.pencil")
-                        .font(.caption2.weight(.semibold))
-                        .foregroundStyle(palette.accent)
-                    Text(L10n.agendaComposerTitle)
-                        .font(.system(.title2, design: .serif, weight: .semibold))
-                        .foregroundStyle(palette.ink)
-                        .fixedSize(horizontal: false, vertical: true)
-                        .accessibilityAddTraits(.isHeader)
-                }
-                Spacer(minLength: 0)
-                Button {
-                    dismiss()
-                } label: {
-                    Image(systemName: "xmark")
-                        .font(.subheadline.weight(.semibold))
-                        .foregroundStyle(palette.muted)
-                        .frame(width: 44, height: 44)
-                        .background(palette.surface, in: Circle())
-                        .overlay { Circle().strokeBorder(palette.border, lineWidth: 1) }
-                }
-                .buttonStyle(.plain)
-                .disabled(isSubmitting)
-                .accessibilityLabel(L10n.commonClose)
-                .accessibilityIdentifier("agenda.composer.close")
-            }
+            Text(L10n.agendaComposerTitle)
+                .font(.system(.title2, design: .serif, weight: .semibold))
+                .foregroundStyle(palette.ink)
+                .fixedSize(horizontal: false, vertical: true)
+                .accessibilityAddTraits(.isHeader)
             Text(L10n.agendaComposerSubtitle)
                 .font(.subheadline)
                 .foregroundStyle(palette.muted)
                 .fixedSize(horizontal: false, vertical: true)
         }
+    }
+
+    // Keep dismissal in the native bar while the writing field scrolls above the keyboard.
+    private var composerCloseButton: some View {
+        Button { dismiss() } label: {
+            Image(systemName: "xmark")
+                .font(.subheadline.weight(.semibold))
+                .foregroundStyle(palette.muted)
+                .frame(width: 44, height: 44)
+                .background(palette.surface, in: Circle())
+                .overlay { Circle().strokeBorder(palette.border, lineWidth: 1) }
+        }
+        .buttonStyle(.plain)
+        .disabled(isSubmitting)
+        .accessibilityLabel(L10n.commonClose)
+        .accessibilityIdentifier("agenda.composer.close")
     }
 
     private var typePicker: some View {
@@ -1754,6 +1757,8 @@ struct BookAgendaComposerView: View {
                     .font(.caption)
                     .foregroundStyle(palette.error)
                     .fixedSize(horizontal: false, vertical: true)
+                    .accessibilityElement(children: .ignore)
+                    .accessibilityLabel(errorMessage)
                     .accessibilityIdentifier("agenda.composer.error")
             }
             Label(L10n.agendaVisibilityPublic, systemImage: "globe.europe.africa")

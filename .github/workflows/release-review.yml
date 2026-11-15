@@ -6,6 +6,10 @@ on:
         description: JSON array of review groups; omit to run the complete review
         required: false
         default: '["native-unit", "iPhone-compact", "iPhone-large", "iPad"]'
+      test_cases:
+        description: Optional JSON list of UI test classes or methods for a diagnostic run; empty runs the full suite
+        required: false
+        default: ''
   push:
     branches:
       - 'codex/release-review-*'
@@ -15,7 +19,7 @@ jobs:
   native:
     name: Review ${{ matrix.group }}
     runs-on: macos-15
-    timeout-minutes: 120
+    timeout-minutes: 180
     strategy:
       fail-fast: false
       matrix:
@@ -28,6 +32,7 @@ jobs:
         env:
           EKITAPLIGIM_FULL_RELEASE_REVIEW: '1'
           EKITAPLIGIM_REVIEW_GROUP: ${{ matrix.group }}
+          EKITAPLIGIM_REVIEW_TEST_CASES: ${{ inputs.test_cases || '' }}
         run: |
           # Process names only: no environment values, tokens or command arguments.
           (

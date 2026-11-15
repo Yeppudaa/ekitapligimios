@@ -8,11 +8,15 @@ final class EkitapligimUITests: XCTestCase {
     private func launchApp() -> XCUIApplication {
         let app = XCUIApplication()
         app.launchArguments += [
-            "-ui-testing",
+            "-modern-parity-ui-fixture",
             "-AppleLanguages", "(tr)",
             "-AppleLocale", "tr_TR"
         ]
+        app.launchEnvironment["MODERN_PARITY_SCREEN"] = "home"
+        app.launchEnvironment["MODERN_PARITY_GUEST"] = "1"
+        app.launchEnvironment["MODERN_PARITY_PLAY_AUDIO"] = "0"
         app.launch()
+        XCTAssertTrue(app.otherElements["modern-parity-ready"].waitForExistence(timeout: 15))
         return app
     }
 
@@ -40,13 +44,13 @@ final class EkitapligimUITests: XCTestCase {
 
         selectPrimaryDestination(app, titled: "Profil")
         XCTAssertTrue(app.navigationBars["Profilim"].waitForExistence(timeout: 5))
-        XCTAssertTrue(app.buttons["Giriş yap"].exists)
+        XCTAssertTrue(app.buttons["profile.guest.login"].exists)
     }
 
     func testGoogleSignInAndRegistrationControlsAreAvailable() throws {
         let app = launchApp()
         selectPrimaryDestination(app, titled: "Profil")
-        let signIn = app.buttons["Giriş yap"]
+        let signIn = app.buttons["profile.guest.login"]
         XCTAssertTrue(signIn.waitForExistence(timeout: 5))
         signIn.tap()
 
@@ -148,13 +152,20 @@ final class EkitapligimUITests: XCTestCase {
         XCTAssertTrue(menuButton.waitForExistence(timeout: 15))
         menuButton.tap()
 
-        let premiumButton = app.buttons["Ekitaplığım Premium"]
+        let premiumButton = app.buttons["modern-menu-premium"]
         XCTAssertTrue(premiumButton.waitForExistence(timeout: 5))
+        for _ in 0..<8 {
+            if premiumButton.isHittable { break }
+            app.scrollViews["modern-menu-scroll"].swipeUp()
+        }
+        XCTAssertTrue(premiumButton.isHittable)
         premiumButton.tap()
         XCTAssertTrue(app.navigationBars["Ekitaplığım Premium"].waitForExistence(timeout: 10))
         keepScreenshot(named: "premium-review-top")
 
-        app.scrollViews.firstMatch.swipeUp()
+        let explorePlans = app.buttons["premium.explorePlans"]
+        XCTAssertTrue(explorePlans.waitForExistence(timeout: 5))
+        explorePlans.tap()
         XCTAssertTrue(app.staticTexts["Abonelik Planları"].waitForExistence(timeout: 10))
         keepScreenshot(named: "premium-review-plans")
 
