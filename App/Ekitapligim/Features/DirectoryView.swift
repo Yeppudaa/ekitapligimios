@@ -29,7 +29,10 @@ private struct DirectoryContent: View {
 
     var body: some View {
         ScrollView {
-            LazyVStack(alignment: .leading, spacing: 18) {
+            // Eager on purpose: with accessibility text sizes on iPhone, LazyVStack re-measured
+            // these variable-height cards forever after a letter filter and froze the screen.
+            // Results arrive in bounded batches, so building every row is cheap.
+            VStack(alignment: .leading, spacing: 18) {
                 DirectoryScenicHeader(kind: kind, totalEntries: model.totalEntries, totalBooks: model.totalBooks)
                 filterCard
                 resultsHeading
