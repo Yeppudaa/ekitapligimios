@@ -376,6 +376,11 @@ struct ChatView: View {
                                          lineLimit: dynamicTypeSize.isAccessibilitySize ? 1 : 3)
                         Button {
                             model.cancelQuote()
+                            // Replying raised the keyboard; with nothing typed, cancelling lowers it
+                            // again so the actions under the composer become tappable.
+                            if model.draft.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty {
+                                isComposerFocused = false
+                            }
                         } label: {
                             Image(systemName: "xmark.circle.fill")
                                 .font(.title3)
