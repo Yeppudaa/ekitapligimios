@@ -89,8 +89,8 @@ struct BookAgendaView: View {
                 }
                 .padding(.horizontal, 18)
                 .padding(.vertical, 12)
+                .floatingLauncherClearance()
             }
-            .floatingLauncherClearance()
             .refreshable { await load(reset: true) }
         }
         .navigationTitle(L10n.agendaTitle)

@@ -61,8 +61,8 @@ private struct DownloadsContent: View {
                         }
                         .padding(.horizontal, 18)
                         .padding(.vertical, 12)
+                        .floatingLauncherClearance()
                     }
-                    .floatingLauncherClearance()
                 }
             }
         }

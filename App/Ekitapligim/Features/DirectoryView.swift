@@ -75,8 +75,8 @@ private struct DirectoryContent: View {
             .frame(maxWidth: 760)
             .padding(.horizontal, 18).padding(.vertical, 16)
             .frame(maxWidth: .infinity)
+            .floatingLauncherClearance()
         }
-        .floatingLauncherClearance()
         .accessibilityIdentifier("directory.scroll")
         .background { CommunityStyle.page.ignoresSafeArea() }
         .navigationTitle(title)
@@ -244,8 +244,8 @@ struct DirectoryBooksView: View {
                         }
                         .padding(.horizontal, 18)
                         .padding(.vertical, 12)
+                        .floatingLauncherClearance()
                     }
-                    .floatingLauncherClearance()
                 }
             }
         }

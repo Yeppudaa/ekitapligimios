@@ -17,14 +17,15 @@ private struct FloatingLauncherClearanceModifier: ViewModifier {
     @Environment(\.floatingLauncherClearance) private var clearance
 
     func body(content: Content) -> some View {
-        // Extends the scrollable area only, so the last row and "load more" buttons can always be
-        // scrolled clear of the floating launcher instead of staying underneath it.
-        content.safeAreaPadding(.bottom, clearance)
+        // Plain bottom padding on the scroll content, so the last row and "load more" buttons can
+        // always be scrolled clear of the floating launcher. Safe-area padding is deliberately not
+        // used here: on a ScrollView it fed back into layout and froze large-text screens.
+        content.padding(.bottom, clearance)
     }
 }
 
 extension View {
-    /// Apply to a screen's main vertical ScrollView.
+    /// Apply to the content inside a screen's main vertical ScrollView (not to the ScrollView).
     func floatingLauncherClearance() -> some View {
         modifier(FloatingLauncherClearanceModifier())
     }

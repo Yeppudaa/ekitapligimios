@@ -129,8 +129,8 @@ struct ProfileView: View {
             .padding(.horizontal, 18)
             .padding(.top, 6)
             .padding(.bottom, 34)
+            .floatingLauncherClearance()
         }
-        .floatingLauncherClearance()
         .accessibilityIdentifier("profile.scroll")
     }
 

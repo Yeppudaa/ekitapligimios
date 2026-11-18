@@ -80,8 +80,8 @@ struct HomeView: View {
                         requestCenterCard
                     }
                     .padding(.bottom, 28)
+                    .floatingLauncherClearance()
                 }
-                .floatingLauncherClearance()
                 .refreshable {
                     async let categoryRequest: Void = loadCategoryForums()
                     await load()

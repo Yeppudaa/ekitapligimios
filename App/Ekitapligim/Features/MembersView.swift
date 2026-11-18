@@ -69,8 +69,8 @@ struct MembersView: View {
                 }
             }
             .frame(maxWidth: 760).padding(18).frame(maxWidth: .infinity)
+            .floatingLauncherClearance()
         }
-        .floatingLauncherClearance()
         .background(CommunityStyle.page.ignoresSafeArea())
         .scrollDismissesKeyboard(.interactively)
         .navigationTitle(L10n.membersTitle).navigationBarTitleDisplayMode(.inline)
@@ -317,8 +317,8 @@ private struct MemberProfileContentView: View {
                             sectionContent(profile)
                         }
                         .frame(maxWidth: 760).padding(18).frame(maxWidth: .infinity)
+                        .floatingLauncherClearance()
                     }
-                    .floatingLauncherClearance()
                     .background(CommunityStyle.page.ignoresSafeArea())
                     .refreshable { await load() }
                 } else {

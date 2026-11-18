@@ -41,8 +41,8 @@ struct LiveActivityView: View {
                 }
                 .padding(.horizontal, 18)
                 .padding(.vertical, 12)
+                .floatingLauncherClearance()
             }
-            .floatingLauncherClearance()
             .refreshable { await model.load(reset: true) }
             .accessibilityIdentifier("live.scroll")
             }
