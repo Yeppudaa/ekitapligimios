@@ -18,6 +18,12 @@ enum VipStyle {
     static let name = LinearGradient(colors: [.white, Color(hex: 0xEBDDFF), mint],
         startPoint: .leading, endPoint: .trailing)
     static let artwork = "vip_night_library"
+    /// Fixed star field (fractions of the card) so the sky is identical on every frame and device.
+    static let stars: [(CGFloat, CGFloat, CGFloat)] = [
+        (0.08, 0.58, 1.4), (0.17, 0.74, 1), (0.9, 0.6, 1.6), (0.83, 0.79, 1),
+        (0.06, 0.9, 1.2), (0.94, 0.93, 1.3), (0.27, 0.95, 0.9), (0.73, 0.97, 1),
+        (0.12, 0.1, 1.1), (0.04, 0.3, 0.9), (0.96, 0.2, 1)
+    ]
 }
 
 /// The octagonal VIP portrait shape.
@@ -197,11 +203,6 @@ struct VipProfileHero<Footer: View>: View {
     @ViewBuilder var footer: () -> Footer
     @Environment(\.horizontalSizeClass) private var horizontalSizeClass
 
-    private static let stars: [(CGFloat, CGFloat, CGFloat)] = [
-        (0.08, 0.58, 1.4), (0.17, 0.74, 1), (0.9, 0.6, 1.6), (0.83, 0.79, 1),
-        (0.06, 0.9, 1.2), (0.94, 0.93, 1.3), (0.27, 0.95, 0.9), (0.73, 0.97, 1),
-        (0.12, 0.1, 1.1), (0.04, 0.3, 0.9), (0.96, 0.2, 1)
-    ]
 
     private var avatarSize: CGFloat { horizontalSizeClass == .compact ? 112 : 124 }
     private var haloSize: CGFloat { avatarSize + 56 }
@@ -353,7 +354,7 @@ struct VipProfileHero<Footer: View>: View {
 
     private var starField: some View {
         Canvas { context, size in
-            for (x, y, r) in Self.stars {
+            for (x, y, r) in VipStyle.stars {
                 let center = CGPoint(x: size.width * x, y: size.height * y)
                 let glow = r * 5
                 context.fill(Path(ellipseIn: CGRect(x: center.x - glow, y: center.y - glow, width: glow * 2, height: glow * 2)),

@@ -123,7 +123,10 @@ final class VipPremiumTests: XCTestCase {
         "pagination":{"next_before":5,"has_more":true}}
         """#)
         XCTAssertEqual(page.items.map(\.actorTier), [.vip, .premium, .member])
-        XCTAssertEqual(page.items.first?.message, "Ada VIP PREMIUM üyeliğe yükseldi. ✨")
+        // Localized like every other activity message (Turkish devices and English CI runners).
+        XCTAssertEqual(page.items.first?.message,
+                       String(format: VipL10n.text("vipActivityMessage"), locale: Locale.current, "Ada"))
+        XCTAssertTrue(page.items.first?.message.contains("VIP PREMIUM") == true)
         XCTAssertEqual(page.recentPremiumMembers.map(\.membershipTier), [.vip, .premium])
         XCTAssertEqual(page.nextBefore, 5)
         let old = try decode(LiveActivityPageDTO.self, #"{"items":[]}"#)
