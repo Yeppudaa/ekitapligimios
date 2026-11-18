@@ -173,6 +173,10 @@ struct BookRequestsView: View {
                         }
                         }
                     }
+                    if model.hasMore {
+                        EKLoadMoreButton(isLoading: model.isLoadingMore) { Task { await model.loadMore() } }
+                            .accessibilityIdentifier("requests.loadMore")
+                    }
                     CommunityInvitationCard(
                         eyebrow: CommunityRefreshL10n.text("requests.outroEyebrow"),
                         title: CommunityRefreshL10n.text("requests.outroTitle"),
@@ -189,7 +193,13 @@ struct BookRequestsView: View {
     }
 
     private var requestStats: some View {
-        let metrics: [(String, Int, String)] = [
+        // Site-wide totals from the server; the loaded page is only a fallback for older servers.
+        let metrics: [(String, Int, String)] = model.stats.map { stats in [
+            ("requests.pending", stats.pending, "hourglass"),
+            ("requests.acquired", stats.acquired, "checkmark"),
+            ("requests.rejected", stats.rejected, "shield"),
+            ("requests.support", stats.support, "heart")
+        ] } ?? [
             ("requests.pending", model.items.filter { $0.allowsVote }.count, "hourglass"),
             ("requests.acquired", model.items.filter { $0.isAcquired }.count, "checkmark"),
             ("requests.rejected", model.items.filter { $0.status.uppercased() == "REJECTED" }.count, "shield"),
@@ -588,7 +598,7 @@ private struct BookRequestRow: View {
 
     private var bookInfo: some View {
         (dynamicTypeSize.isAccessibilitySize ? AnyLayout(VStackLayout(alignment: .leading, spacing: 14)) : AnyLayout(HStackLayout(alignment: .top, spacing: 14))) {
-            EKBookRequestCover(title: item.title, author: item.author, seed: item.id + item.title)
+            cover
             VStack(alignment: .leading, spacing: 6) {
                 Text(item.title)
                     .font(.system(.title3, design: .serif).weight(.semibold))
@@ -609,6 +619,24 @@ private struct BookRequestRow: View {
                 }
                 EKBookRequestStatusPill(status: item.status, showsBookHint: item.fulfilledBookID != nil)
             }
+        }
+    }
+
+    /// Shelved requests show the real catalog cover; open requests keep the generated jacket.
+    @ViewBuilder
+    private var cover: some View {
+        if let coverURL = item.fulfilledCoverURL {
+            EKitapligimRemoteCover(urlString: coverURL, title: item.title, author: item.author)
+                .frame(width: 82, height: 116)
+                .clipShape(RoundedRectangle(cornerRadius: 8, style: .continuous))
+                .overlay {
+                    RoundedRectangle(cornerRadius: 8, style: .continuous)
+                        .stroke(Color.black.opacity(0.08), lineWidth: 1)
+                }
+                .shadow(color: Color.black.opacity(0.12), radius: 6, y: 3)
+                .accessibilityHidden(true)
+        } else {
+            EKBookRequestCover(title: item.title, author: item.author, seed: item.id + item.title)
         }
     }
 

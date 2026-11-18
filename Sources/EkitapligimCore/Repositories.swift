@@ -35,8 +35,8 @@ public struct BookRequestsRepository: Sendable {
         self.apiClient = apiClient
     }
 
-    public func requests() async throws -> BookRequestsPageDTO {
-        try await apiClient.request(.bookRequests, as: BookRequestsPageDTO.self)
+    public func requests(page: Int = 1) async throws -> BookRequestsPageDTO {
+        try await apiClient.request(.bookRequests(page: page), as: BookRequestsPageDTO.self)
     }
 
     public func create(title: String, author: String, isbn: String) async throws -> BookRequestDTO {

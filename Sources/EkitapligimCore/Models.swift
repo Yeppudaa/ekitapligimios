@@ -137,6 +137,9 @@ public struct BookRequestDTO: Decodable, Equatable, Identifiable, Sendable {
     public let voteCount: Int
     public let status: String
     public let bookId: String?
+    /// Cover of the catalog book a fulfilled request was shelved as; nil while still requested.
+    public let coverUrl: String?
+    public let createdAt: Int
 
     public init(from decoder: Decoder) throws {
         let container = try decoder.container(keyedBy: CodingKeys.self)
@@ -148,8 +151,31 @@ public struct BookRequestDTO: Decodable, Equatable, Identifiable, Sendable {
         self.userId = parsedUserID > 0 ? parsedUserID : nil
         self.voteCount = try container.decodeIfPresent(Int.self, forKey: .voteCount) ?? 0
         self.status = try container.decodeIfPresent(String.self, forKey: .status) ?? "PENDING"
-        let parsedBookID = try container.decodeFlexibleString(forKey: .bookId, fallbackKeys: [.threadId, .bookThreadId])
-        self.bookId = parsedBookID.isEmpty ? nil : parsedBookID
+        let book = try? container.decodeIfPresent(LinkedBook.self, forKey: .book)
+        var parsedBookID = try container.decodeFlexibleString(forKey: .bookId, fallbackKeys: [.threadId, .bookThreadId])
+        if parsedBookID.isEmpty || parsedBookID == "0" { parsedBookID = book?.id ?? "" }
+        self.bookId = parsedBookID.isEmpty || parsedBookID == "0" ? nil : parsedBookID
+        let cover = book?.coverUrl?.trimmingCharacters(in: .whitespacesAndNewlines) ?? ""
+        self.coverUrl = cover.isEmpty ? nil : cover
+        self.createdAt = container.decodeFlexibleInt(forKey: .createdAt)
+    }
+
+    /// Real cover for a fulfilled request that is linked to an openable catalog book.
+    public var fulfilledCoverURL: String? {
+        fulfilledBookID == nil ? nil : coverUrl
+    }
+
+    private struct LinkedBook: Decodable {
+        let id: String
+        let coverUrl: String?
+
+        init(from decoder: Decoder) throws {
+            let container = try decoder.container(keyedBy: CodingKeys.self)
+            id = try container.decodeFlexibleString(forKey: .id, fallbackKeys: [.threadId])
+            coverUrl = try container.decodeIfPresent(String.self, forKey: .coverUrl)
+        }
+
+        private enum CodingKeys: String, CodingKey { case id, threadId, coverUrl }
     }
 
     /// Android `SocialScreen` only enables upvote while the request is still `PENDING`.
@@ -179,12 +205,38 @@ public struct BookRequestDTO: Decodable, Equatable, Identifiable, Sendable {
         case bookId
         case threadId
         case bookThreadId
+        case book
+        case createdAt
     }
+}
+
+/// Site-wide request totals from the server; never derived from the rows loaded so far.
+public struct BookRequestStatsDTO: Decodable, Equatable, Sendable {
+    public let total: Int
+    public let pending: Int
+    public let acquired: Int
+    public let rejected: Int
+    public let support: Int
+
+    public init(from decoder: Decoder) throws {
+        let container = try decoder.container(keyedBy: CodingKeys.self)
+        total = container.decodeFlexibleInt(forKey: .total)
+        pending = container.decodeFlexibleInt(forKey: .pending)
+        acquired = container.decodeFlexibleInt(forKey: .acquired)
+        rejected = container.decodeFlexibleInt(forKey: .rejected)
+        support = container.decodeFlexibleInt(forKey: .support)
+    }
+
+    private enum CodingKeys: String, CodingKey { case total, pending, acquired, rejected, support }
 }
 
 public struct BookRequestsPageDTO: Decodable, Equatable, Sendable {
     public let items: [BookRequestDTO]
     public let requestQuota: BookRequestQuotaDTO?
+    /// Nil from servers that predate site-wide totals.
+    public let stats: BookRequestStatsDTO?
+    public let page: Int
+    public let hasMore: Bool
 
     public init(from decoder: Decoder) throws {
         let container = try decoder.container(keyedBy: CodingKeys.self)
@@ -192,12 +244,32 @@ public struct BookRequestsPageDTO: Decodable, Equatable, Sendable {
             ?? container.decodeIfPresent([BookRequestDTO].self, forKey: .items)
             ?? []
         self.requestQuota = try container.decodeIfPresent(BookRequestQuotaDTO.self, forKey: .requestQuota)
+        self.stats = try? container.decodeIfPresent(BookRequestStatsDTO.self, forKey: .stats)
+        let pagination = try? container.decodeIfPresent(Pagination.self, forKey: .pagination)
+        self.page = max(1, pagination?.page ?? 1)
+        self.hasMore = pagination?.hasMore ?? false
+    }
+
+    private struct Pagination: Decodable {
+        let page: Int
+        let hasMore: Bool
+
+        init(from decoder: Decoder) throws {
+            let container = try decoder.container(keyedBy: CodingKeys.self)
+            page = container.decodeFlexibleInt(forKey: .page, default: 1)
+            let pages = container.decodeFlexibleInt(forKey: .pages, default: 1)
+            hasMore = (try? container.decodeIfPresent(Bool.self, forKey: .hasMore)) ?? (page < pages)
+        }
+
+        private enum CodingKeys: String, CodingKey { case page, pages, hasMore }
     }
 
     private enum CodingKeys: String, CodingKey {
         case bookRequests
         case items
         case requestQuota
+        case stats
+        case pagination
     }
 }
 

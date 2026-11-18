@@ -175,7 +175,7 @@ final class SocialReliabilityTests: XCTestCase {
         fetch: @escaping @Sendable () async throws -> BookRequestsPageDTO = { try requests() },
         create: @escaping @Sendable (String, String, String) async throws -> BookRequestDTO = { _, _, _ in try requests().items[0] },
         vote: @escaping @Sendable (String) async throws -> BookRequestVoteDTO = { _ in throw URLError(.badServerResponse) }
-    ) -> BookRequestsDependencies { BookRequestsDependencies(fetch: fetch, create: create, vote: vote) }
+    ) -> BookRequestsDependencies { BookRequestsDependencies(fetch: { _ in try await fetch() }, create: create, vote: vote) }
 
     nonisolated private static func requests(title: String = "Book", duplicate: Bool = false, quota: Bool = false) throws -> BookRequestsPageDTO {
         let item: [String: Any] = ["id": "1", "title": title, "author": "Author", "status": "PENDING"]

@@ -149,7 +149,13 @@ public extension APIEndpoint {
         )
     }
 
-    static let bookRequests = APIEndpoint(method: .get, path: "book-requests")
+    static let bookRequests = bookRequests(page: 1)
+
+    static func bookRequests(page: Int) -> APIEndpoint {
+        // Page 1 keeps the original query-free request so older servers answer it unchanged.
+        APIEndpoint(method: .get, path: "book-requests",
+                    queryItems: page > 1 ? [URLQueryItem(name: "page", value: String(page))] : [])
+    }
 
     static func createBookRequest(title: String, author: String, isbn: String) -> APIEndpoint {
         var fields = ["title": title, "author": author]
