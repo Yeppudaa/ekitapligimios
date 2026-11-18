@@ -70,6 +70,7 @@ struct MembersView: View {
             }
             .frame(maxWidth: 760).padding(18).frame(maxWidth: .infinity)
         }
+        .floatingLauncherClearance()
         .background(CommunityStyle.page.ignoresSafeArea())
         .scrollDismissesKeyboard(.interactively)
         .navigationTitle(L10n.membersTitle).navigationBarTitleDisplayMode(.inline)
@@ -134,11 +135,18 @@ private struct MemberRow: View {
             : AnyLayout(HStackLayout(alignment: .top, spacing: 14))) {
             CommunityMemberAvatar(member: member, size: 58)
             VStack(alignment: .leading, spacing: 8) {
-                PremiumMemberName(username: member.username, isPremium: member.isPremium)
-                    .font(.headline.weight(.bold)).foregroundStyle(CommunityStyle.ink)
-                    .lineLimit(member.isPremium || dynamicTypeSize.isAccessibilitySize ? nil : 2)
-                if member.isPremium {
-                    PremiumMemberPill()
+                if member.isVipSupporter {
+                    MembershipName(username: member.username, tier: .vip)
+                        .font(.headline.weight(.bold))
+                        .fixedSize(horizontal: false, vertical: true)
+                    VipBadge(compact: true)
+                } else {
+                    PremiumMemberName(username: member.username, isPremium: member.isPremium)
+                        .font(.headline.weight(.bold)).foregroundStyle(CommunityStyle.ink)
+                        .lineLimit(member.isPremium || dynamicTypeSize.isAccessibilitySize ? nil : 2)
+                    if member.isPremium {
+                        PremiumMemberPill()
+                    }
                 }
                 if !member.isPremium || member.isStaff || ["admin", "moderator"].contains(member.roleType) {
                     Text(member.roleLabel.isEmpty ? (member.userTitle.isEmpty ? CommunityDesignL10n.text("member.role") : member.userTitle) : member.roleLabel)
@@ -176,7 +184,12 @@ struct CommunityMemberAvatar: View {
     let size: CGFloat
     @ViewBuilder
     var body: some View {
-        if member.isPremium {
+        if member.isVipSupporter {
+            VipAvatarFrame(size: size + 10) { diameter in
+                EKAvatar(urlString: member.avatarUrl, username: member.username, size: diameter, cornerRadius: 0,
+                    background: Color(hex: 0x2C2954), foreground: VipStyle.mint)
+            }
+        } else if member.isPremium {
             PremiumAvatarFrame(size: size + 10) { diameter in
                 EKAvatar(urlString: member.avatarUrl, username: member.username, size: diameter,
                     background: CommunityStyle.soft, foreground: CommunityStyle.teal)
@@ -305,6 +318,7 @@ private struct MemberProfileContentView: View {
                         }
                         .frame(maxWidth: 760).padding(18).frame(maxWidth: .infinity)
                     }
+                    .floatingLauncherClearance()
                     .background(CommunityStyle.page.ignoresSafeArea())
                     .refreshable { await load() }
                 } else {
@@ -369,7 +383,62 @@ private struct MemberProfileContentView: View {
         }
     }
 
+    @ViewBuilder
     private func memberHero(_ profile: MemberProfileDTO) -> some View {
+        if profile.member.isVipSupporter && profile.canViewProfile {
+            vipMemberHero(profile)
+        } else {
+            standardMemberHero(profile)
+        }
+    }
+
+    private func vipMemberHero(_ profile: MemberProfileDTO) -> some View {
+        let member = profile.member
+        return VipProfileHero(
+            displayName: member.username,
+            avatarUrl: member.avatarUrl,
+            bannerUrl: profile.bannerUrl,
+            detail: EKitapligimFormat.date(member.registerDate).map { L10n.profileJoinedOn($0) }
+        ) {
+            if member.isOnline || member.isFollowed || profile.isIgnored || isBlocked {
+                ViewThatFits(in: .horizontal) {
+                    HStack(spacing: 8) { vipChips(profile) }
+                    VStack(spacing: 6) { vipChips(profile) }
+                }
+            }
+            if let seen = EKitapligimFormat.date(member.lastActivity) {
+                HStack(spacing: 4) {
+                    Image(systemName: "clock").font(.system(size: 9))
+                    Text(L10n.profileLastSeen(seen)).font(.caption2).fixedSize(horizontal: false, vertical: true)
+                }
+                .foregroundStyle(VipStyle.lilac.opacity(0.75))
+            }
+        }
+        .accessibilityIdentifier("member.vip.hero")
+    }
+
+    @ViewBuilder private func vipChips(_ profile: MemberProfileDTO) -> some View {
+        if profile.member.isOnline { vipChip(L10n.profileOnline) }
+        if profile.member.isFollowed { vipChip(L10n.membersFollowingBadge) }
+        if profile.isIgnored || isBlocked { vipChip(L10n.membersBlockedBadge) }
+    }
+
+    /// Readable on the dark VIP card (the light community chip disappears there).
+    private func vipChip(_ title: String) -> some View {
+        Text(title)
+            .font(.caption.weight(.bold))
+            .multilineTextAlignment(.center)
+            .fixedSize(horizontal: false, vertical: true)
+            .foregroundStyle(VipStyle.mint)
+            .padding(.horizontal, 12)
+            .padding(.vertical, 6)
+            .background(Color(hex: 0x1B1A3C), in: RoundedRectangle(cornerRadius: 10, style: .continuous))
+            .overlay {
+                RoundedRectangle(cornerRadius: 10, style: .continuous).strokeBorder(VipStyle.lilac.opacity(0.55), lineWidth: 1)
+            }
+    }
+
+    private func standardMemberHero(_ profile: MemberProfileDTO) -> some View {
         let member = profile.member
         return CommunityCard(padding: 0) {
             VStack(spacing: 0) {
@@ -385,7 +454,8 @@ private struct MemberProfileContentView: View {
                     }
                 VStack(spacing: 14) {
                     CommunityMemberAvatar(member: member, size: 96).padding(.top, -48)
-                    PremiumMemberName(username: member.username, isPremium: member.isPremium)
+                    PremiumMemberName(username: member.isPremium ? MembershipTier.premium.namePrefix + member.username : member.username,
+                                      isPremium: member.isPremium)
                         .font(.system(.largeTitle, design: .serif).bold())
                         .foregroundStyle(CommunityStyle.ink).multilineTextAlignment(.center)
                         .fixedSize(horizontal: false, vertical: true)
@@ -767,6 +837,7 @@ private struct MemberProfileContentView: View {
             if var updated = profile {
                 updated = MemberProfileDTO(
                     member: result.member,
+                    bannerUrl: updated.bannerUrl,
                     library: updated.library,
                     lastReadBook: updated.lastReadBook,
                     readingCount: updated.readingCount,

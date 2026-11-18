@@ -54,14 +54,14 @@ final class AppStoreEntitlementPolicy
 
 	private static function isLifetimeProduct(array $transaction): bool
 	{
-		return ($transaction['productId'] ?? '') === 'com.ekitapligim.app.premium.lifetime'
+		return in_array($transaction['productId'] ?? '', ['com.ekitapligim.app.premium.lifetime', AppStoreProducts::VIP], true)
 			&& ($transaction['type'] ?? '') === 'Non-Consumable';
 	}
 
 	public static function hasValidProductType(array $transaction): bool
 	{
 		$product = (string) ($transaction['productId'] ?? '');
-		if ($product === 'com.ekitapligim.app.premium.lifetime')
+		if ($product === 'com.ekitapligim.app.premium.lifetime' || $product === AppStoreProducts::VIP)
 		{
 			return self::isLifetimeProduct($transaction);
 		}

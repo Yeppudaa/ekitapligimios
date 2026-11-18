@@ -33,7 +33,7 @@ public enum PurchaseVerificationPolicy {
             response.gracePeriodExpirationTime ?? 0
         )
         guard effectiveExpirationTime > 0 else {
-            if let productID, productID != "com.ekitapligim.app.premium.lifetime" {
+            if let productID, !PremiumProductCatalog.isLifetime(productID) {
                 throw PurchaseVerificationError.missingExpiration
             }
             return nil

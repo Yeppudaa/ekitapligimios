@@ -77,6 +77,7 @@ private struct ConversationInboxView: View {
             }
             .frame(maxWidth: 760).padding(18).frame(maxWidth: .infinity)
         }
+        .floatingLauncherClearance()
         .background(style.page.ignoresSafeArea())
         .refreshable { await load(reset: true) }
         .navigationTitle(L10n.conversationsTitle)

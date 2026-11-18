@@ -52,7 +52,8 @@ final class AppStoreTransactionStore
 	/** Additive pre-purchase advice; never rejects an already-paid verification. */
 	public static function purchaseContext(int $userId): array
 	{
-		$context = ['has_lifetime' => false, 'has_active_subscription' => false, 'has_fixed_term' => false];
+		$context = ['has_lifetime' => false, 'has_active_subscription' => false, 'has_fixed_term' => false,
+			'has_vip_supporter' => false];
 		$rows = \XF::db()->fetchAll('SELECT product_id, original_transaction_id FROM xf_ekitapligim_mobile_appstore_entitlement
 			WHERE user_id = ? AND active = 1 AND (expires_date = 0 OR expires_date > ?)', [$userId, \XF::$time]);
 		foreach ($rows as $row)
@@ -62,6 +63,7 @@ final class AppStoreTransactionStore
 			if ($owner !== $userId) { continue; }
 			$product = (string) $row['product_id'];
 			if ($product === 'com.ekitapligim.app.premium.lifetime') { $context['has_lifetime'] = true; }
+			else if ($product === AppStoreProducts::VIP) { $context['has_vip_supporter'] = true; }
 			else if (AppStoreEntitlementPolicy::nonRenewingMonths(['productId' => $product, 'type' => 'Non-Renewing Subscription']) > 0)
 			{
 				$context['has_fixed_term'] = true;

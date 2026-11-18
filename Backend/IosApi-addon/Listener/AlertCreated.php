@@ -82,6 +82,11 @@ class AlertCreated
 				$customData['route'] = $appRoute;
 			}
 
+			if ((string)$alert->content_type === 'user' && (string)$alert->action === 'ek_premium_announce')
+			{
+				$customData['target_url']='https://ekitapligim.com/premium-uyelik/';
+			}
+
 			$payload = ApnsPush::buildPayload($title, $body, $badge, $customData);
 			return ApnsPush::sendToUser($userId, $payload);
 		}
@@ -107,6 +112,11 @@ class AlertCreated
 
 	private static function titleFromAlert(UserAlert $alert): string
 	{
+		$extra = is_array($alert->extra_data) ? $alert->extra_data : [];
+		if ((string)$alert->content_type === 'user' && (string)$alert->action === 'ek_premium_announce' && ($extra['campaign_type'] ?? '') === 'premium')
+		{
+			return mb_substr(trim(strip_tags((string)($extra['notice_title'] ?? 'Premium seni bekliyor'))),0,80,'UTF-8');
+		}
 		$action = (string) $alert->action;
 		$type = (string) $alert->content_type;
 
@@ -152,6 +162,11 @@ class AlertCreated
 
 	private static function bodyFromAlert(UserAlert $alert): string
 	{
+		$extra = is_array($alert->extra_data) ? $alert->extra_data : [];
+		if ((string)$alert->content_type === 'user' && (string)$alert->action === 'ek_premium_announce' && ($extra['campaign_type'] ?? '') === 'premium')
+		{
+			return mb_substr(trim(strip_tags((string)($extra['notice_message'] ?? 'Premium ayrıcalıklarını keşfet.'))),0,200,'UTF-8');
+		}
 		$action = (string) $alert->action;
 		$type = (string) $alert->content_type;
 		// Lock-screen previews must not render private message text or participants.

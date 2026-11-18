@@ -51,6 +51,29 @@ struct ChatPremiumUsername: View {
     }
 }
 
+/// VIP chat name: "💎 VIP name" on the lilac-mint wash, as on Android and the web.
+struct ChatVipUsername: View {
+    let username: String
+    var compact = false
+
+    var body: some View {
+        Text(MembershipTier.vip.namePrefix + "VIP " + username)
+            .font((compact ? Font.caption2 : Font.caption).weight(.bold))
+            .foregroundStyle(Color(hex: 0x164C54))
+            .lineLimit(2)
+            .fixedSize(horizontal: false, vertical: true)
+            .padding(.horizontal, 8)
+            .padding(.vertical, 3)
+            .background(LinearGradient(colors: [Color(hex: 0xF0E5FF), Color(hex: 0xE1F7F5)],
+                                       startPoint: .leading, endPoint: .trailing),
+                        in: RoundedRectangle(cornerRadius: 8, style: .continuous))
+            .overlay { RoundedRectangle(cornerRadius: 8, style: .continuous).stroke(Color(hex: 0xCFC0EA), lineWidth: 1) }
+            .accessibilityElement(children: .ignore)
+            .accessibilityLabel(username)
+            .accessibilityValue(VipL10n.text("vipMember"))
+    }
+}
+
 private struct ChatPremiumCrown: View {
     var body: some View {
         Canvas { context, size in

@@ -5,6 +5,7 @@ namespace Ekitapligim\IosApi\Api\Controller;
 use Ekitapligim\IosApi\Service\AppStoreEntitlementPolicy;
 use Ekitapligim\IosApi\Service\AppStoreTransactionStore;
 use Ekitapligim\IosApi\Service\IosMembershipSynchronizer;
+use Ekitapligim\IosApi\Service\AppStoreProducts;
 
 class AppStoreVerify extends \Ekitapligim\MobileApi\Api\Controller\AbstractMobileController
 {
@@ -23,10 +24,13 @@ class AppStoreVerify extends \Ekitapligim\MobileApi\Api\Controller\AbstractMobil
 			try
 			{
 				AppStoreTransactionStore::ensureTables();
+				$context = AppStoreTransactionStore::purchaseContext((int) $visitor->user_id);
+				// VIP bought on the web or Google Play also counts: never sell it twice.
+				$context['has_vip_supporter'] = !empty($context['has_vip_supporter']) || AppStoreProducts::userIsVip($visitor);
 				return $this->apiResult(['success' => true,
 					'app_account_token' => AppStoreTransactionStore::accountToken((int) $visitor->user_id),
-					'supported_product_ids' => $this->allowedProductIds()]
-					+ AppStoreTransactionStore::purchaseContext((int) $visitor->user_id));
+					'supported_product_ids' => $this->supportedProductIds()]
+					+ $context);
 			}
 			catch (\Throwable $e)
 			{
@@ -331,6 +335,7 @@ class AppStoreVerify extends \Ekitapligim\MobileApi\Api\Controller\AbstractMobil
 			'com.ekitapligim.app.premium.yearly',
 			'com.ekitapligim.app.premium.yearly_once',
 			'com.ekitapligim.app.premium.lifetime',
+			AppStoreProducts::VIP,
 			'ekitapligim.premium.monthly',
 			'ekitapligim.premium.yearly'
 		];
@@ -344,6 +349,17 @@ class AppStoreVerify extends \Ekitapligim\MobileApi\Api\Controller\AbstractMobil
 			$shippedProducts,
 			array_filter(array_map('trim', explode(',', $configuredProducts)))
 		)));
+	}
+
+	/** Products the app may start a payment for. VIP needs both membership groups. */
+	protected function supportedProductIds(): array
+	{
+		$products = $this->allowedProductIds();
+		if (!AppStoreProducts::vipReady())
+		{
+			$products = array_values(array_diff($products, [AppStoreProducts::VIP]));
+		}
+		return $products;
 	}
 
 	protected function isAllowedProductId(string $productId): bool

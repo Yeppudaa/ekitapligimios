@@ -76,6 +76,7 @@ private struct DirectoryContent: View {
             .padding(.horizontal, 18).padding(.vertical, 16)
             .frame(maxWidth: .infinity)
         }
+        .floatingLauncherClearance()
         .accessibilityIdentifier("directory.scroll")
         .background { CommunityStyle.page.ignoresSafeArea() }
         .navigationTitle(title)
@@ -244,6 +245,7 @@ struct DirectoryBooksView: View {
                         .padding(.horizontal, 18)
                         .padding(.vertical, 12)
                     }
+                    .floatingLauncherClearance()
                 }
             }
         }

@@ -70,3 +70,10 @@ public enum ActivityLinks {
         return result
     }
 }
+
+public extension RecentPremiumMemberDTO {
+    var memberDestination: AppRoute? {
+        guard let id = Int(id), id > 0, id <= Int32.max else { return nil }
+        return .member(id)
+    }
+}

@@ -9,6 +9,8 @@ public struct UserRoleDTO: Decodable, Equatable, Sendable {
     public let isAdmin: Bool
     public let isModerator: Bool
     public let isPremium: Bool
+    /// VIP Premium display identity. Older servers omit it, which keeps the previous presentation.
+    public let isVipSupporter: Bool
 
     public init(
         roleLabel: String = "",
@@ -16,7 +18,8 @@ public struct UserRoleDTO: Decodable, Equatable, Sendable {
         showVerifiedBadge: Bool = false,
         isAdmin: Bool = false,
         isModerator: Bool = false,
-        isPremium: Bool = false
+        isPremium: Bool = false,
+        isVipSupporter: Bool = false
     ) {
         self.roleLabel = roleLabel
         self.roleType = roleType
@@ -24,6 +27,7 @@ public struct UserRoleDTO: Decodable, Equatable, Sendable {
         self.isAdmin = isAdmin
         self.isModerator = isModerator
         self.isPremium = isPremium
+        self.isVipSupporter = isVipSupporter
     }
 
     public init(from decoder: Decoder) throws {
@@ -34,6 +38,7 @@ public struct UserRoleDTO: Decodable, Equatable, Sendable {
         self.isAdmin = container.decodeFlexibleBool(forKey: .isAdmin)
         self.isModerator = container.decodeFlexibleBool(forKey: .isModerator)
         self.isPremium = container.decodeFlexibleBool(forKey: .isPremium)
+        self.isVipSupporter = container.decodeFlexibleBool(forKey: .isVipSupporter)
     }
 
     private enum CodingKeys: String, CodingKey {
@@ -43,6 +48,7 @@ public struct UserRoleDTO: Decodable, Equatable, Sendable {
         case isAdmin
         case isModerator
         case isPremium
+        case isVipSupporter
     }
 }
 
@@ -56,6 +62,7 @@ public struct SubscriptionDTO: Decodable, Equatable, Sendable {
     public let remainingDays: Int
     public let dailyRead: DailyQuotaDTO?
     public let dailyDownload: DailyQuotaDTO?
+    public let isVipSupporter: Bool
 
     public init(
         isPremium: Bool = false,
@@ -64,8 +71,10 @@ public struct SubscriptionDTO: Decodable, Equatable, Sendable {
         expirationTime: Int = 0,
         remainingDays: Int = 0,
         dailyRead: DailyQuotaDTO? = nil,
-        dailyDownload: DailyQuotaDTO? = nil
+        dailyDownload: DailyQuotaDTO? = nil,
+        isVipSupporter: Bool = false
     ) {
+        self.isVipSupporter = isVipSupporter
         self.isPremium = isPremium
         self.planName = planName
         self.userTier = userTier
@@ -84,6 +93,7 @@ public struct SubscriptionDTO: Decodable, Equatable, Sendable {
         self.remainingDays = container.decodeFlexibleInt(forKey: .remainingDays)
         self.dailyRead = try container.decodeIfPresent(DailyQuotaDTO.self, forKey: .dailyRead)
         self.dailyDownload = try container.decodeIfPresent(DailyQuotaDTO.self, forKey: .dailyDownload)
+        self.isVipSupporter = container.decodeFlexibleBool(forKey: .isVipSupporter)
     }
 
     public var isAdminTier: Bool { userTier == "admin" }
@@ -96,6 +106,7 @@ public struct SubscriptionDTO: Decodable, Equatable, Sendable {
         case remainingDays
         case dailyRead
         case dailyDownload
+        case isVipSupporter
     }
 }
 
@@ -192,12 +203,15 @@ public struct BookAgendaActorDTO: Decodable, Equatable, Identifiable, Sendable {
     public let username: String
     public let avatarUrl: String?
     public let isVerified: Bool
+    public let membershipTier: MembershipTier
 
-    public init(id: String, username: String, avatarUrl: String? = nil, isVerified: Bool = false) {
+    public init(id: String, username: String, avatarUrl: String? = nil, isVerified: Bool = false,
+                membershipTier: MembershipTier = .member) {
         self.id = id
         self.username = username
         self.avatarUrl = avatarUrl
         self.isVerified = isVerified
+        self.membershipTier = membershipTier
     }
 
     public init(from decoder: Decoder) throws {
@@ -206,6 +220,7 @@ public struct BookAgendaActorDTO: Decodable, Equatable, Identifiable, Sendable {
         self.username = try container.decodeIfPresent(String.self, forKey: .username) ?? ""
         self.avatarUrl = try container.decodeIfPresent(String.self, forKey: .avatarUrl)
         self.isVerified = container.decodeFlexibleBool(forKey: .isVerified)
+        self.membershipTier = MembershipTier.fromWire((try? container.decodeIfPresent(String.self, forKey: .membershipTier)) ?? nil)
     }
 
     private enum CodingKeys: String, CodingKey {
@@ -214,6 +229,7 @@ public struct BookAgendaActorDTO: Decodable, Equatable, Identifiable, Sendable {
         case username
         case avatarUrl
         case isVerified
+        case membershipTier
     }
 }
 
@@ -747,12 +763,17 @@ public struct LiveActivityActorDTO: Decodable, Equatable, Identifiable, Sendable
     public let id: String
     public let username: String
     public let avatarUrl: String?
+    /// Nil on servers that predate membership tiers; the item then infers it from its type.
+    public let membershipTier: MembershipTier?
 
     public init(from decoder: Decoder) throws {
         let container = try decoder.container(keyedBy: CodingKeys.self)
         self.id = try container.decodeFlexibleString(forKey: .id, fallbackKeys: [.userId])
         self.username = try container.decodeIfPresent(String.self, forKey: .username) ?? ""
         self.avatarUrl = try container.decodeIfPresent(String.self, forKey: .avatarUrl)
+        self.membershipTier = container.contains(.membershipTier)
+            ? MembershipTier.fromWire((try? container.decodeIfPresent(String.self, forKey: .membershipTier)) ?? nil)
+            : nil
     }
 
     private enum CodingKeys: String, CodingKey {
@@ -760,6 +781,32 @@ public struct LiveActivityActorDTO: Decodable, Equatable, Identifiable, Sendable
         case userId
         case username
         case avatarUrl
+        case membershipTier
+    }
+}
+
+/// A recent Premium or VIP member shown above the live feed.
+public struct RecentPremiumMemberDTO: Decodable, Equatable, Identifiable, Sendable {
+    public let id: String
+    public let username: String
+    public let avatarUrl: String?
+    public let membershipTier: MembershipTier
+
+    public init(from decoder: Decoder) throws {
+        let container = try decoder.container(keyedBy: CodingKeys.self)
+        self.id = try container.decodeFlexibleString(forKey: .id, fallbackKeys: [.userId])
+        self.username = try container.decodeIfPresent(String.self, forKey: .username) ?? ""
+        self.avatarUrl = try container.decodeIfPresent(String.self, forKey: .avatarUrl)
+        let tier = MembershipTier.fromWire((try? container.decodeIfPresent(String.self, forKey: .membershipTier)) ?? nil)
+        self.membershipTier = tier == .member ? .premium : tier
+    }
+
+    private enum CodingKeys: String, CodingKey {
+        case id
+        case userId
+        case username
+        case avatarUrl
+        case membershipTier
     }
 }
 
@@ -815,6 +862,16 @@ public struct LiveActivityItemDTO: Decodable, Equatable, Identifiable, Sendable 
         self.contentType = try container.decodeIfPresent(String.self, forKey: .contentType)
     }
 
+    /// Server tier when sent; otherwise the Premium/VIP event type identifies the member.
+    public var actorTier: MembershipTier {
+        if let tier = actor?.membershipTier { return tier }
+        switch type.lowercased() {
+        case "vip": return .vip
+        case "premium": return .premium
+        default: return .member
+        }
+    }
+
     public var nativeDestination: AppRoute? {
         let parser = DeepLinkParser()
         if ActivityPresentation.audioTypes.contains(type.lowercased()) {
@@ -848,10 +905,14 @@ public struct LiveActivityPageDTO: Decodable, Equatable, Sendable {
     public let items: [LiveActivityItemDTO]
     public let nextBefore: Int?
     public let hasMore: Bool
+    /// Only the first public page carries it; older servers omit it.
+    public let recentPremiumMembers: [RecentPremiumMemberDTO]
 
     public init(from decoder: Decoder) throws {
         let container = try decoder.container(keyedBy: CodingKeys.self)
         self.items = try container.decodeIfPresent([LiveActivityItemDTO].self, forKey: .items) ?? []
+        let recent = (try? container.decodeIfPresent([RecentPremiumMemberDTO].self, forKey: .recentPremiumMembers)) ?? nil
+        self.recentPremiumMembers = (recent ?? []).filter { !$0.username.isEmpty }
         let pagination = try container.decodeIfPresent(LiveActivityPaginationDTO.self, forKey: .pagination)
         self.nextBefore = pagination?.nextBefore
         self.hasMore = pagination?.hasMore ?? false
@@ -860,6 +921,7 @@ public struct LiveActivityPageDTO: Decodable, Equatable, Sendable {
     private enum CodingKeys: String, CodingKey {
         case items
         case pagination
+        case recentPremiumMembers
     }
 }
 
@@ -991,6 +1053,10 @@ public struct ChatMessageDTO: Decodable, Equatable, Identifiable, Sendable {
     public let isStaff: Bool
     /// Read-only author presentation metadata, never used to grant account entitlements.
     public let isPremium: Bool
+    /// VIP author identity; display metadata only.
+    public let isVipSupporter: Bool
+    /// System announcement about a VIP upgrade (shown in its own colours).
+    public let isVipAnnouncement: Bool
     public let roleType: String
     public let announcementMember: ChatAnnouncementMemberDTO?
     public let canQuote: Bool
@@ -1021,6 +1087,8 @@ public struct ChatMessageDTO: Decodable, Equatable, Identifiable, Sendable {
         self.isModerator = container.decodeFlexibleBool(forKey: .isModerator)
         self.isStaff = container.decodeFlexibleBool(forKey: .isStaff)
         self.isPremium = container.decodeFlexibleBool(forKey: .isPremium)
+        self.isVipSupporter = container.decodeFlexibleBool(forKey: .isVipSupporter)
+        self.isVipAnnouncement = container.decodeFlexibleBool(forKey: .isVipAnnouncement)
         self.roleType = (try? container.decodeIfPresent(String.self, forKey: .roleType)) ?? "member"
         self.announcementMember = try? container.decodeIfPresent(ChatAnnouncementMemberDTO.self, forKey: .announcementMember)
         self.canQuote = container.decodeFlexibleBool(forKey: .canQuote)
@@ -1050,6 +1118,8 @@ public struct ChatMessageDTO: Decodable, Equatable, Identifiable, Sendable {
         case isModerator
         case isStaff
         case isPremium
+        case isVipSupporter
+        case isVipAnnouncement
         case roleType
         case announcementMember
         case canQuote

@@ -161,17 +161,20 @@ struct ModernSideMenu: View {
     private func premiumCard(compact: Bool) -> some View {
         let presentation = PremiumMenuPresentation(isSignedIn: container.isSignedIn,
             isPremium: container.isPremium || container.isAdmin, remainingDays: container.subscription?.remainingDays)
+        let isVip = container.isSignedIn && (container.subscription?.isVipSupporter == true
+            || container.profileState?.isVipSupporter == true)
         return Button { onSelect(.premium) } label: {
             VStack(alignment: .leading, spacing: 12) {
                 HStack(spacing: 10) {
                     Image(systemName: "rosette").font(.title3).foregroundStyle(Color(hex: 0x6B4B1E))
                         .frame(width: 36, height: 36).background(gold, in: RoundedRectangle(cornerRadius: 12))
-                    Text(L10n.premiumShortTitle).font(.headline).foregroundStyle(gold)
+                    Text(isVip ? MembershipTier.vip.namePrefix + MembershipTier.vipPremiumName : L10n.premiumShortTitle)
+                        .font(.headline).foregroundStyle(isVip ? VipStyle.lilac : gold)
                     Spacer(minLength: 0)
                     Image(systemName: "arrow.right").foregroundStyle(gold)
                 }
                 if presentation.isActive {
-                    Label(ShellRefreshL10n.text("premiumActive"), systemImage: "checkmark.seal.fill")
+                    Label(isVip ? VipL10n.text("vipActive") : ShellRefreshL10n.text("premiumActive"), systemImage: "checkmark.seal.fill")
                         .font(.subheadline.weight(.bold)).foregroundStyle(.white)
                     switch presentation.detail {
                     case .days(let days):

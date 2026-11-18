@@ -34,6 +34,9 @@ public extension ChatMessageDTO {
             && (isPremium || role == "premium")
     }
 
+    /// VIP author presentation; on Android VIP takes precedence over the gold Premium name.
+    var hasVipUsername: Bool { isVipSupporter && !isBot && !isAnnouncement }
+
     var profileMemberID: String? {
         guard !isBot, !isAnnouncement, let id = Int(userId), id > 0 else { return nil }
         return String(id)

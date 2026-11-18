@@ -634,7 +634,9 @@ struct EKChatPreviewMessageRow: View {
 
             VStack(alignment: .leading, spacing: 4) {
                 HStack(spacing: 6) {
-                    if message.hasPremiumUsername {
+                    if message.hasVipUsername {
+                        ChatVipUsername(username: message.username, compact: true)
+                    } else if message.hasPremiumUsername {
                         ChatPremiumUsername(username: message.username)
                     } else {
                         Text(message.username)

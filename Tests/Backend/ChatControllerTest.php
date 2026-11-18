@@ -154,7 +154,7 @@ namespace {
         }; }
     }
     $root = dirname(__DIR__, 2) . '/Backend/IosApi-addon/';
-    foreach (['Service/IgnoredUsers.php', 'Service/ChatInteraction.php', 'Service/ChatSerializer.php', 'Api/Controller/UgcControllerTrait.php',
+    foreach (['Service/AppStoreProducts.php', 'Service/IgnoredUsers.php', 'Service/ChatInteraction.php', 'Service/ChatSerializer.php', 'Api/Controller/UgcControllerTrait.php',
         'Api/Controller/ChatMessages.php', 'Api/Controller/ChatReactions.php'] as $file) require_once $root . $file;
     class TestChatMessages extends \Ekitapligim\IosApi\Api\Controller\ChatMessages {
         protected function assertChatFlooding(\XF\Entity\User $visitor, \Siropu\Chat\Entity\Room $room): void {}

@@ -671,30 +671,43 @@ struct ChatMessageBubble: View {
         }
     }
 
+    private var isVipNotice: Bool { message.isVipAnnouncement }
+    private var announcementInk: Color { isVipNotice ? VipStyle.ink : EKitapligimPalette.chatAnnouncementInk }
+
     private var announcement: some View {
         HStack(alignment: .top, spacing: 10) {
-            Image(systemName: "megaphone.fill")
-                .font(.body.weight(.semibold))
-                .foregroundStyle(.white)
-                .frame(width: 34, height: 34)
-                .background(
-                    LinearGradient(
-                        colors: [EKitapligimPalette.chatAmber, Color(hex: 0xC47E0A)],
-                        startPoint: .topLeading,
-                        endPoint: .bottomTrailing
-                    ),
-                    in: RoundedRectangle(cornerRadius: 10, style: .continuous)
-                )
+            Group {
+                if isVipNotice {
+                    Text(MembershipTier.vip.emoji)
+                        .font(.title3)
+                        .frame(width: 34, height: 34)
+                        .background(Color.white.opacity(0.7), in: RoundedRectangle(cornerRadius: 10, style: .continuous))
+                } else {
+                    Image(systemName: "megaphone.fill")
+                        .font(.body.weight(.semibold))
+                        .foregroundStyle(.white)
+                        .frame(width: 34, height: 34)
+                        .background(
+                            LinearGradient(
+                                colors: [EKitapligimPalette.chatAmber, Color(hex: 0xC47E0A)],
+                                startPoint: .topLeading,
+                                endPoint: .bottomTrailing
+                            ),
+                            in: RoundedRectangle(cornerRadius: 10, style: .continuous)
+                        )
+                }
+            }
+            .accessibilityHidden(true)
             VStack(alignment: .leading, spacing: 4) {
-                Text(L10n.chatAnnouncementLabel)
+                Text(isVipNotice ? VipL10n.text("vipAnnouncement") : L10n.chatAnnouncementLabel)
                     .font(.caption2.weight(.heavy))
-                    .foregroundStyle(EKitapligimPalette.chatAmber)
+                    .foregroundStyle(isVipNotice ? Color(hex: 0x6A4BB0) : EKitapligimPalette.chatAmber)
                 if let member = message.linkedAnnouncementMember {
                     MemberProfileLink(memberID: member.userId) {
                         Text(member.username)
                             .font(.subheadline.weight(.bold))
                             .underline()
-                            .foregroundStyle(EKitapligimPalette.chatAnnouncementInk)
+                            .foregroundStyle(announcementInk)
                             .fixedSize(horizontal: false, vertical: true)
                             .frame(minHeight: 44, alignment: .leading)
                             .contentShape(Rectangle())
@@ -703,8 +716,8 @@ struct ChatMessageBubble: View {
                     .accessibilityIdentifier("chat-announcement-member-\(message.id)")
                 }
                 Text(EKitapligimFormat.plainText(message.linkedAnnouncementMember?.body ?? message.message))
-                    .font(.subheadline)
-                    .foregroundStyle(EKitapligimPalette.chatAnnouncementInk)
+                    .font(isVipNotice ? Font.subheadline.weight(.bold) : Font.subheadline)
+                    .foregroundStyle(announcementInk)
                     .multilineTextAlignment(.leading)
                     .fixedSize(horizontal: false, vertical: true)
                     .frame(maxWidth: .infinity, alignment: .leading)
@@ -715,7 +728,8 @@ struct ChatMessageBubble: View {
         .frame(maxWidth: .infinity, alignment: .leading)
         .background(
             LinearGradient(
-                colors: [EKitapligimPalette.chatAnnouncement, Color(hex: 0xFFF0CC)],
+                colors: isVipNotice ? [Color(hex: 0xF0E5FF), Color(hex: 0xE1F7F5)]
+                    : [EKitapligimPalette.chatAnnouncement, Color(hex: 0xFFF0CC)],
                 startPoint: .topLeading,
                 endPoint: .bottomTrailing
             ),
@@ -723,9 +737,9 @@ struct ChatMessageBubble: View {
         )
         .overlay {
             RoundedRectangle(cornerRadius: 16, style: .continuous)
-                .stroke(EKitapligimPalette.chatAnnouncementBorder, lineWidth: 1)
+                .stroke(isVipNotice ? Color(hex: 0xD1C2E9) : EKitapligimPalette.chatAnnouncementBorder, lineWidth: 1)
         }
-        .shadow(color: EKitapligimPalette.chatAmber.opacity(0.12), radius: 8, y: 3)
+        .shadow(color: (isVipNotice ? VipStyle.violet : EKitapligimPalette.chatAmber).opacity(0.12), radius: 8, y: 3)
     }
 
     private var bubble: some View {
@@ -733,13 +747,22 @@ struct ChatMessageBubble: View {
             if message.isMine { Spacer(minLength: 20) }
             if !message.isMine {
                 MemberProfileLink(memberID: profileMemberID) {
-                    EKAvatar(
-                        urlString: message.avatarUrl,
-                        username: message.username,
-                        size: 36,
-                        background: message.isBot ? EKitapligimPalette.chatBotBubble : EKitapligimPalette.chatTealSoft,
-                        foreground: message.isBot ? Color(hex: 0x95610A) : EKitapligimPalette.chatTeal
-                    )
+                    Group {
+                        if message.hasVipUsername {
+                            VipAvatarFrame(size: 40) { diameter in
+                                EKAvatar(urlString: message.avatarUrl, username: message.username, size: diameter,
+                                         cornerRadius: 0, background: Color(hex: 0x2C2954), foreground: VipStyle.mint)
+                            }
+                        } else {
+                            EKAvatar(
+                                urlString: message.avatarUrl,
+                                username: message.username,
+                                size: 36,
+                                background: message.isBot ? EKitapligimPalette.chatBotBubble : EKitapligimPalette.chatTealSoft,
+                                foreground: message.isBot ? Color(hex: 0x95610A) : EKitapligimPalette.chatTeal
+                            )
+                        }
+                    }
                     .frame(width: 44, height: 44)
                     .contentShape(Rectangle())
                 }
@@ -865,7 +888,9 @@ struct ChatMessageBubble: View {
     private var senderName: some View {
         MemberProfileLink(memberID: profileMemberID) {
             Group {
-                if message.hasPremiumUsername {
+                if message.hasVipUsername {
+                    ChatVipUsername(username: message.username)
+                } else if message.hasPremiumUsername {
                     ChatPremiumUsername(username: message.username)
                 } else {
                     Text(message.username)
@@ -878,7 +903,8 @@ struct ChatMessageBubble: View {
             .contentShape(Rectangle())
         }
         .accessibilityLabel(L10n.chatOpenProfile(message.username))
-        .accessibilityValue(message.hasPremiumUsername ? L10n.profileRolePremiumMember : "")
+        .accessibilityValue(message.hasVipUsername ? VipL10n.text("vipMember")
+            : (message.hasPremiumUsername ? L10n.profileRolePremiumMember : ""))
         .accessibilityIdentifier("chat-username-\(message.id)")
     }
 

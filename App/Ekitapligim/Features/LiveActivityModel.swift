@@ -12,6 +12,8 @@ final class LiveActivityModel: ObservableObject {
     @Published private(set) var isLoading = false
     @Published private(set) var isLoadingMore = false
     @Published private(set) var errorMessage: String?
+    /// Recent Premium/VIP members; only the public first page carries them.
+    @Published private(set) var recentPremiumMembers: [RecentPremiumMemberDTO] = []
 
     private enum Request: Equatable { case reset, more, latest }
     private var loadPage: LoadPage?
@@ -34,6 +36,7 @@ final class LiveActivityModel: ObservableObject {
         self.userID = userID
         generation = UUID()
         items = []
+        recentPremiumMembers = []
         nextBefore = nil
         hasMore = false
         isLoading = false
@@ -101,6 +104,9 @@ final class LiveActivityModel: ObservableObject {
 
     private func apply(_ page: LiveActivityPageDTO, for request: Request) {
         let incoming = unique(page.items)
+        if request != .more, userID == nil, !page.recentPremiumMembers.isEmpty {
+            recentPremiumMembers = Array(page.recentPremiumMembers.prefix(8))
+        }
         switch request {
         case .reset:
             items = incoming

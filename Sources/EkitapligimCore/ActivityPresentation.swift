@@ -8,10 +8,15 @@ public enum ActivityPresentation {
     ]
 
     public static func message(type: String, rawMessage: String, username: String) -> String {
-        guard type.lowercased() == "premium",
+        let kind = type.lowercased()
+        guard kind == "premium" || kind == "vip",
               rawMessage.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty
                 || rawMessage.localizedCaseInsensitiveContains("Kitap Gündemi'nde bir paylaşım yaptı") else { return rawMessage }
         let actor = username.trimmingCharacters(in: .whitespacesAndNewlines)
+        if kind == "vip" {
+            guard !actor.isEmpty else { return VipL10n.text("vipActivityGeneric") }
+            return String(format: VipL10n.text("vipActivityMessage"), locale: Locale.current, actor)
+        }
         guard !actor.isEmpty else { return ShellRefreshL10n.text("premiumActivityGeneric") }
         return String(format: ShellRefreshL10n.text("premiumActivityMessage"), locale: Locale.current, actor)
     }

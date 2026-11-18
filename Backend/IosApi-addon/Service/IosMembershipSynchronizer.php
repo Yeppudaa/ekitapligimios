@@ -27,7 +27,7 @@ class IosMembershipSynchronizer
 	private static function syncLockedEntitlement(int $entitlementId): bool
 	{
 		$row = \XF::db()->fetchRow(
-			'SELECT entitlement_id, user_id, original_transaction_id, expires_date, active FROM ' . self::TABLE . ' WHERE entitlement_id = ?',
+			'SELECT entitlement_id, user_id, product_id, original_transaction_id, expires_date, active FROM ' . self::TABLE . ' WHERE entitlement_id = ?',
 			$entitlementId
 		);
 		if (!$row)
@@ -52,13 +52,13 @@ class IosMembershipSynchronizer
 				return (bool) $service->removeUserGroupChange((int) $row['user_id'], $changeKey);
 			}
 
-			$groupId = self::premiumGroupId();
-			if ($groupId <= 0 || !\XF::em()->find('XF:UserGroup', $groupId))
+			$groupIds = AppStoreProducts::groupIdsForProduct((string) $row['product_id']);
+			if (!$groupIds)
 			{
 				return false;
 			}
 
-			return (bool) $service->addUserGroupChange((int) $row['user_id'], $changeKey, [$groupId]);
+			return (bool) $service->addUserGroupChange((int) $row['user_id'], $changeKey, $groupIds);
 		}
 		catch (\Throwable $e)
 		{

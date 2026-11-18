@@ -90,6 +90,7 @@ struct BookAgendaView: View {
                 .padding(.horizontal, 18)
                 .padding(.vertical, 12)
             }
+            .floatingLauncherClearance()
             .refreshable { await load(reset: true) }
         }
         .navigationTitle(L10n.agendaTitle)
@@ -481,12 +482,12 @@ struct BookAgendaPostCard: View {
                 MemberProfileView(memberID: post.actor.id)
             } label: {
             HStack(spacing: 11) {
-            EKAvatar(urlString: post.actor.avatarUrl, username: post.actor.username, size: 44, cornerRadius: 15, background: Color(hex: 0xE7F7F7))
+            agendaAvatar(post.actor, size: 44, cornerRadius: 15)
             VStack(alignment: .leading, spacing: 2) {
                 HStack(spacing: 5) {
-                    Text(post.actor.username)
+                    Text(post.actor.membershipTier.namePrefix + post.actor.username)
                         .font(.subheadline.weight(.bold))
-                        .foregroundStyle(EKitapligimPalette.agendaInk)
+                        .foregroundStyle(post.actor.membershipTier == .vip ? VipStyle.ink : EKitapligimPalette.agendaInk)
                         .lineLimit(dynamicTypeSize.isAccessibilitySize ? nil : 2)
                     if post.actor.isVerified {
                         Image(systemName: "checkmark.seal.fill")
@@ -1230,14 +1231,14 @@ private struct BookAgendaCommentRow: View {
     var body: some View {
         HStack(alignment: .top, spacing: 10) {
             MemberProfileLink(memberID: comment.actor.id) {
-                EKAvatar(urlString: comment.actor.avatarUrl, username: comment.actor.username, size: 38, cornerRadius: 13, background: Color(hex: 0xE7F7F7))
+                agendaAvatar(comment.actor, size: 38, cornerRadius: 13)
             }
             VStack(alignment: .leading, spacing: 4) {
                 (dynamicTypeSize.isAccessibilitySize ? AnyLayout(VStackLayout(alignment: .leading, spacing: 6)) : AnyLayout(HStackLayout(spacing: 6))) {
                     MemberProfileLink(memberID: comment.actor.id) {
-                        Text(comment.actor.username)
+                        Text(comment.actor.membershipTier.namePrefix + comment.actor.username)
                             .font(.subheadline.weight(.bold))
-                            .foregroundStyle(EKitapligimPalette.agendaInk)
+                            .foregroundStyle(comment.actor.membershipTier == .vip ? VipStyle.ink : EKitapligimPalette.agendaInk)
                     }
                     Spacer(minLength: 0)
                     Text(EKitapligimFormat.relativeTime(comment.createdAt))
@@ -2157,5 +2158,17 @@ private struct AgendaPreviewText: View {
     private func update() {
         let truncated = lineLimit != nil && fullHeight > shownHeight + 1
         if truncated != isTruncated { isTruncated = truncated }
+    }
+}
+
+/// Agenda author avatar with the membership frame (VIP octagon, Premium gold ring), as on Android.
+@ViewBuilder
+func agendaAvatar(_ actor: BookAgendaActorDTO, size: CGFloat, cornerRadius: CGFloat? = nil) -> some View {
+    if actor.membershipTier == .member {
+        EKAvatar(urlString: actor.avatarUrl, username: actor.username, size: size,
+                 cornerRadius: cornerRadius, background: Color(hex: 0xE7F7F7))
+    } else {
+        MembershipAvatar(tier: actor.membershipTier, urlString: actor.avatarUrl, username: actor.username,
+                         size: size, background: Color(hex: 0xE7F7F7), foreground: EKitapligimPalette.agendaTeal)
     }
 }

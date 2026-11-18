@@ -2,6 +2,9 @@ import Foundation
 
 public enum PremiumProductCatalog {
     public static let lifetimeID = "com.ekitapligim.app.premium.lifetime"
+    /// One-time VIP Premium (non-consumable). Kept out of `productIDs` so a store without it
+    /// never affects loading, ordering or availability of the existing plans.
+    public static let vipID = "com.ekitapligim.app.premium.vip"
     public static let productIDs = [
         "com.ekitapligim.app.premium.monthly",
         "com.ekitapligim.app.premium.quarterly",
@@ -18,6 +21,11 @@ public enum PremiumProductCatalog {
         "ekitapligim.premium.yearly"
     ]
 
+    /// Products that never expire once verified.
+    public static func isLifetime(_ productID: String?) -> Bool {
+        productID == lifetimeID || productID == vipID
+    }
+
     public static func subscriptionMonths(for productID: String) -> Int? {
         switch productID {
         case "com.ekitapligim.app.premium.monthly", "ekitapligim.premium.monthly": return 1
@@ -29,7 +37,10 @@ public enum PremiumProductCatalog {
     }
 
     public static func canPurchase(_ productID: String, context: PurchaseAccountDTO) -> Bool {
-        guard context.success, productIDs.contains(productID) else { return false }
+        guard context.success else { return false }
+        // VIP is sold only after the server explicitly confirms it can grant the VIP membership.
+        if productID == vipID { return context.supportedProductIds?.contains(vipID) == true }
+        guard productIDs.contains(productID) else { return false }
         if let supported = context.supportedProductIds { return supported.contains(productID) }
         // A server predating these IDs would reject a paid transaction. Require
         // explicit support before allowing Apple to charge for either new plan.

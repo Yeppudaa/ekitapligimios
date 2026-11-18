@@ -32,6 +32,7 @@ class ChatSerializer
 		$username = (string) ($message->message_username ?: $message->message_bot_name ?: 'E-Kitaplığım');
 		// Author decoration only. Never refresh purchases or change entitlements here.
 		$isPremium = !$message->isBot() && !$message->isAnnouncement() && $this->hasPremiumUsername($user);
+		$isVip = !$message->isBot() && !$message->isAnnouncement() && AppStoreProducts::userIsVip($user);
 		$roleType = $user && $user->is_admin ? 'admin'
 			: ($user && ($user->is_moderator || $user->is_staff) ? 'moderator' : ($isPremium ? 'premium' : 'member'));
 		$rawText = ChatInteraction::filterQuotes((string) $message->getMessage(),
@@ -71,7 +72,10 @@ class ChatSerializer
 			'is_admin' => (bool) ($user && $user->is_admin),
 			'is_moderator' => (bool) ($user && $user->is_moderator),
 			'is_staff' => (bool) ($user && $user->is_staff),
-			'is_premium' => $isPremium,
+			'is_premium' => $isPremium || $isVip,
+			'is_vip_supporter' => $isVip,
+			'is_vip_announcement' => $message->isAnnouncement()
+				&& (int) $message->message_type_category_id === AppStoreProducts::VIP_CHAT_CATEGORY,
 			'role_type' => $roleType,
 			'announcement_member' => $this->announcementMember($message, $rawText),
 			'like_count' => (int) $message->message_like_count,

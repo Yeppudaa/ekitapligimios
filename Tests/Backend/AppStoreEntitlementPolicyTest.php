@@ -1,5 +1,6 @@
 <?php
 // Standalone contract checks for signed App Store transaction policy.
+require_once __DIR__ . '/../../Backend/IosApi-addon/Service/AppStoreProducts.php';
 require_once __DIR__ . '/../../Backend/IosApi-addon/Service/AppStoreEntitlementPolicy.php';
 
 use Ekitapligim\IosApi\Service\AppStoreEntitlementPolicy as Policy;

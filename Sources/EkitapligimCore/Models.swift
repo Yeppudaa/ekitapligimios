@@ -398,6 +398,12 @@ public struct MemberDTO: Decodable, Equatable, Identifiable, Sendable {
     public let location: String
     public let website: String
     public let canConverse: Bool
+    /// VIP Premium display identity; never used to grant access.
+    public let isVipSupporter: Bool
+
+    public var membershipTier: MembershipTier {
+        isVipSupporter ? .vip : (isPremium ? .premium : .member)
+    }
 
     public init(from decoder: Decoder) throws {
         let container = try decoder.container(keyedBy: CodingKeys.self)
@@ -425,6 +431,8 @@ public struct MemberDTO: Decodable, Equatable, Identifiable, Sendable {
         self.location = try container.decodeIfPresent(String.self, forKey: .location) ?? ""
         self.website = try container.decodeIfPresent(String.self, forKey: .website) ?? ""
         self.canConverse = try container.decodeIfPresent(Bool.self, forKey: .canConverse) ?? false
+        self.isVipSupporter = container.contains(.isVipSupporter)
+            ? container.decodeFlexibleBool(forKey: .isVipSupporter) : role?.isVipSupporter ?? false
     }
 
     private enum CodingKeys: String, CodingKey {
@@ -448,6 +456,7 @@ public struct MemberDTO: Decodable, Equatable, Identifiable, Sendable {
         case location
         case website
         case canConverse
+        case isVipSupporter
     }
 }
 
@@ -493,6 +502,8 @@ public struct MemberEnvelopeDTO: Decodable, Equatable, Sendable {
 /// Full member-detail payload including public library snapshot (Android `MemberProfileDto` parity).
 public struct MemberProfileDTO: Decodable, Equatable, Sendable {
     public let member: MemberDTO
+    /// The member's own uploaded banner; nil when they have none.
+    public let bannerUrl: String?
     public let library: [LibraryItemDTO]
     public let lastReadBook: LibraryItemDTO?
     public let readingCount: Int
@@ -535,6 +546,7 @@ public struct MemberProfileDTO: Decodable, Equatable, Sendable {
 
 private struct MemberProfilePayload: Decodable {
     let member: MemberDTO
+    let bannerUrl: String?
     let library: [LibraryItemDTO]
     let lastReadBook: LibraryItemDTO?
     let readingCount: Int
@@ -551,6 +563,8 @@ private struct MemberProfilePayload: Decodable {
     init(from decoder: Decoder) throws {
         let container = try decoder.container(keyedBy: CodingKeys.self)
         self.member = try MemberDTO(from: decoder)
+        let banner = (try? container.decodeIfPresent(String.self, forKey: .bannerUrl)) ?? nil
+        self.bannerUrl = banner.flatMap { $0.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty ? nil : $0 }
         self.library = try container.decodeIfPresent([LibraryItemDTO].self, forKey: .library) ?? []
         self.lastReadBook = try container.decodeIfPresent(LibraryItemDTO.self, forKey: .lastReadBook)
             ?? container.decodeIfPresent(LibraryItemDTO.self, forKey: .last_read_book)
@@ -595,6 +609,7 @@ private struct MemberProfilePayload: Decodable {
     func asProfile() -> MemberProfileDTO {
         MemberProfileDTO(
             member: member,
+            bannerUrl: bannerUrl,
             library: library,
             lastReadBook: lastReadBook,
             readingCount: readingCount,
@@ -611,6 +626,7 @@ private struct MemberProfilePayload: Decodable {
     }
 
     private enum CodingKeys: String, CodingKey {
+        case bannerUrl
         case library
         case lastReadBook
         case last_read_book
@@ -650,6 +666,7 @@ private struct MemberProfilePayload: Decodable {
 extension MemberProfileDTO {
     public init(
         member: MemberDTO,
+        bannerUrl: String? = nil,
         library: [LibraryItemDTO],
         lastReadBook: LibraryItemDTO?,
         readingCount: Int,
@@ -664,6 +681,7 @@ extension MemberProfileDTO {
         canUnblock: Bool
     ) {
         self.member = member
+        self.bannerUrl = bannerUrl
         self.library = library
         self.lastReadBook = lastReadBook
         self.readingCount = readingCount
@@ -1351,6 +1369,7 @@ public struct ProfileDTO: Decodable, Equatable, Sendable {
     public var isAdmin: Bool { role?.isAdmin ?? false }
     public var isModerator: Bool { role?.isModerator ?? false }
     public var isPremium: Bool { role?.isPremium ?? false }
+    public var isVipSupporter: Bool { role?.isVipSupporter ?? false }
 
     /// The display title shown under the username, preferring the member's own custom title.
     public var displayTitle: String? {

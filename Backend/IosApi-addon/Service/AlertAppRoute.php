@@ -26,6 +26,11 @@ final class AlertAppRoute
 		$contentId = (int) $alert->content_id;
 		$extra = is_array($alert->extra_data) ? $alert->extra_data : [];
 
+		if ($type === 'user' && $action === 'ek_premium_announce' && ($extra['campaign_type'] ?? '') === 'premium')
+		{
+			return 'premium';
+		}
+
 		if ($action === 'book_request_new')
 		{
 			return 'requests';

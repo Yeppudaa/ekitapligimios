@@ -42,6 +42,7 @@ struct LiveActivityView: View {
                 .padding(.horizontal, 18)
                 .padding(.vertical, 12)
             }
+            .floatingLauncherClearance()
             .refreshable { await model.load(reset: true) }
             .accessibilityIdentifier("live.scroll")
             }
@@ -92,6 +93,9 @@ struct LiveActivityView: View {
         } else if model.items.isEmpty {
             EKStateCard(title: L10n.liveActivityEmptyTitle, message: L10n.liveActivityEmptySubtitle)
         } else {
+            if userID == nil, !model.recentPremiumMembers.isEmpty {
+                RecentPremiumMembersStrip(members: model.recentPremiumMembers)
+            }
             VStack(alignment: .leading, spacing: 0) {
                 ForEach(Array(model.items.enumerated()), id: \.element.id) { index, item in
                     LiveActivityRow(item: item, style: .timeline, showsConnector: index < model.items.count - 1)
@@ -227,9 +231,11 @@ struct LiveActivityRow: View {
             if let actor = item.actor, let route = item.memberDestination {
                 Button { container.open(route: route) } label: {
                     HStack(spacing: 9) {
-                        EKAvatar(urlString: actor.avatarUrl, username: actor.username, size: 30)
-                        Text(actor.username).font(.subheadline.weight(.bold))
-                            .foregroundStyle(CommunityStyle.teal).fixedSize(horizontal: false, vertical: true)
+                        MembershipAvatar(tier: item.actorTier, urlString: actor.avatarUrl, username: actor.username,
+                                         size: item.actorTier == .member ? 30 : 34)
+                        Text(item.actorTier.namePrefix + actor.username).font(.subheadline.weight(.bold))
+                            .foregroundStyle(item.actorTier == .vip ? VipStyle.ink : CommunityStyle.teal)
+                            .fixedSize(horizontal: false, vertical: true)
                     }.frame(minHeight: 44)
                 }.buttonStyle(.plain).accessibilityIdentifier("live.member.\(item.id)")
                     .accessibilityHint(CommunityDesignL10n.text("activity.member"))
@@ -325,6 +331,7 @@ enum LiveActivityKind {
     case audioLater
     case audioCompleted
     case premium
+    case vip
     case finished
     case review
     case comment
@@ -342,6 +349,7 @@ enum LiveActivityKind {
         case "audio_later": self = .audioLater
         case "audio_completed", "audiobook_completed": self = .audioCompleted
         case "premium", "premium_upgrade", "user_upgrade": self = .premium
+        case "vip", "vip_upgrade": self = .vip
         case "reading", "reading_progress", "progress": self = .reading
         case "want_to_read": self = .wantToRead
         case "favorite", "favorite_added", "book_favorite": self = .favorite
@@ -364,6 +372,7 @@ enum LiveActivityKind {
         case .audioLater: CommunityRefreshL10n.text("activity.audioLater")
         case .audioCompleted: CommunityRefreshL10n.text("activity.audioCompleted")
         case .premium: CommunityRefreshL10n.text("activity.premium")
+        case .vip: VipL10n.text("vipBadge")
         case .reading: L10n.liveActivityTypeReading
         case .wantToRead: L10n.libraryTabWantToRead
         case .favorite: L10n.libraryShelfFavorites
@@ -386,6 +395,7 @@ enum LiveActivityKind {
         case .audioLater: "headphones"
         case .audioCompleted: "checkmark.circle.fill"
         case .premium: "crown.fill"
+        case .vip: "diamond.fill"
         case .reading: "book.pages.fill"
         case .wantToRead: "clock.fill"
         case .favorite: "heart.fill"
@@ -407,6 +417,7 @@ enum LiveActivityKind {
         case .audioSaved, .audioLater: EKitapligimPalette.teal
         case .audioCompleted: EKitapligimPalette.success
         case .premium: EKitapligimPalette.gold
+        case .vip: Color(hex: 0x7B5BC4)
         case .reading: EKitapligimPalette.teal
         case .wantToRead: EKitapligimPalette.teal
         case .favorite: EKitapligimPalette.liveRed
@@ -419,5 +430,56 @@ enum LiveActivityKind {
         case .request: EKitapligimPalette.liveRed
         case .other: EKitapligimPalette.muted
         }
+    }
+}
+
+// MARK: - Son Premium üyeler
+
+/// Recent Premium and VIP members above the public live feed (Android "Son Premium üyeler").
+struct RecentPremiumMembersStrip: View {
+    @EnvironmentObject private var container: AppContainer
+    let members: [RecentPremiumMemberDTO]
+
+    var body: some View {
+        VStack(alignment: .leading, spacing: 10) {
+            Label(VipL10n.text("recentPremiumMembers"), systemImage: "crown.fill")
+                .font(.subheadline.weight(.bold))
+                .foregroundStyle(EKitapligimPalette.ink)
+                .labelStyle(.titleAndIcon)
+                .accessibilityAddTraits(.isHeader)
+            ScrollView(.horizontal, showsIndicators: false) {
+                HStack(alignment: .top, spacing: 12) {
+                    ForEach(members) { member in
+                        Button {
+                            if let route = member.memberDestination { container.open(route: route) }
+                        } label: {
+                            VStack(spacing: 6) {
+                                MembershipAvatar(tier: member.membershipTier, urlString: member.avatarUrl,
+                                                 username: member.username, size: 52)
+                                Text(member.membershipTier.namePrefix + member.username)
+                                    .font(.caption2.weight(.bold))
+                                    .foregroundStyle(member.membershipTier == .vip ? VipStyle.ink : EKitapligimPalette.ink)
+                                    .lineLimit(2)
+                                    .multilineTextAlignment(.center)
+                                    .frame(width: 76)
+                            }
+                            .frame(minWidth: 76, minHeight: 44)
+                            .contentShape(Rectangle())
+                        }
+                        .buttonStyle(.plain)
+                        .disabled(member.memberDestination == nil)
+                        .accessibilityLabel(member.username)
+                        .accessibilityValue(member.membershipTier == .vip ? VipL10n.text("vipMember") : L10n.profileRolePremiumMember)
+                    }
+                }
+                .padding(.vertical, 2)
+            }
+        }
+        .padding(14)
+        .frame(maxWidth: .infinity, alignment: .leading)
+        .background(EKitapligimPalette.paper, in: RoundedRectangle(cornerRadius: 16, style: .continuous))
+        .overlay { RoundedRectangle(cornerRadius: 16, style: .continuous).stroke(EKitapligimPalette.border) }
+        .accessibilityElement(children: .contain)
+        .accessibilityIdentifier("live.recentPremiumMembers")
     }
 }

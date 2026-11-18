@@ -15,7 +15,8 @@ $legacyProducts = @($legacyTerms + "ekitapligim.premium.monthly" + "ekitapligim.
 $configuration = Get-Content -Raw -LiteralPath "App/Ekitapligim/StoreKit/Ekitapligim.storekit" | ConvertFrom-Json
 $subscriptions = @($configuration.subscriptionGroups.subscriptions)
 $configuredProducts = @(($subscriptions + $configuration.nonRenewingSubscriptions + $configuration.products).productID | Sort-Object)
-$expectedConfiguredProducts = @($expectedProducts + $legacyTerms | Sort-Object)
+$vipProduct = "com.ekitapligim.app.premium.vip"
+$expectedConfiguredProducts = @($expectedProducts + $legacyTerms + $vipProduct | Sort-Object)
 if (Compare-Object $expectedConfiguredProducts $configuredProducts) {
     throw "StoreKit product IDs do not match the client/backend Premium contract."
 }
@@ -32,9 +33,17 @@ foreach ($suffix in $periods.Keys) {
         throw "Incorrect renewal type or period for $suffix."
     }
 }
-if (@($configuration.products).Count -ne 1 -or $configuration.products[0].type -ne "NonConsumable") {
-    throw "Lifetime must remain a single non-consumable purchase."
+$oneTime = @($configuration.products)
+$oneTimeIds = (@($oneTime.productID | Sort-Object) -join ",")
+$expectedOneTimeIds = (@("com.ekitapligim.app.premium.lifetime", $vipProduct) | Sort-Object) -join ","
+if ($oneTime.Count -ne 2 -or @($oneTime | Where-Object type -ne "NonConsumable").Count -ne 0 -or $oneTimeIds -ne $expectedOneTimeIds) {
+    throw "Lifetime and VIP Premium must be the only non-consumable purchases."
 }
+# VIP is offered only after the server lists it; both sides must know the identifier.
+Require-Text "Sources/EkitapligimCore/PremiumProductCatalog.swift" $vipProduct
+Require-Text "Backend/IosApi-addon/Service/AppStoreProducts.php" $vipProduct
+Require-Text "Backend/IosApi-addon/Api/Controller/AppStoreVerify.php" "AppStoreProducts::VIP"
+Require-Text "Sources/EkitapligimCore/PremiumProductCatalog.swift" "supportedProductIds?.contains(vipID)"
 
 foreach ($product in $expectedProducts) {
     Require-Text "Sources/EkitapligimCore/PremiumProductCatalog.swift" $product

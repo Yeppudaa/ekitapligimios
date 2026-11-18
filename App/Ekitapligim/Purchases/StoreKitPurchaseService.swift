@@ -17,18 +17,28 @@ final class StoreKitPurchaseService: ObservableObject {
     }
     static let productIDs = PremiumProductCatalog.productIDs
     static let legacyProductIDs = PremiumProductCatalog.legacyProductIDs
-    static let recognizedProductIDs = Set(productIDs + legacyProductIDs)
+    /// VIP Premium is loaded and offered separately so its absence never affects the plans above.
+    static let vipProductID = PremiumProductCatalog.vipID
+    static let recognizedProductIDs = Set(productIDs + legacyProductIDs + [vipProductID])
 
     @Published private(set) var state: PurchaseState = .notLoaded
     @Published private(set) var products: [StoreProduct] = []
     @Published private(set) var entitlement: PremiumEntitlement = .none
     @Published private(set) var purchaseNotice: PurchaseNotice?
+    /// App Store VIP offer; nil until the store returns a valid non-consumable product.
+    @Published private(set) var vipProduct: StoreProduct?
+    /// True only after the server listed VIP among the products it can grant.
+    @Published private(set) var isVipSupportedByServer = false
+    /// Server-confirmed VIP ownership for the signed-in account.
+    @Published private(set) var serverReportsVip = false
 
     var entitlementDidChange: (@MainActor @Sendable () async -> Void)?
 
     private let purchaseRepository: any PurchaseVerifying
     private let appStoreSynchronizer: @Sendable () async throws -> Void
     private var storeProducts: [Product] = []
+    private var vipStoreProduct: Product?
+    private var isLoadingVipProduct = false
     private var updatesTask: Task<Void, Never>?
     private var statusUpdatesTask: Task<Void, Never>?
     private var storefrontUpdatesTask: Task<Void, Never>?
@@ -87,6 +97,7 @@ final class StoreKitPurchaseService: ObservableObject {
             for await _ in Storefront.updates {
                 guard !Task.isCancelled else { break }
                 await self?.loadProducts(force: true)
+                await self?.loadVipProduct(force: true)
             }
         }
     }
@@ -109,12 +120,47 @@ final class StoreKitPurchaseService: ObservableObject {
         storefrontUpdatesTask = nil
         entitlement = .none
         purchaseNotice = nil
+        isVipSupportedByServer = false
+        serverReportsVip = false
         state = products.isEmpty ? .notLoaded : .available(products: products)
     }
 
     func prepare() async {
         await loadProducts()
+        await loadVipProduct()
         await refreshEntitlements()
+    }
+
+    /// Loads only the VIP product. Failure or absence leaves the existing plans untouched.
+    func loadVipProduct(force: Bool = false) async {
+        if !force, vipStoreProduct != nil { return }
+        guard !isLoadingVipProduct else { return }
+        isLoadingVipProduct = true
+        defer { isLoadingVipProduct = false }
+        do {
+            let loaded = try await Product.products(for: [Self.vipProductID])
+            guard let product = loaded.first(where: { $0.id == Self.vipProductID }),
+                  Self.isPurchasableProduct(product) else { return }
+            vipStoreProduct = product
+            vipProduct = StoreProduct(id: product.id, displayName: product.displayName, displayPrice: product.displayPrice)
+        } catch {
+            // Keep any previously loaded offer; the card explains when VIP is unavailable.
+        }
+    }
+
+    /// Asks the server whether it can grant VIP right now. Read-only: it prepares no payment.
+    func refreshVipAvailability() async {
+        guard let purchaseAccount = accountName, !isBusy else { return }
+        let generation = accountGeneration
+        do {
+            let context = try await purchaseRepository.prepareAppStorePurchaseContext(accountName: purchaseAccount)
+            guard generation == accountGeneration else { return }
+            isVipSupportedByServer = PremiumProductCatalog.canPurchase(Self.vipProductID, context: context)
+            serverReportsVip = context.hasVipSupporter == true
+        } catch {
+            // Unknown availability keeps the button hidden; nothing is charged.
+            if generation == accountGeneration { isVipSupportedByServer = false }
+        }
     }
 
     func loadProducts(force: Bool = false) async {
@@ -214,6 +260,7 @@ final class StoreKitPurchaseService: ObservableObject {
     }
 
     static func isPurchasableProduct(_ product: Product) -> Bool {
+        if product.id == Self.vipProductID { return product.type == .nonConsumable }
         guard Self.productIDs.contains(product.id) else { return false }
         if product.id == PremiumProductCatalog.lifetimeID { return product.type == .nonConsumable }
         guard product.type == .autoRenewable,
@@ -245,7 +292,7 @@ final class StoreKitPurchaseService: ObservableObject {
         let generation = accountGeneration
         guard let purchaseAccount = accountName else { return }
         synchronizationRevision = UUID()
-        guard Self.productIDs.contains(productID) else {
+        guard Self.productIDs.contains(productID) || productID == Self.vipProductID else {
             state = .failed(message: L10n.premiumProductMissing)
             return
         }
@@ -261,6 +308,8 @@ final class StoreKitPurchaseService: ObservableObject {
         do {
             let product: Product
             if let cached = storeProducts.first(where: { $0.id == productID }) {
+                product = cached
+            } else if productID == Self.vipProductID, let cached = vipStoreProduct {
                 product = cached
             } else if let loaded = try await Product.products(for: [productID]).first {
                 product = loaded
@@ -284,6 +333,11 @@ final class StoreKitPurchaseService: ObservableObject {
             let decision = PurchaseOfferPolicy.decision(productID: productID, context: context, entitlement: entitlement)
             if decision == .alreadyLifetime {
                 state = .failed(message: L10n.premiumAlreadyLifetime)
+                return
+            }
+            if decision == .alreadyVip {
+                serverReportsVip = true
+                state = .failed(message: VipL10n.text("vipAlreadyActive"))
                 return
             }
             if decision != .allowed && decision != acknowledgedNotice {

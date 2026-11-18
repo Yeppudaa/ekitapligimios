@@ -35,6 +35,11 @@ private struct PremiumContentView: View {
         subscription?.isPremium == true || storeKit.entitlement.isActive
     }
 
+    private var hasVip: Bool {
+        subscription?.isVipSupporter == true || storeKit.serverReportsVip
+            || (storeKit.entitlement.isActive && storeKit.entitlement.productID == PremiumProductCatalog.vipID)
+    }
+
     var body: some View {
         ScrollViewReader { proxy in
             GeometryReader { geometry in
@@ -45,9 +50,15 @@ private struct PremiumContentView: View {
                                 proxy.scrollTo("premium.plans", anchor: .top)
                             }
                         }
+                        vipShortcut {
+                            withAnimation(reduceMotion ? nil : .easeInOut(duration: 0.35)) {
+                                proxy.scrollTo("premium.vip", anchor: .top)
+                            }
+                        }
                         benefitsSection(availableWidth: min(600, max(0, geometry.size.width - 32)))
                         statusSection
                         productsSection.id("premium.plans")
+                        vipSection.id("premium.vip")
                         operationSection
                         actionsSection
                         legalSection
@@ -98,7 +109,10 @@ private struct PremiumContentView: View {
         } message: { notice in
             Text(notice.message)
         }
-        .task { await storeKit.prepare() }
+        .task {
+            await storeKit.prepare()
+            await storeKit.refreshVipAvailability()
+        }
         .preference(key: AILauncherHiddenKey.self, value: true)
     }
 
@@ -191,6 +205,53 @@ private struct PremiumContentView: View {
         }
     }
 
+    private func vipShortcut(_ action: @escaping () -> Void) -> some View {
+        Button(action: action) {
+            HStack(spacing: 10) {
+                Text(MembershipTier.vip.emoji).accessibilityHidden(true)
+                Text(hasVip ? VipL10n.text("vipActive") : VipL10n.text("vipShortcut"))
+                    .font(.subheadline.weight(.bold))
+                    .frame(maxWidth: .infinity, alignment: .leading)
+                    .fixedSize(horizontal: false, vertical: true)
+                Image(systemName: "arrow.down").font(.subheadline.weight(.semibold)).accessibilityHidden(true)
+            }
+            .foregroundStyle(VipStyle.lilac)
+            .padding(.horizontal, 16)
+            .padding(.vertical, 13)
+            .frame(minHeight: 52)
+            .background(LinearGradient(colors: [Color(hex: 0x242043), VipStyle.night],
+                                       startPoint: .leading, endPoint: .trailing),
+                        in: RoundedRectangle(cornerRadius: 16, style: .continuous))
+            .overlay {
+                RoundedRectangle(cornerRadius: 16, style: .continuous)
+                    .strokeBorder(Color(hex: 0x534E78), lineWidth: 1)
+            }
+            .contentShape(RoundedRectangle(cornerRadius: 16, style: .continuous))
+        }
+        .buttonStyle(PremiumPressStyle())
+        .accessibilityIdentifier("premium.vip.shortcut")
+    }
+
+    private var vipSection: some View {
+        VipPremiumCard(
+            isActive: hasVip,
+            price: storeKit.vipProduct?.displayPrice,
+            isSignedIn: isSignedIn,
+            isPurchasable: storeKit.isVipSupportedByServer && storeKit.vipProduct != nil,
+            isBusy: isBusy
+        ) {
+            Task {
+                await storeKit.purchase(productID: PremiumProductCatalog.vipID)
+                if case .failed(let message) = storeKit.state {
+                    operationErrorTitle = L10n.premiumPurchaseFailed
+                    operationErrorMessage = message
+                } else {
+                    await storeKit.refreshVipAvailability()
+                }
+            }
+        }
+    }
+
     @ViewBuilder
     private var operationSection: some View {
         switch storeKit.state {
@@ -200,8 +261,9 @@ private struct PremiumContentView: View {
                 .frame(maxWidth: .infinity, alignment: .leading)
                 .padding(22)
                 .premiumSurface()
-        case .purchased:
-            PremiumNotice(message: L10n.premiumPurchased, systemImage: "checkmark.seal.fill", tone: PremiumStyle.success)
+        case .purchased(let productID, _):
+            PremiumNotice(message: productID == PremiumProductCatalog.vipID ? VipL10n.text("vipVerified") : L10n.premiumPurchased,
+                          systemImage: "checkmark.seal.fill", tone: PremiumStyle.success)
         case .restored:
             PremiumNotice(message: L10n.premiumRestored, systemImage: "checkmark.circle.fill", tone: PremiumStyle.success)
         case .pending:

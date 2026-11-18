@@ -130,6 +130,7 @@ struct ProfileView: View {
             .padding(.top, 6)
             .padding(.bottom, 34)
         }
+        .floatingLauncherClearance()
         .accessibilityIdentifier("profile.scroll")
     }
 
@@ -439,8 +440,22 @@ private struct ProfileHero: View {
     private var isVerified: Bool { profile?.role?.showVerifiedBadge ?? false }
     private var isAdmin: Bool { profile?.isAdmin ?? (subscription?.isAdminTier ?? false) }
     private var isPremium: Bool { subscription?.isPremium ?? (profile?.isPremium ?? false) }
+    private var isVip: Bool { subscription?.isVipSupporter == true || profile?.isVipSupporter == true }
 
     var body: some View {
+        if isVip {
+            VipProfileHero(
+                displayName: username,
+                avatarUrl: profile?.avatarUrl,
+                bannerUrl: profile?.bannerUrl,
+                detail: EKitapligimFormat.date(profile?.registerDate ?? 0).map { L10n.profileJoinedOn($0) }
+            )
+        } else {
+            standardHero
+        }
+    }
+
+    private var standardHero: some View {
         VStack(alignment: .leading, spacing: 0) {
             banner
             VStack(alignment: .leading, spacing: 14) {
@@ -523,7 +538,8 @@ private struct ProfileHero: View {
             }
 
             VStack(alignment: .leading, spacing: 6) {
-                PremiumMemberName(username: username, isPremium: isPremium, isVerified: isVerified,
+                PremiumMemberName(username: isPremium ? MembershipTier.premium.namePrefix + username : username,
+                    isPremium: isPremium, isVerified: isVerified,
                     badgeColor: EKitapligimPalette.profileGold)
                         .font(.title2.weight(.bold))
                         .foregroundStyle(.white)

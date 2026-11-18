@@ -62,6 +62,21 @@
       "productID": "com.ekitapligim.app.premium.lifetime",
       "referenceName": "Lifetime Premium",
       "type": "NonConsumable"
+    },
+    {
+      "displayPrice": "5000.00",
+      "familyShareable": false,
+      "internalID": "com.ekitapligim.app.premium.vip",
+      "localizations": [
+        {
+          "description": "Sınırsız Premium’un tüm ayrıcalıkları ve destekçilere özel haklar.",
+          "displayName": "VIP Premium",
+          "locale": "tr_TR"
+        }
+      ],
+      "productID": "com.ekitapligim.app.premium.vip",
+      "referenceName": "VIP Premium",
+      "type": "NonConsumable"
     }
   ],
   "settings": {

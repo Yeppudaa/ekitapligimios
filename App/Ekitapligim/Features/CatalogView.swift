@@ -79,6 +79,7 @@ struct CatalogView: View {
                     .padding(.bottom, 28)
 
                 }
+                .floatingLauncherClearance()
                 .refreshable { await load(reset: true) }
                 .accessibilityIdentifier("catalog.scroll")
             }

@@ -50,7 +50,7 @@ namespace {
         public static function options() { return (object) ['siropuChatReactions' => false]; }
     }
     $root = dirname(__DIR__, 2) . '/Backend/IosApi-addon/Service/';
-    foreach (['IgnoredUsers.php', 'ChatInteraction.php', 'ChatSerializer.php'] as $file) require_once $root . $file;
+    foreach (['AppStoreProducts.php', 'IgnoredUsers.php', 'ChatInteraction.php', 'ChatSerializer.php'] as $file) require_once $root . $file;
     function check($condition, $message) { if (!$condition) throw new \RuntimeException($message); }
     function quote($id, $user = 9, $body = 'Original') { return '[QUOTE="Ada, member: ' . $user . ', ek_message: ' . $id . '"]' . $body . '[/QUOTE]'; }
     function serializeMessage($text) { return (new \Ekitapligim\IosApi\Service\ChatSerializer())->message(new \Siropu\Chat\Entity\Message(82, $text)); }

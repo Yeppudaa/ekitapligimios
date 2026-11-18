@@ -109,6 +109,7 @@ class AppStoreTestDb
     public function rollback() { $this->pdo->rollBack(); }
 }
 
+require_once __DIR__ . '/../../../Backend/IosApi-addon/Service/AppStoreProducts.php';
 require_once __DIR__ . '/../../../Backend/IosApi-addon/Service/AppStoreEntitlementPolicy.php';
 require_once __DIR__ . '/../../../Backend/IosApi-addon/Service/AppStoreTermSchedule.php';
 require_once __DIR__ . '/../../../Backend/IosApi-addon/Service/AppStoreTransactionStore.php';

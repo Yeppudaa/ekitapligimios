@@ -103,6 +103,8 @@ struct RootView: View {
             activeContent
                 .frame(maxWidth: .infinity, maxHeight: .infinity)
                 .environment(\.replyViewportHeight, max(0, geometry.size.height - geometry.safeAreaInsets.bottom - geometry.safeAreaInsets.top))
+                // Lists reserve room for the floating AI launcher so their last row stays tappable.
+                .environment(\.floatingLauncherClearance, ShellLayout.floatingLauncherClearance)
                 .accessibilityElement(children: .contain)
                 .accessibilityIdentifier("shell.content")
                 .overlay(alignment: .bottomTrailing) {

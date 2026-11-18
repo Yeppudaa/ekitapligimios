@@ -52,6 +52,7 @@ struct MyAudioCommentsView: View {
                 .frame(maxWidth: .infinity, alignment: .leading)
                 .padding(.horizontal, 18).padding(.vertical, 16)
             }
+            .floatingLauncherClearance()
             .accessibilityIdentifier("audio.comments.scroll")
             .refreshable { await model.load(reset: true) }
         }

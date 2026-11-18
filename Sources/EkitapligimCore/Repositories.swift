@@ -972,10 +972,13 @@ public struct PurchaseAccountDTO: Decodable, Equatable, Sendable {
     public let hasActiveSubscription: Bool?
     public let hasFixedTerm: Bool?
     public let supportedProductIds: [String]?
+    /// Sent by servers that sell VIP Premium on iOS; nil keeps the entitlement-based fallback.
+    public let hasVipSupporter: Bool?
 
     public init(success: Bool, appAccountToken: UUID, hasLifetime: Bool? = nil,
                 hasActiveSubscription: Bool? = nil, hasFixedTerm: Bool? = nil,
-                supportedProductIds: [String]? = nil) {
+                supportedProductIds: [String]? = nil, hasVipSupporter: Bool? = nil) {
+        self.hasVipSupporter = hasVipSupporter
         self.success = success
         self.appAccountToken = appAccountToken
         self.hasLifetime = hasLifetime

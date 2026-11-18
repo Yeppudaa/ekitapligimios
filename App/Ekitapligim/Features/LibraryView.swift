@@ -64,6 +64,7 @@ struct LibraryView: View {
                     .padding(.horizontal, 18)
                     .padding(.vertical, 12)
                 }
+                .floatingLauncherClearance()
                 .refreshable { await load() }
                 .accessibilityIdentifier("library.scroll")
             } else {

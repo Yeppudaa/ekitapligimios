@@ -37,6 +37,7 @@ jobs:
           php Tests/Backend/AppStoreControllerTest.php
           php Tests/Backend/AppStoreSignatureTest.php
           php Tests/Backend/AppStoreMembershipTest.php
+          php Tests/Backend/AppStoreVipMembershipTest.php
           php Tests/Backend/AppStoreTermScheduleTest.php
           php Tests/Backend/AppStoreLegacyContractTest.php
           php Tests/Backend/AppStoreRenewableCatalogTest.php

@@ -81,6 +81,7 @@ struct HomeView: View {
                     }
                     .padding(.bottom, 28)
                 }
+                .floatingLauncherClearance()
                 .refreshable {
                     async let categoryRequest: Void = loadCategoryForums()
                     await load()
@@ -967,10 +968,10 @@ struct HomeAgendaCard: View {
             MemberProfileView(memberID: post.actor.id)
         } label: {
             HStack(alignment: .center, spacing: 8) {
-                EKAvatar(urlString: post.actor.avatarUrl, username: post.actor.username, size: 32)
+                agendaAvatar(post.actor, size: 32)
                     .accessibilityHidden(true)
                 VStack(alignment: .leading, spacing: 4) {
-                    Text(post.actor.username)
+                    Text(post.actor.membershipTier.namePrefix + post.actor.username)
                         .font(.caption.weight(.semibold))
                         .lineLimit(dynamicTypeSize.isAccessibilitySize ? 2 : 1)
                     if post.createdAt > 0 {
