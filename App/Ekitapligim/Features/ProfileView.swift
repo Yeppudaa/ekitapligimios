@@ -538,9 +538,10 @@ private struct ProfileHero: View {
             }
 
             VStack(alignment: .leading, spacing: 6) {
-                PremiumMemberName(username: isPremium ? MembershipTier.premium.namePrefix + username : username,
+                PremiumMemberName(username: username,
                     isPremium: isPremium, isVerified: isVerified,
-                    badgeColor: EKitapligimPalette.profileGold)
+                    badgeColor: EKitapligimPalette.profileGold,
+                    visualPrefix: isPremium ? MembershipTier.premium.namePrefix : "")
                         .font(.title2.weight(.bold))
                         .foregroundStyle(.white)
                         .lineLimit(isPremium || dynamicTypeSize.isAccessibilitySize ? nil : 2)

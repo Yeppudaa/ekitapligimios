@@ -165,10 +165,12 @@ struct PremiumMemberName: View {
     let isPremium: Bool
     var isVerified = false
     var badgeColor: Color = Color(hex: 0xC89227)
+    /// Shown before the name only; VoiceOver and lookups keep reading the plain username.
+    var visualPrefix = ""
 
     var body: some View {
         let showBadge = isPremium || isVerified
-        let name = Text(username)
+        let name = Text(visualPrefix + username)
         let badge = Text(Image(systemName: "checkmark.seal.fill")).foregroundColor(badgeColor)
         (showBadge ? name + Text(" ") + badge : name)
             .accessibilityLabel(username)

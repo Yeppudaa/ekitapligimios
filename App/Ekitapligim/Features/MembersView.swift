@@ -454,8 +454,8 @@ private struct MemberProfileContentView: View {
                     }
                 VStack(spacing: 14) {
                     CommunityMemberAvatar(member: member, size: 96).padding(.top, -48)
-                    PremiumMemberName(username: member.isPremium ? MembershipTier.premium.namePrefix + member.username : member.username,
-                                      isPremium: member.isPremium)
+                    PremiumMemberName(username: member.username, isPremium: member.isPremium,
+                                      visualPrefix: member.isPremium ? MembershipTier.premium.namePrefix : "")
                         .font(.system(.largeTitle, design: .serif).bold())
                         .foregroundStyle(CommunityStyle.ink).multilineTextAlignment(.center)
                         .fixedSize(horizontal: false, vertical: true)
