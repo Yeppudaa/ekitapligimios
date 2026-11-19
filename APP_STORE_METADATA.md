@@ -1,5 +1,9 @@
 # App Store Metadata Draft
 
+## VIP Premium — 19 November 2026
+
+App Store Connect product `com.ekitapligim.app.premium.vip` (Apple ID `6836663345`) is a one-time non-consumable purchase. The display name is VIP Premium in Turkish and US English. All 175 storefronts are selected. The Türkiye base price is ₺4.999,99, with Apple-equivalent prices elsewhere. Apple requires a product review screenshot before submission. See [VIP Premium validation](VIP_PREMIUM_PARITY_20261118.md) for the current availability and test status.
+
 ## Unreleased design notes — 2026-11-15
 
 Draft Turkish release copy: “Kitap Gündemi artık görselli, bütünleşik bir alanda. Mesajlarda kitap önizlemeleri, paylaşılan görseller ve önceki mesajlara erişimi geliştirdik. Kitap isteği bilgilendirmelerini yeniledik; yorum ve mesaj gönderimindeki hata durumlarını iyileştirdik.”

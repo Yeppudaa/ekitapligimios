@@ -64,7 +64,7 @@
       "type": "NonConsumable"
     },
     {
-      "displayPrice": "5000.00",
+      "displayPrice": "4999.99",
       "familyShareable": false,
       "internalID": "com.ekitapligim.app.premium.vip",
       "localizations": [

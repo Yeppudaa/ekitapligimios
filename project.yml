@@ -55,8 +55,8 @@ targets:
     settings:
       base:
         INFOPLIST_FILE: App/Ekitapligim/Support/Info.plist
-        MARKETING_VERSION: "1.1.3"
-        CURRENT_PROJECT_VERSION: "51"
+        MARKETING_VERSION: "1.1.4"
+        CURRENT_PROJECT_VERSION: "52"
         CODE_SIGN_STYLE: Automatic
         DEVELOPMENT_TEAM: QA67383767
         ASSETCATALOG_COMPILER_APPICON_NAME: AppIcon
@@ -140,7 +140,7 @@ schemes:
         Ekitapligim: all
     run:
       config: Development
-      # 1/3/6/12-month renewables, lifetime, and legacy restore fixtures.
+      # 1/3/6/12-month renewables, lifetime, VIP, and legacy restore fixtures.
       storeKitConfiguration: App/Ekitapligim/StoreKit/Ekitapligim.storekit
       commandLineArguments:
         "-FIRDebugDisabled": true

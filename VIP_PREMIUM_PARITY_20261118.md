@@ -55,4 +55,13 @@ Android 1.2.76 ve Mobile API 1.0.162 ile gelen VIP Premium ve profil değişikli
 - `Scripts/appstore-entitlement-policy-test.php`: 7 yeni VIP kontrolü geçti.
 - Windows durum testleri geçti: canlı akış, sohbet, profil ve rehber, bildirim, kitaplık, gündem.
 - SwiftUI ekranlarının derlenmesi ve iOS arayüz testleri macOS CI'da çalışmalı.
-- App Store Connect'te `com.ekitapligim.app.premium.vip` ürünü (tek seferlik, 5.000 TL) oluşturulmalı.
+
+## App Store Connect — 19.11.2026
+
+- [VIP Premium](https://appstoreconnect.apple.com/apps/6789584323/distribution/iaps/6836663345) `com.ekitapligim.app.premium.vip` kimliğiyle tek seferlik (non-consumable) ürün olarak oluşturuldu. Türkçe ve İngilizce mağaza metinleri kaydedildi. 175 bölgenin tamamı ve yeni bölgelerin otomatik eklenmesi seçildi. Türkiye baz fiyatı ₺4.999,99, diğer bölgelerde Apple'ın yerel fiyat karşılıkları kullanılıyor.
+- Aylık, 3 aylık, 6 aylık, yıllık ve Süresiz Premium mağazada onaylı. Her ürün ve uygulama için tüm bölgeler seçili.
+- Eski sabit süreli 3 aylık, 6 aylık ve yıllık ürünler de App Store Connect'te onaylı ve tüm bölgeler seçili. Uygulama bu kimlikleri mevcut satın alımları geri yüklerken tanır. Eski ön eksiz aylık ve yıllık kayıtlar `Developer Rejected` durumunda.
+- Apple, VIP gönderimini ürünün uygulama içindeki inceleme ekran görüntüsü eklenene kadar engelliyor. TestFlight'taki 1.1.3 (51), VIP değişikliğinden önce oluşturulmuş.
+- 581 Swift çekirdek testi ve sunucu satın alma testleri geçti. Yerel StoreKit satın alma ve geri yükleme testi eklendi. Bu test macOS gerektiriyor. Apple Sandbox'ta uçtan uca satın alma ve geri yükleme henüz çalıştırılmadı.
+- Canlı XenForo paneli ve uzak sunucudaki `addon.json`, iOS API 1.0.41 (`1000041`) sürümünü doğruladı. Sunucudaki 162 dosya yolu ZIP ile eşleşti. SHA-256 karşılaştırmasında 155 dosya birebir eşleşti. Kalan yedi dosyanın içeriği satır sonları normalize edildiğinde eşleşti.
+- Canlı XenForo yapılandırmasında `vipReady()` sonucu `true`. App Store işlem, hesap eşleştirme ve durum tabloları mevcut. HTTPS katalog isteği `200`, oturumsuz satın alma hazırlığı `401 login_required`, boş Apple bildirimi `400 invalid_input` döndürdü.

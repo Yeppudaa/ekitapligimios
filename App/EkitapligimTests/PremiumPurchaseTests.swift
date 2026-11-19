@@ -376,6 +376,35 @@ final class PremiumPurchaseTests: XCTestCase {
         XCTAssertFalse(restored.entitlement.willAutoRenew)
     }
 
+    func testVipPurchaseActivatesAndRestoresWithoutExpiration() async throws {
+        let productID = PremiumProductCatalog.vipID
+        let verifier = SuccessfulPurchaseVerifier()
+        let service = StoreKitPurchaseService(purchaseRepository: verifier, accountName: "tester")
+        defer { service.stopObservingTransactions() }
+
+        await service.prepare()
+        await service.refreshVipAvailability()
+
+        XCTAssertEqual(service.vipProduct?.id, productID)
+        XCTAssertFalse(service.products.contains { $0.id == productID })
+        XCTAssertTrue(service.isVipSupportedByServer)
+
+        await service.purchase(productID: productID)
+        XCTAssertEqual(service.state, .purchased(productID: productID, expiration: nil))
+        XCTAssertTrue(service.entitlement.isActive)
+        XCTAssertEqual(session.allTransactions().count, 1)
+
+        let restored = StoreKitPurchaseService(purchaseRepository: verifier, accountName: "tester")
+        defer { restored.stopObservingTransactions() }
+        await restored.restore()
+
+        XCTAssertEqual(restored.state, .restored)
+        XCTAssertEqual(restored.entitlement.productID, productID)
+        XCTAssertTrue(restored.entitlement.isActive)
+        XCTAssertNil(restored.entitlement.expiration)
+        XCTAssertFalse(restored.entitlement.willAutoRenew)
+    }
+
     func testExpiredNonRenewingPurchaseShowsNothingToRestore() async throws {
         let service = StoreKitPurchaseService(purchaseRepository: SuccessfulPurchaseVerifier(), accountName: "tester")
         try await session.buyProduct(identifier: "com.ekitapligim.app.premium.three_months")
@@ -495,7 +524,7 @@ private actor SuccessfulPurchaseVerifier: PurchaseVerifying {
 
     func prepareAppStorePurchaseContext(accountName: String) async throws -> PurchaseAccountDTO {
         PurchaseAccountDTO(success: true, appAccountToken: try await prepareAppStorePurchase(accountName: accountName),
-            supportedProductIds: PremiumProductCatalog.productIDs)
+            supportedProductIds: PremiumProductCatalog.productIDs + [PremiumProductCatalog.vipID])
     }
 
     func verifyAppStorePurchase(
@@ -521,7 +550,7 @@ private actor SuccessfulPurchaseVerifier: PurchaseVerifying {
         return BillingResponseDTO(
             success: true,
             isPremium: true,
-            expirationTime: productID.hasSuffix(".lifetime") ? nil : Int(Date().addingTimeInterval(31 * 86_400).timeIntervalSince1970)
+            expirationTime: PremiumProductCatalog.isLifetime(productID) ? nil : Int(Date().addingTimeInterval(31 * 86_400).timeIntervalSince1970)
         )
     }
 }

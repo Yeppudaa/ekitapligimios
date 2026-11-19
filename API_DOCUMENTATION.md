@@ -415,6 +415,8 @@ IosApi 1.0.28 responds from the stored, newest signed state rather than the subm
 
 Purchase preparation uses the same POST route with `prepare_purchase=1` and required `account_name`, without a transaction. Response: `{"success":true,"app_account_token":"<UUID>"}`. The UUID is stable per XenForo user ID, persisted before opening StoreKit, and passed through `Product.PurchaseOption.appAccountToken`. A signed token tied to a different user returns the same ownership conflict, even before any receipt was previously verified. Unknown signed tokens return `409 app_account_token_unknown`; restore the server mapping from backup rather than reassigning ownership. Legacy tokenless transactions remain supported. Deploy 1.0.28 before distributing this client; failed preparation prevents the payment sheet from opening.
 
+IosApi 1.0.41 verifies `com.ekitapligim.app.premium.vip` as a non-consumable with no expiration. Preparation advertises the product in `supported_product_ids` only when the configured Premium and VIP groups both exist and are distinct. `has_vip_supporter` also reports existing VIP access from other supported sales channels. A verified VIP purchase grants both groups, and a VIP refund preserves Premium access granted by a separate purchase.
+
 ### POST `/billing/app-store/notifications`
 Auth: server-to-server from Apple.
 Response: 200 after verification and entitlement update.

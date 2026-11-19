@@ -1,6 +1,6 @@
 workflows:
   ios-testflight-current:
-    name: Ekitapligim iOS TestFlight 1.1.3
+    name: Ekitapligim iOS TestFlight 1.1.4
     max_build_duration: 60
     instance_type: mac_mini_m2
     integrations:
