@@ -72,6 +72,9 @@ struct ModernParityUITestHost: View {
                 fixtureContainer.storeKit.stopObservingTransactions()
                 await fixtureContainer.refreshSessionData()
             }
+            if screen == "vip-review" {
+                fixtureContainer.storeKit.seedVipReviewOffer(displayPrice: "₺4.999,99")
+            }
             if screen == "catalog" { fixtureContainer.selectedTab = .catalog }
             if screen == "profile" { fixtureContainer.selectedTab = .profile }
             if socialNavigation && screen == "live" { fixtureContainer.open(route: .liveActivity) }
@@ -135,6 +138,7 @@ struct ModernParityUITestHost: View {
         case "login": LoginView()
         case "register": LoginView(initialMode: .register)
         case "chat": NavigationStack { ChatView(initialRoomID: "4") }
+        case "vip-review": NavigationStack { PremiumView() }
         case "audio", "audio-detail", "audio-library", "audio-player": audioContent
         default: Text("Unknown fixture screen").accessibilityIdentifier("modern-parity-error")
         }

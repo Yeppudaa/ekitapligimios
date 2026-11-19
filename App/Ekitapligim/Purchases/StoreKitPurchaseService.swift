@@ -131,6 +131,13 @@ final class StoreKitPurchaseService: ObservableObject {
         await refreshEntitlements()
     }
 
+    #if DEBUG
+    func seedVipReviewOffer(displayPrice: String) {
+        vipProduct = StoreProduct(id: Self.vipProductID, displayName: "VIP Premium", displayPrice: displayPrice)
+        isVipSupportedByServer = true
+    }
+    #endif
+
     /// Loads only the VIP product. Failure or absence leaves the existing plans untouched.
     func loadVipProduct(force: Bool = false) async {
         if !force, vipStoreProduct != nil { return }

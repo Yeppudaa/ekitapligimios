@@ -104,6 +104,25 @@ final class EkitapligimUITests: XCTestCase {
         XCTAssertFalse(filtersButton.frame.intersects(menuButton.frame))
     }
 
+    func testCaptureVipPremiumReviewScreenshot() {
+        let app = XCUIApplication()
+        app.launchArguments = ["-modern-parity-ui-fixture", "-AppleLanguages", "(tr)", "-AppleLocale", "tr_TR"]
+        app.launchEnvironment["MODERN_PARITY_SCREEN"] = "vip-review"
+        app.launchEnvironment["MODERN_PARITY_STANDARD_MEMBER"] = "1"
+        app.launch()
+
+        let shortcut = app.buttons["premium.vip.shortcut"]
+        XCTAssertTrue(shortcut.waitForExistence(timeout: 20))
+        shortcut.tap()
+
+        let buy = app.buttons["premium.vip.buy"]
+        XCTAssertTrue(buy.waitForExistence(timeout: 10))
+        XCTAssertTrue(buy.isHittable)
+        XCTAssertTrue(buy.isEnabled)
+        XCTAssertTrue(app.staticTexts["₺4.999,99"].exists)
+        keepScreenshot(named: "VIP-Premium-App-Review")
+    }
+
     func testCaptureAppStoreScreenshots() throws {
         let app = launchApp()
         XCTAssertTrue(app.buttons["Menü"].waitForExistence(timeout: 15))

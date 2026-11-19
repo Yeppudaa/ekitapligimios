@@ -110,6 +110,10 @@ private struct PremiumContentView: View {
             Text(notice.message)
         }
         .task {
+            #if DEBUG
+            if ProcessInfo.processInfo.arguments.contains("-modern-parity-ui-fixture"),
+               ProcessInfo.processInfo.environment["MODERN_PARITY_SCREEN"] == "vip-review" { return }
+            #endif
             await storeKit.prepare()
             await storeKit.refreshVipAvailability()
         }
