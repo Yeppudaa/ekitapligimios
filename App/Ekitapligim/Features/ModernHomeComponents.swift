@@ -501,13 +501,14 @@ struct ModernHomeLibraryBanner: View {
                 Image(systemName: icon).font(.system(size: 22)).foregroundStyle(EKitapligimPalette.teal)
                     .frame(width: 44, height: 44).background(.white.opacity(0.92), in: Circle())
                     .accessibilityHidden(true)
-                UniformCardText(value.flatMap { $0 >= 0 ? EKitapligimFormat.count($0) : nil } ?? "—", lines: 1)
+                UniformCardText(value.flatMap { $0 >= 0 ? EKitapligimFormat.count($0) : nil } ?? "—", lines: 1, alignment: .center)
                     .font(.system(.title2, design: .serif, weight: .bold)).monospacedDigit()
                     .foregroundStyle(EKitapligimPalette.ink)
-                UniformCardText(HomeRefreshL10n.text(label), lines: 2).font(.caption)
+                UniformCardText(HomeRefreshL10n.text(label), lines: 2, alignment: .center).font(.caption)
                     .foregroundStyle(EKitapligimPalette.muted)
             }
             .multilineTextAlignment(.center)
+            .padding(.horizontal, 5)
             .padding(.vertical, 9).frame(maxWidth: .infinity, minHeight: 48)
             .background(.white.opacity(0.55), in: RoundedRectangle(cornerRadius: 13))
         }

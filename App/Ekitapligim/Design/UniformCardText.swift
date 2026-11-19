@@ -6,10 +6,12 @@ struct UniformCardText: View {
     @Environment(\.dynamicTypeSize) private var dynamicTypeSize
     let value: String
     let lines: Int
+    let alignment: HorizontalAlignment
 
-    init(_ value: String, lines: Int) {
+    init(_ value: String, lines: Int, alignment: HorizontalAlignment = .leading) {
         self.value = value
         self.lines = lines
+        self.alignment = alignment
     }
 
     var body: some View {
@@ -22,11 +24,11 @@ struct UniformCardText: View {
                 Text(Array(repeating: "ÂĞİŞgj", count: max(1, lines)).joined(separator: "\n"))
                     .lineLimit(lines)
                     .hidden()
-                    .frame(maxWidth: .infinity, alignment: .leading)
-                    .overlay(alignment: .topLeading) {
+                    .frame(maxWidth: .infinity, alignment: Alignment(horizontal: alignment, vertical: .center))
+                    .overlay(alignment: Alignment(horizontal: alignment, vertical: .top)) {
                         Text(value)
                             .lineLimit(lines)
-                            .frame(maxWidth: .infinity, alignment: .leading)
+                            .frame(maxWidth: .infinity, alignment: Alignment(horizontal: alignment, vertical: .center))
                     }
                     .accessibilityElement(children: .ignore)
                     .accessibilityLabel(Text(value))

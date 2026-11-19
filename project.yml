@@ -56,7 +56,7 @@ targets:
       base:
         INFOPLIST_FILE: App/Ekitapligim/Support/Info.plist
         MARKETING_VERSION: "1.1.4"
-        CURRENT_PROJECT_VERSION: "52"
+        CURRENT_PROJECT_VERSION: "53"
         CODE_SIGN_STYLE: Automatic
         DEVELOPMENT_TEAM: QA67383767
         ASSETCATALOG_COMPILER_APPICON_NAME: AppIcon
